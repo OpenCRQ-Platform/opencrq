@@ -64,8 +64,8 @@ __metadata:
     "@app/module": "workspace:*"
     "@app/utils": "workspace:*"
     "@babel/core": "npm:8.1.2"
-    "@filigran/chatbot": "npm:3.36.0"
-    "@filigran/design-system": "npm:1.7.0"
+    "@filigran/chatbot": "npm:7.0.0"
+    "@filigran/design-system": "npm:1.9.0"
     "@filigran/icon": "npm:0.24.3"
     "@filigran/ui": "npm:1.6.13"
     "@fontsource-variable/geologica": "npm:5.3.0"
@@ -1641,26 +1641,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@filigran/chatbot@npm:3.36.0":
-  version: 3.36.0
-  resolution: "@filigran/chatbot@npm:3.36.0"
+"@filigran/chatbot@npm:7.0.0":
+  version: 7.0.0
+  resolution: "@filigran/chatbot@npm:7.0.0"
   dependencies:
     remark-parse: "npm:^11.0.0"
     unified: "npm:^11.0.0"
   peerDependencies:
-    "@filigran/design-system": ^1.5.3
+    "@filigran/design-system": ^1.9.0
     react: ">=18"
     react-dom: ">=18"
     react-markdown: ">=10"
     remark-breaks: ">=4"
     remark-gfm: ">=4"
-  checksum: 10c0/a4c021a5d3c4d986135754cf27b85e98e59a1390ae4c423b1c2f7a24638294609d0124dc027a20b8c892fb4c1a54ba89e7fa34fe6766328994d7f18dd5bd36f0
+  checksum: 10c0/6d7e6dd6e9db3fc096ecdca4140c13cc7fd6c4ec975155ab4cbd9d5c278b22cb4728a0762843b47772b3152935438af6539731729a97c3f49566cb38184961cc
   languageName: node
   linkType: hard
 
-"@filigran/design-system@npm:1.7.0":
-  version: 1.7.0
-  resolution: "@filigran/design-system@npm:1.7.0"
+"@filigran/design-system@npm:1.9.0":
+  version: 1.9.0
+  resolution: "@filigran/design-system@npm:1.9.0"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -1700,7 +1700,7 @@ __metadata:
     react-dom: ^19.0.0
   bin:
     filigran-design-system: bin/install-skills.mjs
-  checksum: 10c0/c67f8f2585858ceef66efc188ff379bac62cf72f50fb4b8e3cd150f307c1dd3fd48957680c95d79ba70c911704f708c52ce50b1a61424bfcc6dd0727e729d91a
+  checksum: 10c0/17d04623ec7c8e5af81324bb293af205d388ee884df6043853823521d7a6456be59be23a174085b766b1044b785b8f0ff18feb00e513e76851d2fc20ae1983ea
   languageName: node
   linkType: hard
 
