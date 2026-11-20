@@ -332,8 +332,11 @@ describe('the release job of CI', () => {
 
   it('may write contents and nothing else, with no secret but its own token', () => {
     assert.deepEqual(job.permissions, { contents: 'write' });
-    assert.equal(job.environment, undefined);
     assert.doesNotMatch(JSON.stringify(job), /secrets\./);
+  });
+
+  it('waits for a release manager to approve it on the release-approval environment', () => {
+    assert.equal(job.environment, 'release-approval');
   });
 
   it('fails the publication step on a failed publication, despite its tee', () => {

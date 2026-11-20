@@ -93,6 +93,9 @@ jobs:
     name: Publish the GitHub Release
     needs: [hand-over, wf-sbom]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenCRQ-Platform/opencrq'
+    # A release manager approves the publication on this environment. The wait comes before the
+    # job starts, so it counts against neither the timeout nor the image's 45 minutes.
+    environment: release-approval
     runs-on: ubuntu-26.04
     # 45 of them for the image to come (scripts/release.mjs)
     timeout-minutes: 60
