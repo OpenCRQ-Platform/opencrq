@@ -1,13 +1,14 @@
 ---
 name: release
-description: Cut an OpenCRQ release from a commit of main - check its CI, draft the notes (highlights and the changelog of the issues closed since the previous release) for the release manager to review, then create the draft release and push its signed tag, which CI publishes once the image is on Docker Hub. Use when asked to cut, tag or prepare a release. Usage - /release <commit>
+description: Cut an OpenCRQ release from a commit of main - check its CI, draft the notes (highlights and the changelog of the issues closed since the previous release) for the release manager to review, then create the draft release and push its signed tag, which CI publishes once a release manager approves it and the image is on Docker Hub. Use when asked to cut, tag or prepare a release. Usage - /release <commit>
 ---
 
 # Cut a release
 
 Run by a release manager, in a local session, with their own `git` (signing configured) and `gh`.
 The skill creates a **draft** and pushes its tag; it never publishes. CI's job `Publish the GitHub
-Release`, on the tag, waits for `filigran/opencrq:<tag>` on Docker Hub, requires the draft, attaches
+Release`, on the tag, starts only once a release manager approves it on the `release-approval`
+environment, then waits for `filigran/opencrq:<tag>` on Docker Hub, requires the draft, attaches
 the SBOM and the image line, and publishes. Releases are immutable once published.
 
 The one input is the last commit to include, any form `git rev-parse` reads.
@@ -46,8 +47,8 @@ under Breaking changes: its title lacks the `!` and it has no `breaking-change` 
 review catches it.
 
 **First release** (`previousTag` is null, the repository holds no earlier release tag): the script
-writes no changelog. The highlights become a presentation of the product, what it does and how to
-run it, referencing no issue and no pull request.
+writes no changelog. The highlights become a presentation of the product, what it does, referencing
+no issue and no pull request.
 
 ## 3. Review with the release manager
 
@@ -87,10 +88,15 @@ Report the draft's URL and the tag's CI run:
 gh run list --workflow ci.yml --branch <version> --event push --limit 1 --json url,status
 ```
 
-CI publishes when the image is served, within about 45 minutes of the tag's checks passing, then
-marks Latest the highest published release, so an older commit's release never takes it. Until
-then the release manager may still edit the draft's notes on GitHub; the title and notes stay
-editable after publication, the assets do not.
+Once the tag's checks pass, `Publish the GitHub Release` waits for a release manager's approval:
+tell the release manager to approve it from the run's page (Review deployments), any release
+manager, the author of the tag included. The approval is a human's: never approve it on their
+behalf, through `gh` or the API.
+
+Once approved, CI publishes when the image is served, within about 45 minutes, then marks Latest
+the highest published release, so an older commit's release never takes it. Until then the
+release manager may still edit the draft's notes on GitHub; the title and notes stay editable after
+publication, the assets do not.
 
 Marking Latest runs one tag at a time: when a third tag queues behind a pending one, GitHub cancels
 the pending run, and that tag's CI run shows cancelled although its release is published. Nothing to
