@@ -1,0 +1,32 @@
+name: 'Install Syft and cyclonedx-cli'
+description: 'Put the pinned Syft and cyclonedx-cli on the PATH, each checked against its digest.'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Syft and cyclonedx-cli
+      shell: bash
+      env:
+        # renovate: datasource=github-releases depName=anchore/syft extractVersion=^v(?<version>.+)$
+        SYFT_VERSION: 1.57.2
+        # A bump updates this to the new release asset's digest by hand: Renovate does not, and the run fails until then.
+        SYFT_SHA256: ad92bd3ec1b94a3df01d4d0aec199afa9c42b72e86da436ff5f837914d32706b
+        # renovate: datasource=github-releases depName=CycloneDX/cyclonedx-cli extractVersion=^v(?<version>.+)$
+        CYCLONEDX_CLI_VERSION: 0.33.1
+        # A bump updates this to the new release asset's digest by hand: Renovate does not, and the run fails until then.
+        CYCLONEDX_CLI_SHA256: bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746
+      run: |
+        set -euo pipefail
+        BIN="${RUNNER_TEMP}/sbom-tools"
+        mkdir -p "${BIN}"
+        cd "${BIN}"
+        SYFT_ARCHIVE="syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+        curl --fail --silent --show-error --location --retry 5 --retry-all-errors --output "${SYFT_ARCHIVE}" \
+          "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/${SYFT_ARCHIVE}"
+        echo "${SYFT_SHA256}  ${SYFT_ARCHIVE}" | sha256sum --check --strict
+        tar -xzf "${SYFT_ARCHIVE}" syft
+        curl --fail --silent --show-error --location --retry 5 --retry-all-errors --output cyclonedx-cli \
+          "https://github.com/CycloneDX/cyclonedx-cli/releases/download/v${CYCLONEDX_CLI_VERSION}/cyclonedx-linux-x64"
+        echo "${CYCLONEDX_CLI_SHA256}  cyclonedx-cli" | sha256sum --check --strict
+        chmod +x cyclonedx-cli
+        echo "${BIN}" >> "$GITHUB_PATH"

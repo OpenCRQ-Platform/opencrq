@@ -1,0 +1,32 @@
+import { boot } from './boot/boot';
+
+import './features/edition/edition-feature';
+import './features/capability-derivation';
+import './features/crq-indicators';
+import './features/cve-cisa';
+import './features/default-threats';
+import './features/cve-first';
+import './features/cve-nist';
+import './features/drata-sync';
+import './features/filigran-telemetry';
+import './features/asset-criticality-lift';
+import './features/primary-asset-reach';
+import './features/financial-estimates-recompute';
+import './features/finding-score';
+import './features/proven-posture-record';
+import './features/threat-activity';
+import './features/threat-outcome-counter';
+import './features/threat-list-projection';
+import './features/attack-outcome-mixture';
+import './features/threat-parser';
+import './features/job-logs';
+import './features/jobs';
+import './features/jobs-retention';
+import './features/microsoft-graph';
+import './features/opencti';
+import './features/opencti-mirror-rebuild';
+import './features/recompute-dispatcher';
+import './features/job-scheduler';
+import './features/openaev-sync';
+
+boot();

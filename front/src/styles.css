@@ -1,0 +1,193 @@
+/*
+ * `fds.css` is a full Tailwind build whose class names (rounded-md, text-sm, ring-2, ...)
+ * collide with over 200 of ours. It is imported unlayered on purpose: unlayered rules beat
+ * layered ones, so every shared name resolves to the design system's value, which is the
+ * system the app is migrating onto. Our own build still supplies the utilities the design
+ * system does not ship, roughly 80% of what we use.
+ *
+ * Do not move it into a cascade layer to reverse that. A layer hands the shared names back
+ * to the app, and its position cannot be stated once: the dev server honours an `@layer`
+ * statement that the production build drops in favour of import order, so the two disagree.
+ */
+@import '@fontsource-variable/geologica';
+@import '@fontsource-variable/ibm-plex-sans';
+/* IBM Plex Mono ships no variable face; the console reads at 400 and its run headers at 500. */
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+@import '@filigran/ui/theme.css';
+@import 'tw-animate-css';
+@import 'tailwindcss';
+@import './styles/fds.css';
+@import './styles/fds-patches.css';
+
+@reference '@filigran/ui/index.css';
+
+@source '../../node_modules/@filigran/ui/dist/**/*.{js,ts,jsx,tsx}';
+
+@variant dark (.dark &);
+
+/*
+ * Plain rule (unlayered) so it beats the layered `w-72` utility from
+ * PopoverContent's base classes. 
+ */
+.popover-content-width-same-as-its-trigger {
+  width: var(--radix-popover-trigger-width);
+  max-height: var(--radix-popover-content-available-height);
+}
+
+/*
+ * TW4 fix: @filigran/ui SheetHeader uses `z-1` which was a no-op in TW3 but
+ * now generates `z-index: 1`, covering the close button. Give the close button
+ * (always the last direct child of the dialog) a higher z-index.
+ */
+[role='dialog'] > :last-child {
+  z-index: 2;
+}
+
+/*
+ * Discreet thin scrollbar for scrollable widget bodies (dashboard tables/lists).
+ * scrollbar-width/color override the global ::-webkit-scrollbar theming from
+ * @filigran/ui on these elements (Chromium 121+ and Firefox).
+ */
+.scrollbar-discreet {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+:root {
+  --font-ibm-plex-sans: 'IBM Plex Sans Variable', 'IBM Plex Sans';
+  --font-geologica: 'Geologica Variable', 'Geologica';
+
+  /*
+   * @filigran/design-system names the font families it expects but ships no
+   * @font-face, so its tokens must point at the variable families loaded above.
+   */
+  --fds-font-sans-geologica: 'Geologica Variable', Geologica, sans-serif;
+  --fds-font-sans-plex: 'IBM Plex Sans Variable', 'IBM Plex Sans', sans-serif;
+  --fds-font-mono-plex: 'IBM Plex Mono', monospace;
+
+  /*
+   * Design system flyouts and tooltips portal with z-[var(--fds-z-overlay,50)].
+   * 50 keeps them above the app header (z-20) and level with @filigran/ui dialogs.
+   */
+  --fds-z-overlay: 50;
+}
+
+@layer base {
+  /* An interactive `CardTitle` wraps its label in a plain `button`, so the label's own `truncate`
+     lands on an inline box, where overflow and the ellipsis are inert and a long title spills out
+     of the card. Blockifying the label restores the clip. */
+  [data-card-link] > span {
+    display: block;
+  }
+
+  * {
+    @apply border-border;
+    font-family: var(--font-ibm-plex-sans), system-ui, sans-serif;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-geologica), system-ui, sans-serif;
+  }
+
+  h1 {
+    @apply txt-title;
+  }
+  h2 {
+    @apply txt-subtitle;
+  }
+
+  p {
+    @apply txt-default;
+  }
+
+  /* TW4 removed cursor:pointer from Preflight for buttons — restore it */
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    min-width: 900px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  html,
+  body,
+  #app {
+    @apply h-full;
+  }
+}
+
+/*
+ * The gauge arc fills from the start of its scale on appearance. The dash covers the whole path and
+ * the offset is what reveals it, so the animated property is a single length and the reading it
+ * lands on stays the element's own computed value.
+ *
+ * It runs under `prefers-reduced-motion` too: the fill is the one moving thing the demo relies on,
+ * and a machine with animation effects off would otherwise show a score that is simply already
+ * there.
+ */
+@keyframes gauge-arc-fill {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+.gauge-arc-fill {
+  animation: gauge-arc-fill 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ribbon-dot-travel {
+  from {
+    left: 0%;
+  }
+  to {
+    left: calc(100% - 5px);
+  }
+}
+
+.ribbon-flow-dot {
+  animation: ribbon-dot-travel 2.8s linear infinite;
+}
+
+/* Unlike the gauge fill above, the dot carries no reading: it goes entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-flow-dot {
+    display: none;
+  }
+}
+
+/*
+ * ApexCharts 4 appends its own stylesheet to <head> after ours, hence the `.apexcharts-canvas`
+ * ancestor to outrank it. Its dark tooltip is translucent, which shows the curve through the text.
+ */
+.apexcharts-canvas .apexcharts-tooltip.apexcharts-theme-dark {
+  background: rgb(30, 30, 30);
+}
+
+/* ApexCharts 4 sets a bolder weight, as an SVG attribute, on each month or year boundary of a time axis. */
+.apexcharts-xaxis-label {
+  font-weight: 400;
+}
+
+.data-table-pending-host tbody {
+  transition: opacity 150ms ease;
+}
+
+.data-table-pending tbody {
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .data-table-pending-host tbody {
+    transition: none;
+  }
+}

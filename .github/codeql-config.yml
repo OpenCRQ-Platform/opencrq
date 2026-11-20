@@ -1,0 +1,11 @@
+name: CodeQL config
+paths:
+  - back/src
+  - front/src
+  - module/src
+  - utils/src
+paths-ignore:
+  - front/src/routeTree.gen.ts
+  - front/src/locales
+  - '**/data'
+  - '**/__fixtures__'

@@ -1,0 +1,9 @@
+{
+  "repository": "XTM-One-Platform/xtm-one",
+  "commit": "43d51f6bfc26e0239d0ff3029a77a268e33a329e",
+  "files": [
+    "backend/app/integrations/providers/opencrq/tool_procedures.json",
+    "backend/app/integrations/providers/opencrq/tool_input_keys.json",
+    "backend/tests/data/opencrq_trpc_procedures.json"
+  ]
+}

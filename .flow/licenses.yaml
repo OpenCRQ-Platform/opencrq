@@ -1,0 +1,28 @@
+# Authorized licenses of the Filigran suite: a dependency combined with the code of a repository Filigran builds
+# passes the license check only under one of them: there is no exception. This file is distributed to every
+# repository in scope and never edited there: a change goes to its source. Public: nothing confidential goes into it.
+# Its rules - what a repository may depend on, how the check reads this file - are the suite's guideline
+# GDL-XTM-0002; a change to this list is a change to that guideline.
+version: 0.10         # a proposal until Filigran's Legal team confirms it
+
+# SPDX identifiers (https://spdx.org/licenses/, list 3.29.0). A choice of licenses (OR) passes when one of
+# them is authorized; a combination (AND) only when all are. An unreadable license is unauthorized.
+authorized:
+  # Notice licenses - their one condition is the copyright notice and license text, which THIRD_PARTY_NOTICES
+  # carries - and public domain; BSL-1.0 is the Boost Software License, CDLA-Permissive and the Unicode and zlib
+  # licenses notice licenses too (https://opensource.google/documentation/reference/thirdparty/licenses, read 2026-10-28)
+  notice-and-public-domain: [0BSD, Apache-2.0, BlueOak-1.0.0, BSD-2-Clause, BSD-3-Clause, BSL-1.0, CC0-1.0, CDLA-Permissive-2.0, ISC, MIT, MIT-0, PSF-2.0, Python-2.0, Unicode-3.0, Unlicense, Zlib]
+  # A copyleft of the library or of the file only: used as its project publishes it (GDL-XTM-0002-R010), its source's address in
+  # the notices (GDL-XTM-0002-R017).
+  weak-copyleft: [EPL-2.0, LGPL-3.0, LGPL-3.0-only, LGPL-3.0-or-later, MPL-2.0]   # LGPL-3.0, deprecated since SPDX 3.0, counts as both
+  documentation-data-images-fonts: [CC-BY-3.0, CC-BY-4.0, OFL-1.1]
+  # Filigran's own Enterprise license, which only a package of Filigran's own, from its private registry or Git,
+  # carries: such a package leaves the third parties' notices (GDL-XTM-0002-R012, CTO, 2026-10-29).
+  filigran: [LicenseRef-Filigran-Enterprise]
+
+# A package whose license the check cannot read, identified from its license text - only as a license above:
+# - {package: <name>, version: <version>, license: <SPDX identifier>}
+identified:
+  - {package: khroma, version: 2.1.0, license: MIT}   # its license file is the MIT; its package.json names none (2026-10-30)
+
+# A dependency whose license changes to one outside this list is replaced.

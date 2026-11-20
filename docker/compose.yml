@@ -1,0 +1,66 @@
+name: opencrq-prod
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg17
+    container_name: opencrq-db
+    restart: always
+    # A parallel query passes its tuples between workers through /dev/shm, which a container gives
+    # 64 MB of by default. One aggregate over a few hundred thousand assets exceeds that and the
+    # query fails outright with "could not resize shared memory segment", taking its job down.
+    shm_size: 1gb
+    volumes:
+      # Named after its major version, the only one its data directory opens on.
+      - postgres17_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES__USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_USER: ${POSTGRES__USER}
+      POSTGRES_PASSWORD: ${POSTGRES__PASSWORD}
+
+  rustfs:
+    image: rustfs/rustfs:1.0.0-beta.8
+    container_name: opencrq-rustfs
+    restart: always
+    healthcheck:
+      test: ["CMD", "sh", "/usr/local/bin/healthcheck-rustfs.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      RUSTFS_ACCESS_KEY: ${FILE_STORAGE__ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${FILE_STORAGE__SECRET_KEY}
+    volumes:
+      - rustfs_data:/data
+      - ./healthcheck-rustfs.sh:/usr/local/bin/healthcheck-rustfs.sh:ro
+
+  app:
+    image: ${OPENCRQ_IMAGE}
+    build:
+      context: ..
+      dockerfile: docker/prod.dockerfile
+    container_name: opencrq-app
+    env_file:
+      - .env
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    ports:
+      - "${HTTP_SERVER__PUBLIC_PORT:-3002}:3002"
+      - "${HEALTHCHECK_HTTP_SERVER__PUBLIC_PORT:-8444}:8444"
+    environment:
+      HTTP_SERVER__HOST: "0.0.0.0"
+      HTTP_SERVER__PORT: 3002 # Port exposed by the image
+      HEALTHCHECK_HTTP_SERVER__PORT: 8444  # Port exposed by the image
+      PYROSCOPE__SERVER_ADDRESS: "http://pyroscope:4040"
+
+volumes:
+  postgres17_data:
+  rustfs_data:

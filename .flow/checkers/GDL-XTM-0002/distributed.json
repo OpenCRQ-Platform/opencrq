@@ -1,0 +1,11 @@
+{
+  "guideline": "GDL-XTM-0002",
+  "source": "XTM-Flow/filigran-flow@212506fee2a60ab10d0a14e8bbec4e525bf8a2c6",
+  "files": {
+    ".flow/checkers/GDL-XTM-0002/README.md": "07a21bb5d3179935762a6acf948e5ab1662d26b78865573653ad1ef72b6b5448",
+    ".flow/checkers/GDL-XTM-0002/check.py": "125b14cbd6a3a9fe4e2daaf31deeb64cca41fc57877327abb8178a79c7cb71a2",
+    ".flow/licenses.yaml": "f60ffa4fa8a5aacfec7fdd6977c4480401137eb9d1da79e584e5dbb93e7b83d9",
+    ".github/workflows/flow-gdl-xtm-0002.yml": "f17cbb8618b66837611d90b3334ff7be7a6acc18ba190b7a6da1b02a48597260"
+  },
+  "licenses_sha256": "f60ffa4fa8a5aacfec7fdd6977c4480401137eb9d1da79e584e5dbb93e7b83d9"
+}

@@ -1,0 +1,180 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    # A release, 0.YYMMDD.z: its image carries the tag's name as its version.
+    tags: [ '[0-9]+.[0-9]+.[0-9]+' ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+concurrency:
+  # A group holds one running and one pending run at most, and a third arrival
+  # cancels the pending one whatever cancel-in-progress says. Keying main on the
+  # commit gives each its own group, and so its own result.
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  wf-app-test:
+    name: App test
+    uses: ./.github/workflows/ci-test-app.yml
+    with:
+      checkout_ref: ${{ github.sha }}
+
+  wf-docker-build:
+    name: Docker build
+    uses: ./.github/workflows/ci-docker-build.yml
+    with:
+      checkout_ref: ${{ github.sha }}
+
+  # Every pull request: what fails it (a renamed image stage, a tool bump, a package the front end
+  # ships declared as a development dependency) can come from any workspace's sources.
+  wf-sbom:
+    name: SBOM
+    uses: ./.github/workflows/sbom.yml
+    with:
+      checkout_ref: ${{ github.sha }}
+
+  # The release repository builds, publishes and deploys what this job hands over. Its token is the
+  # only deployment credential this repository holds: the environment restricts it to main and
+  # release tags, and the event check keeps a pull request from ever reaching the job.
+  hand-over:
+    name: Hand over to the release repository
+    needs: [wf-app-test, wf-docker-build, wf-sbom]
+    if: github.event_name == 'push' && github.repository == 'OpenCRQ-Platform/opencrq'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    environment: deploy-trigger
+    permissions: {}
+    steps:
+      - name: Token of the release App
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: OpenCRQ-Platform
+          repositories: release
+          permission-actions: write
+
+      - name: Dispatch the release
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          # The newest run before the dispatch: run ids grow, and unlike timestamps they
+          # do not depend on this runner's clock agreeing with GitHub's.
+          before=$(gh run list --repo OpenCRQ-Platform/release --workflow release.yml --limit 1 \
+            --json databaseId --jq '.[0].databaseId // 0') || before=0
+          [[ "$before" =~ ^[0-9]+$ ]] || before=0
+          gh workflow run release.yml --repo OpenCRQ-Platform/release --ref main \
+            -f ref="$REF" -f sha="$SHA"
+          # The dispatch returns no run: found by its run-name above that id, for the link.
+          url=""
+          for _ in 1 2 3 4 5 6; do
+            sleep 5
+            url=$(gh run list --repo OpenCRQ-Platform/release --workflow release.yml --event workflow_dispatch --limit 20 \
+              --json displayTitle,databaseId,url \
+              --jq "first(.[] | select(.displayTitle == \"Release $REF at $SHA\" and .databaseId > $before) | .url)") || url=""
+            [ -n "$url" ] && break
+          done
+          link=${url:-OpenCRQ-Platform/release, Actions > Release}
+          echo "::notice title=Release run::$link"
+          echo "Release of $REF at $SHA dispatched: $link" >> "$GITHUB_STEP_SUMMARY"
+
+  # A release tag ends as a GitHub Release, published only once Docker Hub serves its image: the
+  # draft /release created gets the image's digest and SBOM, then is published, never as Latest.
+  # Releases are immutable, so nothing can be attached after. No draft, or no image in time, fails
+  # the job.
+  release:
+    name: Publish the GitHub Release
+    needs: [hand-over, wf-sbom]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenCRQ-Platform/opencrq'
+    runs-on: ubuntu-26.04
+    # 45 of them for the image to come (scripts/release.mjs)
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Wait for the image on Docker Hub
+        id: image
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          digest=$(node scripts/release.mjs wait-image "$TAG" "$SHA")
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Find the draft release
+        id: draft
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          state=$(node scripts/release.mjs find "$TAG")
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+
+      - if: steps.draft.outputs.state == 'draft'
+        uses: ./.github/actions/sbom-tools
+
+      - name: Download the application SBOM
+        if: steps.draft.outputs.state == 'draft'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: opencrq-app-sbom
+          path: ${{ runner.temp }}/app-sbom
+
+      - name: Generate the release SBOM
+        if: steps.draft.outputs.state == 'draft'
+        env:
+          TAG: ${{ github.ref_name }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          bash scripts/ci/sbom-release.sh "${RUNNER_TEMP}/app-sbom/sbom-opencrq-app-${TAG}.cdx.json" \
+            "docker.io/filigran/opencrq@${DIGEST}" "$TAG" "${RUNNER_TEMP}/release-sbom"
+
+      - name: Publish the release
+        if: steps.draft.outputs.state == 'draft'
+        # With pipefail, which the default "bash -e" lacks: a failed publication fails the step.
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          node scripts/release.mjs publish "$TAG" "$DIGEST" "${RUNNER_TEMP}/release-sbom/sbom-opencrq-${TAG}.cdx.json" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Latest goes to the highest published release, from a list read once this tag's release is
+  # published. One run at a time, never canceled once started: a pending run a newer tag replaces
+  # would only have marked what the newer one marks too.
+  release-latest:
+    name: Mark the latest GitHub Release
+    needs: release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenCRQ-Platform/opencrq'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    concurrency:
+      group: github-release-latest
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Mark the highest published release as latest
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release.mjs mark-latest | tee -a "$GITHUB_STEP_SUMMARY"

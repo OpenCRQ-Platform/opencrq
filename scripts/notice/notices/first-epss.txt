@@ -1,0 +1,4 @@
+See EPSS at https://www.first.org/epss
+
+The Exploit Prediction Scoring System is published by FIRST, the Forum of Incident Response and
+Security Teams. The line above is the citation FIRST suggests to those who use EPSS.

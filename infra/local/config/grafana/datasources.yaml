@@ -1,0 +1,21 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    url: http://prometheus:9090
+    editable: true
+
+  - name: Pyroscope
+    type: grafana-pyroscope-datasource
+    uid: pyroscope
+    url: http://pyroscope:4040
+    editable: true
+    jsonData: {}
+
+  - name: Loki
+    type: loki
+    uid: loki
+    url: http://loki:3100
+    editable: true

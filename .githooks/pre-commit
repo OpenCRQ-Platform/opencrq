@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Scans the staged files for secrets, with the image and rules of CI's Secret scan. Enable it once
+# per clone with `git config core.hooksPath .githooks`; skip it once with `git commit --no-verify`.
+# Without a running Docker or Podman, or offline before the image is pulled, the scan is skipped,
+# and CI still runs it. Any other failure refuses the commit: a partial copy or a broken scan
+# could leave the secret out.
+set -euo pipefail
+
+staged=$(mktemp -d)
+trap 'rm -rf "$staged"' EXIT
+git diff --cached --name-only --diff-filter=ACMR -z | git checkout-index --stdin -z --prefix="$staged/"
+[ -n "$(ls -A "$staged")" ] || exit 0
+
+status=0
+scripts/secret-scan.sh "$staged" || status=$?
+case $status in
+  0) exit 0 ;;
+  3) echo "pre-commit: the staged files hold what looks like a secret (above). Remove it, or allow it in .betterleaks.toml if it is fake." >&2
+     exit 1 ;;
+  125|127) echo "pre-commit: the secret scan could not start (Docker or Podman not running or not installed, or the image not pulled), skipped: CI still scans" >&2
+     exit 0 ;;
+  *) echo "pre-commit: the secret scan failed (above). \`git commit --no-verify\` skips it once." >&2
+     exit 1 ;;
+esac

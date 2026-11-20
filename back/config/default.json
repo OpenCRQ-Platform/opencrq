@@ -1,0 +1,24 @@
+{
+  "jobs": {
+    "enabled": true,
+    "max_concurrent": 4,
+    "polling_fallback_ms": 30000
+  },
+  "recompute": {
+    "debounce_factor": 1,
+    "debounce_floor_ms": 500,
+    "debounce_cap_ms": 300000,
+    "reconnect_min_interval_ms": 600000
+  },
+  "process_manager": {
+    "profile": "split",
+    "heartbeat_timeout": 60000,
+    "monolith": {
+      "main": { "script": "index.mjs", "memory": 2048 }
+    },
+    "split": {
+      "http":   { "script": "index-http.mjs",   "memory": 512  },
+      "worker": { "script": "index-worker.mjs", "memory": 4096 }
+    }
+  }
+}

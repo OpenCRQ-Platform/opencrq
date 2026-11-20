@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: [ 'localhost:9090' ]
+  # Single source for the platform's metrics. The back also serves them directly on
+  # :14269 (the production path, see docs/deployment/metrics.md), but scraping both
+  # would ingest every series twice under the same names and double every rate.
+  # The push path is the one kept here because it needs no inbound connection to the
+  # host, which a container cannot always open.
+  - job_name: 'otel-collector'
+    scrape_interval: 5s
+    static_configs:
+      - targets: [ 'otel-collector:8889' ]

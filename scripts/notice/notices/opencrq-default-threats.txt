@@ -1,0 +1,10 @@
+The OpenCRQ datasets repository, https://github.com/OpenCRQ-Platform/datasets, copyright 2026
+Filigran, licensed under the Apache License, Version 2.0. The connector reads its Default Threats
+file, under data/, and stores what it holds as threats.
+
+That file holds a selection of MITRE ATT&CK groups and campaigns and of their relationships, left as
+MITRE publishes them, and objects OpenCRQ adds to them (outcome and actor class assessments). The
+Apache License, Version 2.0 does not apply to the ATT&CK data. The file follows the latest ATT&CK
+release, and the MITRE terms that come with it are those reproduced in the NOTICE file of the
+datasets repository, which changes with it. They grant the license reproduced in the MITRE ATT&CK®
+section of this file.

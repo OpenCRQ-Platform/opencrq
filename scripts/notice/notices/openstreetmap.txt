@@ -1,0 +1,6 @@
+Contains data © OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0.
+https://www.openstreetmap.org/copyright
+
+The tiles are a Protomaps basemap build (https://protomaps.com/) of OpenStreetMap and Natural Earth
+data, taken from the OpenCTI repository (https://github.com/OpenCTI-Platform/opencti, Apache License
+2.0, whose text is in the LICENSE file).

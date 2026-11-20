@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "asked_by_others" boolean DEFAULT false NOT NULL;

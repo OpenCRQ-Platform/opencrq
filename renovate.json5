@@ -1,0 +1,127 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    ':semanticCommits',
+    'config:recommended',
+    'docker:enableMajor',
+    'customManagers:dockerfileVersions',
+    'customManagers:githubActionsVersions',
+  ],
+  labels: [
+    'dependencies',
+    'filigran team',
+  ],
+  minimumReleaseAge: '3 days',
+  prHourlyLimit: 2,
+  prConcurrentLimit: 100,
+  branchConcurrentLimit: 100,
+  timezone: 'Europe/Paris',
+  schedule: [
+    'after 10pm every weekday',
+    'every weekend',
+    'before 5am every weekday',
+  ],
+  updateNotScheduled: false,
+  rebaseWhen: 'conflicted',
+  // An update adds an entry for the range it raises and leaves every other range of the package on
+  // its old resolution, which the backend bundle cannot load for a package it keeps external.
+  postUpdateOptions: ['yarnDedupeHighest'],
+  // OpenCRQ shares the XTM bundle's PostgreSQL server, so it runs the bundle's major version. No
+  // registry publishes that choice: it is read from the bundle's Compose file.
+  customDatasources: {
+    'xtm-bundle-postgres': {
+      defaultRegistryUrlTemplate: 'https://raw.githubusercontent.com/FiligranHQ/xtm-docker/main/docker-compose.yml',
+      format: 'plain',
+      transformTemplates: [
+        '{"releases": [releases[$contains(version, "pgvector/pgvector:pg")].{"version": $match(version, /pgvector\\/pgvector:pg(\\d+)/).groups[0]}]}',
+      ],
+    },
+  },
+  customManagers: [
+    {
+      // The `-pg<major>` of every pgvector tag; the docker managers keep the pgvector version before it.
+      customType: 'regex',
+      managerFilePatterns: ['/(^|/)compose\\.yml$/', '/^\\.github/workflows/ci-[^/]+\\.yml$/'],
+      matchStrings: ['pgvector/pgvector:[\\d.]+-pg(?<currentValue>\\d+)'],
+      depNameTemplate: 'xtm-bundle-postgres',
+      datasourceTemplate: 'custom.xtm-bundle-postgres',
+      versioningTemplate: 'loose',
+    },
+    {
+      // The XTM One commit whose OpenCRQ tools the back tests hold against the router.
+      customType: 'regex',
+      managerFilePatterns: ['/^back/src/features/xtm-one/contract/xtm-one-contract\\.json$/'],
+      matchStrings: ['"repository": "(?<packageName>[^"]+)",\\s*"commit": "(?<currentDigest>[0-9a-f]{40})"'],
+      datasourceTemplate: 'git-refs',
+      depNameTemplate: 'xtm-one-contract',
+      packageNameTemplate: 'https://github.com/{{{packageName}}}',
+      currentValueTemplate: 'main',
+    },
+  ],
+  lockFileMaintenance: {
+    schedule: [
+      'on sunday',
+    ],
+    rebaseWhen: 'conflicted',
+    automerge: true,
+    enabled: true,
+    // Off schedule, updateNotScheduled: false would skip the branch before any automerge attempt,
+    // and with auto-merge off on the repository only a Renovate run can merge it. A rebase
+    // regenerates the whole lockfile, hence only on conflict.
+    updateNotScheduled: true,
+    // A regenerated lockfile carries no release timestamp, so the age check would stay pending
+    // forever and the automerge never fire. Yarn's npmMinimalAgeGate holds the same 3 days while
+    // it resolves.
+    minimumReleaseAge: null,
+  },
+  packageRules: [
+    {
+      // A release read from a file carries no timestamp, so the age check would stay pending for ever.
+      matchDatasources: ['custom.xtm-bundle-postgres'],
+      minimumReleaseAge: null,
+      commitMessageTopic: 'PostgreSQL major version of the XTM bundle',
+    },
+    {
+      matchPackageNames: ['@filigran/icon', '@filigran/ui'],
+      minimumReleaseAge: null // Ignore minimumReleaseAge for preapproved packages
+    },
+    {
+      // Both families share @smithy/core, which the backend bundle can only ever resolve to one
+      // copy. Updating them apart lets their ranges drift onto two versions.
+      matchPackageNames: ['@aws-sdk/**', '@smithy/**'],
+      groupName: 'aws-sdk-js-v3'
+    },
+    {
+      // The contrib packages pin the core release line they are built on, so updated apart, the
+      // winston transport and the SDK each load their own copy of the logs API, and every OTLP log
+      // line is dropped without an error. A major release of the core line moves the experimental
+      // 0.x packages as minors, so the two must not be split into separate pull requests either.
+      matchPackageNames: ['@opentelemetry/**'],
+      groupName: 'opentelemetry',
+      separateMajorMinor: false
+    },
+    {
+      // From apexcharts 5.0 and react-apexcharts 1.8 the licence is no longer MIT: embedding them
+      // in a product used by others requires a paid OEM licence, so both stay on their last MIT line.
+      matchPackageNames: ['apexcharts'],
+      allowedVersions: '<5',
+    },
+    {
+      matchPackageNames: ['react-apexcharts'],
+      allowedVersions: '<1.8',
+    },
+    {
+      // Filigran Flow distributes these and its checker rejects a pull request that edits them: their
+      // actions are raised in the central repository and arrive through its distribution pull request.
+      matchFileNames: ['.github/workflows/flow-*.yml'],
+      enabled: false,
+    },
+    {
+      // A git commit carries no release timestamp, so the age check would hold the update forever.
+      // Weekly: each update is a CI run that holds the router against what XTM One sends now.
+      matchDepNames: ['xtm-one-contract'],
+      minimumReleaseAge: null,
+      schedule: ['before 9am on monday'],
+    }
+  ],
+}

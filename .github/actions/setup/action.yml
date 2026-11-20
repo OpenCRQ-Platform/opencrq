@@ -1,0 +1,36 @@
+name: 'Setup Node & Yarn'
+description: 'Setup Node.js and install dependencies. The repository must already be checked out.'
+
+runs:
+  using: "composite"
+  steps:
+    # No `cache: yarn` here: setup-node runs Yarn to locate its cache, and Yarn only exists once
+    # Corepack is installed below.
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+
+    # Node.js no longer bundles Corepack since v25.
+    - name: Install Corepack
+      shell: bash
+      env:
+        # renovate: datasource=npm depName=corepack
+        COREPACK_VERSION: 0.36.0
+      run: npm install -g "corepack@${COREPACK_VERSION}" && corepack enable
+
+    - name: Locate the Yarn cache
+      id: yarn-cache
+      shell: bash
+      run: echo "dir=$(yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore the Yarn cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ steps.yarn-cache.outputs.dir }}
+        key: yarn-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+        restore-keys: |
+          yarn-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Install dependencies
+      shell: bash
+      run: yarn install --immutable

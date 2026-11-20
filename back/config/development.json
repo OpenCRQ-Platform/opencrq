@@ -1,0 +1,55 @@
+{
+  "file_storage": {
+    "endpoint": "http://localhost:9000",
+    "access_key": "app-dev",
+    "secret_key": "app-dev-secret",
+    "bucket": "app",
+    "region": "eu-west-3"
+  },
+  "healthcheck_http_server": {
+    "port": 8444
+  },
+  "postgres": {
+    "database": "app",
+    "user": "app",
+    "host": "localhost",
+    "port": 5432,
+    "password": "admin"
+  },
+  "http_server": {
+    "host": "localhost",
+    "port": 3002
+  },
+  "dev_server": {
+    "port": 3000
+  },
+  "platform_seed": {
+    "enabled": false
+  },
+  "telemetry": {
+    "observability": {
+      "service_name": "app-dev",
+      "otlp": {
+        "traces": {
+          "enabled": false,
+          "exporter": "http://127.0.0.1:4317"
+        },
+        "metrics": {
+          "enabled": false,
+          "exporter": "http://127.0.0.1:4317"
+        },
+        "logs": {
+          "enabled": false,
+          "exporter": "http://127.0.0.1:4317"
+        }
+      },
+      "prometheus": {
+        "enabled": true
+      },
+      "pyroscope": {
+        "enabled": false,
+        "server_address": "http://127.0.0.1:4040"
+      }
+    }
+  }
+}

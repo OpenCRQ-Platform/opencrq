@@ -1,0 +1,912 @@
+import type { EventOrigin } from '@app/module';
+import {
+  AttackOutcome_DataBreachResale,
+  AttackOutcome_Espionage,
+  BusinessValueCategory_OperationsAndServices,
+  BusinessValueCategory_PersonalData,
+  computePertExpectedValue,
+  deriveSeedId,
+  LossDriver_ForensicsIncidentManagement,
+  LossDriver_LostMarginFromDowntime,
+  LossDriver_NotificationCallHandling,
+  riskScenariosService,
+  StaleWriteError,
+  UnrevertableEstimateError,
+} from '@app/module';
+import { uuidv7 } from 'uuidv7';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTenant, createTenantWithAdmin } from '../../helpers/factories';
+import { db } from '../../setup/db';
+import { createTestServices, truncateAllTables } from '../../setup/test-context';
+
+const services = createTestServices(db);
+
+/** A profile with every band answered, so D1.1 (always-activated once its driver cell fires) and
+ * every other driver this suite exercises has the inputs its formula needs. */
+const FULLY_ANSWERED_PROFILE_ANSWERS = {
+  loadedDailyLabourCost: 350,
+  annualRevenue: 30_000_000,
+  grossMarginPct: 40,
+  operatingDaysBand: 'about_250' as const,
+  seasonalPeakPct: 20,
+  itDependentRevenuePct: 80,
+  timeToRevenueImpactBand: '12_24h' as const,
+  fullRestoreBand: '3_7d' as const,
+  revenueRecaptureBand: 'partly_deferred' as const,
+  recordsHeldGate: true,
+  individualsBand: '100k_500k' as const,
+  cardTransactionsBand: 'under_500k' as const,
+  sensitiveRecordsBand: 'under_100k' as const,
+  regulatoryRegime: 'none' as const,
+  customerCountBand: '1k_10k' as const,
+  b2cRevenuePct: 40,
+  recurringRevenuePct: 30,
+  contractedRevenueBand: '25_75' as const,
+  paymentFlowDailyValueBand: '100k_500k' as const,
+  outOfBandVerificationGate: false,
+  outOfBandThreshold: 100_000,
+  rdIpValueBand: '2_8' as const,
+  ransomPaymentPosture: true,
+  ransomPaymentCeiling: 500_000,
+  restoreTestRecency: null,
+  largestRepositoryBand: null,
+  contractualLiabilityCapBand: null,
+  worstOutageBand: null,
+  costliestIncidentBand: null,
+
+};
+
+describe('Scenario Loss Estimates Service', () => {
+  let adminOrigin: EventOrigin;
+  let adminUserId: string;
+  let riskScenarioId: string;
+  let lossDriverIds: Array<string>;
+  let organizationId: string;
+  let attackOutcomeId: string;
+  let tenantId: string;
+
+  beforeEach(async () => {
+    await truncateAllTables(db);
+    const setup = await createTenantWithAdmin(services);
+    adminOrigin = setup.origin;
+    adminUserId = setup.userId;
+    tenantId = setup.tenantId;
+
+    organizationId = uuidv7();
+    await services.withOrigin(adminOrigin).organizations.createOrganizations([
+      { id: organizationId, name: 'Test Organization' },
+    ]);
+
+    attackOutcomeId = deriveSeedId(setup.tenantId, AttackOutcome_DataBreachResale);
+    riskScenarioId = uuidv7();
+    await services.withOrigin(adminOrigin).riskScenarios.createRiskScenario({
+      id: riskScenarioId,
+      organizationId,
+      name: 'Data Breach on CRM',
+      description: null,
+      attackOutcomeId,
+      primaryAssetIds: [],
+    });
+
+    // Drivers are resolved from the seeded catalog by code: they are no longer scoped by outcome.
+    lossDriverIds = [LossDriver_ForensicsIncidentManagement, LossDriver_LostMarginFromDowntime]
+      .map((catalogId) => deriveSeedId(setup.tenantId, catalogId));
+  });
+
+  /**
+   * Gives the scenario a non-empty activation set: a primary asset reaching Personal Data,
+   * activating D1.1 Forensics under the Data Breach outcome already set on the scenario. Callers
+   * that also want an answered profile pass `withProfile: true`.
+   */
+  const activateScenario = async (options: { withProfile?: boolean } = {}) => {
+    const personalDataId = deriveSeedId(tenantId, BusinessValueCategory_PersonalData);
+    const primaryAssetId = uuidv7();
+    await services.withOrigin(adminOrigin).primaryAssets.createPrimaryAsset({
+      id: primaryAssetId,
+      organizationId,
+      name: 'CRM',
+      description: null,
+      ownerId: null,
+      businessValueCategoryIds: [personalDataId],
+    });
+    await services.withOrigin(adminOrigin).riskScenarios.updateRiskScenario(riskScenarioId, {
+      primaryAssetIds: [primaryAssetId],
+    });
+    await services.withOrigin(adminOrigin).organizations.updateOrganization(organizationId, { employeeCount: 150 });
+    if (options.withProfile) {
+      await services.withOrigin(adminOrigin).financialProfiles.saveFinancialProfile(organizationId, FULLY_ANSWERED_PROFILE_ANSWERS);
+    }
+    return primaryAssetId;
+  };
+
+  const forensicsDriverId = () => deriveSeedId(tenantId, LossDriver_ForensicsIncidentManagement);
+  const notificationDriverId = () => deriveSeedId(tenantId, LossDriver_NotificationCallHandling);
+
+  const fingerprint = async () => {
+    const rows = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+    const maxUpdatedAt = rows.reduce<Date | null>((max, row) => (max === null || row.updatedAt > max ? row.updatedAt : max), null);
+    return { maxUpdatedAt, rowCount: rows.length };
+  };
+
+  it('should return empty estimates for a new scenario', async () => {
+    const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+    expect(estimates).toHaveLength(0);
+  });
+
+  it('should upsert estimates and retrieve them', async () => {
+    await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+      { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      { lossDriverId: lossDriverIds[1], action: 'set', minValue: 50_000, likelyValue: 150_000, maxValue: 500_000 },
+    ], { maxUpdatedAt: null, rowCount: 0 });
+
+    const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+    expect(estimates).toHaveLength(2);
+
+    const est1 = estimates.find((e) => e.lossDriverId === lossDriverIds[0]);
+    expect(est1).toBeTruthy();
+    expect(est1!.minValue).toBe(100_000);
+    expect(est1!.likelyValue).toBe(300_000);
+    expect(est1!.maxValue).toBe(600_000);
+    expect(est1!.provenance).toBe('manual');
+    expect(est1!.modelVersion).toBeNull();
+    expect(est1!.lowConfidence).toBe(false);
+  });
+
+  describe('keyed upsert (AC2, AC3, AC4, AC5, AC6)', () => {
+    it('leaves a row untouched when its driver is absent from the payload', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+        { lossDriverId: lossDriverIds[1], action: 'set', minValue: 50_000, likelyValue: 150_000, maxValue: 500_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const afterFirstWrite = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const secondRowUpdatedAt = afterFirstWrite.find((e) => e.lossDriverId === lossDriverIds[1])!.updatedAt;
+      const scenarioUpdatedAt = afterFirstWrite.reduce((max, e) => (e.updatedAt > max ? e.updatedAt : max), afterFirstWrite[0].updatedAt);
+
+      // Second write only names the first driver.
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 200_000, likelyValue: 400_000, maxValue: 800_000 },
+      ], { maxUpdatedAt: scenarioUpdatedAt, rowCount: afterFirstWrite.length });
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(2);
+      const untouched = estimates.find((e) => e.lossDriverId === lossDriverIds[1])!;
+      expect(untouched.minValue).toBe(50_000);
+      expect(untouched.updatedAt).toEqual(secondRowUpdatedAt);
+    });
+
+    it('does not rewrite a row whose submitted triplet is unchanged', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+      const first = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const firstUpdatedAt = first[0].updatedAt;
+
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      ], { maxUpdatedAt: firstUpdatedAt, rowCount: first.length });
+
+      const second = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(second[0].updatedAt).toEqual(firstUpdatedAt);
+    });
+
+    it('deletes a row on an explicit clear tombstone', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+      const afterFirstWrite = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'clear' },
+      ], { maxUpdatedAt: afterFirstWrite[0].updatedAt, rowCount: afterFirstWrite.length });
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(0);
+    });
+
+    it('is a no-op when clearing a driver that has no row', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'clear' },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(0);
+    });
+
+    it('rejects a write whose snapshot predates a deletion that left the newest row alone', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 200_000, maxValue: 400_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+      const firstRows = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[1], action: 'set', minValue: 10_000, likelyValue: 20_000, maxValue: 40_000 },
+      ], { maxUpdatedAt: firstRows[0].updatedAt, rowCount: firstRows.length });
+
+      // What this client holds: two rows, the second one newest.
+      const staleSnapshot = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const staleMax = staleSnapshot.reduce((max, e) => (e.updatedAt > max ? e.updatedAt : max), staleSnapshot[0].updatedAt);
+
+      // Someone else clears the older row. The newest row is untouched, so the maximum does not move.
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'clear' },
+      ], { maxUpdatedAt: staleMax, rowCount: staleSnapshot.length });
+
+      await expect(
+        services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+          { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 200_000, maxValue: 400_000 },
+        ], { maxUpdatedAt: staleMax, rowCount: staleSnapshot.length }),
+      ).rejects.toThrow();
+
+      const after = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(after.some((e) => e.lossDriverId === lossDriverIds[0])).toBe(false);
+    });
+
+    it('rejects a stale write and writes nothing', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      // Stale: the caller still believes no row has ever existed (null), but one now does.
+      await expect(
+        services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+          { lossDriverId: lossDriverIds[1], action: 'set', minValue: 1, likelyValue: 2, maxValue: 3 },
+        ], { maxUpdatedAt: null, rowCount: 0 }),
+      ).rejects.toThrow();
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(1);
+    });
+
+    it('refuses an estimate saved against a driver that left the catalog', async () => {
+      const unknownId = uuidv7();
+      await expect(
+        services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+          { lossDriverId: unknownId, action: 'set', minValue: 1, likelyValue: 2, maxValue: 3 },
+        ], { maxUpdatedAt: null, rowCount: 0 }),
+      ).rejects.toThrow('Unknown loss driver');
+    });
+
+    it('rejects a payload naming the same loss driver twice and writes nothing', async () => {
+      await expect(
+        services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+          { lossDriverId: lossDriverIds[0], action: 'clear' },
+          { lossDriverId: lossDriverIds[0], action: 'set', minValue: 1, likelyValue: 2, maxValue: 3 },
+        ], { maxUpdatedAt: null, rowCount: 0 }),
+      ).rejects.toThrow('Duplicate loss driver id in payload');
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(0);
+    });
+
+    it('supports null values', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: null, likelyValue: null, maxValue: null },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(1);
+      expect(estimates[0].minValue).toBeNull();
+      expect(estimates[0].likelyValue).toBeNull();
+      expect(estimates[0].maxValue).toBeNull();
+    });
+  });
+
+  describe('getFinancialSummary', () => {
+    it('should return zeros for a scenario with no estimates', async () => {
+      const summary = await services.withOrigin(adminOrigin).scenarioLossEstimates.getFinancialSummary(riskScenarioId);
+      expect(summary.totalMinDollar).toBe(0);
+      expect(summary.totalLikelyDollar).toBe(0);
+      expect(summary.totalMaxDollar).toBe(0);
+      expect(summary.pertExpectedValue).toBe(0);
+    });
+
+    it('should compute correct PERT expected value', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const summary = await services.withOrigin(adminOrigin).scenarioLossEstimates.getFinancialSummary(riskScenarioId);
+      const expectedPert = computePertExpectedValue(100_000, 300_000, 600_000);
+      expect(summary.pertExpectedValue).toBeCloseTo(expectedPert, 2);
+      expect(summary.totalMinDollar).toBe(100_000);
+      expect(summary.totalLikelyDollar).toBe(300_000);
+      expect(summary.totalMaxDollar).toBe(600_000);
+    });
+
+    it('should aggregate multiple estimates', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 200_000, maxValue: 400_000 },
+        { lossDriverId: lossDriverIds[1], action: 'set', minValue: 50_000, likelyValue: 100_000, maxValue: 200_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const summary = await services.withOrigin(adminOrigin).scenarioLossEstimates.getFinancialSummary(riskScenarioId);
+      expect(summary.totalMinDollar).toBe(150_000);
+      expect(summary.totalLikelyDollar).toBe(300_000);
+      expect(summary.totalMaxDollar).toBe(600_000);
+      const expectedPert = computePertExpectedValue(150_000, 300_000, 600_000);
+      expect(summary.pertExpectedValue).toBeCloseTo(expectedPert, 2);
+    });
+
+    it('should exclude incomplete estimates from totals', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 200_000, maxValue: 400_000 },
+        { lossDriverId: lossDriverIds[1], action: 'set', minValue: null, likelyValue: null, maxValue: null },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const summary = await services.withOrigin(adminOrigin).scenarioLossEstimates.getFinancialSummary(riskScenarioId);
+      expect(summary.totalMinDollar).toBe(100_000);
+      expect(summary.totalLikelyDollar).toBe(200_000);
+      expect(summary.totalMaxDollar).toBe(400_000);
+    });
+
+    it('holds no plausibility opinion on an organization with no profile', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 50_000_000, likelyValue: 60_000_000, maxValue: 70_000_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const summary = await services.withOrigin(adminOrigin).scenarioLossEstimates.getFinancialSummary(riskScenarioId);
+      expect(summary.sanityWarnings).toEqual([]);
+    });
+
+    it('warns when the saved total dwarfs what the organization\'s scale makes plausible', async () => {
+      // The profile declares 30M revenue, a small organization at a 0.15 anchor fraction: 4.5M,
+      // and the warning fires above three times that.
+      await activateScenario({ withProfile: true });
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 50_000_000, likelyValue: 60_000_000, maxValue: 70_000_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const summary = await services.withOrigin(adminOrigin).scenarioLossEstimates.getFinancialSummary(riskScenarioId);
+      expect(summary.sanityWarnings.map((w) => w.kind)).toEqual(['over_pricing']);
+      expect(summary.sanityWarnings[0].anchorUsd).toBeCloseTo(4_500_000, 0);
+      expect(summary.sanityWarnings[0].ratio).toBeGreaterThan(3);
+    });
+
+    it('holds no opinion when nothing is priced, rather than a reassuring one', async () => {
+      await activateScenario({ withProfile: true });
+
+      const summary = await services.withOrigin(adminOrigin).scenarioLossEstimates.getFinancialSummary(riskScenarioId);
+      expect(summary.pertExpectedValue).toBe(0);
+      expect(summary.sanityWarnings).toEqual([]);
+    });
+  });
+
+  describe('getLossDriverSplitForOutcome', () => {
+    it('should sum the PERT expected value per driver across every scenario naming the outcome', async () => {
+      const secondScenarioId = uuidv7();
+      await services.withOrigin(adminOrigin).riskScenarios.createRiskScenario({
+        id: secondScenarioId,
+        organizationId,
+        name: 'Second scenario naming the same outcome',
+        description: null,
+        attackOutcomeId,
+        primaryAssetIds: [],
+      });
+
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(secondScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 50_000, likelyValue: 100_000, maxValue: 200_000 },
+        { lossDriverId: lossDriverIds[1], action: 'set', minValue: 20_000, likelyValue: 80_000, maxValue: 150_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const split = await services.withOrigin(adminOrigin).scenarioLossEstimates.getLossDriverSplitForOutcome(attackOutcomeId);
+
+      const forensicsExpected = computePertExpectedValue(100_000, 300_000, 600_000) + computePertExpectedValue(50_000, 100_000, 200_000);
+      const downtimeExpected = computePertExpectedValue(20_000, 80_000, 150_000);
+      expect(split.drivers).toHaveLength(2);
+      const forensics = split.drivers.find((d) => d.driver === 'Forensics & incident management')!;
+      const downtime = split.drivers.find((d) => d.driver === 'Lost margin from downtime')!;
+      expect(forensics.driverId).toBe(lossDriverIds[0]);
+      expect(downtime.driverId).toBe(lossDriverIds[1]);
+      expect(forensics.amount).toBeCloseTo(forensicsExpected, 2);
+      expect(downtime.amount).toBeCloseTo(downtimeExpected, 2);
+      expect(split.total).toBeCloseTo(forensicsExpected + downtimeExpected, 2);
+      expect(split.drivers.map((d) => d.driverId)).toEqual([lossDriverIds[0], lossDriverIds[1]]);
+    });
+
+    it('should include an unsimulated scenario\'s hand-recorded estimates in the split', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const split = await services.withOrigin(adminOrigin).scenarioLossEstimates.getLossDriverSplitForOutcome(attackOutcomeId);
+
+      expect(split.total).toBeCloseTo(computePertExpectedValue(100_000, 300_000, 600_000), 2);
+    });
+
+    it('should drop an estimate missing any of its three bounds', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: null, maxValue: 600_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const split = await services.withOrigin(adminOrigin).scenarioLossEstimates.getLossDriverSplitForOutcome(attackOutcomeId);
+
+      expect(split.drivers).toHaveLength(0);
+      expect(split.total).toBe(0);
+    });
+
+    it('should return an empty split when no scenario names the outcome', async () => {
+      const unnamedOutcomeId = deriveSeedId(tenantId, AttackOutcome_Espionage);
+      const split = await services.withOrigin(adminOrigin).scenarioLossEstimates.getLossDriverSplitForOutcome(unnamedOutcomeId);
+      expect(split).toEqual({ drivers: [], total: 0 });
+    });
+
+    it('should not expose another tenant\'s estimates', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 300_000, maxValue: 600_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const otherTenantId = await createTenant(services, adminUserId);
+      const otherOrigin: EventOrigin = { type: 'client', userId: adminUserId, tenantId: otherTenantId };
+
+      const split = await services.withOrigin(otherOrigin).scenarioLossEstimates.getLossDriverSplitForOutcome(attackOutcomeId);
+      expect(split).toEqual({ drivers: [], total: 0 });
+    });
+  });
+
+  describe('cascade deletes', () => {
+    it('should delete estimates when risk scenario is deleted', async () => {
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[0], action: 'set', minValue: 100_000, likelyValue: 200_000, maxValue: 400_000 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      await services.withOrigin(adminOrigin).riskScenarios.deleteRiskScenarios([riskScenarioId]);
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(0);
+    });
+  });
+
+  describe('computePertExpectedValue', () => {
+    it('should compute PERT formula correctly', () => {
+      expect(computePertExpectedValue(100, 200, 600)).toBeCloseTo((100 + 800 + 600) / 6, 10);
+      expect(computePertExpectedValue(0, 0, 0)).toBe(0);
+      expect(computePertExpectedValue(100, 100, 100)).toBe(100);
+      expect(computePertExpectedValue(10, 20, 60)).toBeCloseTo((10 + 80 + 60) / 6, 10);
+    });
+  });
+
+  describe('recomputeQuestionnaireEstimatesForScenario (AC7, AC8)', () => {
+    it('is a no-op when the organization has no financial profile', async () => {
+      await activateScenario();
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+
+      const result = await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      expect(result).toEqual({ recomputed: false, changed: false });
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(0);
+    });
+
+    it('derives a questionnaire row for an activated driver', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+
+      const result = await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      expect(result).toEqual({ recomputed: true, changed: true });
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const forensics = estimates.find((e) => e.lossDriverId === forensicsDriverId());
+      expect(forensics).toBeTruthy();
+      expect(forensics!.provenance).toBe('questionnaire');
+      expect(forensics!.modelVersion).not.toBeNull();
+      // D1.1's systems_in_scope proxy is always engaged: always low-confidence.
+      expect(forensics!.lowConfidence).toBe(true);
+    });
+
+    it('prices D1.1 at the declared counts, wider for a range, and anchored once both are declared', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+      const forensicsAt = async (workstations: { low: number, high: number }) => {
+        await services.withOrigin(adminOrigin).declaredEstate.saveDeclaredEstate(organizationId, [
+          { kind: 'workstations', bounds: workstations, internetFacing: null },
+          { kind: 'servers', bounds: { low: 20, high: 20 }, internetFacing: null },
+        ]);
+        await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+        const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+        return estimates.find((e) => e.lossDriverId === forensicsDriverId())!;
+      };
+
+      const exact = await forensicsAt({ low: 2_237, high: 2_237 });
+      const range = await forensicsAt({ low: 1_001, high: 5_000 });
+
+      expect(exact.lowConfidence).toBe(false);
+      expect(range.lowConfidence).toBe(false);
+      // 2,237 is the range's middle on a log scale, to the unit.
+      expect(range.likelyValue! / exact.likelyValue!).toBeCloseTo(1, 3);
+      expect(range.minValue!).toBeLessThan(exact.minValue!);
+      expect(range.maxValue!).toBeGreaterThan(exact.maxValue!);
+    });
+
+    it('keeps deriving from the scenario\'s own loss scope when its asset is retagged away', async () => {
+      const primaryAssetId = await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: true };
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+      const before = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(before.some((e) => e.lossDriverId === notificationDriverId())).toBe(true);
+
+      await services.withOrigin(adminOrigin).primaryAssets.updatePrimaryAsset(primaryAssetId, {
+        businessValueCategoryIds: [deriveSeedId(tenantId, BusinessValueCategory_OperationsAndServices)],
+      });
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      const after = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(after).toEqual(before);
+    });
+
+    it('keeps deriving from the scenario\'s own loss scope when its asset is deleted', async () => {
+      const primaryAssetId = await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: true };
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+      const before = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(before.some((e) => e.lossDriverId === notificationDriverId())).toBe(true);
+
+      await services.withOrigin(adminOrigin).primaryAssets.deletePrimaryAssets([primaryAssetId]);
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      const after = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(after).toEqual(before);
+    });
+
+    it('logs when activation-set cells fail catalogue-id resolution', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+
+      const originalGetActivationContext = riskScenariosService.methods.getScenarioActivationContext;
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const activationContextSpy = vi.spyOn(riskScenariosService.methods, 'getScenarioActivationContext')
+        .mockImplementation(async (ctx, id) => {
+          const real = await originalGetActivationContext(ctx, id);
+          // Cells naming ids no catalogue entry derives to: a genuine resolution failure, not "nothing activated."
+          return real && { ...real, activationSet: [{ attackOutcomeId: uuidv7(), businessValueCategoryId: uuidv7() }] };
+        });
+
+      try {
+        await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining(riskScenarioId));
+      } finally {
+        activationContextSpy.mockRestore();
+        consoleWarnSpy.mockRestore();
+      }
+    });
+
+    it('never deletes existing questionnaire rows when activation-set cells fail catalogue-id resolution', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+      const before = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(before.length).toBeGreaterThan(0);
+
+      const originalGetActivationContext = riskScenariosService.methods.getScenarioActivationContext;
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const activationContextSpy = vi.spyOn(riskScenariosService.methods, 'getScenarioActivationContext')
+        .mockImplementation(async (ctx, id) => {
+          const real = await originalGetActivationContext(ctx, id);
+          return real && { ...real, activationSet: [{ attackOutcomeId: uuidv7(), businessValueCategoryId: uuidv7() }] };
+        });
+
+      try {
+        const result = await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+        expect(result).toEqual({ recomputed: false, changed: false });
+      } finally {
+        activationContextSpy.mockRestore();
+        consoleWarnSpy.mockRestore();
+      }
+
+      const after = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(after).toEqual(before);
+    });
+
+    it('never overwrites a manual row (the single most important invariant)', async () => {
+      await activateScenario({ withProfile: true });
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: forensicsDriverId(), action: 'set', minValue: 1, likelyValue: 2, maxValue: 3 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const forensics = estimates.find((e) => e.lossDriverId === forensicsDriverId())!;
+      expect(forensics.provenance).toBe('manual');
+      expect(forensics.minValue).toBe(1);
+      expect(forensics.likelyValue).toBe(2);
+      expect(forensics.maxValue).toBe(3);
+    });
+
+    it('overwrites an existing questionnaire row, keeping its id', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+      const firstRun = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const firstForensicsId = firstRun.find((e) => e.lossDriverId === forensicsDriverId())!.id;
+
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      const secondRun = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const secondForensics = secondRun.find((e) => e.lossDriverId === forensicsDriverId())!;
+      expect(secondForensics.id).toBe(firstForensicsId);
+      expect(secondForensics.provenance).toBe('questionnaire');
+    });
+
+    it('deletes a stale questionnaire row for a driver the kernel no longer emits', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+      const before = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(before.some((e) => e.lossDriverId === forensicsDriverId())).toBe(true);
+
+      // Clear the answer D1.1 depends on: fullRestoreBand null makes the formula return null,
+      // so the driver is no longer emitted at all.
+      await services.withOrigin(adminOrigin).financialProfiles.saveFinancialProfile(organizationId, {
+        ...FULLY_ANSWERED_PROFILE_ANSWERS,
+        fullRestoreBand: null,
+      });
+
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      const after = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(after.some((e) => e.lossDriverId === forensicsDriverId())).toBe(false);
+    });
+
+    it('backfillOnly mode never deletes a row the kernel no longer emits', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      await services.withOrigin(adminOrigin).financialProfiles.saveFinancialProfile(organizationId, {
+        ...FULLY_ANSWERED_PROFILE_ANSWERS,
+        fullRestoreBand: null,
+      });
+
+      // The unattended catch-up must fill holes and nothing else: an hourly timer that pruned would
+      // destroy derived rows for a profile nobody touched since.
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimates({ backfillOnly: true });
+
+      const after = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(after.some((e) => e.lossDriverId === forensicsDriverId())).toBe(true);
+    });
+
+    it('stamps the profile\'s coefficientSetVersion on a successful derivation', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      const profile = await services.withOrigin(adminOrigin).financialProfiles.getFinancialProfile(organizationId);
+      expect(profile!.coefficientSetVersion).not.toBeNull();
+    });
+
+    it('does not leak a recompute across tenants', async () => {
+      await activateScenario({ withProfile: true });
+      const otherTenantId = await createTenant(services, adminUserId);
+      const otherJobOrigin: EventOrigin = { type: 'job', tenantId: otherTenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+
+      const result = await services.withOrigin(otherJobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+
+      expect(result).toEqual({ recomputed: false, changed: false });
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(0);
+    });
+  });
+
+  describe('recomputeQuestionnaireEstimates (tenant-wide sweep)', () => {
+    it('recomputes every scenario under an organization with a profile', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+
+      const result = await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimates();
+
+      expect(result.recomputedScenarios).toBe(1);
+      expect(result.failedScenarios).toBe(0);
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates.length).toBeGreaterThan(0);
+    });
+
+    it('backfillOnly mode still creates missing rows for a never-derived scenario', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+
+      const result = await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimates({ backfillOnly: true });
+
+      expect(result.recomputedScenarios).toBe(1);
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const forensics = estimates.find((e) => e.lossDriverId === forensicsDriverId());
+      expect(forensics).toBeTruthy();
+      expect(forensics!.provenance).toBe('questionnaire');
+    });
+
+    it('backfillOnly mode never rewrites an already-derived row', async () => {
+      await activateScenario({ withProfile: true });
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimatesForScenario(riskScenarioId);
+      const before = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const forensicsBefore = before.find((e) => e.lossDriverId === forensicsDriverId())!;
+
+      await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimates({ backfillOnly: true });
+
+      const after = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const forensicsAfter = after.find((e) => e.lossDriverId === forensicsDriverId())!;
+      expect(forensicsAfter.id).toBe(forensicsBefore.id);
+      expect(forensicsAfter.updatedAt).toEqual(forensicsBefore.updatedAt);
+    });
+
+    it('skips organizations with no financial profile', async () => {
+      await activateScenario();
+      const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+
+      const result = await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimates();
+
+      expect(result.recomputedScenarios).toBe(0);
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toHaveLength(0);
+    });
+
+    it('logs a failing scenario and still recomputes the rest of the sweep', async () => {
+      await activateScenario({ withProfile: true });
+
+      const secondOrganizationId = uuidv7();
+      await services.withOrigin(adminOrigin).organizations.createOrganizations([
+        { id: secondOrganizationId, name: 'Second Organization' },
+      ]);
+      const secondScenarioId = uuidv7();
+      await services.withOrigin(adminOrigin).riskScenarios.createRiskScenario({
+        id: secondScenarioId,
+        organizationId: secondOrganizationId,
+        name: 'Second scenario',
+        description: null,
+        attackOutcomeId,
+        primaryAssetIds: [],
+      });
+      const personalDataId = deriveSeedId(tenantId, BusinessValueCategory_PersonalData);
+      const secondPrimaryAssetId = uuidv7();
+      await services.withOrigin(adminOrigin).primaryAssets.createPrimaryAsset({
+        id: secondPrimaryAssetId,
+        organizationId: secondOrganizationId,
+        name: 'Second CRM',
+        description: null,
+        ownerId: null,
+        businessValueCategoryIds: [personalDataId],
+      });
+      await services.withOrigin(adminOrigin).riskScenarios.updateRiskScenario(secondScenarioId, {
+        primaryAssetIds: [secondPrimaryAssetId],
+      });
+      await services.withOrigin(adminOrigin).organizations.updateOrganization(secondOrganizationId, { employeeCount: 150 });
+      await services.withOrigin(adminOrigin).financialProfiles.saveFinancialProfile(secondOrganizationId, FULLY_ANSWERED_PROFILE_ANSWERS);
+
+      const originalGetActivationContext = riskScenariosService.methods.getScenarioActivationContext;
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const activationContextSpy = vi.spyOn(riskScenariosService.methods, 'getScenarioActivationContext')
+        .mockImplementation(async (ctx, id) => {
+          if (id === secondScenarioId) {
+            throw new Error('injected failure for the sweep-resilience test');
+          }
+          return originalGetActivationContext(ctx, id);
+        });
+
+      try {
+        const jobOrigin: EventOrigin = { type: 'job', tenantId, jobKind: 'financial-estimates-recompute', interactive: false };
+        const result = await services.withOrigin(jobOrigin).scenarioLossEstimates.recomputeQuestionnaireEstimates();
+
+        expect(result.recomputedScenarios).toBe(1);
+        expect(result.failedScenarios).toBe(1);
+        expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining(secondScenarioId), expect.any(Error));
+      } finally {
+        activationContextSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('upsertScenarioLossEstimates with reverts', () => {
+    it('should revert one driver and set another in the same write', async () => {
+      await activateScenario({ withProfile: true });
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: forensicsDriverId(), action: 'set', minValue: 1, likelyValue: 2, maxValue: 3 },
+      ], await fingerprint());
+
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: lossDriverIds[1], action: 'set', minValue: 9, likelyValue: 9, maxValue: 9 },
+      ], await fingerprint(), [forensicsDriverId()]);
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates.find((e) => e.lossDriverId === forensicsDriverId())?.provenance).toBe('questionnaire');
+      expect(estimates.find((e) => e.lossDriverId === lossDriverIds[1])).toMatchObject({ provenance: 'manual', minValue: 9 });
+    });
+
+    it('should reject a revert-only write on a stale fingerprint', async () => {
+      await activateScenario({ withProfile: true });
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: forensicsDriverId(), action: 'set', minValue: 1, likelyValue: 2, maxValue: 3 },
+      ], await fingerprint());
+
+      await expect(services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(
+        riskScenarioId,
+        [],
+        { maxUpdatedAt: null, rowCount: 0 },
+        [forensicsDriverId()],
+      )).rejects.toBeInstanceOf(StaleWriteError);
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates.find((e) => e.lossDriverId === forensicsDriverId())?.provenance).toBe('manual');
+    });
+
+    it('should write nothing when a driver to revert has no derived figure', async () => {
+      await activateScenario();
+
+      await expect(services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(
+        riskScenarioId,
+        [{ lossDriverId: lossDriverIds[1], action: 'set', minValue: 9, likelyValue: 9, maxValue: 9 }],
+        await fingerprint(),
+        [forensicsDriverId()],
+      )).rejects.toBeInstanceOf(UnrevertableEstimateError);
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates).toEqual([]);
+    });
+  });
+
+  describe('getAutomaticEstimates', () => {
+    it('should return the figures a revert would write, without writing them', async () => {
+      await activateScenario({ withProfile: true });
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: forensicsDriverId(), action: 'set', minValue: 1, likelyValue: 2, maxValue: 3 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const automatic = await services.withOrigin(adminOrigin).scenarioLossEstimates.getAutomaticEstimates(riskScenarioId);
+
+      const stored = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(stored.find((e) => e.lossDriverId === forensicsDriverId())).toMatchObject({ provenance: 'manual', minValue: 1 });
+
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [], await fingerprint(), [forensicsDriverId()]);
+      const reverted = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      const revertedForensics = reverted.find((e) => e.lossDriverId === forensicsDriverId())!;
+      expect(automatic.find((e) => e.lossDriverId === forensicsDriverId())).toMatchObject({
+        minValue: revertedForensics.minValue,
+        likelyValue: revertedForensics.likelyValue,
+        maxValue: revertedForensics.maxValue,
+      });
+    });
+
+    it('should return nothing when the organization has no financial profile', async () => {
+      await activateScenario();
+      const automatic = await services.withOrigin(adminOrigin).scenarioLossEstimates.getAutomaticEstimates(riskScenarioId);
+      expect(automatic).toEqual([]);
+    });
+
+    it('should return nothing for another tenant\'s scenario', async () => {
+      await activateScenario({ withProfile: true });
+      const otherTenantId = await createTenant(services, adminUserId);
+      const otherOrigin: EventOrigin = { type: 'client', userId: adminUserId, tenantId: otherTenantId };
+
+      const automatic = await services.withOrigin(otherOrigin).scenarioLossEstimates.getAutomaticEstimates(riskScenarioId);
+
+      expect(automatic).toEqual([]);
+    });
+  });
+
+  describe('tenant isolation on the new endpoints', () => {
+    it('does not revert another tenant\'s scenario', async () => {
+      await activateScenario({ withProfile: true });
+      await services.withOrigin(adminOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(riskScenarioId, [
+        { lossDriverId: forensicsDriverId(), action: 'set', minValue: 1, likelyValue: 2, maxValue: 3 },
+      ], { maxUpdatedAt: null, rowCount: 0 });
+
+      const otherTenantId = await createTenant(services, adminUserId);
+      const otherOrigin: EventOrigin = { type: 'client', userId: adminUserId, tenantId: otherTenantId };
+
+      await expect(services.withOrigin(otherOrigin).scenarioLossEstimates.upsertScenarioLossEstimates(
+        riskScenarioId,
+        [],
+        { maxUpdatedAt: null, rowCount: 0 },
+        [forensicsDriverId()],
+      )).rejects.toThrow();
+
+      const estimates = await services.withOrigin(adminOrigin).scenarioLossEstimates.getScenarioLossEstimates(riskScenarioId);
+      expect(estimates.find((e) => e.lossDriverId === forensicsDriverId())!.provenance).toBe('manual');
+    });
+  });
+});

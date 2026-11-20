@@ -1,0 +1,16 @@
+/*
+ * Host-side patches over the installed FDS release, one block per upstream gap, each the
+ * upstream formula restated — never a copied value. Re-check every block at each version
+ * bump and delete the ones the release has fixed.
+ */
+
+/*
+ * FDS 1.0.0: the Combobox panel is a non-modal Radix Popover portalled to <body>, and a
+ * Radix modal Dialog (our drawer, and the FDS Dialog) sets `pointer-events: none` there.
+ * Radix carves that out for its own modal layers and for Select's content, but not for a
+ * non-modal Popover: the panel paints over the dialog while every click falls through it.
+ * Scoped to the listbox so other portalled poppers keep the host's inertness.
+ */
+[data-radix-popper-content-wrapper]:has([role='listbox']) {
+  pointer-events: auto;
+}

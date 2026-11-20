@@ -1,0 +1,79 @@
+name: Label Outside Contributions
+
+# pull_request_target runs with the base repository's token, so this workflow never checks out
+# or runs the contributor's code: it reads the event payload and calls the API, nothing else.
+#
+# Prerequisites: the `ORG_MEMBERS_READER_CLIENT_ID` variable and the
+# `ORG_MEMBERS_READER_PRIVATE_KEY` secret of a GitHub App installed on the organization with the
+# organization permission "Members: read" and nothing else.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  label:
+    name: Label the author's side
+    runs-on: ubuntu-26.04
+    # Bots carry the labels their own configuration gives them.
+    if: (github.event.pull_request.user.type || github.event.issue.user.type) != 'Bot'
+    steps:
+      # The request fails when the installation lacks the permission, instead of a token that sees
+      # no private member.
+      - id: org-token
+        name: Mint the token that reads organization members
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.ORG_MEMBERS_READER_CLIENT_ID }}
+          private-key: ${{ secrets.ORG_MEMBERS_READER_PRIVATE_KEY }}
+          # An App holding only an organization permission has no repository installation to find.
+          owner: ${{ github.repository_owner }}
+          permission-members: read
+
+      - name: Add the ownership label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ORG_TOKEN: ${{ steps.org-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          ORG: ${{ github.repository_owner }}
+          EVENT_NAME: ${{ github.event_name }}
+          NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          LOGIN: ${{ github.event.pull_request.user.login || github.event.issue.user.login }}
+        run: |
+          set -euo pipefail
+
+          # A reopened item may have been relabelled by hand.
+          owned=$(gh api "repos/$REPO/issues/$NUMBER" --jq '[.labels[].name | select(. == "filigran team" or . == "community")] | length')
+          if [ "$owned" -gt 0 ]; then
+            echo "#$NUMBER already carries an ownership label."
+            exit 0
+          fi
+
+          # Not author_association: the payload reports a private member as CONTRIBUTOR.
+          # The endpoint answers 204 for a member and 404 for anyone else.
+          if error=$(GH_TOKEN="$ORG_TOKEN" gh api --silent "orgs/$ORG/members/$LOGIN" 2>&1); then
+            labels=("filigran team")
+          elif [[ "$error" == *"HTTP 404"* ]]; then
+            labels=("community")
+            # Triage labels are issue-only, a pull request carries its ownership label alone.
+            if [ "$EVENT_NAME" = "issues" ]; then
+              labels+=("needs triage")
+            fi
+          else
+            echo "::error::Could not read the membership of $LOGIN: $error"
+            exit 1
+          fi
+
+          args=()
+          for label in "${labels[@]}"; do
+            args+=(-f "labels[]=$label")
+          done
+
+          # The issues endpoint labels a pull request too.
+          gh api --method POST "repos/$REPO/issues/$NUMBER/labels" "${args[@]}" --silent
+          echo "Labelled #$NUMBER: ${labels[*]}"

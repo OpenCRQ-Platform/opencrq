@@ -1,0 +1,55 @@
+name: SBOM
+
+# The CycloneDX inventory of the application's JavaScript packages: the backend's externals and the
+# packages its build bundles, and the front end's production packages. The OS packages, the Node
+# runtime and Corepack are not in it: on a release tag, CI's release job merges it with the SBOM of
+# the image Docker Hub serves, the one attached to the GitHub Release. It reads no secret.
+on:
+  workflow_call:
+    inputs:
+      checkout_ref:
+        description: "Reference of the branch or commit sha"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  app-sbom:
+    name: Application SBOM
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          persist-credentials: false
+
+      # The APP_VERSION that ci-docker-build.yml gives the image of the same ref.
+      - name: Determine version
+        run: |
+          version=$(node scripts/release.mjs build-version "$GITHUB_REF" "$(git rev-parse HEAD)")
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/sbom-tools
+
+      # The image's own stages, so the packages are the ones it ships, for the platform it runs on.
+      - name: Build the install stages of the image
+        run: |
+          docker build --file docker/prod.dockerfile --target deps --tag opencrq-sbom-deps .
+          docker build --file docker/prod.dockerfile --target builder --tag opencrq-sbom-builder .
+
+      - name: Collect the packages the image ships
+        run: bash scripts/ci/sbom-collect.sh opencrq-sbom-deps opencrq-sbom-builder "${RUNNER_TEMP}/sbom"
+
+      - name: Generate, merge and validate the SBOM
+        run: bash scripts/ci/sbom-generate.sh "${RUNNER_TEMP}/sbom" "${APP_VERSION}"
+
+      - name: Upload the SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: opencrq-app-sbom
+          path: ${{ runner.temp }}/sbom/sbom-opencrq-app-*.cdx.json
+          if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 30 }}

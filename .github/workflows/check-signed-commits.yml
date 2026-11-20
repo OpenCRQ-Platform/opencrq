@@ -1,0 +1,44 @@
+name: Check Signed Commits
+
+# The required_signatures rule on main does not cover a pull request's commits: GitHub signs
+# the squash commit itself. A workflow of its own, so an edit to the title or body, which
+# triggers no run here, cannot replace a failing run with a skipped one.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check-signed-commits:
+    name: Check that every commit is signed
+    runs-on: ubuntu-26.04
+    steps:
+      - name: List the commits GitHub does not verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          COMMITS: ${{ github.event.pull_request.commits }}
+        run: |
+          set -euo pipefail
+
+          # The endpoint lists 250 commits at most, so a later one would go unchecked.
+          if [ "$COMMITS" -gt 250 ]; then
+            echo "::error::The pull request has $COMMITS commits, more than the 250 this check can read. Squash some of them."
+            exit 1
+          fi
+
+          errors=$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/commits" \
+            --jq '.[] | select(.commit.verification.verified | not) | "::error::Commit \(.sha[0:9]) is not verified by GitHub (\(.commit.verification.reason))."')
+
+          if [ -z "$errors" ]; then
+            echo "All commits are signed."
+            exit 0
+          fi
+
+          echo "$errors"
+          echo "Every commit must be signed, see https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits"
+          exit 1

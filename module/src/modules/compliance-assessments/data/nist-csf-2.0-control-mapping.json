@@ -1,0 +1,4157 @@
+{
+  "mapping-collection": {
+    "uuid": "bc92e15a-5b22-5fec-a25d-4faae826b400",
+    "metadata": {
+      "title": "NIST CSF 2.0 subcategories to OpenCRQ control capabilities, typed by axis",
+      "last-modified": "2026-10-27T00:00:00Z",
+      "version": "2026-10-27",
+      "oscal-version": "1.2.0"
+    },
+    "provenance": {
+      "method": "hybrid",
+      "matching-rationale": "functional",
+      "status": "complete",
+      "mapping-description": "Each map types one link of the capability catalogue's csf_2_0 crosswalk: capability when a maturity rating of the subcategory speaks for how well the control works, coverage when it speaks for how much of the estate the control reaches. Typed by the product owner's rulings alone, one per pair, 169 pairs in all.",
+      "props": [
+        {
+          "name": "generated-at",
+          "ns": "https://filigran.io/ns/opencrq",
+          "value": "2026-10-27"
+        },
+        {
+          "name": "criterion-version",
+          "ns": "https://filigran.io/ns/opencrq",
+          "value": "1"
+        },
+        {
+          "name": "criterion-sha256",
+          "ns": "https://filigran.io/ns/opencrq",
+          "value": "dd33b3dc0ec2b15f781ac06d749921fbdff7863c2b2517a6cc38d3db89804b24"
+        },
+        {
+          "name": "judgment-model",
+          "ns": "https://filigran.io/ns/opencrq",
+          "value": ""
+        },
+        {
+          "name": "panel-seats",
+          "ns": "https://filigran.io/ns/opencrq",
+          "value": "0"
+        },
+        {
+          "name": "arbitrated-pairs",
+          "ns": "https://filigran.io/ns/opencrq",
+          "value": "169"
+        },
+        {
+          "name": "pair-count",
+          "ns": "https://filigran.io/ns/opencrq",
+          "value": "169"
+        }
+      ]
+    },
+    "mappings": [
+      {
+        "uuid": "a296e5bd-d98b-5fbc-a7db-ed4abfa6a3c1",
+        "source-resource": {
+          "type": "catalog",
+          "href": "#c94e7695-9f98-565b-9d4f-414ed0dfecae"
+        },
+        "target-resource": {
+          "ns": "https://filigran.io/ns/opencrq",
+          "type": "control-capability-catalog",
+          "href": "urn:opencrq:control-capabilities"
+        },
+        "maps": [
+          {
+            "uuid": "f2b04aed-f754-5475-b85b-3681a0ff0f06",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CNAPP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "b3c3025e-c86f-5abd-8c37-8ac8a75bfdf1",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "b74ecb1f-5e40-5f35-b18c-4a807a0c5d44",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "EDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "99ccd589-623f-5a1b-a09d-a228f978131b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ITDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "5bed23a8-ad16-5333-88e4-5c7b4df28d0b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "b707cbc9-8634-5715-8005-f019263d5519",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SIEM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "2260ae73-4832-5d61-8e8b-80a25c073a1a",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SOC"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "ad71da1f-b7cf-5b4a-990c-48637fd1b090",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SSPM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "9f371e34-d667-56a9-8aab-8318b9f21842",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.AE-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SIEM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "df8b9c0c-cfe1-5c8d-a243-4eefd80ff8bd",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CLDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "64de1620-678a-5954-90cd-7a923d8c0439",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CPS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "148ab26f-f826-5576-a1d1-1b7856d33999",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DDOS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f25b0584-310b-5ccc-9a56-2dd79de9c057",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DECEP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "6f35616c-36ef-5813-ba61-cea4c52ce433",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IPS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f9b68976-6075-5218-b714-153a05cfb33b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "MSEG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "2305a8f9-858a-57e6-a6f4-09839d1d0671",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NAC"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "978920cf-8641-5af7-9172-50f0dd40eb5e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "e780b901-f23d-5ef0-a8a4-f1ecd91fa164",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NGFW"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f1b8a46f-d9db-51fe-8fca-53e9fb78628b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SWG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "b5c80ca8-68d7-54e9-9767-119fe67f20c9",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "WAF"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "af46db43-632a-50b2-85f7-11016000025e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "WIFI"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "8bd1244b-c84d-5536-97c0-fb2a96265f5a",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ADH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "e05192d3-9267-5c63-bb5e-dde866166387",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DECEP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "ec3a58a6-2d95-5d00-b8c6-98d4ace72564",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IDP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "fa250b70-b52c-527f-b75d-60b006282f51",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ITDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "019d69cf-0eef-5a7a-8d4f-92dcd50678e7",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "abeab2b8-aa24-5d3f-b89f-7bd198308d18",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SAASH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "b6b3dba6-cbe6-5145-949f-e1c61921f799",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SAT"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "33dc294e-5e27-54e0-88fc-dcae720a937d",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SEG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "0218dd12-81b2-5107-8240-5e76156e238b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ZTNA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "9d6be276-87f8-50e2-b486-91bf84075d7f",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-06"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SAASH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "4b773aa3-8194-5f71-b817-8f70d3a5f2f4",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "AIGW"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "4e3cdbb6-e74f-55c1-ba3d-45a230c7e28a",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "APM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "4d8e9088-992d-5b4b-9d72-4637227617bc",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "BKP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "d4e9f9b5-b232-54eb-bf1e-75f33adff5a5",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CLDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "2f1e059f-349a-59dd-bf0b-2df5096d9c9c",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CWPP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "a10f1e8a-25ef-5651-8cd5-d427ea1038af",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "bd1baafc-6cf2-5cc2-bb60-5ff5e983d0df",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DLP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f36bffb5-a74e-5c20-b4c3-feaabfe440dc",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "EDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "ce4808b1-fb8f-5e0b-a985-403c25bea6ce",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "FIM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "46632843-c542-5df4-992f-49cf0663d1d6",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ITIM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "2133eee8-c3be-5f3c-82a3-2d46aa43b677",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "KMS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "52f11d72-eed6-52f4-ada5-5f2c0f3ed6d6",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "34752760-af7d-5b33-9506-9c7344e14cca",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PKI"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "bae0caf5-3ba3-5a54-a2fd-b4f5cfd3006b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "DE.CM-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "UEM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "83cdc19d-57e6-5168-a8f5-69a84ed5b924",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NAC"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "7e4da132-5d9c-543c-86c1-aa516947455b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "UEM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "80582dfa-e228-5b99-b57b-ffd51d5f92c9",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CWPP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "c0722cd5-9173-5831-bbe3-212a75d34820",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "EDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f9a39c3c-4d38-56e2-b3ad-d3e48ed57873",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PKI"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "1d37c7ea-aea6-5c45-b265-f17031206d6b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "WAF"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "0975d17c-2c8d-5986-b3a7-60d2317fe696",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "e8c5f168-72d9-5136-8838-775be24e22c4",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DSPM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "526e048e-77a3-54bb-8243-2433a51e19c2",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-07"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DSPM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "cd2f7d9c-a7c0-55e9-8cd8-e98b4da5c4cb",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-07"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "KMS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "28e9f123-aae4-5a78-bd08-16df8b847eb3",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-08"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IDP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "9b03c0d3-d41e-5d09-8aa3-f88f17d7bb3d",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.AM-08"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "1fef37b7-58d4-5cd7-bb00-ba055afe4c6e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.RA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CNAPP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "69986838-d6c3-5e57-8958-9efbc353541c",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.RA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ITDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "cc435ad3-fc9e-5c92-8e56-ae5dd10d5bf9",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.RA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PATCH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "494e3101-9ac4-5578-98ff-b915b2c19d7c",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.RA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SCA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "d039d9b0-ff71-5209-ae1c-a967d73fe6c7",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.RA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SSPM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "a3740c9a-ec8e-5c56-a5dd-3e25209be413",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "ID.RA-09"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SCA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "b333aa7c-81a3-545b-a155-9861afe2a452",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ADH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "4d238ee6-f2a9-5dbd-b62a-370141002ab1",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IGA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "e77605e8-e6c2-5b27-aa26-0f5a2cc39bbb",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "KMS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "8317d4b9-5304-5fe9-aead-19b15fa3e1d3",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "OSH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "935ed8bf-abd2-5d89-ae90-dc5fc5d0075c",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "a47267f7-89e8-5b09-a54d-939c70388471",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PWM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "79a3ba32-0dc6-504c-b9d9-e1fabf34cd28",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IDV"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "29a9e549-5fc2-596f-9c72-11f0d708206f",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "AIGW"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "7e40a273-c336-5fd8-84fe-2d54f4cac805",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "APPH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "49a52f28-8c2d-5240-b702-57399405ab1b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CLDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "119a513e-abbf-57f2-a5c7-eae58d73fd85",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IDP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f654339b-e4d4-5207-95f4-50c76d2734e7",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ITDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "deaa8af6-b1f0-5e71-b4a1-8684503fa414",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NAC"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "0a71db12-9acc-527e-9bc7-ddb3833a5668",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SAASH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "8f5082de-dc83-5b9b-b363-ec33ee1a421b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "WAF"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "4c791cc1-c1f1-59d7-b4d5-cdfbdf921633",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "WIFI"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "fa81c82c-91e3-5a89-8b5e-ae0b1827bdd1",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-03"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ZTNA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "cdae7df0-bbe6-53d4-beae-a174710c3a8a",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ADH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "38bf87b5-f6b9-535c-b6af-7f3aa2cc872e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IDP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "cbf0fc43-83d3-5b34-91c0-27f0737c59a7",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "OSH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "876ff068-9737-54bb-9d16-3ec91dd3b821",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PKI"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "85223e63-39cd-5254-8111-be3624d61683",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SEB"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "670a1ce9-c3e8-5179-9628-b6f348f2638a",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SEG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "c10ecfd3-1090-5bdd-bf20-e8f25d173035",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ADH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "d3e321aa-8b04-58b2-8770-956f4d2b18e0",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "APPH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "76271d59-0e20-5cc6-be4d-0a46a8011c71",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CLDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "a29f287d-1140-53c5-bf6f-0e646f128765",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CNAPP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "36058e52-9a98-5db5-8e9d-dbd5630ac044",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DSPM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "59dd1554-4b1e-5d44-811b-fb71b73775ae",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "FRAUD"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "1f38f7f4-90e6-5096-a521-dd4871f97ea8",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IDP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "56205113-a96e-57b7-bc50-7c4fdc6fe006",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IGA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "812949cb-ff58-5eca-a63e-76a4e1a4916d",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "4ab4d5ea-c6dd-574e-a8e9-f30c3aab59e4",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "OSH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "17aec93e-131c-5c01-a9b4-22b81fcf7ece",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AA-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "256edcdc-abc6-57f8-832c-c1f503658efd",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.AT-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SAT"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "2c8cef78-c08c-528f-bc7f-742228738994",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CLDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "717fafb3-4894-57b6-b8cf-1e8004fdc796",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DSPM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "3ebeaee5-06ff-57fe-801c-a4893ae1d490",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "KMS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "0ac8cce0-1f0f-55ac-bc83-e53ebf5eaf93",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "OSH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "c1c012ac-8cdd-53bb-a609-f47e7a9798da",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "UEM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "90ef35e8-8f37-50c0-971a-aa35cfcf379d",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DLP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "e697931c-cf1c-575e-80e3-3c4361eac53c",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "TLS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "3b38303a-b893-5774-83e2-9f905ddc03f8",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-10"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "96c2f9ae-20c8-57fe-8ab4-267548893327",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-10"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DLP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "657329f4-053a-55b0-878b-f9777cc74b16",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-10"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "EDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "5e2b18b8-225f-5639-8613-6a087b0f2313",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-10"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SAASH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "b35a2fae-22a7-59dd-b97e-9c8691da9e0e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-10"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SWG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "56b60c9a-a35a-59c9-805b-de3c07fbc883",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.DS-11"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "BKP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "a3e639e9-6e40-5b4e-bec9-ec86ea42906e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CLDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "8061e501-4a00-5832-a7c4-053d02894e41",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IPS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "38da4444-64e1-5171-a819-3c5fc705b28e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "MSEG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f93957b0-df36-5b61-8b22-77d992591845",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NAC"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "1a8da5ed-4004-581b-a204-f7b680263e06",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "db4b0122-f22c-5d89-bda7-4cde9f1f1cb3",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NGFW"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "0b0e72ee-af55-5b0a-81ec-6491451d0503",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "OSH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "2b454d93-7595-5c6a-a72a-8508a794522e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SWG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "cc9f4b04-c581-5029-9c3c-a2549104cc33",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "WAF"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "88735b15-8a0e-5add-abf8-8d48334364a3",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "WIFI"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "bd3cca70-6492-5639-aaff-7bc7c98798cc",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ZTNA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "47d443fc-9bd5-5c97-a482-9aa11e7472ff",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "AIGW"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "a9e74729-7b45-55f4-93e1-19936667bbe8",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "APM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "8bc8446d-d534-58e1-a1f7-f2b22677430d",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "DDOS"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "74a02580-a01f-5988-a0c3-ffbcdb30bf8b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.IR-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ITIM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "a7bf6e16-233b-5655-b2bf-d598aff7bc34",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "APPH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "210274db-e78b-5b6b-b67f-3b3aaf8bafca",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CLDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "2bdf2e15-95c7-582a-9496-0fa14f458918",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CNAPP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "6b74b394-0ac9-5135-9e1c-68d669d6c878",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "6064bada-63f6-574b-acf4-62d9086069da",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "OSH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "50ac88a7-3f4a-554d-8c88-d8901279f016",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "RASP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "efdbd5d8-0607-5b44-ada9-f8be4de3fa18",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SAASH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "46f279df-f779-5961-a55c-5154a4a7d416",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SSPM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "c2af7f7e-9351-5cd4-aac2-be269d346759",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PATCH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f1102466-2fcb-51f8-97ff-a1041c9577a7",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SCA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "74ee01e5-12fd-5397-8474-ceaab41c0e55",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CLDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "46367a9d-0ce3-5c36-b638-eafbae53e50e",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-04"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SIEM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "cbc80390-16df-5501-9691-90e5fb74bbdb",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "AIGW"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "3981de05-f415-5143-9acd-e41b4cf12c7b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "CWPP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "6c50678c-0e45-5429-aca5-96e2416b1b01",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "EDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "e5c1431b-b8ee-5bc6-8037-5006da09c3f5",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "OSH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "afae759a-373b-5c73-a007-23f544d845a3",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SEG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "da947861-8599-51ce-a535-27ae8d2369b4",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SWG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "ad0ac8fd-6cb8-5050-829b-193561676fe9",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-05"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "UEM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "94afca5e-5947-591a-8806-034f715da395",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "PR.PS-06"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SSDLC"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "50108c0d-184d-52e0-b1ae-e7a3496e0d74",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RC.RP-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ADH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "db7dc8cb-eedc-5d93-b123-a4448ac83111",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RC.RP-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "BKP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "3a44f292-4950-5482-95b5-4627a28e9baf",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RC.RP-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NDH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "78f51f8a-0cc2-53aa-8c94-36ed2d93edf7",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MA-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "MDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "622c9315-e520-5278-9644-4a54bd14987c",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MA-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SOC"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "804e01b2-d4ac-56ca-8020-d7b167cbf3e3",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "EDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "f4b7490c-2b48-571d-a8e2-93b593ec01c2",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "IDP"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "00e0becd-5437-5e9c-b8da-7066a6726dcb",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "MDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "95862063-5945-5b6f-887b-be2ef3bb4c33",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "MSEG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "2917ea87-b55f-5090-9403-d9e6ab6ba709",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NAC"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "08679609-6f6b-5f31-b157-f8ead8dbebd2",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "NGFW"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "86f706d1-51d6-52fb-830a-83df60fb8fe3",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "04e93f51-3067-528f-bb3f-0776c8b5cb56",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SEG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "60324044-4757-587e-be9d-e051c2d6a506",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SSPM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "e3eb1608-74b5-5529-9e0c-53a8b9da0f1f",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "SWG"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "330ca878-5453-55fa-9116-96d15d6d351f",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "UEM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "57944aa9-ae9a-5db6-9a36-37e4a7da5c5b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "WAF"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "4d156e97-647b-5dc5-a6d6-7abb84242585",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-01"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ZTNA"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "7fdc5027-0c79-5693-971e-f02e609f67e3",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "ADH"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "ee8fbe29-e985-5e84-bd5c-edfc6e960fd8",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "AIGW"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "beca59e2-f1e2-5cf0-8e0e-93bfee0f141b",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "EDR"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "a5b4701a-864f-514a-a4e5-26a720514594",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PAM"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          },
+          {
+            "uuid": "181900a0-23f2-5dbf-a91c-2ffea4e0b3cb",
+            "relationship": "intersects-with",
+            "sources": [
+              {
+                "type": "control",
+                "id-ref": "RS.MI-02"
+              }
+            ],
+            "targets": [
+              {
+                "type": "control",
+                "id-ref": "PKI"
+              }
+            ],
+            "props": [
+              {
+                "name": "axis",
+                "ns": "https://filigran.io/ns/opencrq",
+                "value": "capability"
+              }
+            ],
+            "remarks": "A maturity rating of this subcategory reads as how well the organization practises the control; how much of the estate the control reaches comes from the coverage cascade (declared, measured or assumed), never from a CSF answer."
+          }
+        ]
+      }
+    ],
+    "back-matter": {
+      "resources": [
+        {
+          "uuid": "c94e7695-9f98-565b-9d4f-414ed0dfecae",
+          "title": "Electronic Version of NIST Cybersecurity Framework 2.0",
+          "props": [
+            {
+              "name": "version",
+              "value": "1.2.0"
+            },
+            {
+              "name": "catalog-uuid",
+              "ns": "https://filigran.io/ns/opencrq",
+              "value": "720a010b-253c-4a94-bb65-cb58400966f5"
+            }
+          ],
+          "rlinks": [
+            {
+              "href": "https://raw.githubusercontent.com/usnistgov/oscal-content/78650f02ad9321bb7b817846f8fbd4f2bcd620de/nist.gov/CSF/v2.0/json/NIST_CSF_v2.0_catalog.json",
+              "media-type": "application/json",
+              "hashes": [
+                {
+                  "algorithm": "SHA-256",
+                  "value": "4836943f21d393f2821df85ada4e6f3c0617243b4ddf44263fe68205400210b4"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

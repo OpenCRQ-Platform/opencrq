@@ -1,0 +1,30 @@
+{
+  "name": "@app/utils",
+  "private": true,
+  "version": "1.0.0",
+  "license": "SEE LICENSE IN LICENSE",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./feature-flags": "./src/feature-flags.ts",
+    "./printed-dollars": "./src/printed-dollars.ts",
+    "./decimals": "./src/decimals.ts",
+    "./text-fold": "./src/text-fold.ts",
+    "./xtm-sign-in": "./src/xtm-sign-in.ts",
+    "./service-account-token": "./src/service-account-token.ts"
+  },
+  "scripts": {
+    "lint": "run lint:lint",
+    "lint:fix": "run lint:lint:fix",
+    "check-ts": "run ts:check",
+    "test": "vitest run",
+    "ci": "run check-ts && run lint && run test"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "vitest": "5.1.0"
+  }
+}

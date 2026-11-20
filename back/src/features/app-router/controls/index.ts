@@ -1,0 +1,1 @@
+export { controlCapabilitiesRouter } from './capability';

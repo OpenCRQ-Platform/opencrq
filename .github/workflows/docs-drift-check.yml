@@ -1,0 +1,507 @@
+name: Docs drift check
+
+# Prerequisites:
+# - `DOCS_DRIFT_AGENT_MCP_URL` variable and `DOCS_DRIFT_AGENT_API_KEY` secret:
+#   the `/mcp/user` endpoint of the XTM One instance, and an `fcp-` API key
+#   restricted to the MCP surface and to the agent named in DOCS_DRIFT_AGENT,
+#   read-write (a read-only key reaches no agent there). The agent has no tool,
+#   no integration, no knowledge base and no memory. The key authenticates as
+#   its owner, whose account must keep seeing the agent.
+# - `DOCS_DRIFT_APP_CLIENT_ID` variable and `DOCS_DRIFT_APP_PRIVATE_KEY` secret:
+#   GitHub App installed on this repository only, with "Contents: read",
+#   "Issues: write", "Pull requests: write" and "Metadata: read". Pull requests
+#   must be opened by it rather than by GITHUB_TOKEN, which triggers no CI and
+#   would leave the required checks unreported and the pull request unmergeable.
+# - `DOCS_DRIFT_ISSUE_NUMBER`: repository variable, number of the tracking issue.
+
+on:
+  schedule:
+    # The first Monday of each month runs a deep audit instead of a windowed one.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: incremental audits the recent window, deep audits every mapped doc
+        type: choice
+        options:
+          - incremental
+          - deep
+        default: incremental
+      scope:
+        description: only audit docs whose path starts with one of these space-separated prefixes
+        type: string
+        required: false
+
+permissions: {}
+
+concurrency:
+  group: docs-drift
+  cancel-in-progress: false
+
+env:
+  MAP_FILE: .github/docs-drift/docs-map.yml
+  PROMPTS_DIR: .github/docs-drift/prompts
+  BRANCH_PREFIX: docs-drift/
+  DOCS_DRIFT_AGENT: opencrq-docs-drift
+  WINDOW_DAYS: '8'
+
+jobs:
+  params:
+    runs-on: ubuntu-26.04
+    permissions: {}
+    outputs:
+      mode: ${{ steps.decide.outputs.mode }}
+      scope: ${{ steps.decide.outputs.scope }}
+      actor: ${{ steps.decide.outputs.actor }}
+    steps:
+      - id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          DISPATCHER: ${{ github.actor }}
+        run: |
+          mode=incremental
+          scope=""
+          actor=""
+          case "$EVENT" in
+            schedule)
+              day=$(date -u +%d)
+              if [ "$((10#$day))" -le 7 ]; then
+                mode=deep
+              fi
+              ;;
+            workflow_dispatch)
+              actor="$DISPATCHER"
+              mode="${INPUT_MODE:-incremental}"
+              scope="$INPUT_SCOPE"
+              ;;
+          esac
+          {
+            echo "mode=$mode"
+            echo "scope=$scope"
+            echo "actor=$actor"
+          } >> "$GITHUB_OUTPUT"
+
+  audit:
+    needs: params
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    # This job sends the repository's content to an external agent, so it holds
+    # no write token: every write happens in publish, which re-checks what it
+    # receives from here.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      head: ${{ steps.range.outputs.head }}
+      mode: ${{ steps.range.outputs.mode }}
+      count: ${{ steps.scope.outputs.count }}
+      new: ${{ steps.filter.outputs.new }}
+      known: ${{ steps.filter.outputs.known }}
+      malformed: ${{ steps.detect.outputs.malformed }}
+      failed: ${{ steps.detect.outputs.failed }}
+      partial: ${{ steps.detect.outputs.partial }}
+      blocked: ${{ steps.check.outputs.blocked || steps.detect.outputs.blocked }}
+    env:
+      DOCS_DRIFT_AGENT_MCP_URL: ${{ vars.DOCS_DRIFT_AGENT_MCP_URL }}
+      DOCS_DRIFT_AGENT_API_KEY: ${{ secrets.DOCS_DRIFT_AGENT_API_KEY }}
+      SCOPE: ${{ needs.params.outputs.scope }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # Otherwise GITHUB_TOKEN stays readable in .git/config.
+          persist-credentials: false
+
+      # Every run, even one with nothing to audit: a week without a changed
+      # document never calls the agent, and an expired key would go unnoticed.
+      - name: Check the agent key
+        id: check
+        run: |
+          if ! node .github/docs-drift/scripts/ask-agent.js check 2> "$RUNNER_TEMP/check.err"; then
+            cat "$RUNNER_TEMP/check.err" >&2
+            echo "blocked=$(tail -n 1 "$RUNNER_TEMP/check.err" | cut -c1-400)" >> "$GITHUB_OUTPUT"
+            echo "::error::$(tail -n 1 "$RUNNER_TEMP/check.err")"
+            exit 1
+          fi
+
+      - name: Resolve audit range
+        id: range
+        env:
+          MODE: ${{ needs.params.outputs.mode }}
+        run: |
+          mode="$MODE"
+          base=""
+          if [ "$mode" != "deep" ]; then
+            base=$(git rev-list -1 --before="$WINDOW_DAYS days ago" HEAD)
+            if [ -z "$base" ]; then
+              mode=deep
+            fi
+          fi
+          {
+            echo "base=$base"
+            echo "head=$(git rev-parse HEAD)"
+            echo "mode=$mode"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Scope docs to audit
+        id: scope
+        env:
+          BASE: ${{ steps.range.outputs.base }}
+          RANGE_MODE: ${{ steps.range.outputs.mode }}
+        run: |
+          pairs='[]'
+          n=$(yq 'length' "$MAP_FILE")
+          for i in $(seq 0 $((n - 1))); do
+            doc=$(yq ".[$i].doc" "$MAP_FILE")
+            if [ -n "$SCOPE" ]; then
+              keep=false
+              for prefix in $SCOPE; do
+                if [[ "$doc" == "$prefix"* ]]; then
+                  keep=true
+                  break
+                fi
+              done
+              if [ "$keep" = false ]; then
+                continue
+              fi
+            fi
+            watches=$(yq -o=json -I0 ".[$i].watches" "$MAP_FILE")
+            specs=()
+            while IFS= read -r w; do specs+=(":(glob)$w"); done < <(jq -r '.[]' <<<"$watches")
+            if [ "$RANGE_MODE" = "deep" ]; then
+              changed=$(git ls-files -- "${specs[@]}")
+              changed_json='[]'
+            else
+              changed=$(git diff --name-only "$BASE..HEAD" -- "${specs[@]}" "$doc")
+              changed_json=$(jq -c -R -s 'split("\n") | map(select(length > 0))' <<<"$changed")
+            fi
+            if [ -n "$changed" ]; then
+              pairs=$(jq -c --arg doc "$doc" --argjson watches "$watches" --argjson changed "$changed_json" \
+                '. + [{doc: $doc, watches: $watches, changed: $changed}]' <<<"$pairs")
+            fi
+          done
+          printf '%s' "$pairs" > "$RUNNER_TEMP/pairs.json"
+          echo "count=$(jq length <<<"$pairs")" >> "$GITHUB_OUTPUT"
+
+      - name: Detect drift
+        id: detect
+        if: steps.scope.outputs.count != '0'
+        env:
+          BASE: ${{ steps.range.outputs.base }}
+        run: |
+          # One call per document, several for one whose files do not fit a
+          # single context, and a file larger than a call goes in parts.
+          echo '{"findings":[]}' > "$RUNNER_TEMP/report.json"
+          failed='[]'
+          partial='[]'
+          mapfile -t pairs < <(jq -c '.[]' "$RUNNER_TEMP/pairs.json")
+          for p in "${pairs[@]}"; do
+            doc=$(jq -r '.doc' <<<"$p")
+            printf '%s' "$p" > "$RUNNER_TEMP/pair.json"
+            if node .github/docs-drift/scripts/ask-agent.js detect "$RUNNER_TEMP/pair.json" \
+              > "$RUNNER_TEMP/one.json" 2> "$RUNNER_TEMP/call.err"; then
+              jq -s '{findings: (.[0].findings + .[1].findings)}' \
+                "$RUNNER_TEMP/report.json" "$RUNNER_TEMP/one.json" > "$RUNNER_TEMP/merged.json"
+              mv "$RUNNER_TEMP/merged.json" "$RUNNER_TEMP/report.json"
+              partial=$(jq -c --arg doc "$doc" --slurpfile one "$RUNNER_TEMP/one.json" \
+                'if (($one[0].unaudited // []) + ($one[0].failedCalls // [])) == [] then .
+                 else . + [{doc: $doc, files: ($one[0].unaudited // []), calls: ($one[0].failedCalls // [])}] end' <<<"$partial")
+            else
+              failed=$(jq -c --arg doc "$doc" --arg why "$(tail -n 1 "$RUNNER_TEMP/call.err" | cut -c1-200)" \
+                '. + [{doc: $doc, why: $why}]' <<<"$failed")
+            fi
+            cat "$RUNNER_TEMP/call.err" >&2
+          done
+          printf '%s' "$failed" > "$RUNNER_TEMP/failed.json"
+          printf '%s' "$partial" > "$RUNNER_TEMP/partial.json"
+          {
+            echo "failed=$(jq length <<<"$failed")"
+            echo "partial=$(jq length <<<"$partial")"
+          } >> "$GITHUB_OUTPUT"
+          # A run that reached no agent must not report a clean bill of health.
+          if [ "$(jq length <<<"$failed")" -eq "${#pairs[@]}" ]; then
+            echo "blocked=Every agent call failed, the first with: $(jq -r '.[0].why' <<<"$failed")" >> "$GITHUB_OUTPUT"
+            echo "::error::Every agent call failed: $(jq -r '.[0].why' <<<"$failed")"
+            exit 1
+          fi
+          # A finding short of a field would fingerprint wrong or blow up the
+          # pull request body mid-loop, once earlier ones were already pushed.
+          raw=$(jq '.findings // [] | length' "$RUNNER_TEMP/report.json")
+          jq '{findings: [(.findings // [])[] | select(
+                (.doc | type) == "string" and (.doc_excerpt | type) == "string"
+                and (.evidence | type) == "array" and (.explanation | type) == "string")]}' \
+            "$RUNNER_TEMP/report.json" > "$RUNNER_TEMP/checked.json"
+          mv "$RUNNER_TEMP/checked.json" "$RUNNER_TEMP/report.json"
+          echo "malformed=$((raw - $(jq '.findings | length' "$RUNNER_TEMP/report.json")))" >> "$GITHUB_OUTPUT"
+
+      - name: Drop findings already raised as a pull request
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          todo='[]'
+          known='[]'
+          if [ -f "$RUNNER_TEMP/report.json" ]; then
+            mapfile -t items < <(jq -c '.findings // [] | .[]' "$RUNNER_TEMP/report.json")
+            for f in "${items[@]}"; do
+              doc=$(jq -r '.doc' <<<"$f")
+              # Collapsed so a re-wrapped quote still fingerprints identically.
+              excerpt=$(jq -r '.doc_excerpt' <<<"$f" | tr -s '[:space:]' ' ' | sed 's/^ *//; s/ *$//')
+              id=$(printf '%s|%s' "$doc" "$excerpt" | sha1sum | cut -c1-12)
+              # The pull request history is the only memory this workflow has.
+              # A closed one means dismissed, and dismissed is forever.
+              seen=$(gh pr list --state all --head "$BRANCH_PREFIX$id" --json number,state)
+              if [ "$(jq length <<<"$seen")" -gt 0 ]; then
+                known=$(jq -c --arg doc "$doc" --argjson pr "$(jq -c '.[0]' <<<"$seen")" \
+                  '. + [{doc: $doc, pr: $pr.number, state: $pr.state}]' <<<"$known")
+              else
+                todo=$(jq -c --argjson f "$f" --arg id "$id" '. + [$f + {id: $id}]' <<<"$todo")
+              fi
+            done
+          fi
+          printf '%s' "$todo" > "$RUNNER_TEMP/todo.json"
+          printf '%s' "$known" > "$RUNNER_TEMP/known.json"
+          {
+            echo "new=$(jq length <<<"$todo")"
+            echo "known=$(jq length <<<"$known")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Write the fixes
+        env:
+          HEAD_SHA: ${{ steps.range.outputs.head }}
+        run: |
+          ready='[]'
+          skipped='[]'
+          mkdir -p "$RUNNER_TEMP/fixes"
+          mapfile -t items < <(jq -c '.[]' "$RUNNER_TEMP/todo.json")
+          for f in "${items[@]}"; do
+            id=$(jq -r '.id' <<<"$f")
+            doc=$(jq -r '.doc' <<<"$f")
+            git checkout -B "$BRANCH_PREFIX$id" "$HEAD_SHA"
+            printf '%s' "$f" > "$RUNNER_TEMP/finding.json"
+            rc=0
+            node .github/docs-drift/scripts/ask-agent.js fix "$RUNNER_TEMP/finding.json" 2> "$RUNNER_TEMP/call.err" || rc=$?
+            cat "$RUNNER_TEMP/call.err" >&2
+            why=""
+            case "$rc" in
+              0) ;;
+              3) why="the agent found the document already matches the code" ;;
+              *) why="the fix failed: $(tail -n 1 "$RUNNER_TEMP/call.err" | cut -c1-200)" ;;
+            esac
+            if [ -n "$why" ]; then
+              git checkout -- .
+              skipped=$(jq -c --arg doc "$doc" --arg why "$why" '. + [{doc: $doc, why: $why}]' <<<"$skipped")
+              continue
+            fi
+            touched=$(git diff --name-only)
+            if [ "$touched" != "$doc" ]; then
+              git checkout -- .
+              git clean -fd
+              skipped=$(jq -c --arg doc "$doc" --arg why "the fix touched \`${touched:-nothing}\` instead of the document alone" \
+                '. + [{doc: $doc, why: $why}]' <<<"$skipped")
+              continue
+            fi
+            cp "$doc" "$RUNNER_TEMP/fixes/$id"
+            git checkout -- "$doc"
+            ready=$(jq -c --argjson f "$f" '. + [$f]' <<<"$ready")
+          done
+          printf '%s' "$ready" > "$RUNNER_TEMP/ready.json"
+          printf '%s' "$skipped" > "$RUNNER_TEMP/skipped.json"
+
+      - name: Hand the run over to publish
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs-drift-run
+          retention-days: 1
+          path: |
+            ${{ runner.temp }}/known.json
+            ${{ runner.temp }}/failed.json
+            ${{ runner.temp }}/partial.json
+            ${{ runner.temp }}/ready.json
+            ${{ runner.temp }}/skipped.json
+            ${{ runner.temp }}/fixes/
+
+  publish:
+    needs: [params, audit]
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+    env:
+      ISSUE: ${{ vars.DOCS_DRIFT_ISSUE_NUMBER }}
+      SCOPE: ${{ needs.params.outputs.scope }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: docs-drift-run
+          path: ${{ runner.temp }}
+
+      - name: Mint the app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DOCS_DRIFT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DOCS_DRIFT_APP_PRIVATE_KEY }}
+          permission-contents: read
+          permission-issues: write
+          permission-metadata: read
+          permission-pull-requests: write
+
+      - name: Open fix pull requests
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          HEAD_SHA: ${{ needs.audit.outputs.head }}
+          CI_TOKEN: ${{ github.token }}
+        run: |
+          created='[]'
+          skipped=$(cat "$RUNNER_TEMP/skipped.json")
+          mapped=$(yq -o=json -I0 '[.[].doc]' "$MAP_FILE")
+          mapfile -t items < <(jq -c '.[]' "$RUNNER_TEMP/ready.json")
+          for f in "${items[@]}"; do
+            id=$(jq -r '.id' <<<"$f")
+            doc=$(jq -r '.doc' <<<"$f")
+            # What audit hands over was shaped by an external agent's answers,
+            # and the pull request this opens runs CI with the repository secrets.
+            if ! [[ "$id" =~ ^[0-9a-f]{12}$ ]] || ! jq -e --arg doc "$doc" 'any(.[]; . == $doc)' <<<"$mapped" >/dev/null; then
+              skipped=$(jq -c --arg doc "$doc" --arg why "the fix names no document of the drift map" \
+                '. + [{doc: $doc, why: $why}]' <<<"$skipped")
+              continue
+            fi
+            branch="$BRANCH_PREFIX$id"
+            # The default branch requires signed commits and a runner holds no
+            # key, so the commit is made by GitHub rather than by git.
+            # createCommitOnBranch is the endpoint that signs, the contents REST
+            # one does not. A single addition covers it: audit proved the fix
+            # touched the document alone.
+            if ! GH_TOKEN="$CI_TOKEN" gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$branch" -f sha="$HEAD_SHA" >/dev/null 2>&1; then
+              GH_TOKEN="$CI_TOKEN" gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch" \
+                -f sha="$HEAD_SHA" -F force=true >/dev/null
+            fi
+            jq -n --arg repo "$GITHUB_REPOSITORY" --arg branch "$branch" --arg oid "$HEAD_SHA" \
+              --arg msg "docs: fix drift in $doc (#$ISSUE)" --arg path "$doc" \
+              --arg contents "$(base64 -w0 "$RUNNER_TEMP/fixes/$id")" '{
+                query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+                variables: {input: {
+                  branch: {repositoryNameWithOwner: $repo, branchName: $branch},
+                  message: {headline: $msg},
+                  expectedHeadOid: $oid,
+                  fileChanges: {additions: [{path: $path, contents: $contents}]}
+                }}
+              }' > "$RUNNER_TEMP/commit.json"
+            commit=$(GH_TOKEN="$CI_TOKEN" gh api graphql --input "$RUNNER_TEMP/commit.json" \
+              --jq .data.createCommitOnBranch.commit.oid)
+            [ -n "$commit" ] && [ "$commit" != null ]
+            jq -r --arg issue "$ISSUE" '
+              "## Context\n\nThe scheduled documentation drift check found that `" + .doc
+              + "` no longer matches the code.\n\n**Drifting passage**\n\n> " + .doc_excerpt
+              + "\n\n**Explanation**\n\n" + .explanation
+              + "\n\n**Evidence**\n\n" + (.evidence | map("- `" + . + "`") | join("\n"))
+              + "\n\n## Scope\n\nOnly `" + .doc + "` is modified."
+              + "\n\n## How to test\n\nRe-read the updated section against the evidence files and confirm the documentation now matches the code."
+              + "\n\nClosing this pull request without merging dismisses the finding: it will not be raised again."
+              + "\n\nRelates to #" + $issue
+            ' <<<"$f" > "$RUNNER_TEMP/pr-body.md"
+            url=$(gh pr create --base main --head "$branch" --label "filigran team" --label vibe-coded \
+              --title "docs: fix drift in $doc (#$ISSUE)" --body-file "$RUNNER_TEMP/pr-body.md")
+            pr="${url##*/}"
+            created=$(jq -c --arg doc "$doc" --argjson pr "$pr" '. + [{doc: $doc, pr: $pr}]' <<<"$created")
+          done
+          printf '%s' "$created" > "$RUNNER_TEMP/created.json"
+          printf '%s' "$skipped" > "$RUNNER_TEMP/skipped.json"
+
+      - name: Report to tracking issue
+        if: env.ISSUE != ''
+        env:
+          RANGE_MODE: ${{ needs.audit.outputs.mode }}
+          COUNT: ${{ needs.audit.outputs.count }}
+          NEW: ${{ needs.audit.outputs.new }}
+          KNOWN: ${{ needs.audit.outputs.known }}
+          MALFORMED: ${{ needs.audit.outputs.malformed }}
+          FAILED: ${{ needs.audit.outputs.failed }}
+          ACTOR: ${{ needs.params.outputs.actor }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          now=$(date -u +'%Y-%m-%d %H:%M UTC')
+          if [ -n "$ACTOR" ]; then
+            trigger="@$ACTOR"
+          else
+            trigger="the weekly schedule"
+          fi
+          created=$(cat "$RUNNER_TEMP/created.json" 2>/dev/null || echo '[]')
+          skipped=$(cat "$RUNNER_TEMP/skipped.json" 2>/dev/null || echo '[]')
+          known=$(cat "$RUNNER_TEMP/known.json" 2>/dev/null || echo '[]')
+          failed=$(cat "$RUNNER_TEMP/failed.json" 2>/dev/null || echo '[]')
+          partial=$(cat "$RUNNER_TEMP/partial.json" 2>/dev/null || echo '[]')
+          {
+            echo "### Drift check run, $now"
+            echo ""
+            echo "- Triggered by: $trigger"
+            echo "- Mode: \`$RANGE_MODE\`${SCOPE:+ (scope: \`$SCOPE\`)}"
+            echo "- Documents audited: ${COUNT:-0}"
+            echo "- New findings: ${NEW:-0}, already raised before: ${KNOWN:-0}"
+            if [ "${MALFORMED:-0}" -gt 0 ]; then
+              echo "- Dropped as malformed: ${MALFORMED} (a finding came back missing a required field)"
+            fi
+            if [ "$(jq length <<<"$failed")" -gt 0 ]; then
+              echo "- Audits that failed: ${FAILED:-0} of ${COUNT:-0}"
+              jq -r '.[] | "  - `\(.doc)`: \(.why)"' <<<"$failed"
+            fi
+            if [ "$(jq length <<<"$partial")" -gt 0 ]; then
+              echo "- Audited in part:"
+              jq -r '.[] | "  - `\(.doc)`: " + ([
+                  (if (.files // []) == [] then empty else "not sent: " + (.files | map("`" + . + "`") | join(", ")) end),
+                  ((.calls // [])[] | "failed " + .)
+                ] | join("; "))' <<<"$partial"
+            fi
+            if [ "$(jq length <<<"$created")" -gt 0 ]; then
+              echo "- Pull requests opened:"
+              jq -r '.[] | "  - #\(.pr) `\(.doc)`"' <<<"$created"
+            fi
+            if [ "$(jq length <<<"$known")" -gt 0 ]; then
+              echo "- Skipped, already raised:"
+              jq -r '.[] | "  - `\(.doc)` via #\(.pr) (\(.state | ascii_downcase))"' <<<"$known"
+            fi
+            if [ "$(jq length <<<"$skipped")" -gt 0 ]; then
+              echo "- Not turned into a pull request:"
+              jq -r '.[] | "  - `\(.doc)`: \(.why)"' <<<"$skipped"
+              echo ""
+              echo "  These are re-detected while they stay inside the ${WINDOW_DAYS}-day window,"
+              echo "  and by the monthly deep run after that."
+            fi
+          } > "$RUNNER_TEMP/summary.md"
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/summary.md"
+          # Every state, so a finding accepted or dismissed keeps a visible trace
+          # instead of vanishing from the panel the moment its pull request closes.
+          gh pr list --state all --search "head:$BRANCH_PREFIX" --limit 200 \
+            --json number,title,headRefName,state > "$RUNNER_TEMP/drift-prs.json"
+          bash .github/docs-drift/scripts/dashboard.sh "$ISSUE" "$RUNNER_TEMP/drift-prs.json" "$now" "$RANGE_MODE"
+
+  # A failed audit skips publish and its report, and GitHub tells a scheduled
+  # run's failure only to whoever last edited the cron line: say it where the
+  # team reads.
+  report-failure:
+    needs: [params, audit, publish]
+    if: failure() && vars.DOCS_DRIFT_ISSUE_NUMBER != ''
+    runs-on: ubuntu-26.04
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ vars.DOCS_DRIFT_ISSUE_NUMBER }}
+          BLOCKED: ${{ needs.audit.outputs.blocked }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "### Drift check run failed, $(date -u +'%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo "- Run: $RUN_URL"
+            echo "- Cause: ${BLOCKED:-see the run log}"
+          } > "$RUNNER_TEMP/failure.md"
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/failure.md"

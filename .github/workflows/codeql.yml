@@ -1,0 +1,69 @@
+name: CodeQL
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    paths-ignore:
+      - '**/*.md'
+  schedule:
+    - cron: '27 4 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Without Code Security on the repository the upload is refused with a 403, so the results
+      # are kept as an artifact instead and the check stays green.
+      - name: Check that code scanning accepts uploads
+        id: code-scanning
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A repository never analysed answers 404, which still accepts the first upload.
+          if gh api "repos/${GITHUB_REPOSITORY}/code-scanning/alerts?per_page=1" 2>&1 | grep -q 'HTTP 403'; then
+            echo "::warning::Code scanning is not enabled on this repository: the results are only kept as an artifact"
+            echo "upload=never" >> "$GITHUB_OUTPUT"
+          else
+            echo "upload=always" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          config-file: ./.github/codeql-config.yml
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript-typescript
+          upload: ${{ steps.code-scanning.outputs.upload }}
+          output: codeql-results
+
+      - name: Upload the CodeQL results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: codeql-results
+          path: codeql-results
+          if-no-files-found: ignore
+          retention-days: 30

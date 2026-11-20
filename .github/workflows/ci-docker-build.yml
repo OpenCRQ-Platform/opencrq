@@ -1,0 +1,159 @@
+name: Build OpenCRQ Platform
+
+on:
+  workflow_call:
+    inputs:
+      checkout_ref:
+        description: "Reference of the branch or commit sha"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build OpenCRQ Platform image
+    runs-on: ubuntu-26.04
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -h localhost -U app"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          name: gha-builder-platform
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: filigran/opencrq
+          # A local name for the boot and the scan: the release repository tags what it publishes.
+          tags: type=sha
+
+      # The rule lives in scripts/release so that whatever builds a release image runs the same one.
+      - name: Determine version
+        run: |
+          version=$(node scripts/release.mjs build-version "$GITHUB_REF" "$(git rev-parse HEAD)")
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+
+      # The Flow workflow saves what the registries answered; the notices stage of the build reads it
+      # instead of asking again. This job never saves it. The paths and the key are the Flow
+      # workflow's own, since a cache entry is only found with the paths it was saved under.
+      - name: Restore what the registries answered
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            .flow-cache
+            ~/.m2/repository
+          key: flow-gdl-dependencies-${{ hashFiles('**/package-lock.json', '**/yarn.lock', '**/poetry.lock', '**/uv.lock', '**/Cargo.lock', '**/requirements*.txt', '**/pom.xml') }}-${{ github.run_id }}
+          restore-keys: |
+            flow-gdl-dependencies-${{ hashFiles('**/package-lock.json', '**/yarn.lock', '**/poetry.lock', '**/uv.lock', '**/Cargo.lock', '**/requirements*.txt', '**/pom.xml') }}-
+            flow-gdl-dependencies-
+
+      # The notices stage reads the checker's cache from a cache mount of this builder, which this
+      # build fills. A bind mount would be part of the stage's cache key, and a secret is capped at
+      # 500 KiB, which the cache exceeds.
+      - name: Hand what the registries answered to the builder
+        if: hashFiles('.flow-cache/licenses.json') != ''
+        run: |
+          docker buildx build --progress plain --build-context flow-cache=.flow-cache - <<'EOF'
+          FROM busybox:1.37.0
+          RUN --mount=type=cache,id=flow-cache,target=/cache \
+              --mount=type=bind,from=flow-cache,target=/in \
+              cp /in/licenses.json /cache/licenses.json
+          EOF
+
+      # Every build reads the layer cache: none is published, as the release repository builds the
+      # published image from scratch. Only main writes it, as main's entries are the only ones every
+      # pull request can read; any other ref's entry would serve that ref alone and evict the caches
+      # of other workflows.
+      - name: Resolve layer cache
+        id: cache
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          cache_from="type=gha,scope=opencrq-platform"
+          cache_to=""
+          if [ "$REF" = "refs/heads/main" ]; then
+            cache_to="type=gha,mode=max,scope=opencrq-platform"
+          fi
+          echo "cache_from=${cache_from}" >> "$GITHUB_OUTPUT"
+          echo "cache_to=${cache_to}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/prod.dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ env.APP_VERSION }}
+          cache-from: ${{ steps.cache.outputs.cache_from }}
+          cache-to: ${{ steps.cache.outputs.cache_to }}
+          pull: true
+          load: true
+
+      # The hand-over to the release repository waits for this job, so an image that cannot boot stops here.
+      - name: Boot the image against an empty database
+        env:
+          IMAGE_TAG: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+        run: scripts/ci/boot-image.sh "$IMAGE_TAG"
+
+      # main and release tags are published by the release repository, from its own build.
+      - name: Save OpenCRQ docker image
+        if: github.ref != 'refs/heads/main' && github.ref_type != 'tag'
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: docker save -o /tmp/opengrc-platform.tar $IMAGE_TAGS
+
+      - name: Upload OpenCRQ docker image artifact
+        if: github.ref != 'refs/heads/main' && github.ref_type != 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-image-opengrc-platform
+          path: /tmp/opengrc-platform.tar
+          retention-days: 7
+
+      # Advisory, down to the scanner's own install and upload: a vulnerability published overnight
+      # would otherwise turn every open pull request red, and the hand-over of main waits for this
+      # workflow to succeed. The scheduled vulnerability scan is the one that fails.
+      - name: Install Trivy
+        continue-on-error: true
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.76.2
+          cache: true
+
+      - name: Scan the image for vulnerabilities
+        env:
+          IMAGE_TAG: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+        run: scripts/ci/scan-image.sh "$IMAGE_TAG" advisory
+
+      - name: Upload the vulnerability report
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-results
+          path: trivy-results.*
+          if-no-files-found: ignore
+          retention-days: 30

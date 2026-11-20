@@ -1,0 +1,247 @@
+name: app-dev${INSTANCE_SUFFIX:-}
+
+# The XTM bundle's PostgreSQL, whose major version Renovate keeps on the bundle's. Another major
+# also renames the database volume, as `scripts/devenv.test.mjs` checks.
+x-postgres-image: &postgres-image pgvector/pgvector:0.8.7-pg17
+
+networks:
+  app-net:
+    driver: bridge
+
+services:
+  # Initialize the permissions of the data directory for Loki on Ubuntu.
+  init-permissions:
+    image: busybox:1.38.0
+    user: "0:0"
+    volumes:
+      - loki_data:/mnt/loki
+    command: >
+      sh -c "chown -R 10001:10001 /mnt/loki && chmod -R 775 /mnt/loki"
+    profiles:
+      - monitoring
+
+  # The XTM bundle's server: one PostgreSQL 17 with pgvector, holding OpenCRQ's database and XTM One's.
+  postgres:
+    image: *postgres-image
+    container_name: app-dev-postgres${INSTANCE_SUFFIX:-}
+    # OpenCRQ's backend, its integration tests and XTM One's processes together exceed the default of 100.
+    command: ['postgres', '-c', 'max_connections=300']
+    # A parallel query passes its tuples between workers through /dev/shm, which a container gives
+    # 64 MB of by default. One aggregate over a few hundred thousand assets exceeds that and the
+    # query fails outright with "could not resize shared memory segment", taking its job down.
+    shm_size: 1gb
+    env_file:
+      - ./config/postgres/config.env
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    # Named after its major version, the only one its data directory opens on: `devenv.mjs` moves the
+    # databases of an earlier volume into it.
+    volumes:
+      - postgres17_data:/var/lib/postgresql/data
+    healthcheck:
+      # Over TCP: the server that initialises a new volume listens on the Unix socket only, then restarts.
+      test: ['CMD-SHELL', 'pg_isready -h localhost -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # The `xtm-one` profile is the stack's own XTM One. `devenv.mjs` enables it unless the worktree's
+  # `infra/local/.env` sets `XTM_ONE_LOCAL=false`, for a stack whose XTM One port something else serves.
+
+  # XTM One's role, database and pgvector extension, as the XTM bundle creates them: the role is no
+  # superuser, and only a superuser can create pgvector. Unlike an initdb script, it also runs on a
+  # volume that already exists.
+  xtm-one-db-init:
+    image: *postgres-image
+    container_name: app-dev-xtm-one-db-init${INSTANCE_SUFFIX:-}
+    env_file:
+      - ./config/postgres/config.env
+    profiles:
+      - xtm-one
+    environment:
+      PGHOST: postgres
+      PGDATABASE: postgres
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        PGUSER="$$POSTGRES_USER" PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 <<'SQL'
+        SELECT 'CREATE ROLE xtm_one LOGIN PASSWORD ''xtm_one''' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'xtm_one') \gexec
+        SELECT 'CREATE DATABASE xtm_one OWNER xtm_one' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'xtm_one') \gexec
+        \connect xtm_one
+        CREATE EXTENSION IF NOT EXISTS vector;
+        SQL
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:8.10.3-alpine
+    container_name: app-dev-redis${INSTANCE_SUFFIX:-}
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Catches every email XTM One sends: nothing leaves the machine, and the web UI shows them.
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    container_name: app-dev-mailpit${INSTANCE_SUFFIX:-}
+    ports:
+      - '${MAILPIT_PORT:-8025}:8025'
+
+  # `rolling` follows XTM One's main branch, the only build that signs a product's users in without a
+  # consent page; amd64 only, so an arm64 machine runs it emulated. Pulled again once a day, so every
+  # stack runs a recent build of it; `devenv.mjs` sets the policy `podman-compose` understands.
+  xtm-one:
+    image: xtmone/platform:rolling
+    pull_policy: ${XTM_ONE_PULL_POLICY:-daily}
+    platform: linux/amd64
+    container_name: app-dev-xtm-one${INSTANCE_SUFFIX:-}
+    profiles:
+      - xtm-one
+    env_file:
+      - ./config/xtm-one/config.env
+    environment:
+      # The browser and the backend both reach it on the published port, so that is its public URL.
+      BASE_URL: http://localhost:${XTM_ONE_PORT:-4005}
+      FRONTEND_URL: http://localhost:${XTM_ONE_PORT:-4005}
+      SECRET_KEY: ${XTM_ONE_SECRET_KEY:-}
+      PLATFORM_REGISTRATION_TOKEN: ${XTM_ONE_REGISTRATION_TOKEN:-}
+      ADMIN_EMAIL: ${XTM_ONE_ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${XTM_ONE_ADMIN_PASSWORD:-}
+      # A Filigran license from the developer's shell, which XTM One hands to OpenCRQ at registration.
+      ENTERPRISE_LICENSE: ${XTM_ONE_ENTERPRISE_LICENSE:-}
+      # Where it fetches OpenCRQ's signing keys: the registered URL is the frontend's, which does
+      # not serve them, and `localhost` inside the container is XTM One itself.
+      OPENCRQ_API_URL: http://host.docker.internal:${BACKEND_PORT:-3002}
+    # Docker Desktop and Podman name the host on their own, a plain Docker engine only through this,
+    # and there it is the bridge address: `devenv.mjs` has the backend listen beyond loopback then.
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '${XTM_ONE_PORT:-4005}:4000'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:4000/api/health || exit 1']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      # Its first boot creates the whole schema, slower still under emulation.
+      start_period: 600s
+    restart: unless-stopped
+    depends_on:
+      xtm-one-db-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rustfs:
+        condition: service_started
+      mailpit:
+        condition: service_started
+
+  # Waiting for a healthy XTM One also makes `up` return only once it answers, so the backend started
+  # next registers at its first attempt.
+  xtm-one-worker:
+    image: xtmone/worker:rolling
+    pull_policy: ${XTM_ONE_PULL_POLICY:-daily}
+    platform: linux/amd64
+    container_name: app-dev-xtm-one-worker${INSTANCE_SUFFIX:-}
+    profiles:
+      - xtm-one
+    env_file:
+      - ./config/xtm-one/config.env
+    environment:
+      BASE_URL: http://localhost:${XTM_ONE_PORT:-4005}
+      FRONTEND_URL: http://localhost:${XTM_ONE_PORT:-4005}
+      SECRET_KEY: ${XTM_ONE_SECRET_KEY:-}
+      PLATFORM_REGISTRATION_TOKEN: ${XTM_ONE_REGISTRATION_TOKEN:-}
+      ADMIN_EMAIL: ${XTM_ONE_ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${XTM_ONE_ADMIN_PASSWORD:-}
+      ENTERPRISE_LICENSE: ${XTM_ONE_ENTERPRISE_LICENSE:-}
+    restart: unless-stopped
+    depends_on:
+      xtm-one:
+        condition: service_healthy
+
+  pyroscope:
+    image: grafana/pyroscope:2.4.3
+    container_name: app-dev-pyroscope${INSTANCE_SUFFIX:-}
+    env_file:
+      - ./config/pyroscope/config.env
+    ports:
+      - "${PYROSCOPE_PORT:-4040}:4040"
+    restart: always
+    profiles:
+      - monitoring
+
+  loki:
+    image: grafana/loki:3.7
+    container_name: app-dev-loki${INSTANCE_SUFFIX:-}
+    depends_on:
+      init-permissions:
+        condition: service_completed_successfully
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./config/loki/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/tmp/loki
+    profiles:
+      - monitoring
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.165.0
+    container_name: app-dev-otel-collector${INSTANCE_SUFFIX:-}
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./config/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+    profiles:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    container_name: app-dev-prometheus${INSTANCE_SUFFIX:-}
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+    volumes:
+      - ./config/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    container_name: app-dev-grafana${INSTANCE_SUFFIX:-}
+    volumes:
+      - ./config/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./config/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards/files
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "${GRAFANA_PORT:-3020}:3000"
+    profiles:
+      - monitoring
+
+  rustfs:
+    image: rustfs/rustfs:1.0.0-beta.8
+    container_name: app-dev-rustfs${INSTANCE_SUFFIX:-}
+    env_file:
+      - ./config/rustfs/config.env
+    ports:
+      - '${RUSTFS_API_PORT:-9000}:9000'
+      - '${RUSTFS_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - rustfs_data:/data
+
+volumes:
+  postgres17_data:
+  loki_data:
+  prometheus_data:
+  rustfs_data:

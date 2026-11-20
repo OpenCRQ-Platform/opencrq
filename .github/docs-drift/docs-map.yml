@@ -1,0 +1,134 @@
+# A document is audited when one of its watched paths changed. Keep the watches
+# few and high-signal: a path that moves weekly for unrelated reasons (dependency
+# bumps, generated files, new migrations) buys a weekly audit and almost never
+# reveals drift. The monthly deep run covers every document anyway.
+#
+# A document always triggers its own audit, no need to list it in its watches.
+# Check any change with .github/docs-drift/scripts/dry-run.js, which also refuses
+# any markdown file under docs/ that is missing from this map.
+#
+# An index document watches the documents it indexes: what it can get wrong is
+# announcing a page that moved or disappeared.
+
+- doc: docs/README.md
+  watches:
+    - docs/*/README.md
+
+- doc: docs/deployment/README.md
+  watches:
+    - docs/deployment/*.md
+
+- doc: docs/deployment/architecture.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/index-pm.ts
+    - docker/**
+
+- doc: docs/deployment/asset-consolidation.md
+  watches:
+    - module/src/modules/supporting-assets/**
+
+- doc: docs/deployment/openaev-connector.md
+  watches:
+    - back/src/features/openaev-sync/**
+    - module/src/modules/supporting-assets/**
+
+- doc: docs/deployment/configuration.md
+  watches:
+    - back/src/config-schema.ts
+
+- doc: docs/deployment/docker.md
+  watches:
+    - docker/**
+
+- doc: docs/deployment/metrics.md
+  watches:
+    - back/src/engines/filigran-telemetry/**
+    - back/src/config-schema.ts
+
+- doc: docs/deployment/opencti-connector.md
+  watches:
+    - back/src/features/opencti/**
+
+- doc: docs/deployment/usage-telemetry.md
+  watches:
+    - back/src/engines/filigran-telemetry/**
+
+- doc: docs/development/README.md
+  watches:
+    - docs/development/*.md
+
+- doc: docs/development/development.md
+  watches:
+    - infra/local/**
+    - .yarnrc.yml
+    - .claude/skills/**
+    - scripts/devenv.mjs
+    - scripts/perf/**
+    - back/src/features/edition/edition-feature.ts
+    - scripts/secret-scan.sh
+    - .githooks/**
+    - .betterleaks.toml
+
+- doc: .claude/skills/devenv/SKILL.md
+  watches:
+    - scripts/devenv.mjs
+    - back/src/features/edition/edition-feature.ts
+
+- doc: .claude/skills/check-ts/SKILL.md
+  watches:
+    - scripts/ci/**
+
+- doc: .claude/skills/lint/SKILL.md
+  watches:
+    - scripts/ci/**
+
+- doc: .claude/skills/test/SKILL.md
+  watches:
+    - scripts/ci/**
+
+- doc: .claude/skills/verify-change/SKILL.md
+  watches:
+    - scripts/devenv.mjs
+
+- doc: .claude/skills/open-pr/SKILL.md
+  watches:
+    - .github/PULL_REQUEST_TEMPLATE.md
+    - .github/LABELS.md
+
+- doc: .claude/skills/create-issue/SKILL.md
+  watches:
+    - .github/ISSUE_TEMPLATE/**
+    - .github/LABELS.md
+
+- doc: docs/quick-start.md
+  watches:
+    - infra/local/**
+    - back/src/config-schema.ts
+
+- doc: README.md
+  watches:
+    - docs/quick-start.md
+    - docs/*/README.md
+    - .github/img/logo_opencrq.svg
+    - LICENSE
+
+- doc: AGENTS.md
+  watches:
+    - .agents/instructions/**
+    - .github/workflows/ci.yml
+    - .yarnrc.yml
+
+- doc: .agents/instructions/agent-hub.md
+  watches:
+    - scripts/render-agent-files.mjs
+
+- doc: .agents/instructions/drizzle-schema.md
+  watches:
+    - module/drizzle.config.ts
+    - module/src/db/migration-conventions.ts
+    - module/src/db/index.ts
+
+- doc: .agents/instructions/i18n.md
+  watches:
+    - front/lingui.config.ts

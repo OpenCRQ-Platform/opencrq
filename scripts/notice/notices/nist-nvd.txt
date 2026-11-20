@@ -1,0 +1,6 @@
+This product uses the NVD API but is not endorsed or certified by the NVD.
+
+National Vulnerability Database, National Institute of Standards and Technology,
+https://nvd.nist.gov/. The NVD API terms of use (https://nvd.nist.gov/developers/terms-of-use) ask
+for the sentence above to be displayed within the application: OpenCRQ shows it on the NIST NVD CVE
+connector's page.

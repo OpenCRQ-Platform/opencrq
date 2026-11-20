@@ -1,0 +1,229 @@
+{
+  "type": "bundle",
+  "id": "bundle--0198c2f1-3e48-7a5c-9d11-5f0a2c7b41ad",
+  "objects": [
+    {
+      "id": "intrusion-set--e3f64090-5d3b-5f95-9a29-535c0b2bed4d",
+      "spec_version": "2.1",
+      "type": "intrusion-set",
+      "created": "2017-05-31T21:31:48.664Z",
+      "modified": "2026-09-03T15:35:36.462Z",
+      "revoked": false,
+      "confidence": 100,
+      "lang": "en",
+      "name": "iron twilight",
+      "description": "Synthetic intrusion set used to exercise MITRE id resolution on a renumbered attack-pattern export.",
+      "aliases": [
+        "Sednit",
+        "SNAKEMACKEREL",
+        "Tsar Team",
+        "TG-4127",
+        "STRONTIUM",
+        "Swallowtail",
+        "IRON TWILIGHT",
+        "Group 74",
+        "SIG40",
+        "G0007",
+        "ATK5",
+        "Fighting Ursa",
+        "Blue Athena",
+        "TA422",
+        "T-APT-12",
+        "APT-C-20",
+        "UAC-0028",
+        "FROZENLAKE",
+        "Forest Blizzard",
+        "GruesomeLarch",
+        "APT 28",
+        "TsarTeam",
+        "Group-4127",
+        "Grey-Cloud",
+        "tag-0700",
+        "threat group-4127",
+        "petrovite",
+        "APT-Sancie",
+        "FANCYBEAR",
+        "Pawn Storm",
+        "APT28",
+        "Sofacy",
+        "APT28 (Fancy Bear)",
+        "Fancy Bear"
+      ],
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "url": "https://attack.mitre.org/groups/G0007",
+          "external_id": "G0007"
+        }
+      ]
+    },
+    {
+      "id": "attack-pattern--8180a360-cca4-5911-850e-07d17893cbf8",
+      "spec_version": "2.1",
+      "type": "attack-pattern",
+      "created": "2020-03-02T19:05:18.137Z",
+      "modified": "2026-09-02T13:14:59.731Z",
+      "revoked": false,
+      "confidence": 100,
+      "lang": "en",
+      "name": "Spearphishing Attachment",
+      "description": "Adversaries may send spearphishing emails with a malicious attachment in an attempt to gain access to victim systems. Spearphishing attachment is a specific variant of spearphishing. Spearphishing attachment is different from other forms of spearphishing in that it employs the use of malware attached to an email. All forms of spearphishing are electronically delivered social engineering targeted at a specific individual, company, or industry. In this scenario, adversaries attach a file to the spearphishing email and usually rely upon [User Execution](https://attack.mitre.org/techniques/T1204) to gain execution.(Citation: Unit 42 DarkHydrus July 2018) Spearphishing may also involve social engineering techniques, such as posing as a trusted source.\n\nThere are many options for the attachment such as Microsoft Office documents, executables, PDFs, or archived files. Upon opening the attachment (and potentially clicking past protections), the adversary's payload exploits a vulnerability or directly executes on the user's system. The text of the spearphishing email usually tries to give a plausible reason why the file should be opened, and may explain how to bypass system protections in order to do so. The email may also contain instructions on how to decrypt an attachment, such as a zip file password, in order to evade email boundary defenses. Adversaries frequently manipulate file extensions and icons in order to make attached executables appear to be document files, or files exploiting one application appear to be a file for a different one.",
+      "aliases": [
+        "Phishing: Spearphishing Attachment",
+        "T1566.001"
+      ],
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "mitre-attack-v18",
+          "phase_name": "initial-access"
+        },
+        {
+          "kill_chain_name": "mitre-attack",
+          "phase_name": "initial-access"
+        },
+        {
+          "kill_chain_name": "mitre-attack-v19",
+          "phase_name": "initial-access"
+        }
+      ],
+      "external_references": [
+        {
+          "source_name": "Microsoft Anti Spoofing",
+          "description": "Microsoft. (2020, October 13). Anti-spoofing protection in EOP. Retrieved October 19, 2020.",
+          "url": "https://docs.microsoft.com/en-us/microsoft-365/security/office-365-security/anti-spoofing-protection?view=o365-worldwide"
+        },
+        {
+          "source_name": "Unit 42 DarkHydrus July 2018",
+          "description": "Falcone, R., et al. (2018, July 27). New Threat Actor Group DarkHydrus Targets Middle East Government. Retrieved August 2, 2018.",
+          "url": "https://researchcenter.paloaltonetworks.com/2018/07/unit42-new-threat-actor-group-darkhydrus-targets-middle-east-government/"
+        },
+        {
+          "source_name": "mitre-attack",
+          "url": "https://attack.mitre.org/techniques/T1193",
+          "external_id": "T1193"
+        },
+        {
+          "source_name": "Elastic - Koadiac Detection with EQL",
+          "description": "Stepanic, D.. (2020, January 13). Embracing offensive tooling: Building detections against Koadic using EQL. Retrieved November 30, 2020.",
+          "url": "https://www.elastic.co/blog/embracing-offensive-tooling-building-detections-against-koadic-using-eql"
+        },
+        {
+          "source_name": "ACSC Email Spoofing",
+          "description": "Australian Cyber Security Centre. (2012, December). Mitigating Spoofed Emails Using Sender Policy Framework. Retrieved November 17, 2024.",
+          "url": "https://web.archive.org/web/20210708014107/https://www.cyber.gov.au/sites/default/files/2019-03/spoof_email_sender_policy_framework.pdf"
+        },
+        {
+          "source_name": "Elastic - Koadiac Detection with EQL",
+          "description": "Stepanic, D.. (2020, January 13). Embracing offensive tooling: Building detections against Koadic using EQL. Retrieved November 17, 2024.",
+          "url": "https://www.elastic.co/security-labs/embracing-offensive-tooling-building-detections-against-koadic-using-eql"
+        },
+        {
+          "source_name": "mitre-attack",
+          "url": "https://attack.mitre.org/techniques/T1566/001",
+          "external_id": "T1566.001"
+        },
+        {
+          "source_name": "ACSC Email Spoofing",
+          "description": "Australian Cyber Security Centre. (2012, December). Mitigating Spoofed Emails Using Sender Policy Framework. Retrieved October 19, 2020.",
+          "url": "https://www.cyber.gov.au/sites/default/files/2019-03/spoof_email_sender_policy_framework.pdf"
+        },
+        {
+          "source_name": "capec",
+          "url": "https://capec.mitre.org/data/definitions/163.html",
+          "external_id": "CAPEC-163"
+        }
+      ],
+      "extensions": {
+        "extension-definition--322b8f77-262a-4cb8-a915-1e441e00329b": {
+          "extension_type": "property-extension",
+          "id": "T1566.001"
+        }
+      }
+    },
+    {
+      "id": "attack-pattern--e08fc04a-2ef7-5f05-b788-a4f8b6c340ed",
+      "spec_version": "2.1",
+      "type": "attack-pattern",
+      "created": "2019-09-04T19:26:12.441Z",
+      "modified": "2026-09-09T10:29:36.783Z",
+      "revoked": false,
+      "confidence": 100,
+      "lang": "en",
+      "name": "Internal Spearphishing",
+      "description": "After they already have access to accounts or systems within the environment, adversaries may use internal spearphishing to gain access to additional information or compromise other users within the same organization. Internal spearphishing is multi-staged campaign where a legitimate account is initially compromised either by controlling the user's device or by compromising the account credentials of the user. Adversaries may then attempt to take advantage of the trusted internal account to increase the likelihood of tricking more victims into falling for phish attempts, often incorporating [Impersonation](https://attack.mitre.org/techniques/T1684/001).(Citation: Trend Micro - Int SP)\n\nFor example, adversaries may leverage [Spearphishing Attachment](https://attack.mitre.org/techniques/T1566/001) or [Spearphishing Link](https://attack.mitre.org/techniques/T1566/002) as part of internal spearphishing to deliver a payload or redirect to an external site to capture credentials through [Input Capture](https://attack.mitre.org/techniques/T1056) on sites that mimic login interfaces.\n\nAdversaries may also leverage internal chat apps, such as Microsoft Teams, to spread malicious content or engage users in attempts to capture sensitive information and/or credentials.(Citation: Int SP - chat apps)",
+      "aliases": [
+        "T1534",
+        "Internal Spearphishing - T1534"
+      ],
+      "kill_chain_phases": [
+        {
+          "kill_chain_name": "mitre-attack",
+          "phase_name": "lateral-movement"
+        },
+        {
+          "kill_chain_name": "mitre-attack-v19",
+          "phase_name": "lateral-movement"
+        },
+        {
+          "kill_chain_name": "mitre-attack-v18",
+          "phase_name": "lateral-movement"
+        }
+      ],
+      "external_references": [
+        {
+          "source_name": "THE FINANCIAL TIMES LTD 2019.",
+          "description": "THE FINANCIAL TIMES. (2019, September 2). A sobering day. Retrieved October 8, 2019.",
+          "url": "https://labs.ft.com/2013/05/a-sobering-day/?mhq5j=e6"
+        },
+        {
+          "source_name": "Trend Micro When Phishing Starts from the Inside 2017",
+          "description": "Chris Taylor. (2017, October 5). When Phishing Starts from the Inside. Retrieved October 8, 2019.",
+          "url": "https://blog.trendmicro.com/phishing-starts-inside/"
+        },
+        {
+          "source_name": "www.microsoft.com",
+          "description": "Microsoft Threat Intelligence. (2023, August 2). Midnight Blizzard conducts targeted social engineering over Microsoft Teams. Retrieved February 16, 2024.",
+          "url": "https://www.microsoft.com/en-us/security/blog/2023/08/02/midnight-blizzard-conducts-targeted-social-engineering-over-microsoft-teams/"
+        },
+        {
+          "source_name": "mitre-attack",
+          "url": "https://attack.mitre.org/techniques/T1534",
+          "external_id": "T1534"
+        },
+        {
+          "source_name": "Trend Micro - Int SP",
+          "description": "Trend Micro. (n.d.). Retrieved February 16, 2024.",
+          "url": "https://www.trendmicro.com/en_us/research.html"
+        }
+      ],
+      "extensions": {
+        "extension-definition--322b8f77-262a-4cb8-a915-1e441e00329b": {
+          "extension_type": "property-extension",
+          "id": "T1534"
+        }
+      }
+    },
+    {
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--3f5b8a21-9c47-4e0d-8b26-0a1d7f4c9e12",
+      "relationship_type": "uses",
+      "source_ref": "intrusion-set--e3f64090-5d3b-5f95-9a29-535c0b2bed4d",
+      "target_ref": "attack-pattern--8180a360-cca4-5911-850e-07d17893cbf8",
+      "created": "2025-03-22T18:15:26.945Z",
+      "modified": "2026-09-02T13:14:59.731Z",
+      "confidence": 80
+    },
+    {
+      "type": "relationship",
+      "spec_version": "2.1",
+      "id": "relationship--b71c4d09-2a58-4f13-9e77-6c3b8d2a5f04",
+      "relationship_type": "uses",
+      "source_ref": "intrusion-set--e3f64090-5d3b-5f95-9a29-535c0b2bed4d",
+      "target_ref": "attack-pattern--e08fc04a-2ef7-5f05-b788-a4f8b6c340ed",
+      "created": "2025-03-22T18:15:26.945Z",
+      "modified": "2026-09-02T13:14:59.731Z",
+      "confidence": 80
+    }
+  ]
+}

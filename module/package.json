@@ -1,0 +1,38 @@
+{
+  "name": "@app/module",
+  "private": true,
+  "version": "1.0.0",
+  "license": "SEE LICENSE IN LICENSE",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./stix-sanitize": "./src/modules/opencti-connector/stix-sanitize.ts"
+  },
+  "scripts": {
+    "lint": "run lint:lint",
+    "lint:fix": "run lint:lint:fix",
+    "check-ts": "run ts:check",
+    "ci": "run check-ts && run lint && run test && run db:check",
+    "db:generate": "drizzle-kit generate",
+    "db:check": "tsx scripts/check-migrations.ts",
+    "db:squash": "tsx scripts/squash-migrations.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@app/utils": "workspace:*",
+    "@opentelemetry/api": "1.10.0",
+    "drizzle-orm": "0.45.4",
+    "uuid": "14.0.3",
+    "uuidv7": "1.2.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "pg": "8.23.1",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

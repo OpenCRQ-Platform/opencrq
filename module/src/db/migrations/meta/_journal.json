@@ -1,0 +1,41 @@
+{
+  "entries": [
+    {
+      "when": 1794813729907,
+      "tag": "0000_baseline",
+      "idx": 0,
+      "version": "7",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794904924455,
+      "tag": "0001_nasty_thunderball",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794936052891,
+      "tag": "0002_tef_estimate_catalogue_read",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795095815730,
+      "tag": "0003_drop_tef_estimate_contributions",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795097828170,
+      "tag": "0004_soft_switch",
+      "breakpoints": true
+    }
+  ],
+  "version": "7",
+  "dialect": "postgresql"
+}

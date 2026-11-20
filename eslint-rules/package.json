@@ -1,0 +1,24 @@
+{
+  "name": "eslint-rules",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "lint": "run lint:lint",
+    "lint:fix": "run lint:lint:fix",
+    "check-ts": "run ts:check",
+    "test": "vitest run",
+    "ci": "run check-ts && run lint && run test"
+  },
+  "packageManager": "yarn@4.18.1",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@typescript-eslint/utils": "8.73.0",
+    "eslint": "10.15.0",
+    "typescript-eslint": "8.73.0",
+    "vitest": "5.1.0"
+  }
+}

@@ -1,0 +1,31 @@
+# An allowlist: a file outside it never reaches the build, so it never invalidates the build cache.
+*
+
+!package.json
+!yarn.lock
+!.yarnrc.yml
+!tsconfig.base.json
+!LICENSE
+!NOTICE
+!.flow
+
+!back
+!front
+!module
+!utils
+
+!eslint-rules/package.json
+!integration-tests/package.json
+
+# never sent, whatever the rules above
+**/node_modules
+**/dist
+**/coverage
+**/*.log
+**/.env
+**/.DS_Store
+**/*.test.ts
+**/*.test.tsx
+**/__fixtures__
+back/config/*.local.json
+back/config/local.*.json

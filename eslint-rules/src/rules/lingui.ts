@@ -1,0 +1,112 @@
+import type { Linter } from 'eslint';
+
+export const linguiRules: Linter.RulesRecord = {
+  /**
+   * Detect user-facing strings not wrapped with Lingui translation functions.
+   */
+  'lingui/no-unlocalized-strings': [
+    'error',
+    {
+      ignore: [
+        // Single non-capitalized word (likely a technical identifier)
+        '^(?![A-Z])\\S+$',
+        // ALL_CAPS constants (e.g., ENV_VAR, API_KEY)
+        '^[A-Z0-9_-]+$',
+        // Numbers only
+        '^\\d+$',
+        // Single special characters or punctuation
+        '^[^\\w\\s]$',
+        // Common non-translatable patterns
+        '^\\s*$',
+      ],
+      ignoreNames: [
+        { regex: { pattern: 'className', flags: 'i' } },
+        { regex: { pattern: 'styleName', flags: 'i' } },
+        { regex: { pattern: '^data-', flags: 'i' } },
+        { regex: { pattern: '^aria-', flags: 'i' } },
+        'key',
+        'id',
+        'name',
+        'type',
+        'src',
+        'srcSet',
+        'href',
+        'to',
+        'path',
+        'width',
+        'height',
+        'size',
+        'color',
+        'variant',
+        'align',
+        'side',
+        'sideOffset',
+        'role',
+        'htmlFor',
+        'displayName',
+        'testId',
+        'data-testid',
+        'asChild',
+        'method',
+        'action',
+        'autoComplete',
+        'inputMode',
+        'pattern',
+        'rel',
+        'target',
+        'as',
+        'slot',
+        'dir',
+        'orientation',
+        'collapsible',
+      ],
+      ignoreFunctions: [
+        'console.*',
+        'Error',
+        'TypeError',
+        'RangeError',
+        'cn',
+        'cva',
+        'require',
+        'import',
+        '*.addEventListener',
+        '*.removeEventListener',
+        '*.getElementById',
+        '*.querySelector',
+        '*.querySelectorAll',
+        '*.getAttribute',
+        '*.setAttribute',
+        '*.includes',
+        '*.indexOf',
+        '*.startsWith',
+        '*.endsWith',
+        '*.split',
+        '*.join',
+        '*.replace',
+        '*.match',
+        '*.test',
+        '*.dispatch',
+        '*.commit',
+        '*.postMessage',
+        '*.headers.set',
+        '*.headers.get',
+        '*.log',
+        '*.warn',
+        '*.error',
+        '*.info',
+        '*.debug',
+        'navigate',
+        'redirect',
+        'z.enum',
+      ],
+    },
+  ],
+  /** Ensure `t` calls are inside functions (not at module scope) */
+  'lingui/t-call-in-function': 'error',
+  /** Prevent translating single variables (useless for extraction) */
+  'lingui/no-single-variables-to-translate': 'error',
+  /** Prevent complex expressions inside translation messages */
+  'lingui/no-expression-in-message': 'error',
+  /** Prevent nesting <Trans> inside <Trans> */
+  'lingui/no-trans-inside-trans': 'error',
+};

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [".github/docs-drift/scripts/dry-run.js", ".agents/hooks/*.mjs", "scripts/devenv-fake-docker.mjs", "scripts/ci/sbom-modules.mjs"],
+      "ignoreDependencies": ["esbuild", "vite"]
+    },
+    "eslint-rules": {
+      "entry": ["src/rules/index.ts", "src/plugins/index.ts"]
+    },
+    "back": {
+      "entry": [
+        "src/index.ts",
+        "src/index-http.ts",
+        "src/index-worker.ts",
+        "src/index-pm.ts",
+        "src/tracing.ts",
+        "esbuild-plugins/*.ts",
+        "scripts/generate-countries-geojson.ts",
+        "local.eslint.config.ts"
+      ]
+    },
+    "front": {
+      "entry": [
+        "src/routes/**/*.{ts,tsx}",
+        "src/lib/lingui-po-module.ts",
+        "local.eslint.config.ts",
+        "lingui.config.ts",
+        "vite.config.ts"
+      ],
+      "vite": false
+    },
+    "module": {
+      "entry": [
+        "src/modules/mitre-attack/scripts/parse-stix.ts",
+        "src/modules/countries/scripts/generate-countries.ts",
+        "src/modules/sectors/scripts/generate-sectors.ts",
+        "src/modules/tef-catalog/scripts/import-tef-catalogue.ts"
+      ]
+    },
+    "utils": {},
+    "integration-tests": {
+      "entry": ["src/tests/**/*.test.ts"]
+    }
+  },
+  "ignoreWorkspaces": ["docs", "website"],
+  "ignoreBinaries": ["run", "podman"],
+  "ignoreDependencies": [
+    "@tanstack/table-core"
+  ],
+  "exclude": ["optionalPeerDependencies"],
+  "ignoreExportsUsedInFile": true
+}

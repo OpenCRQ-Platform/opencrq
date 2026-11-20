@@ -1,0 +1,45 @@
+name: Check Linked Issue
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, ready_for_review, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  check-linked-issue:
+    name: Check that the PR is linked to an issue
+    runs-on: ubuntu-26.04
+    # A docs-drift pull request names its tracking issue in the title and must not close it.
+    if: github.event.pull_request.user.login != 'docs-drift[bot]'
+    steps:
+      - name: Count the issues the PR closes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          # Read now rather than from the event: Renovate labels a pull request after opening it.
+          pr=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels,closingIssuesReferences)
+
+          if jq -e 'any(.labels[]; .name == "dependencies")' <<<"$pr" >/dev/null; then
+            echo "Dependency update, no linked issue required."
+            exit 0
+          fi
+
+          # An issue of another repository may be private, and must not stand for the link.
+          linked=$(jq -r --arg repo "$REPO" '[.closingIssuesReferences[] | select("\(.repository.owner.login)/\(.repository.name)" == $repo) | "#\(.number)"] | join(", ")' <<<"$pr")
+
+          if [ -n "$linked" ]; then
+            echo "Linked issue(s): $linked"
+            exit 0
+          fi
+
+          echo "::error::The pull request closes no issue of this repository."
+          echo "Write 'Closes #123' in its description."
+          exit 1

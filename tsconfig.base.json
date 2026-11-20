@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    /* Type Checking options */
+    "strict": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "noUncheckedSideEffectImports": true,
+    /* Language and Environment options */
+    "target": "es2022",
+    "lib": [
+      "es2024"
+    ],
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    /* Module */
+    "module": "es2022",
+    "resolveJsonModule": true,
+    /* Constraints options */
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+  }
+}

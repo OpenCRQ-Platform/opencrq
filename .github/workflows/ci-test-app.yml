@@ -1,0 +1,257 @@
+name: Run OpenCRQ app tests
+
+on:
+  workflow_call:
+    inputs:
+      checkout_ref:
+        description: "Reference of the branch or commit sha"
+        type: string
+        default: ${{ github.sha }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Nothing needs this job: gating the others on it put its whole duration on the critical path
+  # for a cache the parallel jobs never got to share anyway. It stays so that a lockfile mismatch
+  # reports as one failure instead of ten.
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - name: "Check no portal: links committed"
+        run: |
+          if grep -r '"portal:' --include='package.json' --exclude-dir=node_modules .; then
+            echo "::error::Found portal: protocol in package.json — remove the local link before committing"
+            exit 1
+          fi
+      - name: Check no workflow runs on a floating Ubuntu label
+        run: |
+          # The bracket keeps this step from matching its own line.
+          if grep -rn 'ubuntu-[l]atest' .github/workflows .github/actions; then
+            echo "::error::Found a floating Ubuntu runner label above — pin an explicit version such as ubuntu-26.04"
+            exit 1
+          fi
+      - uses: ./.github/actions/setup
+      - name: Check the lockfile is deduplicated
+        run: |
+          # A second copy of a package the backend bundle keeps external is one it can never load.
+          if ! yarn dedupe --check; then
+            echo "::error::yarn.lock holds ranges one version could satisfy — run yarn dedupe and commit the lockfile"
+            exit 1
+          fi
+      # Advisory: an advisory published overnight would otherwise turn every open pull request red.
+      # The scheduled vulnerability scan is the one that fails.
+      - name: Audit the production dependencies
+        run: |
+          if ! yarn audit:deps; then
+            echo "::warning::A production dependency has a high or critical advisory: see the step log"
+          fi
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - name: Run lint
+        run: yarn lint
+        env:
+          # Per ESLint process, and lint runs one per workspace in turn: the largest, front,
+          # fails at 2 GB and passes at 3 GB.
+          NODE_OPTIONS: '--max-old-space-size=4096'
+      # The app imports a committed copy of the design system stylesheet, so a version bump
+      # that skips `yarn fds:css` ships the new components against the old styles.
+      - name: Check fds.css matches the installed design system
+        run: yarn workspace @app/front fds:css && git diff --exit-code -- front/src/styles/fds.css
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - name: Restore the TypeScript build info
+        uses: actions/cache@v6
+        with:
+          path: |
+            .tsbuildinfo
+            */.tsbuildinfo
+          key: tsbuildinfo-${{ runner.os }}-${{ hashFiles('yarn.lock', 'tsconfig.base.json', '*/tsconfig.json') }}-${{ github.sha }}
+          restore-keys: |
+            tsbuildinfo-${{ runner.os }}-${{ hashFiles('yarn.lock', 'tsconfig.base.json', '*/tsconfig.json') }}-
+      - run: yarn check-ts
+        env:
+          TSC_EXTRA_FLAGS: '--incremental --tsBuildInfoFile .tsbuildinfo'
+          # Yarn runs about one tsc per two cores, so one at a time on this 2-vCPU runner: the
+          # largest, front, needs about 2.7 GB, above the runner's default heap limit.
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+  react-compiler:
+    name: React Compiler
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - name: Run React Compiler check
+        run: yarn workspace @app/front build:prod
+
+  i18n:
+    name: i18n
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - run: yarn workspace @app/front i18n:check
+
+  migrations:
+    name: Migrations Check
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - run: yarn workspace @app/module db:check
+
+  test:
+    name: Test
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+
+      - name: Runner information
+        continue-on-error: true
+        run: ./scripts/ci/runner-info.sh
+
+      - uses: ./.github/actions/setup
+      - name: Restore the transformed modules
+        uses: actions/cache@v6
+        with:
+          path: node_modules/.vitest-cache
+          key: vitest-modules-${{ runner.os }}-${{ hashFiles('yarn.lock', '*/vitest.config.ts', 'front/vite.config.ts') }}-${{ github.sha }}
+          restore-keys: |
+            vitest-modules-${{ runner.os }}-${{ hashFiles('yarn.lock', '*/vitest.config.ts', 'front/vite.config.ts') }}-
+      # The XTM One contract test downloads its files once per pinned commit, unauthenticated.
+      - name: Restore the XTM One contract files
+        uses: actions/cache@v6
+        with:
+          path: node_modules/.cache/xtm-one-contract
+          key: xtm-one-contract-${{ hashFiles('back/src/features/xtm-one/contract/xtm-one-contract.json') }}
+      - run: yarn test
+      - name: Test the repository scripts
+        run: yarn test:scripts
+
+      - name: Print resources stats
+        if: always()
+        continue-on-error: true
+        run: cat runner_resource_stat.log
+
+  dead-code:
+    name: Dead Code Check
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - name: Run dead code detection
+        run: yarn knip
+
+  agent-files:
+    name: Agent Files In Sync
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - name: Check the rendered agent files match their sources
+        run: yarn agent:check
+
+  notice:
+    name: Notice File In Sync
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - name: Check NOTICE matches the data the repository ships
+        run: yarn notice:check
+
+  integration-test:
+    name: Integration Tests (shard ${{ matrix.shard }}/7)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7]
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -h localhost -U app"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkout_ref }}
+      - uses: ./.github/actions/setup
+      - name: Build the backend bundles
+        # The metrics endpoint tests spawn real child processes against dist/, which is the only
+        # form a plain node can load this workspace in.
+        run: yarn workspace @app/back build
+      - name: Run integration tests
+        run: cd integration-tests && yarn test --shard=${{ matrix.shard }}/7 --reporter=default --reporter=json --outputFile.json=durations.json
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: app
+          PGPASSWORD: admin
+          VITEST_MAX_FORKS: 4
+      - name: Upload the measured durations
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-test-durations-${{ matrix.shard }}
+          path: integration-tests/durations.json
+          retention-days: 7
+
+  # Summary job so the branch protection rule (which requires "App test / Integration Tests")
+  # keeps working after the shard matrix was introduced.
+  integration-test-summary:
+    name: Integration Tests
+    needs: integration-test
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    if: always()
+    steps:
+      - name: All shards passed
+        run: |
+          if [ "${{ needs.integration-test.result }}" != "success" ]; then
+            echo "One or more integration test shards failed."
+            exit 1
+          fi

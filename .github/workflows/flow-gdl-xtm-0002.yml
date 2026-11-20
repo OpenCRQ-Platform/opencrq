@@ -1,0 +1,73 @@
+# Filigran Flow - the checker of GDL-XTM-0002: every dependency carries a license of licenses.yaml.
+# Distributed to every product repository as .github/workflows/flow-gdl-xtm-0002.yml, with the checker in
+# .flow/checkers/GDL-XTM-0002/ and the list in .flow/licenses.yaml; never edited there (FEP-0003 3.3).
+# Its job is named after the guideline: the gate "Flow checkers", the one check the default branch's ruleset requires,
+# waits for it on every pull request and merge queue (FEP-0001 3.7, FEP-0003 3.3).
+#
+# On a pull request it fails only on a violation the pull request adds; on the default branch, and every night,
+# it reports every violation: the product stays red until it conforms, and the Flow app shows it. It writes and
+# commits nothing: the build of each release writes THIRD_PARTY_NOTICES with the checker and ships it (GDL-XTM-0002-R007, GDL-XTM-0002-R009).
+name: Flow - GDL-XTM-0002
+
+on:
+  pull_request:
+  merge_group:
+  push:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  licenses:
+    name: GDL-XTM-0002
+    # every pull request; on a push, the default branch only
+    if: github.event_name != 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0               # the base of a pull request, to compare with
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+      # The licenses and notices read from the registries, and Maven's downloads: restored from the last run, and
+      # saved under a key of its own even when the check fails - the default branch stays red until it conforms -,
+      # so that what a run read is never read again.
+      - name: Restore what the registries answered
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .flow-cache
+            ~/.m2/repository
+          key: flow-gdl-dependencies-${{ hashFiles('**/package-lock.json', '**/yarn.lock', '**/poetry.lock', '**/uv.lock', '**/Cargo.lock', '**/requirements*.txt', '**/pom.xml') }}-${{ github.run_id }}
+          restore-keys: |
+            flow-gdl-dependencies-${{ hashFiles('**/package-lock.json', '**/yarn.lock', '**/poetry.lock', '**/uv.lock', '**/Cargo.lock', '**/requirements*.txt', '**/pom.xml') }}-
+            flow-gdl-dependencies-
+      - name: Check the licenses of every dependency
+        env:
+          # a pull request's base, or a merge queue's: only what it adds fails
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+        run: |
+          args=(--licenses .flow/licenses.yaml --cache .flow-cache/licenses.json --sarif flow-gdl-xtm-0002.sarif)
+          # a pull request: the violations it adds; the default branch: every one
+          if [ -n "$BASE" ]; then args+=(--base "$BASE"); fi
+          uv run .flow/checkers/GDL-XTM-0002/check.py . "${args[@]}"
+      # What it found, in Flow's profile of SARIF 2.1.0, for the Flow app and any tool that reads SARIF (FEP-0010 3.2).
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-gdl-xtm-0002
+          path: flow-gdl-xtm-0002.sarif
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Save what the registries answered
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .flow-cache
+            ~/.m2/repository
+          key: flow-gdl-dependencies-${{ hashFiles('**/package-lock.json', '**/yarn.lock', '**/poetry.lock', '**/uv.lock', '**/Cargo.lock', '**/requirements*.txt', '**/pom.xml') }}-${{ github.run_id }}
