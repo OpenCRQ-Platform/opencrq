@@ -8,7 +8,8 @@ import { isRecord } from './xtm-counterpart-utils';
  * OpenCTI is then read only when all its markings are among them.
  *
  * `null` when the answer is unknown (no identity to sign for, a refusal, a timeout, a malformed
- * answer): the reader then sees no mirrored threat (fail closed). `undefined` when the tenant has no
+ * answer): the reader then holds no clearance and sees only unmarked mirrored threats (fail closed
+ * means seeing less, never nothing, as OpenAEV ADR-009). `undefined` when the tenant has no
  * OpenCTI connection: there is no OpenCTI to ask and no marking to enforce, so nothing is narrowed. Answers are
  * kept a short while per tenant and user so a page's burst of reads asks OpenCTI once.
  */

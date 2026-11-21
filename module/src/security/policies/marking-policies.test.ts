@@ -48,11 +48,11 @@ describe('originMarkingScope', () => {
 });
 
 describe('threatMarkingPolicy', () => {
-  it('should hide every mirrored threat from a person whose markings are unknown', () => {
+  it('should leave only unmarked mirrored threats to a person whose markings are unknown (no clearance)', () => {
     const { sql, params } = render(readThreats(client(null)));
 
     expect(sql).toContain('<> \'connector\'');
-    expect(sql).not.toContain('<@');
+    expect(sql).toContain('<@ \'{}\'::text[]');
     expect(params).toEqual([]);
   });
 
@@ -106,10 +106,11 @@ describe('streamObjectMarkingPolicy', () => {
     expect(params).toEqual([TLP_GREEN]);
   });
 
-  it('should hide every mirrored object from a person whose markings are unknown', () => {
-    const { sql } = render(readMirror(client(null)));
+  it('should leave only unmarked mirrored objects to a person whose markings are unknown (no clearance)', () => {
+    const { sql, params } = render(readMirror(client(null)));
 
-    expect(sql).toBe('false');
+    expect(sql).toContain('<@ \'{}\'::text[]');
+    expect(params).toEqual([]);
   });
 
   it('should add no predicate for the rebuild job', () => {

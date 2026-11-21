@@ -33,8 +33,8 @@ export type EventOrigin =
   /**
    * `markings` are the OpenCTI marking definitions the person may read there (opencrq #31), resolved
    * once per request with their own identity: a threat mirrored from OpenCTI is read only when all
-   * its markings are among them. `null` is a person whose markings OpenCTI did not answer, who reads
-   * no mirrored threat (fail closed). Absent is an origin no marking scope was resolved for (a tenant
+   * its markings are among them. `null` is a person whose markings OpenCTI did not answer, who holds
+   * no clearance and reads only unmarked mirrored threats (fail closed, OpenAEV ADR-009). Absent is an origin no marking scope was resolved for (a tenant
    * with no OpenCTI connection, a server-side read): it is not narrowed. A job run borrowing the origin (`job` set) reads them all, so a
    * score blends every source whoever asked for it.
    */

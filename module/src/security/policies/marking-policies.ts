@@ -14,7 +14,8 @@ import type { EventOrigin, GatekeeperResult, SecurityPolicyRule } from '../polic
  * scope (a job, a job run borrowing a person's origin, a connector, an internal read, a tenant with
  * no OpenCTI connection): only a person's own request is narrowed, and only by the tenant procedure
  * that asked OpenCTI, so a score still blends every mirrored object (opencrq #31, a stated limit).
- * `null` is a person whose markings OpenCTI did not answer: they read no mirrored object.
+ * `null` is a person whose markings OpenCTI did not answer: they hold no clearance, so they read only
+ * the unmarked mirrored objects (OpenAEV ADR-009: failing closed means seeing less, never nothing).
  */
 export const originMarkingScope = (origin: EventOrigin): ReadonlyArray<string> | null | undefined => {
   if (origin.type !== 'client' || origin.job !== undefined) {
@@ -23,20 +24,20 @@ export const originMarkingScope = (origin: EventOrigin): ReadonlyArray<string> |
   return origin.markings;
 };
 
-const markingArray = (markings: ReadonlyArray<string>): SQL =>
-  (markings.length === 0
+/** The reader's clearance as a SQL array; no answer from OpenCTI is no clearance. */
+const markingArray = (markings: ReadonlyArray<string> | null): SQL =>
+  (markings === null || markings.length === 0
     ? sql`'{}'::text[]`
     : sql`array[${sql.join(markings.map((marking) => sql`${marking}`), sql`, `)}]::text[]`);
 
 /**
  * A threat row a reader holding `markings` may see: anything the tenant owns (an import, the
- * default catalog), or a row mirrored from OpenCTI whose markings are all among the reader's. A
- * mirrored row whose markings are unknown (`null`, ingested before they were stored) is hidden.
+ * default catalog), or a row mirrored from OpenCTI whose markings are all among the reader's
+ * (multi-marking is AND; an unmarked row is visible to all). A mirrored row whose markings are
+ * unknown (`null`, ingested before they were stored) is hidden.
  */
 const readableThreat = (kind: SQL | PgColumn, markingRefs: SQL | PgColumn, markings: ReadonlyArray<string> | null): SQL =>
-  (markings === null
-    ? sql`(${kind} <> 'connector')`
-    : sql`(${kind} <> 'connector' or (${markingRefs} is not null and ${markingRefs} <@ ${markingArray(markings)}))`);
+  sql`(${kind} <> 'connector' or (${markingRefs} is not null and ${markingRefs} <@ ${markingArray(markings)}))`;
 
 type TableWithThreatMarkings = PgTableWithColumns<any> & {
   kind: PgColumn,
@@ -86,7 +87,7 @@ const bodyMarkings = (data: SQL | PgColumn): SQL =>
   sql`(case when jsonb_typeof(${data}->'object_marking_refs') = 'array' then array(select jsonb_array_elements_text(${data}->'object_marking_refs')) else '{}'::text[] end)`;
 
 const readableBody = (data: SQL | PgColumn, markings: ReadonlyArray<string> | null): SQL =>
-  (markings === null ? sql`false` : sql`(${bodyMarkings(data)} <@ ${markingArray(markings)})`);
+  sql`(${bodyMarkings(data)} <@ ${markingArray(markings)})`;
 
 type TableWithStixBody = PgTableWithColumns<any> & { data: PgColumn };
 
