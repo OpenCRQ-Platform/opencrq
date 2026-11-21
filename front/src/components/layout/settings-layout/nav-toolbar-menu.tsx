@@ -18,12 +18,13 @@ export interface MenuEntry {
 
 /**
  * One row of the rail, drawn as the OpenAEV `RightMenu` row: 14px regular neutral text, a 16px icon at
- * half opacity in the secondary ink (full opacity and the primary ink when selected), the elevation
- * hover wash, and a selected row tinted with the brand primary and its 2px accent bar.
+ * half opacity in the secondary ink (full opacity and the primary ink when selected), the hover wash of
+ * the layer the rail sits on (layer 1), and a selected row tinted with the brand primary and its 2px
+ * accent bar.
  */
 const RAIL_ROW_CLASSES = cn(
-  'group/rail-row flex min-h-9 w-full items-center gap-2 px-4 py-1.5 text-left text-sm font-normal',
-  'text-default-primary transition-colors hover:bg-elevation-hover',
+  'flex min-h-9 w-full items-center gap-2 px-4 py-1.5 text-left text-sm font-normal',
+  'text-default-primary transition-colors hover:bg-[var(--fds-bg-elevation-hover-layer-1)]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset ring-focus',
 );
 
@@ -41,7 +42,7 @@ const RailIcon: FunctionComponent<{ icon?: ReactElement, active?: boolean }> = (
       aria-hidden
       className={cn(
         'flex size-4 shrink-0 items-center justify-center [&_svg]:size-4',
-        active ? 'text-default-primary opacity-100' : 'text-default-secondary opacity-50 group-data-[status=active]/rail-row:text-default-primary group-data-[status=active]/rail-row:opacity-100',
+        active ? 'text-default-primary opacity-100' : 'text-default-secondary opacity-50',
       )}
     >
       {icon}
@@ -55,6 +56,8 @@ const RailLabel: FunctionComponent<{ entry: MenuEntry }> = ({ entry }) => (
   </span>
 );
 
+// The icon emphasis follows the router's own active state, handed to the render function, so the
+// selected row's icon is drawn at full opacity whatever the CSS variant support of the build.
 const MenuLink: FunctionComponent<{ entry: MenuEntry }> = ({ entry }) => (
   <Link
     activeOptions={{ exact: false }}
@@ -62,9 +65,13 @@ const MenuLink: FunctionComponent<{ entry: MenuEntry }> = ({ entry }) => (
     className={cn(RAIL_ROW_CLASSES, entry.linkClassName)}
     {...entry.linkOption}
   >
-    <RailIcon icon={entry.icon} />
-    <RailLabel entry={entry} />
-    {entry.chip}
+    {({ isActive }: { isActive: boolean }) => (
+      <>
+        <RailIcon icon={entry.icon} active={isActive} />
+        <RailLabel entry={entry} />
+        {entry.chip}
+      </>
+    )}
   </Link>
 );
 
@@ -83,7 +90,7 @@ const MenuGroup: FunctionComponent<{ entry: MenuEntry }> = ({ entry }) => {
         <AccordionContent className="pb-0">
           <div className="flex flex-col">
             {entry.children?.map((child, idx) => (
-              <MenuLink key={child.linkOption?.href ?? `${idx}-${child.label}`} entry={{ ...child, linkClassName: cn('pl-10', child.linkClassName) }} />
+              <MenuLink key={child.linkOption?.href ?? `${idx}-${child.label}`} entry={{ ...child, linkClassName: cn('pl-12', child.linkClassName) }} />
             ))}
           </div>
         </AccordionContent>

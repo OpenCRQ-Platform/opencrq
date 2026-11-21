@@ -25,3 +25,17 @@ nothing shows a no-results state that offers to clear them, distinct from the em
 - **No-results state.** No component for "a search or filter matched nothing". Stopgap:
   `front/src/components/ui/list-no-results.tsx` (`ListNoResults`, with Clear filters). Ask: an empty
   and a no-results state built into the table, the toolbar kept above it.
+
+## Icons (`@filigran/design-system@1.9.0`)
+
+Every icon goes through the FDS `<Icon>`, never `lucide-react`. What the settings rails needed that the
+vocabulary and the sizes do not offer yet:
+
+- **Missing glyphs.** `factory` (Sectors), `trending-down` (Loss Drivers), `gauge` (CRQ Indicators) and
+  `crosshair` (MITRE ATT&CK). Stopgaps: `custom/city`, `arrow-down-left`, `chart-column` and
+  `custom/attack-pattern` in `front/src/components/shared/taxonomies-toolbar-menu.tsx` and
+  `front/src/routes/_auth/$tenantId/{-$organizationId}/settings/engine/route.tsx`. Ask: add the four
+  Lucide glyphs to the generated registry.
+- **18px size.** The OpenAEV scope switch draws its icons at 18px; `<Icon>` allows 16, 20 and 24 only.
+  Stopgap: 20px in `front/src/components/layout/settings-layout/scope-switcher.tsx`. Ask: an 18px size, or
+  a stated FDS size for the scope switch tile.
