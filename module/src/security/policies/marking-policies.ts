@@ -7,7 +7,7 @@
 import { exists, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { PgColumn, PgTableWithColumns, PgUUID } from 'drizzle-orm/pg-core';
-import type { EventOrigin, GatekeeperResult, SecurityPolicyRule } from '../policy';
+import type { EventOrigin, GatekeeperResult, OpenCtiReaderAccess, SecurityPolicyRule } from '../policy';
 
 /**
  * The OpenCTI markings a client origin may read, or `undefined` when the origin carries no marking
@@ -24,22 +24,102 @@ export const originMarkingScope = (origin: EventOrigin): ReadonlyArray<string> |
   return origin.markings;
 };
 
-/** The reader's clearance as a SQL array; no answer from OpenCTI is no clearance. */
-const markingArray = (markings: ReadonlyArray<string> | null): SQL =>
-  (markings === null || markings.length === 0
+/**
+ * Who the person is in OpenCTI (opencrq #35): `undefined` when the origin carries no marking scope or
+ * no identity was resolved with it (nothing narrowed on organizations and members), `null` when
+ * OpenCTI did not answer for them (they belong to no organization and no member list).
+ */
+export const originOpenCtiAccess = (origin: EventOrigin): OpenCtiReaderAccess | null | undefined => {
+  if (originMarkingScope(origin) === undefined || origin.type !== 'client') {
+    return undefined;
+  }
+  return origin.openctiAccess;
+};
+
+/** A list of ids as a SQL text array. */
+const textArray = (values: ReadonlyArray<string>): SQL =>
+  (values.length === 0
     ? sql`'{}'::text[]`
-    : sql`array[${sql.join(markings.map((marking) => sql`${marking}`), sql`, `)}]::text[]`);
+    : sql`array[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::text[]`);
+
+/** The reader's clearance as a SQL array; no answer from OpenCTI is no clearance. */
+const markingArray = (markings: ReadonlyArray<string> | null): SQL => textArray(markings ?? []);
+
+const OPENCTI_STIX_EXTENSION = 'extension-definition--ea279b3e-5c71-4632-ac08-831c66a786ba';
+
+/**
+ * The OpenCTI types organization sharing never restricts (`STIX_ORGANIZATIONS_UNRESTRICTED` in
+ * opencti-graphql `schema/stixDomainObject.ts`, the subtypes of the location and meta families
+ * spelled out since the mirror holds the type name alone).
+ */
+const ORGANIZATION_UNRESTRICTED_TYPES = [
+  'Organization', 'Sector', 'Location', 'Region', 'Country', 'City', 'Administrative-Area', 'Position',
+  'Marking-Definition', 'Label', 'External-Reference', 'Kill-Chain-Phase', 'Vocabulary',
+];
+
+/** The OpenCTI extension of a mirrored STIX body. */
+const octiExtension = (data: SQL | PgColumn): SQL => sql`(${data}->'extensions'->${OPENCTI_STIX_EXTENSION})`;
+
+/** A JSON value as an array, anything else (absent included) as an empty one. */
+const jsonArray = (value: SQL): SQL => sql`(case when jsonb_typeof(${value}) = 'array' then ${value} else '[]'::jsonb end)`;
+
+/**
+ * Whether OpenCTI's organization sharing and authorized members admit the reader to a mirrored body,
+ * as `checkUserCanAccessStixElement` (opencti-graphql `utils/access.ts`) decides once the markings
+ * passed: an object restricted to members admits only a member (an entry naming the user, one of
+ * their organizations or groups, or ALL, whose group restriction they meet); otherwise an object of a
+ * restricted type, when the platform has a platform organization and the reader is outside it, is
+ * read only when it is shared with one of their organizations or is their own individual. A reader
+ * OpenCTI did not answer for reads no member-restricted object and no object shared with organizations.
+ */
+const admittedBody = (data: SQL | PgColumn, access: OpenCtiReaderAccess | null): SQL => {
+  const extension = octiExtension(data);
+  const members = jsonArray(sql`${extension}->'authorized_members'`);
+  const granted = jsonArray(sql`${extension}->'granted_refs_ids'`);
+  const hasMembers = sql`(jsonb_array_length(${members}) > 0)`;
+  const unrestricted = sql`(coalesce(${extension}->>'type', '') = any(${textArray(ORGANIZATION_UNRESTRICTED_TYPES)}))`;
+  if (access === null) {
+    return sql`(not ${hasMembers} and (${unrestricted} or jsonb_array_length(${granted}) = 0))`;
+  }
+  if (access.bypass) {
+    return sql`true`;
+  }
+  const memberIds = textArray([access.userId, ...access.organizationIds, ...access.groupIds]);
+  const groupIds = textArray(access.groupIds);
+  const isMember = sql`exists(select 1 from jsonb_array_elements(${members}) as member where (member->>'id' = 'ALL' or member->>'id' = any(${memberIds})) and (select coalesce(bool_and(restriction = any(${groupIds})), true) from jsonb_array_elements_text(${jsonArray(sql`member->'groups_restriction_ids'`)}) as restriction))`;
+  const outsidePlatformOrganization = access.platformOrganizationId !== null
+    && !access.organizationIds.includes(access.platformOrganizationId);
+  const sharedWithReader = outsidePlatformOrganization
+    ? sql`(${extension}->>'id' = ${access.individualId ?? ''} or exists(select 1 from jsonb_array_elements_text(${granted}) as organization where organization = any(${textArray(access.organizationIds)})))`
+    : sql`true`;
+  return sql`((not ${hasMembers} or ${isMember}) and (${unrestricted} or ${hasMembers} or ${sharedWithReader}))`;
+};
+
+interface ThreatColumns {
+  tenantId: SQL | PgColumn,
+  stixId: SQL | PgColumn,
+  kind: SQL | PgColumn,
+  markingRefs: SQL | PgColumn,
+}
 
 /**
  * A threat row a reader holding `markings` may see: anything the tenant owns (an import, the
  * default catalog), or a row mirrored from OpenCTI whose markings are all among the reader's
- * (multi-marking is AND; an unmarked row is visible to all). A mirrored row whose markings are
- * unknown (`null`, ingested before they were stored) is hidden.
+ * (multi-marking is AND; an unmarked row is visible to all) and whose mirrored body, when the mirror
+ * holds it, admits them on organization sharing and authorized members (opencrq #35). A mirrored row
+ * whose markings are unknown (`null`, ingested before they were stored) is hidden.
  */
-const readableThreat = (kind: SQL | PgColumn, markingRefs: SQL | PgColumn, markings: ReadonlyArray<string> | null): SQL =>
-  sql`(${kind} <> 'connector' or (${markingRefs} is not null and ${markingRefs} <@ ${markingArray(markings)}))`;
+const readableThreat = (row: ThreatColumns, markings: ReadonlyArray<string> | null, access: OpenCtiReaderAccess | null | undefined): SQL => {
+  const marked = sql`${row.markingRefs} is not null and ${row.markingRefs} <@ ${markingArray(markings)}`;
+  const admitted = access === undefined
+    ? sql`true`
+    : sql`not exists(select 1 from opencti_stream_objects as threat_body where threat_body.tenant_id = ${row.tenantId} and threat_body.stix_id = ${row.stixId} and threat_body.deleted_at is null and not ${admittedBody(sql`threat_body.data`, access)})`;
+  return sql`(${row.kind} <> 'connector' or (${marked} and ${admitted}))`;
+};
 
 type TableWithThreatMarkings = PgTableWithColumns<any> & {
+  tenantId: PgColumn,
+  stixId: PgColumn,
   kind: PgColumn,
   markingRefs: PgColumn,
 };
@@ -55,7 +135,7 @@ const noWritePredicate = (): GatekeeperResult => undefined;
 export const threatMarkingPolicy: SecurityPolicyRule<TableWithThreatMarkings> = {
   read: (origin, table): GatekeeperResult => {
     const markings = originMarkingScope(origin);
-    return markings === undefined ? undefined : readableThreat(table.kind, table.markingRefs, markings);
+    return markings === undefined ? undefined : readableThreat(table, markings, originOpenCtiAccess(origin));
   },
   update: noWritePredicate,
   delete: noWritePredicate,
@@ -73,7 +153,8 @@ export const threatAnalysisMarkingPolicy: SecurityPolicyRule<TableWithAnalysisId
     if (markings === undefined) {
       return undefined;
     }
-    return exists(sql`(select 1 from threat_analyses as marked where marked.id = ${table.analysisId} and ${readableThreat(sql`marked.kind`, sql`marked.marking_refs`, markings)})`);
+    const row = { tenantId: sql`marked.tenant_id`, stixId: sql`marked.stix_id`, kind: sql`marked.kind`, markingRefs: sql`marked.marking_refs` };
+    return exists(sql`(select 1 from threat_analyses as marked where marked.id = ${table.analysisId} and ${readableThreat(row, markings, originOpenCtiAccess(origin))})`);
   },
   update: noWritePredicate,
   delete: noWritePredicate,
@@ -86,19 +167,22 @@ export const threatAnalysisMarkingPolicy: SecurityPolicyRule<TableWithAnalysisId
 const bodyMarkings = (data: SQL | PgColumn): SQL =>
   sql`(case when jsonb_typeof(${data}->'object_marking_refs') = 'array' then array(select jsonb_array_elements_text(${data}->'object_marking_refs')) else '{}'::text[] end)`;
 
-const readableBody = (data: SQL | PgColumn, markings: ReadonlyArray<string> | null): SQL =>
-  sql`(${bodyMarkings(data)} <@ ${markingArray(markings)})`;
+const readableBody = (data: SQL | PgColumn, markings: ReadonlyArray<string> | null, access: OpenCtiReaderAccess | null | undefined): SQL =>
+  (access === undefined
+    ? sql`(${bodyMarkings(data)} <@ ${markingArray(markings)})`
+    : sql`(${bodyMarkings(data)} <@ ${markingArray(markings)} and ${admittedBody(data, access)})`);
 
 type TableWithStixBody = PgTableWithColumns<any> & { data: PgColumn };
 
 /**
  * A raw mirrored object (a report, a relationship, an identity) a reader may see: all its markings
- * are among the reader's. Read-only, as above: the connector writes and the rebuild job reads all.
+ * are among the reader's, and its organization sharing and authorized members admit them (opencrq
+ * #35). Read-only, as above: the connector writes and the rebuild job reads all.
  */
 export const streamObjectMarkingPolicy: SecurityPolicyRule<TableWithStixBody> = {
   read: (origin, table): GatekeeperResult => {
     const markings = originMarkingScope(origin);
-    return markings === undefined ? undefined : readableBody(table.data, markings);
+    return markings === undefined ? undefined : readableBody(table.data, markings, originOpenCtiAccess(origin));
   },
   update: noWritePredicate,
   delete: noWritePredicate,
@@ -116,7 +200,7 @@ export const reportRefMarkingPolicy: SecurityPolicyRule<TableWithReportRef> = {
     if (markings === undefined) {
       return undefined;
     }
-    return exists(sql`(select 1 from opencti_stream_objects as cited_report where cited_report.tenant_id = ${table.tenantId} and cited_report.stix_id = ${table.reportStixId} and ${readableBody(sql`cited_report.data`, markings)})`);
+    return exists(sql`(select 1 from opencti_stream_objects as cited_report where cited_report.tenant_id = ${table.tenantId} and cited_report.stix_id = ${table.reportStixId} and ${readableBody(sql`cited_report.data`, markings, originOpenCtiAccess(origin))})`);
   },
   update: noWritePredicate,
   delete: noWritePredicate,

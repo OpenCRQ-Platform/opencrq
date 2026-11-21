@@ -1,13 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createReaderMarkingsResolver, parseAllowedMarkings, READER_MARKINGS_QUERY } from './reader-markings';
+import { createReaderMarkingsResolver, parseAllowedMarkings, parseReaderScope, READER_MARKINGS_QUERY } from './reader-markings';
 
 const CONNECTION = { url: 'https://opencti.example/', token: 'connector-token' };
 const SIGN = () => Promise.resolve('reader-jwt');
 const NO_SIGN = () => Promise.resolve(null);
 
-const answer = (markings: Array<string>) => new Response(JSON.stringify({
-  data: { me: { allowed_marking: markings.map((standard_id) => ({ standard_id })) } },
-}), { status: 200 });
+const body = (markings: Array<string>) => ({
+  data: {
+    me: {
+      id: 'octi-user',
+      individual_id: 'octi-individual',
+      allowed_marking: markings.map((standard_id) => ({ standard_id })),
+      objectOrganization: { edges: [{ node: { id: 'org-b' } }, { node: { id: 'org-a' } }] },
+      groups: { edges: [{ node: { id: 'group-1' } }] },
+      capabilities: [{ name: 'KNOWLEDGE' }],
+    },
+    settings: { platform_organization: { id: 'org-platform' } },
+  },
+});
+const answer = (markings: Array<string>) => new Response(JSON.stringify(body(markings)), { status: 200 });
 
 describe('parseAllowedMarkings', () => {
   it('should read the standard ids, deduplicated and sorted', () => {
@@ -21,12 +32,46 @@ describe('parseAllowedMarkings', () => {
   });
 });
 
+describe('parseReaderScope', () => {
+  it('should read the markings and who the reader is in OpenCTI', () => {
+    expect(parseReaderScope(body(['m-1']))).toEqual({
+      markings: ['m-1'],
+      access: {
+        userId: 'octi-user',
+        individualId: 'octi-individual',
+        organizationIds: ['org-a', 'org-b'],
+        groupIds: ['group-1'],
+        bypass: false,
+        platformOrganizationId: 'org-platform',
+      },
+    });
+  });
+
+  it('should read the BYPASS capability and a platform with no platform organization', () => {
+    const bypass = body([]);
+    bypass.data.me.capabilities = [{ name: 'BYPASS' }];
+    const scope = parseReaderScope({ data: { ...bypass.data, settings: { platform_organization: null } } });
+
+    expect(scope?.access.bypass).toBe(true);
+    expect(scope?.access.platformOrganizationId).toBeNull();
+  });
+
+  it('should answer null when the identity is read in part', () => {
+    const noSettings = { data: { me: body([]).data.me } };
+    const noId = { data: { ...body([]).data, me: { ...body([]).data.me, id: undefined } } };
+
+    expect(parseReaderScope(noSettings)).toBeNull();
+    expect(parseReaderScope(noId)).toBeNull();
+    expect(parseReaderScope({ errors: [{ message: 'forbidden' }] })).toBeNull();
+  });
+});
+
 describe('createReaderMarkingsResolver', () => {
   it('should ask OpenCTI as the reader, never with the connector token', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(answer(['m-1']));
     const resolver = createReaderMarkingsResolver(fetchImpl);
 
-    expect(await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN)).toEqual(['m-1']);
+    expect((await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN))?.markings).toEqual(['m-1']);
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe('https://opencti.example/graphql');
     expect(init.headers.Authorization).toBe('Bearer reader-jwt');
