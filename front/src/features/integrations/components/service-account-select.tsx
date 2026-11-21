@@ -1,17 +1,18 @@
 import { IconButton } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
-import { Link } from '@tanstack/react-router';
 import { X } from 'lucide-react';
 import type { FunctionComponent, Ref } from 'react';
+import type { ServiceAccountOption } from '../service-account-choice-utils';
 import { Select, SelectContent, SelectHelperText, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { selectableServiceAccounts } from '../service-account-choice-utils';
 
 interface ServiceAccountSelectProps {
   value: string,
   onChange: (value: string) => void,
   onBlur?: () => void,
   triggerRef?: Ref<HTMLButtonElement>,
-  serviceAccounts: Array<{ id: string, name: string, active: boolean }>,
+  serviceAccounts: ReadonlyArray<ServiceAccountOption>,
   /**
    * The currently persisted service account id, if any — kept selectable (flagged "(inactive)")
    * even once deactivated, so an already-configured account doesn't silently vanish from the list.
@@ -36,20 +37,16 @@ export const ServiceAccountSelect: FunctionComponent<ServiceAccountSelectProps> 
   required,
   error,
 }) => {
-  const activeServiceAccounts = serviceAccounts.filter((sa) => sa.active);
-  const configuredInactiveAccount = serviceAccounts.find((sa) => !sa.active && sa.id === configuredServiceAccountId);
-  const selectableServiceAccounts = configuredInactiveAccount ? [...activeServiceAccounts, configuredInactiveAccount] : activeServiceAccounts;
+  const selectable = selectableServiceAccounts(serviceAccounts, configuredServiceAccountId);
 
-  if (selectableServiceAccounts.length === 0) {
+  // The configure forms offer this select only next to "Create a new service account", so an empty
+  // tenant never reaches a dead end here.
+  if (selectable.length === 0) {
     return (
       <div>
         {label !== undefined && <SelectLabel required={required}>{label}</SelectLabel>}
         <p className="txt-sub-content text-muted-foreground">
           <Trans>No service account is available on this tenant.</Trans>
-          {' '}
-          <Link from="/$tenantId/{-$organizationId}" to="settings/security/service-accounts" className="underline">
-            <Trans>Create one first.</Trans>
-          </Link>
         </p>
       </div>
     );
@@ -65,7 +62,7 @@ export const ServiceAccountSelect: FunctionComponent<ServiceAccountSelectProps> 
               <SelectValue placeholder={t`Select a service account`} />
             </SelectTrigger>
             <SelectContent>
-              {selectableServiceAccounts.map((sa) => {
+              {selectable.map((sa) => {
                 const name = sa.name;
                 return (
                   <SelectItem key={sa.id} value={sa.id}>

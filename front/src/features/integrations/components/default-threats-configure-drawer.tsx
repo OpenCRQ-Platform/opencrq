@@ -109,7 +109,12 @@ const ScheduleForm: FunctionComponent<{ schedule: ConnectorSchedule }> = ({ sche
   // No service account: the connector writes as the platform, and the field stays empty.
   const form = useForm<ConfigureValues>({
     resolver: zodResolver(buildConfigureSchema()),
-    defaultValues: { serviceAccountId: '', ...toScheduleFields(schedule ?? MANUAL_SCHEDULE, browserTimeZone()) },
+    defaultValues: {
+      serviceAccountMode: 'existing',
+      newServiceAccountName: '',
+      serviceAccountId: '',
+      ...toScheduleFields(schedule ?? MANUAL_SCHEDULE, browserTimeZone()),
+    },
   });
   const setSchedule = useMutation(trpc.connectors.setSchedule.mutationOptions({
     meta: { successMessage: msg`Integration configured successfully.` },

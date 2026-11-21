@@ -8,6 +8,7 @@ import { isOriginAuthorizedForItsTenant } from '../tenant-access-utils';
 import { config } from '../../../config';
 import { router } from '../../../trpc';
 import { createLogger } from '../../../utils/logger';
+import { assertOneServiceAccountChoice, NewServiceAccountSchema } from '../integrations/new-service-account-input';
 import { computeTimelineProgressPercent } from './opencti-backfill-progress-utils';
 import { describeStreams, STREAM_RELATIONSHIPS, STREAM_VERDICTS, streamFilterGroupSchema } from './opencti-stream-filter-utils';
 
@@ -137,10 +138,14 @@ export const openctiRouter = (procedure: TenantProcedure) => router({
 
   configure: procedure
     .input(z.object({
-      serviceAccountId: z.uuid(),
+      // One of the two: an existing account, or one created in the same transaction as the binding.
+      serviceAccountId: z.uuid().optional(),
+      newServiceAccount: NewServiceAccountSchema.optional(),
       streamId: z.string().min(1),
     }))
+    .output(z.object({ serviceAccountId: z.string() }))
     .mutation(async ({ input, ctx: { services, origin } }) => {
+      assertOneServiceAccountChoice(input);
       if (!origin.tenantId) {
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
@@ -148,15 +153,25 @@ export const openctiRouter = (procedure: TenantProcedure) => router({
       if (!canManage) {
         throw new TRPCError({ code: 'FORBIDDEN' });
       }
-      const serviceAccount = await services.withOrigin(origin).serviceAccounts.getServiceAccount(input.serviceAccountId);
+      const scoped = services.withOrigin(origin);
+      if (input.newServiceAccount !== undefined) {
+        const serviceAccountId = await scoped.openctiConnector.configureWithNewServiceAccount(
+          origin.tenantId,
+          input.newServiceAccount.name,
+          input.streamId,
+        );
+        return { serviceAccountId };
+      }
+      const { serviceAccountId } = input;
+      if (serviceAccountId === undefined) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'A service account is required' });
+      }
+      const serviceAccount = await scoped.serviceAccounts.getServiceAccount(serviceAccountId);
       if (!serviceAccount) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Service account not found' });
       }
-      await services.withOrigin(origin).openctiConnector.configure(
-        origin.tenantId,
-        input.serviceAccountId,
-        input.streamId,
-      );
+      await scoped.openctiConnector.configure(origin.tenantId, serviceAccountId, input.streamId);
+      return { serviceAccountId };
     }),
 
   setEnabled: procedure

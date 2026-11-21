@@ -20,15 +20,17 @@ import type { OpenctiStream } from '../opencti-stream-filter-utils';
 import { ComboboxPanel } from '../../../components/shared';
 import { useTRPC } from '../../../lib';
 import { filterOptionsByLabel } from '../../../utils';
+import { defaultServiceAccountChoice, refineServiceAccountChoice, serviceAccountChoiceFields, toServiceAccountChoice } from '../service-account-choice-utils';
+import { getConnectors } from './connectors-list';
 import { OpenctiStreamFilter } from './opencti-stream-filter';
 import { OpenctiStreamOption } from './opencti-stream-option';
 import { OpenctiStreamHistoryNotice, OpenctiStreamVerdictNotice } from './opencti-stream-verdict';
-import { ServiceAccountSelect } from './service-account-select';
+import { ServiceAccountChoiceFields } from './service-account-choice-fields';
 
 const configureSchema = z.object({
   streamId: z.string().min(1),
-  serviceAccountId: z.string().min(1),
-});
+  ...serviceAccountChoiceFields(),
+}).superRefine((values, ctx) => refineServiceAccountChoice(values, ctx, { accountRequired: true }));
 
 type ConfigureFormValues = z.infer<typeof configureSchema>;
 
@@ -59,7 +61,7 @@ export const useOpenctiConfigure = ({ onSaved }: UseOpenctiConfigureOptions) => 
     resolver: zodResolver(configureSchema),
     defaultValues: {
       streamId: settings?.streamId ?? '',
-      serviceAccountId: settings?.serviceAccountId ?? '',
+      ...defaultServiceAccountChoice(getConnectors().opencti.name, serviceAccounts, settings?.serviceAccountId),
     },
   });
 
@@ -75,7 +77,15 @@ export const useOpenctiConfigure = ({ onSaved }: UseOpenctiConfigureOptions) => 
 
   return {
     form,
-    submit: (values: ConfigureFormValues) => configureMutation.mutate(values),
+    submit: (values: ConfigureFormValues) => {
+      const choice = toServiceAccountChoice(values);
+      // The stream needs an account: the schema refuses an empty existing one before it gets here.
+      if ('newServiceAccount' in choice) {
+        configureMutation.mutate({ streamId: values.streamId, newServiceAccount: choice.newServiceAccount });
+      } else if (choice.serviceAccountId !== null) {
+        configureMutation.mutate({ streamId: values.streamId, serviceAccountId: choice.serviceAccountId });
+      }
+    },
     isPending: configureMutation.isPending,
     settings,
     serviceAccounts,
@@ -148,22 +158,10 @@ export const OpenctiConfigureFields: FunctionComponent<{ configure: OpenctiConfi
           );
         }}
       />
-      <Controller
+      <ServiceAccountChoiceFields
         control={form.control}
-        name="serviceAccountId"
-        render={({ field, fieldState }) => (
-          <ServiceAccountSelect
-            value={field.value}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-            triggerRef={field.ref}
-            serviceAccounts={serviceAccounts}
-            configuredServiceAccountId={settings?.serviceAccountId ?? undefined}
-            label={t`Service account`}
-            required
-            error={fieldState.error?.message}
-          />
-        )}
+        serviceAccounts={serviceAccounts}
+        configuredServiceAccountId={settings?.serviceAccountId ?? undefined}
       />
     </>
   );

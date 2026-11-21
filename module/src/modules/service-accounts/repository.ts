@@ -92,6 +92,12 @@ export const serviceAccountsRepository = defineRepository({
     .innerJoin(views.serviceAccounts, eq(views.serviceAccountGroups.serviceAccountId, views.serviceAccounts.id))
     .where(eq(views.serviceAccountGroups.serviceAccountId, serviceAccountId)),
 
+  /** The tenant's group seeded under `slug` (e.g. `connectors`), if the caller sees it. */
+  findGroupIdBySlug: async ({ db, views }, slug: string) => db.select({ id: views.groups.id })
+    .from(views.groups)
+    .where(eq(views.groups.slug, slug))
+    .limit(1)
+    .then((rows) => rows.at(0)?.id ?? null),
   findGroupServiceAccounts: async ({ db, views }, groupId: string) => db.select({
     serviceAccount: {
       id: views.serviceAccounts.id,

@@ -1847,6 +1847,9 @@ msgstr "Une lacune du modèle, pas la vôtre : elle ne dit rien de votre posture
 msgid "A name is required"
 msgstr "Un nom est requis"
 
+msgid "A new service account is created with the integration, in the Connectors group."
+msgstr "Un nouveau compte de service est créé avec l'intégration, dans le groupe Connecteurs."
+
 msgid "A non-hostile actor whose benevolent or harmless intent inadvertently causes harm."
 msgstr "Un acteur non hostile dont l'intention bienveillante ou inoffensive cause un préjudice par inadvertance."
 
@@ -4109,9 +4112,6 @@ msgstr "Créer et gérer les utilisateurs de la plateforme."
 msgid "Create and manage tenants."
 msgstr "Créer et gérer les tenants."
 
-msgid "Create one first."
-msgstr "Commencez par en créer un."
-
 msgid "Create Risk Scenario"
 msgstr "Créer un scénario de risque"
 
@@ -4126,6 +4126,9 @@ msgstr "Créer des tenants"
 
 msgid "Created"
 msgstr "Créé"
+
+msgid "Created with the integration, in the Connectors group."
+msgstr "Créé avec l'intégration, dans le groupe Connecteurs."
 
 msgid "Creating..."
 msgstr "Création en cours..."
@@ -5043,6 +5046,9 @@ msgstr "Saisissez une probabilité maximale."
 
 msgid "Enter a name."
 msgstr "Saisissez un nom."
+
+msgid "Enter a name for the service account."
+msgstr "Saisissez un nom pour le compte de service."
 
 msgid "Enter a number of days."
 msgstr "Saisissez un nombre de jours."
@@ -10849,6 +10855,9 @@ msgstr "Sélectionner un secteur"
 msgid "Select a service account"
 msgstr "Sélectionner un compte de service"
 
+msgid "Select a service account."
+msgstr "Sélectionnez un compte de service."
+
 msgid "Select a tag"
 msgstr "Sélectionner un tag"
 
@@ -11939,6 +11948,9 @@ msgstr "Testée, non déclarée"
 
 msgid "Text"
 msgstr "Texte"
+
+msgid "The integration runs as an account the tenant already has."
+msgstr "L'intégration s'exécute avec un compte que le tenant possède déjà."
 
 msgid "The {listed} most recent are listed."
 msgstr "Les {listed} plus récents sont listés."
@@ -13550,6 +13562,9 @@ msgstr "USD"
 
 msgid "USD / day"
 msgstr "USD / jour"
+
+msgid "Use an existing service account"
+msgstr "Utiliser un compte de service existant"
 
 msgid "Use “{input}”"
 msgstr "Utiliser « {input} »"

@@ -1847,6 +1847,9 @@ msgstr "A modelling gap, not yours: it says nothing about your posture. These at
 msgid "A name is required"
 msgstr "A name is required"
 
+msgid "A new service account is created with the integration, in the Connectors group."
+msgstr "A new service account is created with the integration, in the Connectors group."
+
 msgid "A non-hostile actor whose benevolent or harmless intent inadvertently causes harm."
 msgstr "A non-hostile actor whose benevolent or harmless intent inadvertently causes harm."
 
@@ -4109,9 +4112,6 @@ msgstr "Create and manage platform users."
 msgid "Create and manage tenants."
 msgstr "Create and manage tenants."
 
-msgid "Create one first."
-msgstr "Create one first."
-
 msgid "Create Risk Scenario"
 msgstr "Create Risk Scenario"
 
@@ -4126,6 +4126,9 @@ msgstr "Create Tenants"
 
 msgid "Created"
 msgstr "Created"
+
+msgid "Created with the integration, in the Connectors group."
+msgstr "Created with the integration, in the Connectors group."
 
 msgid "Creating..."
 msgstr "Creating..."
@@ -5043,6 +5046,9 @@ msgstr "Enter a maximum probability."
 
 msgid "Enter a name."
 msgstr "Enter a name."
+
+msgid "Enter a name for the service account."
+msgstr "Enter a name for the service account."
 
 msgid "Enter a number of days."
 msgstr "Enter a number of days."
@@ -10849,6 +10855,9 @@ msgstr "Select a sector"
 msgid "Select a service account"
 msgstr "Select a service account"
 
+msgid "Select a service account."
+msgstr "Select a service account."
+
 msgid "Select a tag"
 msgstr "Select a tag"
 
@@ -11939,6 +11948,9 @@ msgstr "Tested, not declared"
 
 msgid "Text"
 msgstr "Text"
+
+msgid "The integration runs as an account the tenant already has."
+msgstr "The integration runs as an account the tenant already has."
 
 msgid "The {listed} most recent are listed."
 msgstr "The {listed} most recent are listed."
@@ -13550,6 +13562,9 @@ msgstr "USD"
 
 msgid "USD / day"
 msgstr "USD / day"
+
+msgid "Use an existing service account"
+msgstr "Use an existing service account"
 
 msgid "Use “{input}”"
 msgstr "Use “{input}”"
