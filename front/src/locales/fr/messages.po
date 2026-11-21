@@ -12977,6 +12977,9 @@ msgstr "Ce périmètre n'a aucun actif : rien n'y est mesuré tant qu'aucun acti
 msgid "This scope is measured over its mapped assets and holds none, so no simulation can run."
 msgstr "Ce périmètre est mesuré sur ses actifs mappés et n'en contient aucun : aucune simulation ne peut démarrer."
 
+msgid "This score is computed from every object mirrored from OpenCTI, including sources some users may not see there. It is not recomputed for what each user can read."
+msgstr "Ce score est calculé à partir de tous les objets répliqués depuis OpenCTI, y compris des sources que certains utilisateurs ne peuvent pas y voir. Il n'est pas recalculé selon ce que chacun peut lire."
+
 msgid "This search only finds outcomes this threat does not match."
 msgstr "Cette recherche ne trouve que des issues sans correspondance avec cette menace."
 
