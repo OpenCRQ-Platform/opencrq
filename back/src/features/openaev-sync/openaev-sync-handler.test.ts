@@ -217,7 +217,6 @@ const {
   mockGetAssetOverview,
   mockFindUsers,
   mockListTags,
-  mockFetchPostureCounters,
   mockPaginateAll,
 } = vi.hoisted(() => {
   const listTenants = vi.fn().mockResolvedValue([{ tenant_id: 'oa-tenant-1', tenant_name: 'Tenant A' }]);
@@ -329,7 +328,6 @@ describe('openaevSyncHandler', () => {
     mockGetAssetOverview.mockImplementation((_tenantId: string, assetId: string) => Promise.resolve({ asset_id: assetId }));
     mockFindUsers.mockResolvedValue([]);
     mockListTags.mockResolvedValue([]);
-    mockFetchPostureCounters.mockResolvedValue(new Map());
     mockGetConnectorId.mockResolvedValue('connector-id-abc');
     inventorySyncedHoursAgo(null);
     mockBulkUpsertAssets.mockResolvedValue(new Map([['asset-openaev-1', 'sa-uuid-1']]));
@@ -598,7 +596,6 @@ describe('openaevSyncHandler', () => {
 
       expect(mockListTags).not.toHaveBeenCalled();
       expect(mockSearchAssets).not.toHaveBeenCalled();
-      expect(mockFetchPostureCounters).not.toHaveBeenCalled();
       expect(mockGetInventoryAssetIdMap).toHaveBeenCalledWith('connector-id-abc');
       expect(mockSyncObservationStreams).toHaveBeenCalledOnce();
       expect(mockSyncObservationStreams.mock.calls[0][0].assetIdMap).toEqual(new Map([['asset-openaev-1', 'sa-uuid-1']]));
@@ -1327,13 +1324,6 @@ describe('openaevSyncHandler', () => {
       expect(mockSetAssetTags).toHaveBeenCalledWith('connector-id-abc', [
         { supportingAssetId: 'sa-uuid-1', tagIds: [] },
       ]);
-    });
-
-    it('leaves the posture to OpenAEV: no counters are read during the inventory', async () => {
-      await openaevSyncHandler(makeCtx());
-
-      expect(mockSearchAssets).toHaveBeenCalledOnce();
-      expect(mockFetchPostureCounters).not.toHaveBeenCalled();
     });
   });
 

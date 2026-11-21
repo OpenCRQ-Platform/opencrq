@@ -34,10 +34,15 @@ describe('supportingAssets.getOpenaevPosture (HTTP/tRPC)', () => {
   const posture = (supportingAssetId: string, asTenantId = tenantId) =>
     client.query('supportingAssets.getOpenaevPosture', { supportingAssetId }, { tenantId: asTenantId });
 
+  // asset_evidence is unique per (asset, technique, expectation, security platform): each finding of
+  // a test gets its own security platform so several findings can sit on one asset.
+  let findingSeq = 0;
+
   /** One OpenAEV finding of the asset, its latest test as given (`held` = not exposed); `null` = never tested. */
   const openaevFinding = async (assetId: string, held: boolean | null, connectorId = openaevConnectorId): Promise<void> => {
     const at = new Date(Date.now() - 60_000);
-    const evidenceId = await fixtures.attachTechnique(assetId, at, connectorId);
+    findingSeq += 1;
+    const evidenceId = await fixtures.attachTechnique(assetId, at, connectorId, { securityPlatformType: `EDR-${findingSeq}` });
     if (held !== null) {
       await insertSyncedVerdict(evidenceId, held ? 'dismissed' : 'applicable', at, { connectorId });
     }
