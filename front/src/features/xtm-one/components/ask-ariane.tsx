@@ -42,6 +42,8 @@ import { useEnterpriseEdition } from '../../edition';
 import { xtmOneLicenseSettingsUrl } from '../../edition/filigran-license-utils';
 import { useXtmOneSettings } from '../hooks/use-xtm-one-settings';
 import { toHttpUrl } from '../utils/to-http-url';
+import { useAskArianeLayout } from './ask-ariane-layout';
+import { designSystemTokens } from './ask-ariane-tokens';
 
 const CHAT_API_BASE = '/api/xtm-one/chat';
 
@@ -80,6 +82,9 @@ interface AskArianePanelProps {
   xtmOneUrl: string | null,
   onClose: () => void,
   onModeChange: (mode: ChatMode) => void,
+  onWidthChange?: (width: number) => void,
+  onResizeStart?: () => void,
+  onResizeEnd?: () => void,
 }
 
 const AskArianePanel: FunctionComponent<AskArianePanelProps> = ({
@@ -88,6 +93,9 @@ const AskArianePanel: FunctionComponent<AskArianePanelProps> = ({
   xtmOneUrl,
   onClose,
   onModeChange,
+  onWidthChange,
+  onResizeStart,
+  onResizeEnd,
 }) => {
   const location = useLocation();
   const { effectiveTheme } = useTheme();
@@ -98,7 +106,7 @@ const AskArianePanel: FunctionComponent<AskArianePanelProps> = ({
     <div
       id="ask-ariane-portal"
       className={effectiveTheme === 'dark' ? 'dark' : undefined}
-      style={aiBrandFamily(effectiveTheme === 'dark')}
+      style={{ ...designSystemTokens(), ...aiBrandFamily(effectiveTheme === 'dark') }}
     >
       <ChatPanel
         mode={mode}
@@ -127,9 +135,12 @@ const AskArianePanel: FunctionComponent<AskArianePanelProps> = ({
           // A deck, report or video card downloads it as `/artifacts/{kind}/{id}/download`
           // and follows a video still rendering on `/artifacts/{kind}/{id}`.
           artifacts: '/artifacts',
-          // Unset, each defaults to a `/chat/*` route the OpenCRQ proxy does not serve.
-          prompts: null,
-          quota: null,
+          // The composer's prompt picker and its credits indicator, as in
+          // OpenCTI and OpenAEV: the panel hides either one when its route
+          // fails or has nothing to show.
+          prompts: '/prompts',
+          quota: '/quota',
+          // Unset, it defaults to a `/chat/*` route the OpenCRQ proxy does not serve.
           suggestions: null,
         }}
         user={{ firstName }}
@@ -148,6 +159,11 @@ const AskArianePanel: FunctionComponent<AskArianePanelProps> = ({
         // knows which page the question is asked from.
         pageContext={{ url: location.pathname }}
         resizable={mode === 'sidebar'}
+        // The layout leaves this width free on the right, so the page is
+        // pushed rather than covered (main-layout.tsx).
+        onWidthChange={onWidthChange}
+        onResizeStart={onResizeStart}
+        onResizeEnd={onResizeEnd}
       />
     </div>,
     document.body,
@@ -251,14 +267,19 @@ interface AskArianeLauncherProps {
 }
 
 const AskArianeLauncher: FunctionComponent<AskArianeLauncherProps> = ({ firstName, xtmOneUrl }) => {
-  const [mode, setMode] = useState<ChatMode | null>(null);
+  // Inside the main layout the mode and width are shared with it, which makes
+  // room for the docked panel; anywhere else the launcher keeps its own.
+  const layout = useAskArianeLayout();
+  const [ownMode, setOwnMode] = useState<ChatMode | null>(null);
+  const mode = layout ? layout.mode : ownMode;
+  const setMode = layout ? layout.setMode : setOwnMode;
 
   return (
     <>
       <AskArianeButton
         isEnterpriseEdition
         onClick={() => {
-          setMode((current) => (current ? null : 'sidebar'));
+          setMode(mode ? null : 'sidebar');
         }}
       />
       {mode && (
@@ -266,8 +287,14 @@ const AskArianeLauncher: FunctionComponent<AskArianeLauncherProps> = ({ firstNam
           mode={mode}
           firstName={firstName}
           xtmOneUrl={xtmOneUrl}
-          onClose={() => setMode(null)}
+          onClose={() => {
+            setMode(null);
+            layout?.setIsResizing(false);
+          }}
           onModeChange={setMode}
+          onWidthChange={layout?.setSidebarWidth}
+          onResizeStart={() => layout?.setIsResizing(true)}
+          onResizeEnd={() => layout?.setIsResizing(false)}
         />
       )}
     </>

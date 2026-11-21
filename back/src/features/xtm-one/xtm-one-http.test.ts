@@ -719,6 +719,45 @@ describe('the chat upload over HTTP', () => {
   });
 });
 
+describe('the composer routes', () => {
+  const fetchMock = vi.fn<typeof fetch>();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ['GET /api/xtm-one/chat/prompts', '/api/v1/platform/chat/prompts', '{"prompts":[]}'],
+    ['GET /api/xtm-one/chat/quota', '/api/v1/platform/chat/quota', '{"used":28,"limit":100,"period":"monthly","scope":"user"}'],
+  ])('forwards %s to XTM One with the user token', async (route, upstreamPath, body) => {
+    fetchMock.mockResolvedValue(new Response(body, { status: 200, headers: { 'content-type': 'application/json' } }));
+    const reply = makeReply();
+
+    await callRoute(route, makeReq(), reply);
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(String(url)).toBe(`http://xtm-one${upstreamPath}`);
+    expect(init?.method).toBe('GET');
+    expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer user-jwt');
+    expect(reply.code).toHaveBeenCalledWith(200);
+    expect(reply.send).toHaveBeenCalledWith(body);
+  });
+
+  it('refuses a request without a browser session', async () => {
+    const reply = makeReply();
+
+    await callRoute('GET /api/xtm-one/chat/quota', makeReq({ authSession: { id: 'xtm-one-session' } }), reply);
+
+    expect(reply.code).toHaveBeenCalledWith(401);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('a chat message XTM One refuses', () => {
   const fetchMock = vi.fn<typeof fetch>();
   let app: FastifyInstance;

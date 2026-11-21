@@ -1,3 +1,4 @@
 export * from './components/ask-ariane';
+export * from './components/ask-ariane-layout';
 export * from './components/ctem-command-center-button';
 export * from './components/xtm-one-registration-toast';

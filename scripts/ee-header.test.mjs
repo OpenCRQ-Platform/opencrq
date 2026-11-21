@@ -36,6 +36,8 @@ const EE_FILES = [
   'back/src/features/xtm-one/xtm-one-client.ts',
   'back/src/features/app-router/tenants/tenants-router.ts',
   'front/src/features/xtm-one/components/ask-ariane.tsx',
+  'front/src/features/xtm-one/components/ask-ariane-layout.tsx',
+  'front/src/features/xtm-one/components/ask-ariane-tokens.ts',
   'front/src/components/layout/scope-slot.tsx',
   'front/src/features/tenants/components/tenant-card.tsx',
   'front/src/features/tenants/components/tenant-rename-drawer.tsx',
