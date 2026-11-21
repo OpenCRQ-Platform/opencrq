@@ -8,11 +8,12 @@ import type { ReaderAuthorization } from './xtm-providers';
 import { isOriginAuthorizedForItsTenant } from '../tenant-access-utils';
 import { config } from '../../../config';
 import { router } from '../../../trpc';
+import { authenticateXtmOneJwt } from '../../xtm-one/xtm-one-auth';
 import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
 import { issueUserJwt } from '../../xtm-one/xtm-one-jwt';
 import { ensureSigningKey } from '../../xtm-one/xtm-one-keys';
 import { COUNTERPART_KINDS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
-import { callerReadsLookupFacts, lookupXtmObjects, XTM_LOOKUP_KINDS } from './xtm-lookup';
+import { lookupXtmObjects, resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider } from './xtm-providers';
 
 /** No reader identity to sign: a lookup made with it reaches nothing. */
@@ -123,27 +124,34 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
     }),
 
   // bounded-by: MAX_COUNTERPART_KEYS keys per call, one batched read of one kind
-  // eslint-disable-next-line app/no-unused-router-endpoint -- OpenCTI and OpenAEV call it with a service-account token, the UI does not
+  // eslint-disable-next-line app/no-unused-router-endpoint -- OpenCTI and OpenAEV call it with a service-account token (and the XTM One user token), the UI does not
   lookup: procedure
     .input(z.object({
       kind: z.enum(XTM_LOOKUP_KINDS),
       keys: z.array(z.string().max(512)).max(MAX_COUNTERPART_KEYS),
     }))
     .output(z.array(lookupObjectSchema))
-    .query(async ({ input, ctx: { services, origin } }) => {
+    .query(async ({ input, ctx: { services, origin, req } }) => {
       const tenantId = await authorizedTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t));
       const baseUrl = getXtmOneSettings()?.platformUrl;
       if (!baseUrl) {
         return [];
       }
       const scoped = services.withOrigin(origin);
-      // A service account gets the link only, a person the facts with their own rights (opencrq #26).
-      const withFacts = callerReadsLookupFacts(origin);
-      return lookupXtmObjects({ kind: input.kind, keys: input.keys, baseUrl, tenantId, withFacts }, {
+      // A person reads the facts with their own rights; a service account gets the link only
+      // (opencrq #26), unless it forwards a token XTM One signed for a person of its tenant: then
+      // the facts are read as that person (opencrq F4 part 2). Never logged: it is a credential.
+      const tokenHeader = req.headers[XTM_USER_TOKEN_HEADER];
+      const factsOrigin = await resolveLookupFactsOrigin(origin, Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader, {
+        authenticate: (token) => authenticateXtmOneJwt(db, token),
+        reachesTenant: (userId, t) => services.withOrigin({ type: 'client', userId, tenantId: t }).tenants.callerReachesTenant(t),
+      });
+      const factsReader = factsOrigin ? services.withOrigin(factsOrigin) : null;
+      return lookupXtmObjects({ kind: input.kind, keys: input.keys, baseUrl, tenantId, withFacts: factsReader !== null }, {
         threatsByStixIds: (stixIds) => scoped.threatAnalyses.getByStixIds(stixIds),
         cvesByCveIds: (cveIds) => scoped.cve.getCvesByCveIds(cveIds),
         assetsByHostnames: (hostnames) => scoped.supportingAssets.getByHostnames(hostnames),
-        exposure: (kind, objectIds) => scoped.crqIndicators.getXtmExposure(kind, objectIds),
+        exposure: (kind, objectIds) => (factsReader ? factsReader.crqIndicators.getXtmExposure(kind, objectIds) : Promise.resolve(new Map())),
       });
     }),
 });
