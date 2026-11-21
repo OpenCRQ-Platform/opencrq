@@ -9,12 +9,16 @@ import type { AssetImpact, AttackShare, ImpactContribution } from './impact';
 import type { ScenarioReadiness } from './readiness';
 import type { ScenarioFindingsQuery, ScenarioPageQuery, ScenarioSupportingAssetSortKey } from './scenario-lists';
 import type { TefMode } from './schema';
+import type { CveExploitationAnswer, CveExploitationReachedAsset } from './cve-exploitation';
 import { defineService } from '../../registry';
 import { requireTenantId } from '../../security';
 import { canonicalLinkRoles, inheritedCriteriaOfRoles } from '../asset-dependencies/link-roles';
 import { MAX_REACH_DEPTH } from '../asset-dependencies/reach';
 import { assetDependenciesService } from '../asset-dependencies/service';
 import { attackOutcomesService, isActiveTechnique } from '../attack-outcomes';
+import { readAttackClaims } from '../technique-mapping/attack-claims';
+import { techniqueMappingService } from '../technique-mapping/service';
+import { assembleCveExploitation, readExposureExploitation } from './cve-exploitation';
 import { foldToParentTechnique } from '../threat-analyses/technique-weighting';
 import { computeLifelineChange, LIFELINE_WINDOW_DAYS } from './lifeline';
 import { computeAssetImpacts, shareOfAttackTransmitted, wholePercent } from './impact';
@@ -309,6 +313,7 @@ export const riskScenariosService = defineService(
 ).dependsOn(() => [
   assetDependenciesService,
   attackOutcomesService,
+  techniqueMappingService,
 ]).implement({
   createRiskScenario: async ({ atomic, eventOrigin }, values: {
     id: string,
@@ -534,6 +539,55 @@ export const riskScenariosService = defineService(
       directCount,
       transitiveCount: ranked.length - directCount,
     };
+  },
+
+  /**
+   * How `cveId` would be exploited on each supporting asset the scenario reaches: the techniques a
+   * mapping naming the CVE gives, else the topology rule's reading of its vector and the asset's
+   * exposure (T1190 internet-facing, T1210 internal). Whether the asset carries the CVE is not asked:
+   * the question is how it would be exploited there. An unknown scenario or CVE, or one of another
+   * tenant, is named in `missing`.
+   */
+  getCveExploitation: async (
+    { repo, deps },
+    riskScenarioId: string,
+    cveId: string,
+    limit: number,
+  ): Promise<{ missing: 'scenario' | 'cve' } | { answer: CveExploitationAnswer, cve: { cveId: string, cveTitle: string | null, cvss: number | null, cvssVector: string | null } }> => {
+    const [loaded, cve] = await Promise.all([loadScenarioImpacts(repo, riskScenarioId), repo.findCveRowByCveId(cveId)]);
+    if (!loaded) {
+      return { missing: 'scenario' };
+    }
+    if (!cve) {
+      return { missing: 'cve' };
+    }
+    const { scenario, walk, impacts, names } = loaded;
+    const ranked = rankScenarioSupportingAssets(walk, scenario.primaryAssets, impacts, names);
+    const exposureById = new Map((await repo.findSupportingAssetExposures(ranked.map((row) => row.supportingAssetId)))
+      .map((row) => [row.id, row.exposure]));
+    const primaryNames = new Map(scenario.primaryAssets.map((asset) => [asset.id, asset.name]));
+    const reached = ranked.map((row): CveExploitationReachedAsset => ({
+      supportingAssetId: row.supportingAssetId,
+      supportingAssetName: row.supportingAssetName,
+      supportingAssetDerivedName: row.supportingAssetDerivedName,
+      depth: row.depth,
+      impact: row.impact,
+      exposure: exposureById.get(row.supportingAssetId) ?? 'unknown',
+      primaryAssets: [...new Set((impacts.get(row.supportingAssetId)?.contributions ?? []).map((part) => part.primaryAssetId))]
+        .map((id) => ({ id, name: primaryNames.get(id) ?? '' })),
+    }));
+    const claims = await deps.techniqueMapping.getTechniqueClaims([cve.id]);
+    const stored = claims.mappings.filter((mapping) => mapping.cveId === cve.id);
+    const inputs = claims.cves.find((row) => row.cveRowId === cve.id);
+    const answer = assembleCveExploitation(reached, (exposure) => readExposureExploitation(exposure, readAttackClaims({
+      stored,
+      cwe: inputs?.cwe ?? null,
+      cvssVector: inputs?.cvssVector ?? null,
+      cvssV2UserInteractionRequired: inputs?.cvssV2UserInteractionRequired ?? null,
+      exposure,
+      ruleCatalogue: claims.ruleCatalogue,
+    })), limit);
+    return { answer, cve: { cveId: cve.cveId, cveTitle: cve.cveTitle, cvss: cve.cvss, cvssVector: cve.cvssVector } };
   },
 
   /**

@@ -6,6 +6,7 @@ import {
   attackOutcomes,
   COVERAGE_BUCKETS,
   CRITERION_INHERITANCES,
+  CVE_ID_PATTERN,
   cveGainState,
   DEPENDENCY_GRAPH_DEFAULT_DEPTH,
   DEPENDENCY_GRAPH_FOLDS,
@@ -134,6 +135,52 @@ const RiskScenarioDependencyGraphSchema = z.object({
   })),
   truncated: z.array(z.object({ assetId: z.uuid(), hiddenProviderCount: z.number().int(), foldedBy: z.enum(DEPENDENCY_GRAPH_FOLDS) })),
   hiddenAssetCount: z.number().int(),
+});
+
+const ExploitationTechniqueSchema = z.object({
+  techniqueExternalId: z.string(),
+  techniqueName: z.string(),
+  lane: z.enum(['supplied', 'curated', 'structural', 'topology']),
+  confidence: z.enum(['high', 'medium', 'low']),
+});
+const ExploitationReadingSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('named'), lanes: z.array(z.enum(['supplied', 'curated'])) }),
+  z.object({
+    kind: z.literal('topology'),
+    reading: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('weakness'), cwe: z.string() }),
+      z.object({
+        kind: z.literal('vector'),
+        attackVector: z.string(),
+        userInteraction: z.string(),
+        privilegesRequired: z.string(),
+        exposure: z.enum(ASSET_EXPOSURE_VALUES),
+      }),
+    ]),
+  }),
+  z.object({ kind: z.literal('none') }),
+]);
+const CVE_EXPLOITATION_MAX_ASSETS = 500;
+const CveExploitationSchema = z.object({
+  cve: z.object({ cveId: z.string(), cveTitle: z.string().nullable(), cvss: z.number().nullable(), cvssVector: z.string().nullable() }),
+  byExposure: z.array(z.object({
+    exposure: z.enum(ASSET_EXPOSURE_VALUES),
+    techniques: z.array(ExploitationTechniqueSchema),
+    reading: ExploitationReadingSchema,
+    assetCount: z.number().int(),
+  })),
+  assets: z.array(z.object({
+    supportingAssetId: z.uuid(),
+    supportingAssetName: z.string().nullable(),
+    supportingAssetDerivedName: z.string().nullable(),
+    depth: z.number().int(),
+    impact: z.number(),
+    exposure: z.enum(ASSET_EXPOSURE_VALUES),
+    primaryAssets: z.array(RelationSummarySchema),
+    techniques: z.array(ExploitationTechniqueSchema),
+    reading: ExploitationReadingSchema,
+  })),
+  total: z.number().int(),
 });
 
 const RiskScenarioWithRelationsSchema = RiskScenariosSchema.extend({
@@ -475,6 +522,21 @@ export const riskScenariosRouter = (procedure: TenantProcedure, telemetry: AppRo
     .output(ScenarioSupportingAssetsSchema.nullable())
     .query(async ({ input, ctx: { services, origin } }) => await services.withOrigin(origin)
       .riskScenarios.getDerivedSupportingAssets(input.riskScenarioId) ?? null),
+  // eslint-disable-next-line app/no-unused-router-endpoint -- XTM One's CTEM fleets read it through their OpenCRQ tool, by name
+  getCveExploitation: procedure
+    .input(z.object({
+      riskScenarioId: z.uuid(),
+      cveId: z.string().regex(CVE_ID_PATTERN),
+      limit: z.number().int().min(1).max(CVE_EXPLOITATION_MAX_ASSETS).default(50),
+    }))
+    .output(CveExploitationSchema)
+    .query(async ({ input, ctx: { services, origin } }) => {
+      const read = await services.withOrigin(origin).riskScenarios.getCveExploitation(input.riskScenarioId, input.cveId, input.limit);
+      if ('missing' in read) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: read.missing === 'scenario' ? 'Risk scenario not found' : `${input.cveId} is not in this platform's vulnerability catalogue` });
+      }
+      return { cve: read.cve, ...read.answer };
+    }),
   listDerivedSupportingAssets: procedure
     .input(pagedInput(SCENARIO_SUPPORTING_ASSET_SORT_KEYS).extend({ riskScenarioId: z.uuid() }))
     .output(ScenarioSupportingAssetsPageSchema.nullable())
