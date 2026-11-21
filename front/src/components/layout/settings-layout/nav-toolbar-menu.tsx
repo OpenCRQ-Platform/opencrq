@@ -17,19 +17,21 @@ export interface MenuEntry {
 }
 
 /**
- * One row of the rail, drawn as the OpenAEV `RightMenu` row: 14px regular neutral text, a 16px icon at
- * half opacity in the secondary ink (full opacity and the primary ink when selected), the hover wash of
- * the layer the rail sits on (layer 1), and a selected row tinted with the brand primary and its 2px
- * accent bar.
+ * One row of the rail, drawn with the computed values of the OpenAEV `RightMenu` row: 33px high (6px
+ * padding around a 21px line), 16px left padding and none on the right, 14px regular text at normal
+ * letter spacing, a 16px icon 8px before the label at half opacity in the secondary ink (full opacity
+ * when selected), the hover wash of the layer the rail sits on (layer 1), and a selected row tinted
+ * with the brand primary (12% light, 24% dark; 16% and 32% on hover) and its 2px accent bar.
  */
 const RAIL_ROW_CLASSES = cn(
-  'flex min-h-9 w-full items-center gap-2 px-4 py-1.5 text-left text-sm font-normal',
+  'flex w-full items-center gap-2 py-1.5 pr-0 pl-4 text-left text-sm leading-[21px] font-normal tracking-[normal]',
   'text-default-primary transition-colors hover:bg-[var(--fds-bg-elevation-hover-layer-1)]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset ring-focus',
 );
 
 const RAIL_ROW_ACTIVE_CLASSES = cn(
-  'bg-filigran-brand-primary-transparency-10 hover:bg-filigran-brand-primary-transparency-10',
+  'bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_12%,transparent)] hover:bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_16%,transparent)]',
+  'dark:bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_24%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_32%,transparent)]',
   'shadow-[inset_2px_0px] shadow-primary',
 );
 
@@ -42,7 +44,8 @@ const RailIcon: FunctionComponent<{ icon?: ReactElement, active?: boolean }> = (
       aria-hidden
       className={cn(
         'flex size-4 shrink-0 items-center justify-center [&_svg]:size-4',
-        active ? 'text-default-primary opacity-100' : 'text-default-secondary opacity-50',
+        'text-default-secondary',
+        active ? 'opacity-100' : 'opacity-50',
       )}
     >
       {icon}
@@ -51,7 +54,7 @@ const RailIcon: FunctionComponent<{ icon?: ReactElement, active?: boolean }> = (
 };
 
 const RailLabel: FunctionComponent<{ entry: MenuEntry }> = ({ entry }) => (
-  <span className="min-w-0 flex-1 truncate" title={entry.label}>
+  <span className="min-w-0 flex-1 truncate tracking-[normal]" title={entry.label}>
     {entry.number === undefined ? entry.label : `${entry.label} (${entry.number})`}
   </span>
 );

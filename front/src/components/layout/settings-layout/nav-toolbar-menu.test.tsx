@@ -98,4 +98,20 @@ describe('ScopeSwitcher', () => {
     expect(other.getAttribute('class')).toContain('text-default-secondary');
     expect(selected.getAttribute('class')).not.toMatch(/\bbutton\b/);
   });
+
+  // OpenAEV keeps the neutral 1px border on the selected tile and only tints it, and its labels never wrap.
+  it('keeps the neutral border on both tiles and the labels on one line', async () => {
+    renderInRouter(
+      <ScopeSwitcher scope="tenant" tenantLinkOption={{ href: '/security' }} platformLinkOption={{ href: '/security?scope=platform' }} />,
+      '/security',
+    );
+    const tenant = await screen.findByRole('link', { name: 'This tenant' });
+    const platform = screen.getByRole('link', { name: 'Platform' });
+    for (const tile of [tenant, platform]) {
+      const classes = tile.getAttribute('class') ?? '';
+      expect(classes).toContain('border-elevation-subtle-soft');
+      expect(classes).toContain('whitespace-nowrap');
+      expect(classes).not.toContain('border-filigran-brand-primary');
+    }
+  });
 });

@@ -1,4 +1,5 @@
 import { PlatformCapability_ManageUsers } from '@app/module/client';
+import { Icon } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
 import { createFileRoute } from '@tanstack/react-router';
 import type { MenuEntry } from '../../../../components/layout/settings-layout/nav-toolbar-menu';
@@ -13,10 +14,7 @@ const PLATFORM_ENTRY_KEYS: Array<SecurityEntryKey> = ['roles', 'groups', 'users'
 // never yields `service-accounts` (tenant-only), so this stays partial rather than
 // carrying placeholder entries that would point at Roles if that ever changed.
 const buildEntries = (): Partial<Record<SecurityEntryKey, MenuEntry>> => Object.fromEntries(
-  PLATFORM_ENTRY_KEYS.map((key) => {
-    const Icon = SECURITY_ENTRY_ICONS[key];
-    return [key, { linkOption: { href: `/platform/security/${key}` }, label: securityEntryLabel(key), icon: <Icon className="h-4 w-4" /> }];
-  }),
+  PLATFORM_ENTRY_KEYS.map((key) => [key, { linkOption: { href: `/platform/security/${key}` }, label: securityEntryLabel(key), icon: <Icon name={SECURITY_ENTRY_ICONS[key]} size={16} aria-hidden /> }]),
 );
 
 const SecurityLayoutComponent = () => {
