@@ -2184,9 +2184,6 @@ msgctxt "a supporting asset ... a primary asset"
 msgid "administers"
 msgstr "administre"
 
-msgid "Administration"
-msgstr "Administration"
-
 #. js-lingui-explicit-id
 msgid "Admits {types}, and nothing else."
 msgstr "Admet {types}, et rien d'autre."
