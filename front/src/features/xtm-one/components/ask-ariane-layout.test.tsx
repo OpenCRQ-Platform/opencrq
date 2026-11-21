@@ -1,12 +1,12 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, render, screen } from '@testing-library/react';
-import { createElement } from 'react';
+import { createElement, useEffect } from 'react';
 import type { FunctionComponent } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   ASK_ARIANE_SIDEBAR_GAP,
-  AskArianeLayoutProvider,
   askArianeContentMargin,
+  AskArianeLayoutProvider,
   useAskArianeContentPush,
   useAskArianeLayout,
 } from './ask-ariane-layout';
@@ -29,10 +29,19 @@ describe('the room the page leaves for Ask Ariane', () => {
   });
 });
 
-let layout: ReturnType<typeof useAskArianeLayout> = null;
+type Layout = ReturnType<typeof useAskArianeLayout>;
 
-const Probe: FunctionComponent = () => {
-  layout = useAskArianeLayout();
+let layout: Layout = null;
+
+const seeLayout = (current: Layout) => {
+  layout = current;
+};
+
+const Probe: FunctionComponent<{ onLayout: (current: Layout) => void }> = ({ onLayout }) => {
+  const current = useAskArianeLayout();
+  useEffect(() => {
+    onLayout(current);
+  });
   const { marginRight, animate } = useAskArianeContentPush();
   return createElement('div', { 'data-testid': 'probe', 'data-margin': marginRight, 'data-animate': String(animate) });
 };
@@ -41,7 +50,7 @@ const probe = () => screen.getByTestId('probe');
 
 describe('the page pushed by the docked panel', () => {
   it('should follow the panel as it opens, is resized and closes', () => {
-    render(createElement(AskArianeLayoutProvider, null, createElement(Probe)));
+    render(createElement(AskArianeLayoutProvider, null, createElement(Probe, { onLayout: seeLayout })));
     expect(probe().dataset.margin).toBe('0');
 
     act(() => layout?.setMode('sidebar'));
@@ -64,7 +73,8 @@ describe('the page pushed by the docked panel', () => {
   });
 
   it('should push nothing outside the layout', () => {
-    render(createElement(Probe));
+    layout = null;
+    render(createElement(Probe, { onLayout: seeLayout }));
     expect(layout).toBeNull();
     expect(probe().dataset.margin).toBe('0');
   });
@@ -72,9 +82,9 @@ describe('the page pushed by the docked panel', () => {
 
 describe('the design system tokens the panel reads', () => {
   it('should restate the composer edge and the disabled fill under their plain names', () => {
-    const tokens = designSystemTokens() as Record<string, string>;
-    expect(tokens['--border-elevation-subtle']).toBe('var(--fds-border-elevation-subtle)');
-    expect(tokens['--bg-elevation-disabled']).toBe('var(--fds-bg-elevation-disabled)');
-    expect(tokens['--text-default-primary']).toBe('var(--fds-text-default-primary)');
+    const tokens = new Map<string, unknown>(Object.entries(designSystemTokens()));
+    expect(tokens.get('--border-elevation-subtle')).toBe('var(--fds-border-elevation-subtle)');
+    expect(tokens.get('--bg-elevation-disabled')).toBe('var(--fds-bg-elevation-disabled)');
+    expect(tokens.get('--text-default-primary')).toBe('var(--fds-text-default-primary)');
   });
 });
