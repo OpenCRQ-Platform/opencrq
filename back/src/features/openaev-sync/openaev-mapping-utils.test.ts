@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ConnectorAssetInput } from '@app/module';
-import type { AiTargetAsset, AssetInventoryRow, AttackObservation, EndpointEntity, EsSeries, VulnerabilityObservation } from './openaev-types';
+import type { AiTargetAsset, AssetInventoryRow, AttackObservation, EndpointEntity, VulnerabilityObservation } from './openaev-types';
 import {
   agentIdentityOf,
   aiTargetToProperties,
@@ -15,7 +15,6 @@ import {
   mapOpenaevCriticality,
   mergeAiTargetDetail,
   mergeMachineDetail,
-  parsePostureSeries,
   resolveOpenaevCategory,
 } from './openaev-mapping-utils';
 
@@ -295,40 +294,6 @@ describe('aiTargetToProperties', () => {
     const properties = aiTargetToProperties(aiTarget({ ai_target_provider: 'OPENAI_COMPATIBLE' }));
     expect(properties).not.toHaveProperty('ai_target_token');
     expect(properties).not.toHaveProperty('ai_target_configuration');
-  });
-});
-
-describe('parsePostureSeries', () => {
-  const series = (overrides: Partial<Record<'SUCCESS' | 'FAILED', Array<{ key?: string | null, label?: string | null, value: number }>>>): Array<EsSeries> =>
-    (['SUCCESS', 'FAILED'] as const)
-      .filter((label) => overrides[label] !== undefined)
-      .map((label) => ({ label, data: overrides[label] ?? [] }));
-
-  it('sums success and failed counts per asset id', () => {
-    const result = parsePostureSeries(series({
-      SUCCESS: [{ key: 'asset-1', value: 3 }],
-      FAILED: [{ key: 'asset-1', value: 1 }],
-    }));
-    expect(result.get('asset-1')).toEqual({ success: 3, failed: 1 });
-  });
-
-  it('defaults the missing side to zero', () => {
-    const result = parsePostureSeries(series({ SUCCESS: [{ key: 'asset-1', value: 5 }] }));
-    expect(result.get('asset-1')).toEqual({ success: 5, failed: 0 });
-  });
-
-  it('falls back to the bucket label when key is absent, like usePostureScores.ts does', () => {
-    const result = parsePostureSeries(series({ SUCCESS: [{ key: null, label: 'asset-1', value: 2 }] }));
-    expect(result.get('asset-1')).toEqual({ success: 2, failed: 0 });
-  });
-
-  it('returns an empty map when neither series is present', () => {
-    expect(parsePostureSeries([]).size).toBe(0);
-  });
-
-  it('ignores a bucket with neither key nor label', () => {
-    const result = parsePostureSeries(series({ SUCCESS: [{ key: null, label: null, value: 9 }] }));
-    expect(result.size).toBe(0);
   });
 });
 

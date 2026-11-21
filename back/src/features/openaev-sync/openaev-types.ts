@@ -154,19 +154,6 @@ export const assetOverviewSchema = z.object({
 });
 export type AssetOverview = z.infer<typeof assetOverviewSchema>;
 
-const esSeriesDataSchema = z.looseObject({
-  key: z.string().nullable().optional(),
-  label: z.string().nullable().optional(),
-  value: z.number(),
-});
-
-/** One named series of the posture widget's response (`POST /dashboards/adhoc/series`) — see `fetchPostureCounters`. */
-export const esSeriesSchema = z.looseObject({
-  label: z.string(),
-  data: z.array(esSeriesDataSchema).default([]),
-});
-export type EsSeries = z.infer<typeof esSeriesSchema>;
-
 /** Envelope shared by both snapshot streams (`POST /snapshot/{attack,vulnerability}-observations/search`). */
 export const snapshotSearchOutputSchema = <T extends z.ZodType>(observationSchema: T) =>
   z.looseObject({

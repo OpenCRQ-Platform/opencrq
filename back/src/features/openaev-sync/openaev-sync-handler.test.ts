@@ -236,7 +236,6 @@ const {
   const getAssetOverview = vi.fn().mockImplementation((_tenantId: string, assetId: string) => Promise.resolve({ asset_id: assetId }));
   const findUsers = vi.fn().mockResolvedValue([]);
   const listTags = vi.fn().mockResolvedValue([]);
-  const fetchPostureCounters = vi.fn().mockResolvedValue(new Map());
 
   const paginateAll = vi.fn().mockImplementation(
     async <T>(fetchPage: (page: number) => Promise<{ content: Array<T>, last: boolean, totalElements: number }>) => {
@@ -254,7 +253,6 @@ const {
     mockGetAssetOverview: getAssetOverview,
     mockFindUsers: findUsers,
     mockListTags: listTags,
-    mockFetchPostureCounters: fetchPostureCounters,
     mockPaginateAll: paginateAll,
   };
 });
@@ -270,7 +268,6 @@ vi.mock('./openaev-api-client', async (importOriginal) => {
     getAssetOverview: mockGetAssetOverview,
     findUsers: mockFindUsers,
     listTags: mockListTags,
-    fetchPostureCounters: mockFetchPostureCounters,
   });
   return {
     OpenaevNotFoundError: actual.OpenaevNotFoundError,

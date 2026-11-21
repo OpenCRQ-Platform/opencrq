@@ -32,9 +32,7 @@ import { TRPCError } from '@trpc/server';
 import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
 import type { TenantProcedure } from '../app-router-router';
-import { config } from '../../../config';
 import { requestFindingScoreRecompute } from '../../finding-score/finding-score-recompute-queue';
-import { readAssetPosture } from '../../openaev-sync/openaev-posture';
 import { estateInput, resolveMappedOrganizationId } from '../estate';
 import { pagedInput, pagedOutput } from '../pagination';
 import { TIME_ZONE_INPUT } from '../time-zone';
@@ -234,19 +232,16 @@ export const supportingAssetsRouter = (procedure: TenantProcedure) => router({
     .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin)
       .supportingAssets.getSupportingAsset(input.id)),
   /**
-   * OpenAEV's raw SUCCESS/FAILED counts for the asset, read live from OpenAEV on each call and
-   * summed over the asset's OpenAEV sources; `null` when the asset has no OpenAEV source (or is not
-   * visible to the caller), OpenAEV is not configured for the tenant, has no counter for it, or
-   * fails to answer within `POSTURE_READ_TIMEOUT_MS`. The sources are read through the same
-   * tenant-isolated views as `getSupportingAsset`, so another tenant's asset has none.
+   * The asset's OpenAEV test results as the OpenAEV sync stored them: the OpenAEV findings whose
+   * latest test held (`success`) and whose latest test found the asset exposed (`failed`); `null`
+   * while no OpenAEV test spoke about the asset. Read under the caller's tenant isolation and never
+   * live from OpenAEV: a user-facing procedure never sends the deployment's connector token, so a
+   * user sees only what the sync brought into this tenant (CTEM data segregation, opencrq #24).
    */
   getOpenaevPosture: procedure
     .input(z.object({ supportingAssetId: z.uuid() }))
     .output(z.object({ success: z.number().int(), failed: z.number().int() }).nullable())
-    .query(async ({ input, ctx: { services, origin } }) => {
-      const targets = await services.withOrigin(origin).openaevConnector.listPostureTargets(input.supportingAssetId);
-      return readAssetPosture({ targets, connections: config().connectors?.openaev });
-    }),
+    .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin).openaevConnector.getStoredPosture(input.supportingAssetId)),
   getSupportingAssetRelationGraph: procedure
     .input(z.object({
       supportingAssetId: z.uuid(),

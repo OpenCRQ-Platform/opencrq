@@ -1,8 +1,10 @@
 import type { EventOrigin } from '@app/module';
 import { uuidv7 } from 'uuidv7';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { FakeOpenaev, FakeOpenaevTenant } from '../../helpers/fake-openaev';
+import type { FakeOpenaev } from '../../helpers/fake-openaev';
+import { insertSyncedVerdict } from '../../helpers/evidence-rows';
 import { createUser } from '../../helpers/factories';
+import { findingScoreFixtures } from '../../helpers/finding-score-fixtures';
 import { startFakeOpenaev } from '../../helpers/fake-openaev';
 import { createTrpcTestClient } from '../../helpers/trpc-client';
 import { db } from '../../setup/db';
@@ -12,8 +14,12 @@ import { getTestServer } from '../../setup/test-server';
 import { signInAs, signInAsFirstAdmin } from '../../helpers/sign-in';
 
 const ADMIN_EMAIL = 'admin@test.com';
-const POSTURE_ROUTE = '/dashboards/adhoc/series';
 
+/**
+ * The asset posture is what the OpenAEV sync stored in this tenant, never a live read of OpenAEV
+ * with the deployment's connector token (opencrq #24, CTEM data segregation): a reader sees no more
+ * of OpenAEV than the sync brought in, and a fake OpenAEV wired to the tenant is never called.
+ */
 describe('supportingAssets.getOpenaevPosture (HTTP/tRPC)', () => {
   let client: ReturnType<typeof createTrpcTestClient>;
   const services = createTestServices(db);
@@ -21,28 +27,21 @@ describe('supportingAssets.getOpenaevPosture (HTTP/tRPC)', () => {
   let adminId: string;
   let tenantId: string;
   let adminOrigin: EventOrigin;
-  let connectorOrigin: EventOrigin;
-  let connectorId: string;
+  let openaevConnectorId: string;
   let fake: FakeOpenaev;
-  let mainTenant: FakeOpenaevTenant;
-  let secondTenant: FakeOpenaevTenant;
-
-  /** An asset reported by OpenAEV under the given source asset ids, which share one hardware id so they consolidate onto one asset. */
-  const openaevAsset = async (sources: Array<{ sourceAssetId: string, openaevTenantId: string }>): Promise<string> => {
-    const ids = await services.withOrigin(connectorOrigin).supportingAssets.bulkUpsertAssets(sources.map(({ sourceAssetId }) => ({
-      sourceAssetId, connectorId, source: 'openaev', categoryId: 'host', name: 'srv-posture',
-      properties: { family: 'machine', hardwareUuid: 'HW-POSTURE' },
-    })));
-    await services.withOrigin(connectorOrigin).openaevConnector.upsertAssets({
-      connectorId,
-      assets: sources.map(({ sourceAssetId, openaevTenantId }) => ({ sourceAssetId, openaevTenantId, needsDescriptionFetch: false })),
-    });
-    const [first] = sources;
-    return ids.get(first.sourceAssetId)!;
-  };
+  const fixtures = findingScoreFixtures(services, db, () => ({ origin: adminOrigin, tenantId, userId: adminId }));
 
   const posture = (supportingAssetId: string, asTenantId = tenantId) =>
     client.query('supportingAssets.getOpenaevPosture', { supportingAssetId }, { tenantId: asTenantId });
+
+  /** One OpenAEV finding of the asset, its latest test as given (`held` = not exposed); `null` = never tested. */
+  const openaevFinding = async (assetId: string, held: boolean | null, connectorId = openaevConnectorId): Promise<void> => {
+    const at = new Date(Date.now() - 60_000);
+    const evidenceId = await fixtures.attachTechnique(assetId, at, connectorId);
+    if (held !== null) {
+      await insertSyncedVerdict(evidenceId, held ? 'dismissed' : 'applicable', at, { connectorId });
+    }
+  };
 
   beforeEach(async () => {
     await truncateAllTables(db);
@@ -57,12 +56,12 @@ describe('supportingAssets.getOpenaevPosture (HTTP/tRPC)', () => {
     const serviceAccountId = uuidv7();
     await services.withOrigin(adminOrigin).serviceAccounts.createServiceAccount({ id: serviceAccountId, name: 'OpenAEV Bot' });
     await services.withOrigin(adminOrigin).integrationSettings.configureIntegration('openaev', serviceAccountId);
-    connectorOrigin = { type: 'connector', serviceAccountId, tenantId };
-    connectorId = (await services.withOrigin(connectorOrigin).integrationSettings.getConnectorId('openaev'))!;
+    const connectorOrigin: EventOrigin = { type: 'connector', serviceAccountId, tenantId };
+    openaevConnectorId = (await services.withOrigin(connectorOrigin).integrationSettings.getConnectorId('openaev'))!;
 
+    // A live OpenAEV with the connector token stays wired: the procedure must never call it.
     fake = await startFakeOpenaev();
-    mainTenant = fake.addTenant('oa-main', 'Main');
-    secondTenant = fake.addTenant('oa-second', 'Second');
+    fake.addTenant('oa-main', 'Main').setPosture({ 'ep-1': { success: 99, failed: 99 } });
     testConnectorsConfig['openaev'] = { [tenantId]: { url: fake.url, token: fake.token } };
   });
 
@@ -71,44 +70,38 @@ describe('supportingAssets.getOpenaevPosture (HTTP/tRPC)', () => {
     await fake.close();
   });
 
-  it('serves the counts OpenAEV reports for the asset', async () => {
-    mainTenant.setPosture({ 'ep-1': { success: 3, failed: 1 } });
-    const assetId = await openaevAsset([{ sourceAssetId: 'ep-1', openaevTenantId: 'oa-main' }]);
+  it('counts the OpenAEV findings the sync stored: held as success, exposed as failed, and never calls OpenAEV', async () => {
+    const assetId = await fixtures.createAsset('srv-posture');
+    await openaevFinding(assetId, true);
+    await openaevFinding(assetId, true);
+    await openaevFinding(assetId, false);
 
     const res = await posture(assetId);
 
     expect(res.status).toBe(200);
-    expect(res.json.result.data).toEqual({ success: 3, failed: 1 });
-    expect(fake.requestsTo('POST', POSTURE_ROUTE, 'oa-main')).toHaveLength(1);
+    expect(res.json.result.data).toEqual({ success: 2, failed: 1 });
+    expect(fake.requests).toHaveLength(0);
   });
 
-  it('serves 0 and 0 when OpenAEV measured the asset with nothing validated, which is not never measured', async () => {
-    mainTenant.setPosture({ 'ep-1': { success: 0, failed: 0 } });
-    const assetId = await openaevAsset([{ sourceAssetId: 'ep-1', openaevTenantId: 'oa-main' }]);
+  it('leaves out findings no test spoke about and findings of another source', async () => {
+    const assetId = await fixtures.createAsset('srv-posture');
+    await openaevFinding(assetId, true);
+    await openaevFinding(assetId, null);
+    const otherAccount = uuidv7();
+    await services.withOrigin(adminOrigin).serviceAccounts.createServiceAccount({ id: otherAccount, name: 'Other Bot' });
+    await services.withOrigin(adminOrigin).integrationSettings.configureIntegration('drata', otherAccount);
+    const otherConnectorId = (await services.withOrigin({ type: 'connector', serviceAccountId: otherAccount, tenantId })
+      .integrationSettings.getConnectorId('drata'))!;
+    await openaevFinding(assetId, false, otherConnectorId);
 
     const res = await posture(assetId);
 
-    expect(res.json.result.data).toEqual({ success: 0, failed: 0 });
+    expect(res.json.result.data).toEqual({ success: 1, failed: 0 });
   });
 
-  it('sums the counts of every OpenAEV source consolidated onto the asset, across OpenAEV tenants', async () => {
-    mainTenant.setPosture({ 'ep-1': { success: 3, failed: 1 }, 'ep-other': { success: 50, failed: 50 } });
-    secondTenant.setPosture({ 'ep-2': { success: 2, failed: 4 } });
-    const assetId = await openaevAsset([
-      { sourceAssetId: 'ep-1', openaevTenantId: 'oa-main' },
-      { sourceAssetId: 'ep-2', openaevTenantId: 'oa-second' },
-    ]);
-
-    const res = await posture(assetId);
-
-    expect(res.json.result.data).toEqual({ success: 5, failed: 5 });
-  });
-
-  it('is null, and calls nothing, for an asset no OpenAEV source reports', async () => {
-    const assetId = uuidv7();
-    await services.withOrigin(adminOrigin).supportingAssets.createSupportingAsset({
-      id: assetId, name: 'Hand-made', description: null, ownerId: null, exposure: 'internal', categoryId: 'host', criticality: 'low',
-    });
+  it('is null while no OpenAEV test spoke about the asset', async () => {
+    const assetId = await fixtures.createAsset('hand-made');
+    await openaevFinding(assetId, null);
 
     const res = await posture(assetId);
 
@@ -124,65 +117,30 @@ describe('supportingAssets.getOpenaevPosture (HTTP/tRPC)', () => {
     expect(res.json.result.data).toBeNull();
   });
 
-  it('is null, and calls nothing, when OpenAEV is not configured for the tenant', async () => {
-    delete testConnectorsConfig['openaev'];
-    mainTenant.setPosture({ 'ep-1': { success: 3, failed: 1 } });
-    const assetId = await openaevAsset([{ sourceAssetId: 'ep-1', openaevTenantId: 'oa-main' }]);
-
-    const res = await posture(assetId);
-
-    expect(res.json.result.data).toBeNull();
-    expect(fake.requests).toHaveLength(0);
-  });
-
-  it('is null when OpenAEV has no counter for the asset', async () => {
-    mainTenant.setPosture({});
-    const assetId = await openaevAsset([{ sourceAssetId: 'ep-1', openaevTenantId: 'oa-main' }]);
-
-    const res = await posture(assetId);
-
-    expect(res.json.result.data).toBeNull();
-  });
-
-  it('is null when OpenAEV fails to answer', async () => {
-    mainTenant.setPostureStatus(500);
-    const assetId = await openaevAsset([{ sourceAssetId: 'ep-1', openaevTenantId: 'oa-main' }]);
-
-    const res = await posture(assetId);
-
-    expect(res.status).toBe(200);
-    expect(res.json.result.data).toBeNull();
-    expect(fake.requestsTo('POST', POSTURE_ROUTE, 'oa-main')).toHaveLength(1);
-  });
-
-  describe('another tenant', () => {
-    let otherTenantId: string;
+  describe('a restricted user', () => {
     let assetId: string;
+    let otherTenantId: string;
 
     beforeEach(async () => {
-      mainTenant.setPosture({ 'ep-1': { success: 3, failed: 1 } });
-      assetId = await openaevAsset([{ sourceAssetId: 'ep-1', openaevTenantId: 'oa-main' }]);
+      assetId = await fixtures.createAsset('srv-posture');
+      await openaevFinding(assetId, false);
 
       otherTenantId = uuidv7();
       const outsider = await createUser(db);
       await services.withOrigin({ type: 'platform', userId: adminId }).tenants.createTenant({ id: otherTenantId, name: 'Other Tenant' }, adminId);
       await services.withOrigin({ type: 'client', userId: adminId, tenantId: otherTenantId }).tenants.addTenantUser(otherTenantId, outsider.userId);
-      testConnectorsConfig['openaev'] = {
-        [tenantId]: { url: fake.url, token: fake.token },
-        [otherTenantId]: { url: fake.url, token: fake.token },
-      };
       client.clearCookies();
       await signInAs(client, outsider.userId);
     });
 
-    it('does not read the posture of an asset of a tenant the member names in their own header', async () => {
+    it('gets no count for an asset of a tenant it names in its own header', async () => {
       const res = await posture(assetId, otherTenantId);
 
       expect(res.json.result.data).toBeNull();
       expect(fake.requests).toHaveLength(0);
     });
 
-    it('does not read the posture of an asset of a tenant the caller does not belong to', async () => {
+    it('gets no count for an asset of a tenant it does not belong to', async () => {
       const res = await posture(assetId, tenantId);
 
       expect(res.json.result.data).toBeNull();

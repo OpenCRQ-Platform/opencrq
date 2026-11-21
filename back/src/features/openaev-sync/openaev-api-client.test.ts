@@ -103,64 +103,6 @@ describe('createOpenaevClient — inventory calls', () => {
     expect(url).toBe('https://openaev.example.com/api/tenants/tenant-1/tags');
     expect(options?.method).toBe('GET');
   });
-
-  describe('fetchPostureCounters', () => {
-    it('maps the SUCCESS/FAILED series to per-asset counts', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse([
-        { label: 'SUCCESS', data: [{ key: 'asset-1', value: 3 }] },
-        { label: 'FAILED', data: [{ key: 'asset-1', value: 1 }] },
-      ]));
-
-      const counters = await client().fetchPostureCounters('tenant-1', ['asset-1']);
-
-      expect(counters.get('asset-1')).toEqual({ success: 3, failed: 1 });
-      const call = vi.mocked(fetch).mock.calls[0];
-      expect(call[0]).toBe('https://openaev.example.com/api/tenants/tenant-1/dashboards/adhoc/series');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- shape asserted by the expectations below
-      const body = requestBodyOf(call[1]) as { widget_config: { field: string, series: Array<{ name: string }> } };
-      expect(body.widget_config.field).toBe('base_asset_side');
-      expect(body.widget_config.series.map((s) => s.name)).toEqual(['SUCCESS', 'FAILED']);
-    });
-
-    it('splits more than 100 ids into separate batched calls', async () => {
-      const ids = Array.from({ length: 150 }, (_, i) => `asset-${i}`);
-      vi.mocked(fetch)
-        .mockResolvedValueOnce(jsonResponse([{ label: 'SUCCESS', data: [] }, { label: 'FAILED', data: [] }]))
-        .mockResolvedValueOnce(jsonResponse([{ label: 'SUCCESS', data: [] }, { label: 'FAILED', data: [] }]));
-
-      await client().fetchPostureCounters('tenant-1', ids);
-
-      expect(fetch).toHaveBeenCalledTimes(2);
-      type WidgetBody = { widget_config: { series: Array<{ filter: { filters: Array<{ values: Array<string> }> } }> } };
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- shape asserted by the expectations below
-      const firstBody = requestBodyOf(vi.mocked(fetch).mock.calls[0][1]) as WidgetBody;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- shape asserted by the expectations below
-      const secondBody = requestBodyOf(vi.mocked(fetch).mock.calls[1][1]) as WidgetBody;
-      expect(firstBody.widget_config.series[0].filter.filters[1].values).toHaveLength(100);
-      expect(secondBody.widget_config.series[0].filter.filters[1].values).toHaveLength(50);
-    });
-
-    it('does not throw when a batch fails — leaves that batch out of the returned map', async () => {
-      const ids = Array.from({ length: 150 }, (_, i) => `asset-${i}`);
-      vi.mocked(fetch)
-        .mockResolvedValueOnce(new Response('boom', { status: 500 }))
-        .mockResolvedValueOnce(jsonResponse([
-          { label: 'SUCCESS', data: [{ key: 'asset-149', value: 2 }] },
-          { label: 'FAILED', data: [] },
-        ]));
-
-      const counters = await client().fetchPostureCounters('tenant-1', ids);
-
-      expect(counters.get('asset-0')).toBeUndefined();
-      expect(counters.get('asset-149')).toEqual({ success: 2, failed: 0 });
-    });
-
-    it('returns an empty map without calling fetch when there are no ids', async () => {
-      const counters = await client().fetchPostureCounters('tenant-1', []);
-      expect(counters.size).toBe(0);
-      expect(fetch).not.toHaveBeenCalled();
-    });
-  });
 });
 
 describe('createOpenaevClient — snapshot calls', () => {

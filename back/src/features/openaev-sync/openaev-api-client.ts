@@ -1,14 +1,12 @@
 import { NonRetryableError, TimeoutError } from '@app/module';
 import type { AiTargetAsset, AssetInventoryRow, AssetOverview, AttackObservation, EndpointEntity, OpenaevAssetGroup, OpenaevTag, OpenaevUser, SnapshotPage, TenantOutput, VulnerabilityObservation } from './openaev-types';
 import { fromError, newError, StructuredError } from '@app/utils';
-import { createLogger } from '../../utils/logger';
 import {
   aiTargetAssetSchema,
   assetInventoryRowSchema,
   assetOverviewSchema,
   attackObservationSchema,
   endpointEntitySchema,
-  esSeriesSchema,
   openaevAssetGroupSchema,
   openaevPageSchema,
   openaevTagSchema,
@@ -17,14 +15,9 @@ import {
   tenantOutputSchema,
   vulnerabilityObservationSchema,
 } from './openaev-types';
-import { parsePostureSeries } from './openaev-mapping-utils';
-
-const { logFromError } = createLogger({ feature: 'openaev-sync' });
 
 const FETCH_TIMEOUT_MS = 120_000;
 const MAX_PAGES = 1_000;
-/** Ids per `/dashboards/adhoc/series` call — the posture call is not a stable public API, so a batch is kept small and its own failure isolated (see `fetchPostureCounters`). */
-const POSTURE_BATCH_SIZE = 100;
 /** OpenAEV's maximum `page_size` for the snapshot streams. */
 const SNAPSHOT_PAGE_SIZE = 1_000;
 
@@ -127,38 +120,6 @@ const fetchJson = async (url: string, options: RequestInit, signal: AbortSignal,
     throw fromError(err, `OpenAEV non-JSON response: ${text.slice(0, 200)}`);
   }
 };
-
-const postureFilter = (id: string, key: string, values: Array<string>) => ({
-  id, key, mode: 'or' as const, values, operator: 'eq' as const,
-});
-
-/**
- * Replays the widget config OpenAEV's own `usePostureScores.ts` builds for the asset posture
- * gauge: one `structural-histogram`, two series (`SUCCESS`/`FAILED`) each scoped to
- * `base_entity = expectation-inject` and the batch's asset ids on `base_asset_side`, over
- * `ALL_TIME`. Not a stable public API — replicated rather than referenced.
- */
-const buildPostureWidgetConfig = (assetIds: Array<string>) => ({
-  title: '',
-  field: 'base_asset_side',
-  series: ['SUCCESS', 'FAILED'].map((status) => ({
-    name: status,
-    filter: {
-      mode: 'and',
-      filters: [
-        postureFilter('1', 'base_entity', ['expectation-inject']),
-        postureFilter('2', 'base_asset_side', assetIds),
-        postureFilter('3', 'inject_expectation_status', [status]),
-      ],
-    },
-  })),
-  mode: 'structural',
-  stacked: false,
-  limit: Math.max(assetIds.length, 10),
-  widget_configuration_type: 'structural-histogram',
-  time_range: 'ALL_TIME',
-  date_attribute: 'base_created_at',
-});
 
 /**
  * Authenticated calls to one OpenAEV instance with the status mapping of `fetchJson`; `post` takes
@@ -285,39 +246,6 @@ export const createOpenaevClient = (baseUrl: string, token: string, signal: Abor
     listAssetGroups: async (tenantId: string): Promise<Array<OpenaevAssetGroup>> => {
       const raw = await get(tenantPath(tenantId, '/asset_groups'));
       return openaevAssetGroupSchema.array().parse(raw);
-    },
-
-    /**
-     * Posture counters for a batch of assets, read from OpenAEV's dashboard engine — the one call
-     * that is not a stable public API. Ids are chunked (`POSTURE_BATCH_SIZE`) and a chunk's failure
-     * is logged and skipped rather than thrown: an OpenAEV instance without the dashboard engine
-     * gives no entry for that chunk's ids in the returned map instead of an error.
-     */
-    fetchPostureCounters: async (
-      tenantId: string,
-      assetIds: Array<string>,
-    ): Promise<Map<string, { success: number, failed: number }>> => {
-      const counters = new Map<string, { success: number, failed: number }>();
-      for (let i = 0; i < assetIds.length; i += POSTURE_BATCH_SIZE) {
-        // The catch below is deliberately total, so an abort has to be read before it: otherwise a
-        // cancelled run keeps firing — and logging — every remaining batch.
-        if (signal.aborted) {
-          return counters;
-        }
-        const batch = assetIds.slice(i, i + POSTURE_BATCH_SIZE);
-        try {
-          const raw = await post(tenantPath(tenantId, '/dashboards/adhoc/series'), {
-            widget_config: buildPostureWidgetConfig(batch),
-          });
-          const series = esSeriesSchema.array().parse(raw);
-          for (const [assetId, entry] of parsePostureSeries(series)) {
-            counters.set(assetId, entry);
-          }
-        } catch (err) {
-          logFromError(err, 'OpenAEV posture batch failed — no posture counters for these assets', { tenantId, batchSize: batch.length });
-        }
-      }
-      return counters;
     },
   };
 };
