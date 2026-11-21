@@ -5459,6 +5459,9 @@ msgstr "Licence Filigran"
 msgid "Filigran license removed."
 msgstr "Licence Filigran retirée."
 
+msgid "Filigran products"
+msgstr "Produits Filigran"
+
 msgid "Fill in a Threat Event Frequency to compute loss event frequency."
 msgstr "Renseignez une fréquence des événements de menace pour calculer la fréquence des événements de perte."
 
@@ -5835,8 +5838,17 @@ msgstr "Actif générique"
 msgid "Get a first quantified risk scenario in a few minutes."
 msgstr "Obtenez un premier scénario de risque chiffré en quelques minutes."
 
+msgid "Get OpenAEV now"
+msgstr "Obtenir OpenAEV"
+
+msgid "Get OpenCTI now"
+msgstr "Obtenir OpenCTI"
+
 msgid "Get started"
 msgstr "Bien démarrer"
+
+msgid "Get XTM Hub now"
+msgstr "Obtenir XTM Hub"
 
 msgid "gets through"
 msgstr "ce qui passe"
@@ -8113,6 +8125,9 @@ msgstr "Aucun scénario de risque dans ce périmètre pour l'instant."
 msgid "No risk scenario names this outcome yet."
 msgstr "Aucun scénario de risque ne désigne encore cette issue."
 
+msgid "No risk scenario, asset, threat, risk scope or control of this tenant has a name that contains “{search}”. Check the spelling, or open a list to browse what the tenant holds."
+msgstr "Aucun scénario de risque, actif, menace, périmètre de risque ou contrôle de ce tenant n'a un nom contenant « {search} ». Vérifiez l'orthographe, ou ouvrez une liste pour parcourir le contenu du tenant."
+
 msgid "No risk scope found"
 msgstr "Aucun périmètre de risque trouvé"
 
@@ -8597,6 +8612,9 @@ msgstr "Rien n'y est mesuré tant qu'aucun actif du parc n'y est rattaché."
 msgid "Nothing is running."
 msgstr "Rien n'est en cours."
 
+msgid "Nothing matches this search"
+msgstr "Aucun résultat pour cette recherche"
+
 msgid "Nothing read yet"
 msgstr "Rien lu pour l'instant"
 
@@ -8759,6 +8777,9 @@ msgstr "Findings {label} ouverts à la fin de chaque mois"
 msgid "Open {primaryAssetName}"
 msgstr "Ouvrir {primaryAssetName}"
 
+msgid "Open assets"
+msgstr "Ouvrir les actifs"
+
 msgid "Open CTEM Command Center in XTM One"
 msgstr "Ouvrir le CTEM Command Center dans XTM One"
 
@@ -8798,6 +8819,9 @@ msgstr "Ouvrir Paramètres"
 
 msgid "Open prevention"
 msgstr "Ouvrir la prévention"
+
+msgid "Open risk scenarios"
+msgstr "Ouvrir les scénarios de risque"
 
 msgid "Open technique findings grouped by technique, ranked by how many land on each. A technique finding is one OpenAEV detection or prevention result on one asset, counted while its latest state is applicable: the attack was not detected or not prevented, or a person marked it applicable. The chip is the ATT&CK id and the row opens that technique, where the same estate can be read against the actors that use it. The exposure Sankey shows the same counts on its technique column, so the two screens agree by construction."
 msgstr "Les findings de technique ouverts regroupés par technique, classés selon le nombre qui aboutit sur chacune. Un finding de technique est un résultat de détection ou de prévention OpenAEV sur un actif, compté tant que son dernier état est applicable : l'attaque n'a pas été détectée ou pas été bloquée, ou une personne l'a marqué applicable. La puce est l'identifiant ATT&CK et la ligne ouvre cette technique, où le même parc peut être lu en regard des acteurs qui l'utilisent. Le Sankey d'exposition affiche les mêmes décomptes sur sa colonne des techniques : les deux écrans concordent donc par construction."
@@ -9326,6 +9350,9 @@ msgstr "Accès à l'administration de la plateforme"
 
 msgid "Platform Capabilities"
 msgstr "Capacités de la plateforme"
+
+msgid "Platform connected"
+msgstr "Plateforme connectée"
 
 msgid "Platform family"
 msgstr "Famille de plateforme"
@@ -10182,6 +10209,9 @@ msgstr "Résultat du test exécuté le {day}"
 msgid "Result stays valid for (days)"
 msgstr "Validité d'un résultat (jours)"
 
+msgid "Results for “{search}”"
+msgstr "Résultats pour « {search} »"
+
 msgid "Results on {technique}"
 msgstr "Résultats sur {technique}"
 
@@ -10600,6 +10630,9 @@ msgstr "Score passé de {from} à {score}."
 msgid "Score: no finding"
 msgstr "Score : aucun finding"
 
+msgid "Search"
+msgstr "Recherche"
+
 msgid "Search a loss driver"
 msgstr "Rechercher un inducteur de pertes"
 
@@ -10683,6 +10716,12 @@ msgstr "Rechercher une technique..."
 
 msgid "Search tenants..."
 msgstr "Rechercher des tenants…"
+
+msgid "Search the platform"
+msgstr "Rechercher dans la plateforme"
+
+msgid "Search the platform..."
+msgstr "Rechercher dans la plateforme..."
 
 msgid "Search these results..."
 msgstr "Rechercher dans ces résultats..."
@@ -13364,6 +13403,9 @@ msgstr "Deux simulations du même scénario sur des parcs différents répondent
 
 msgid "Type"
 msgstr "Type"
+
+msgid "Type a search in the header to find risk scenarios, assets, threats, risk scopes and controls."
+msgstr "Saisissez une recherche dans l'en-tête pour trouver des scénarios de risque, des actifs, des menaces, des périmètres de risque et des contrôles."
 
 msgid "Type at least two characters of a name or an email"
 msgstr "Saisissez au moins deux caractères d'un nom ou d'un e-mail"

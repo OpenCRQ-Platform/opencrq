@@ -59,6 +59,7 @@ import { jobLogsService } from './job-logs';
 import { treatmentPlansService } from './treatment-plans';
 import { budgetReviewsService } from './budget-reviews';
 import { complianceAssessmentsService } from './compliance-assessments';
+import { globalSearchService } from './global-search';
 
 export * from './attack-outcomes';
 export * from './asset-dependencies';
@@ -120,6 +121,7 @@ export * from './job-logs';
 export * from './treatment-plans';
 export * from './budget-reviews';
 export * from './compliance-assessments';
+export * from './global-search';
 export * as schema from './schema';
 
 export const allServiceDefinitions = [
@@ -181,4 +183,5 @@ export const allServiceDefinitions = [
   treatmentPlansService,
   budgetReviewsService,
   complianceAssessmentsService,
+  globalSearchService,
 ] as const;

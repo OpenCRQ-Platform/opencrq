@@ -5212,6 +5212,23 @@
       "input": null
     },
     {
+      "path": "globalSearch.search",
+      "type": "query",
+      "input": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "search"
+        ]
+      }
+    },
+    {
       "path": "groups.addRoleToGroup",
       "type": "mutation",
       "input": {

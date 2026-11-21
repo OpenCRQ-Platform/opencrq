@@ -30,6 +30,7 @@ import { Route as AuthTenantIdChar123OrganizationIdChar125IntegrationsRouteRoute
 import { Route as AuthTenantIdChar123OrganizationIdChar125NotificationsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/notifications/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/primary-assets/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125ProfileRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/profile'
+import { Route as AuthTenantIdChar123OrganizationIdChar125SearchRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/search'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scenarios/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scopes/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/route'
@@ -364,6 +365,12 @@ const AuthTenantIdChar123OrganizationIdChar125ProfileRoute =
   AuthTenantIdChar123OrganizationIdChar125ProfileRouteImport.update({
     id: '/profile',
     path: '/profile',
+    getParentRoute: () => AuthTenantIdChar123OrganizationIdChar125RouteRoute,
+  } as any)
+const AuthTenantIdChar123OrganizationIdChar125SearchRoute =
+  AuthTenantIdChar123OrganizationIdChar125SearchRouteImport.update({
+    id: '/search',
+    path: '/search',
     getParentRoute: () => AuthTenantIdChar123OrganizationIdChar125RouteRoute,
   } as any)
 const AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRoute =
@@ -2233,6 +2240,7 @@ export interface FileRoutesByFullPath {
   '/platform/security/tenants': typeof AuthPlatformSecurityTenantsRouteRouteWithChildren
   '/platform/security/users': typeof AuthPlatformSecurityUsersRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/profile': typeof AuthTenantIdChar123OrganizationIdChar125ProfileRoute
+  '/$tenantId/{-$organizationId}/search': typeof AuthTenantIdChar123OrganizationIdChar125SearchRoute
   '/$tenantId/{-$organizationId}/': typeof AuthTenantIdChar123OrganizationIdChar125IndexRoute
   '/platform/security/': typeof AuthPlatformSecurityIndexRoute
   '/$tenantId/{-$organizationId}/compliance/assessments': typeof AuthTenantIdChar123OrganizationIdChar125ComplianceAssessmentsRouteRouteWithChildren
@@ -2448,6 +2456,7 @@ export interface FileRoutesByTo {
   '/join/$token': typeof JoinTokenRoute
   '/': typeof AuthIndexRoute
   '/$tenantId/{-$organizationId}/profile': typeof AuthTenantIdChar123OrganizationIdChar125ProfileRoute
+  '/$tenantId/{-$organizationId}/search': typeof AuthTenantIdChar123OrganizationIdChar125SearchRoute
   '/$tenantId/{-$organizationId}': typeof AuthTenantIdChar123OrganizationIdChar125IndexRoute
   '/platform/security': typeof AuthPlatformSecurityIndexRoute
   '/$tenantId/{-$organizationId}/budget-reviews/$budgetReviewId': typeof AuthTenantIdChar123OrganizationIdChar125BudgetReviewsBudgetReviewIdRoute
@@ -2643,6 +2652,7 @@ export interface FileRoutesById {
   '/_auth/platform/security/tenants': typeof AuthPlatformSecurityTenantsRouteRouteWithChildren
   '/_auth/platform/security/users': typeof AuthPlatformSecurityUsersRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/profile': typeof AuthTenantIdChar123OrganizationIdChar125ProfileRoute
+  '/_auth/$tenantId/{-$organizationId}/search': typeof AuthTenantIdChar123OrganizationIdChar125SearchRoute
   '/_auth/$tenantId/{-$organizationId}/': typeof AuthTenantIdChar123OrganizationIdChar125IndexRoute
   '/_auth/platform/security/': typeof AuthPlatformSecurityIndexRoute
   '/_auth/$tenantId/{-$organizationId}/compliance/assessments': typeof AuthTenantIdChar123OrganizationIdChar125ComplianceAssessmentsRouteRouteWithChildren
@@ -2883,6 +2893,7 @@ export interface FileRouteTypes {
     | '/platform/security/tenants'
     | '/platform/security/users'
     | '/$tenantId/{-$organizationId}/profile'
+    | '/$tenantId/{-$organizationId}/search'
     | '/$tenantId/{-$organizationId}/'
     | '/platform/security/'
     | '/$tenantId/{-$organizationId}/compliance/assessments'
@@ -3098,6 +3109,7 @@ export interface FileRouteTypes {
     | '/join/$token'
     | '/'
     | '/$tenantId/{-$organizationId}/profile'
+    | '/$tenantId/{-$organizationId}/search'
     | '/$tenantId/{-$organizationId}'
     | '/platform/security'
     | '/$tenantId/{-$organizationId}/budget-reviews/$budgetReviewId'
@@ -3292,6 +3304,7 @@ export interface FileRouteTypes {
     | '/_auth/platform/security/tenants'
     | '/_auth/platform/security/users'
     | '/_auth/$tenantId/{-$organizationId}/profile'
+    | '/_auth/$tenantId/{-$organizationId}/search'
     | '/_auth/$tenantId/{-$organizationId}/'
     | '/_auth/platform/security/'
     | '/_auth/$tenantId/{-$organizationId}/compliance/assessments'
@@ -3654,6 +3667,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/$tenantId/{-$organizationId}/profile'
       preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125ProfileRouteImport
+      parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RouteRoute
+    }
+    '/_auth/$tenantId/{-$organizationId}/search': {
+      id: '/_auth/$tenantId/{-$organizationId}/search'
+      path: '/search'
+      fullPath: '/$tenantId/{-$organizationId}/search'
+      preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SearchRouteImport
       parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RouteRoute
     }
     '/_auth/$tenantId/{-$organizationId}/risk-scenarios': {
@@ -6534,6 +6554,7 @@ interface AuthTenantIdChar123OrganizationIdChar125RouteRouteChildren {
   AuthTenantIdChar123OrganizationIdChar125ThreatEventFrequencyRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125ThreatEventFrequencyRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125TreatmentPlansRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125TreatmentPlansRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125ProfileRoute: typeof AuthTenantIdChar123OrganizationIdChar125ProfileRoute
+  AuthTenantIdChar123OrganizationIdChar125SearchRoute: typeof AuthTenantIdChar123OrganizationIdChar125SearchRoute
   AuthTenantIdChar123OrganizationIdChar125IndexRoute: typeof AuthTenantIdChar123OrganizationIdChar125IndexRoute
 }
 
@@ -6575,6 +6596,8 @@ const AuthTenantIdChar123OrganizationIdChar125RouteRouteChildren: AuthTenantIdCh
       AuthTenantIdChar123OrganizationIdChar125TreatmentPlansRouteRouteWithChildren,
     AuthTenantIdChar123OrganizationIdChar125ProfileRoute:
       AuthTenantIdChar123OrganizationIdChar125ProfileRoute,
+    AuthTenantIdChar123OrganizationIdChar125SearchRoute:
+      AuthTenantIdChar123OrganizationIdChar125SearchRoute,
     AuthTenantIdChar123OrganizationIdChar125IndexRoute:
       AuthTenantIdChar123OrganizationIdChar125IndexRoute,
   }

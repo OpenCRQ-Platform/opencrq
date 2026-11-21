@@ -13,56 +13,57 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 */
 
-import { HeaderGroup, Text } from '@filigran/design-system';
-import { useNavigate } from '@tanstack/react-router';
-import type { FunctionComponent } from 'react';
+import { Icon, Menu, MenuContent, MenuItem, MenuTrigger, NavbarItem, useNavbarCollapsed } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
-import { Trans } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
-import { Select, SelectContent, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
+import { Link } from '@tanstack/react-router';
+import type { FunctionComponent } from 'react';
 import { useTRPC } from '../../lib';
 import { useOptionalTenant } from '../../providers';
+import { NavbarRowContent } from './main-layout/fds-navbar/navbar-row-content';
 
-/** The header's scope slot: the tenant, named once for the whole application. */
+/**
+ * The tenant switcher, the first row of the navbar as in OpenAEV: shown only to a reader who can
+ * switch, that is who reaches two tenants or more. With one tenant nothing names it anywhere.
+ */
 export const ScopeSlot: FunctionComponent = () => {
   const trpc = useTRPC();
   const tenantContext = useOptionalTenant();
-  const navigate = useNavigate();
+  const collapsed = useNavbarCollapsed();
   const { data: tenants } = useQuery(trpc.tenants.getTenants.queryOptions());
 
-  if (!tenantContext || !tenants || tenants.length === 0) {
-    return <HeaderGroup />;
+  if (!tenantContext || !tenants || tenants.length <= 1) {
+    return null;
   }
 
+  const current = tenants.find((tenant) => tenant.id === tenantContext.tenantId);
+  const displayName = current?.name ?? t`Select a tenant`;
+
   return (
-    <HeaderGroup>
-      <div className="flex items-center gap-3">
-        {tenants.length > 1 ? (
-          <Select
-            value={tenantContext.tenantId}
-            onValueChange={(value) => {
-              void navigate({ to: '/$tenantId/{-$organizationId}', params: { tenantId: value, organizationId: undefined } });
-            }}
-          >
-            <SelectLabel className="mb-0"><Trans>Tenant</Trans></SelectLabel>
-            <SelectTrigger>
-              <SelectValue placeholder={t`Select a tenant`} />
-            </SelectTrigger>
-            <SelectContent>
-              {tenants.map((tenant) => (
-                <SelectItem key={tenant.id} value={tenant.id}>
-                  {tenant.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <>
-            <Text as="span" variant="content-compact" className="text-default-secondary"><Trans>Tenant</Trans></Text>
-            <Text as="span" variant="content-compact">{tenants[0].name}</Text>
-          </>
-        )}
-      </div>
-    </HeaderGroup>
+    <Menu>
+      <MenuTrigger asChild>
+        <NavbarItem asChild tooltipLabel={displayName}>
+          <button type="button">
+            <NavbarRowContent icon={<Icon name="building-2" size={16} aria-hidden />}>
+              {displayName}
+            </NavbarRowContent>
+            {!collapsed && (
+              <span className="inline-flex shrink-0 text-default-secondary" aria-hidden>
+                <Icon name="chevrons-up-down" size={16} />
+              </span>
+            )}
+          </button>
+        </NavbarItem>
+      </MenuTrigger>
+      <MenuContent align="start" side="right">
+        {tenants.map((tenant) => (
+          <MenuItem key={tenant.id} asChild selected={tenant.id === tenantContext.tenantId}>
+            <Link to="/$tenantId/{-$organizationId}" params={{ tenantId: tenant.id, organizationId: undefined }}>
+              {tenant.name}
+            </Link>
+          </MenuItem>
+        ))}
+      </MenuContent>
+    </Menu>
   );
 };
