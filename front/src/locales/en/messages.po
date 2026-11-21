@@ -835,12 +835,6 @@ msgstr "{holder}, assigned to {other}, which gives it {band}."
 msgid "{holder}, assigned to {other}."
 msgstr "{holder}, assigned to {other}."
 
-msgid "{holder}, leads to {other} on an attack path, which gives it {band}."
-msgstr "{holder}, leads to {other} on an attack path, which gives it {band}."
-
-msgid "{holder}, leads to {other} on an attack path."
-msgstr "{holder}, leads to {other} on an attack path."
-
 msgid "{hours}h {remainingMinutes}m"
 msgstr "{hours}h {remainingMinutes}m"
 
@@ -2915,9 +2909,6 @@ msgstr "Attack outcomes"
 
 msgid "Attack Outcomes"
 msgstr "Attack Outcomes"
-
-msgid "attack path"
-msgstr "attack path"
 
 msgid "Attack Path"
 msgstr "Attack Path"
@@ -6728,12 +6719,6 @@ msgstr "Later run"
 msgid "Latest run {latestAge}"
 msgstr "Latest run {latestAge}"
 
-msgid "Leads to"
-msgstr "Leads to"
-
-msgid "Leads to: {named}"
-msgstr "Leads to: {named}"
-
 msgid "Leave empty to let a result count however old it is."
 msgstr "Leave empty to let a result count however old it is."
 
@@ -8911,12 +8896,6 @@ msgstr "OpenAEV tests {control} on this technique, which {control} does not decl
 msgid "OpenAEV tests exercise this control although it is declared not deployed: they are not taken into account."
 msgstr "OpenAEV tests exercise this control although it is declared not deployed: they are not taken into account."
 
-msgid "OpenAEV, inferred"
-msgstr "OpenAEV, inferred"
-
-msgid "OpenAEV, proven by a test"
-msgstr "OpenAEV, proven by a test"
-
 msgid "OpenAI-compatible"
 msgstr "OpenAI-compatible"
 
@@ -9813,12 +9792,6 @@ msgstr "reached"
 
 msgid "Reached"
 msgstr "Reached"
-
-msgid "Reached from"
-msgstr "Reached from"
-
-msgid "Reached from: {named}"
-msgstr "Reached from: {named}"
 
 #. js-lingui-explicit-id
 msgid "Read as {low} to {high}. Specify the number beyond that."
@@ -13003,6 +12976,9 @@ msgstr "This scope has no asset: nothing is measured over it until one is mapped
 
 msgid "This scope is measured over its mapped assets and holds none, so no simulation can run."
 msgstr "This scope is measured over its mapped assets and holds none, so no simulation can run."
+
+msgid "This score is computed from every object mirrored from OpenCTI, including sources some users may not see there. It is not recomputed for what each user can read."
+msgstr "This score is computed from every object mirrored from OpenCTI, including sources some users may not see there. It is not recomputed for what each user can read."
 
 msgid "This search only finds outcomes this threat does not match."
 msgstr "This search only finds outcomes this threat does not match."

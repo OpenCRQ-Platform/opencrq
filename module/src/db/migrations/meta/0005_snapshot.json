@@ -1,5 +1,5 @@
 {
-  "id": "70d601ab-5be3-4de7-afd5-fc90c905ee9a",
+  "id": "0d66944c-0a40-4dbf-8d17-a0872445b2a5",
   "prevId": "511fa248-155f-4f92-9396-0b1b063963d1",
   "version": "7",
   "dialect": "postgresql",
@@ -8058,12 +8058,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "evidence_ref": {
-          "name": "evidence_ref",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "first_seen_at": {
           "name": "first_seen_at",
           "type": "timestamp with time zone",
@@ -8197,11 +8191,11 @@
       "checkConstraints": {
         "supporting_asset_relations_kind_ck": {
           "name": "supporting_asset_relations_kind_ck",
-          "value": "\"supporting_asset_relations\".\"kind\" IN ('primary_user_of', 'reachable_from')"
+          "value": "\"supporting_asset_relations\".\"kind\" IN ('primary_user_of')"
         },
         "supporting_asset_relations_source_ck": {
           "name": "supporting_asset_relations_source_ck",
-          "value": "\"supporting_asset_relations\".\"source\" IN ('entra_registered_owner', 'intune_primary_user', 'openaev_attack_path_proven', 'openaev_attack_path_inferred')"
+          "value": "\"supporting_asset_relations\".\"source\" IN ('entra_registered_owner', 'intune_primary_user')"
         }
       },
       "isRLSEnabled": false
@@ -14055,6 +14049,12 @@
         "objective": {
           "name": "objective",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "marking_refs": {
+          "name": "marking_refs",
+          "type": "text[]",
           "primaryKey": false,
           "notNull": false
         },
