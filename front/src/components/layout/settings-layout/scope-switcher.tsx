@@ -2,7 +2,7 @@ import { Icon } from '@filigran/design-system';
 import type { IconName } from '@filigran/design-system';
 import { createLink } from '@tanstack/react-router';
 import { t } from '@lingui/core/macro';
-import type { AnchorHTMLAttributes, FunctionComponent, Ref } from 'react';
+import type { AnchorHTMLAttributes, ComponentProps, FunctionComponent, Ref } from 'react';
 import type { SecurityScope } from './security-scope-utils';
 import { cn } from '../../../utils';
 
@@ -24,6 +24,10 @@ const ScopeAnchor: FunctionComponent<ScopeAnchorProps> = ({ selected, 'aria-curr
 
 const ScopeLink = createLink(ScopeAnchor);
 
+// `Link`'s props require a literal `to`; the scope targets are plain `href`s (see the Security layout
+// route), so the option is widened to the link's props, as nav-model.tsx does for scoped links.
+const scopeLinkProps = (option: ScopeLinkOption): ComponentProps<typeof ScopeLink> => option as ComponentProps<typeof ScopeLink>;
+
 interface ScopeToggleProps {
   active: boolean,
   linkOption: ScopeLinkOption,
@@ -39,6 +43,7 @@ interface ScopeToggleProps {
  */
 const ScopeToggle: FunctionComponent<ScopeToggleProps> = ({ active, linkOption, icon, label }) => (
   <ScopeLink
+    {...scopeLinkProps(linkOption)}
     selected={active}
     className={cn(
       'flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-[var(--fds-radius-sm)] border px-3 py-3.5',
@@ -48,7 +53,6 @@ const ScopeToggle: FunctionComponent<ScopeToggleProps> = ({ active, linkOption, 
         ? 'border-filigran-brand-primary-transparency-55 bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_16%,transparent)] text-filigran-brand-primary hover:bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_22%,transparent)]'
         : 'border-elevation-subtle-soft text-default-secondary hover:bg-[var(--fds-bg-elevation-hover-layer-1)]',
     )}
-    {...linkOption}
   >
     <Icon name={icon} size={20} aria-hidden />
     <span>{label}</span>
