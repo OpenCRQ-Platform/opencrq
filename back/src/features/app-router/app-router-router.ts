@@ -1,4 +1,4 @@
-import type { DrizzleDB } from '@app/module';
+import type { ConnectorOrigin, DrizzleDB, UserOrigin } from '@app/module';
 import { allServiceDefinitions, createServices, PlatformCapability_ManageUsers } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import type { PublicProcedure } from '../../trpc';
@@ -56,6 +56,9 @@ import { complianceAssessmentsRouter } from './compliance-assessments';
 import { usersRouter } from './users';
 
 import { isTenantReachableOnce } from './tenant-edition-utils';
+import { config } from '../../config';
+import { readerMarkings } from './xtm/reader-markings';
+import { readerAuthorization } from './xtm/xtm-router';
 
 const instantiateServices = (db: DrizzleDB) => createServices([...allServiceDefinitions], db);
 
@@ -69,7 +72,7 @@ const instantiateServices = (db: DrizzleDB) => createServices([...allServiceDefi
  * to its service account and it can see no other, so there is nothing here for
  * it to claim.
  */
-export const createTenantProcedure = (services: ReturnType<typeof instantiateServices>) =>
+export const createTenantProcedure = (services: ReturnType<typeof instantiateServices>, db: DrizzleDB) =>
   tenantScopedProcedure.use(async ({ ctx, next }) => {
     const { origin } = ctx;
     if (origin.type === 'client' && origin.tenantId !== undefined) {
@@ -82,6 +85,16 @@ export const createTenantProcedure = (services: ReturnType<typeof instantiateSer
       if (!reachable) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Reaching more than one tenant requires an Enterprise Edition license' });
       }
+      // The threats mirrored from OpenCTI a person reads are the ones OpenCTI lets them read
+      // (opencrq #31): their allowed markings, asked as them, ride on the origin every view reads.
+      const markings = await readerMarkings.resolve(
+        tenantId,
+        origin.userId,
+        config().connectors?.opencti?.[tenantId],
+        readerAuthorization(db, ctx.user),
+      );
+      const markedOrigin: UserOrigin | ConnectorOrigin = { ...origin, markings };
+      return next({ ctx: { ...ctx, origin: markedOrigin, services } });
     }
     return next({ ctx: { ...ctx, services } });
   });
@@ -127,8 +140,8 @@ export type PlatformSecurityProcedure = ReturnType<typeof createPlatformSecurity
  * closes their reads. It sits on the base procedure, so it answers `FORBIDDEN` before any input
  * is validated.
  */
-export const createTenantSecurityProcedure = (services: ReturnType<typeof instantiateServices>) =>
-  createTenantProcedure(services).use(async ({ ctx, next }) => {
+export const createTenantSecurityProcedure = (services: ReturnType<typeof instantiateServices>, db: DrizzleDB) =>
+  createTenantProcedure(services, db).use(async ({ ctx, next }) => {
     const hasManageSecurity = await services.withOrigin(ctx.origin).capabilities.hasManageSecurity();
     if (!hasManageSecurity) {
       throw new TRPCError({ code: 'FORBIDDEN', message: 'The MANAGE_SECURITY capability is required' });
@@ -158,10 +171,10 @@ export const appRouter = (
   procedureManifest: () => ServedProcedureManifest | null = () => null,
 ) => {
   const services = instantiateServices(db);
-  const authProcedure = createTenantProcedure(services);
+  const authProcedure = createTenantProcedure(services, db);
   const platformProcedure = createPlatformProcedure(services);
   const platformSecurityProcedure = createPlatformSecurityProcedure(services);
-  const tenantSecurityProcedure = createTenantSecurityProcedure(services);
+  const tenantSecurityProcedure = createTenantSecurityProcedure(services, db);
 
   return router({
     health: publicProcedure.meta({ reads: [] }).query(() => ({
