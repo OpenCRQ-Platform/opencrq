@@ -48,7 +48,7 @@ describe('NavToolbarMenu', () => {
     expect(row.getAttribute('class')).not.toMatch(/hover:bg-elevation-hover\b/);
   });
 
-  it('draws the selected row icon at full opacity in the primary ink, the others at half opacity', async () => {
+  it('draws the selected row icon at full opacity, the others at half opacity, all in the secondary ink', async () => {
     renderInRouter(
       <NavToolbarMenu
         entries={[
@@ -62,7 +62,7 @@ describe('NavToolbarMenu', () => {
     const other = screen.getByRole('link', { name: 'Groups' });
     expect(selected.getAttribute('aria-current')).toBe('page');
     expect(iconSlotOf(selected)?.getAttribute('class')).toMatch(/\bopacity-100\b/);
-    expect(iconSlotOf(selected)?.getAttribute('class')).toMatch(/\btext-default-primary\b/);
+    expect(iconSlotOf(selected)?.getAttribute('class')).toMatch(/\btext-default-secondary\b/);
     expect(iconSlotOf(other)?.getAttribute('class')).toMatch(/\bopacity-50\b/);
     expect(iconSlotOf(other)?.getAttribute('class')).toMatch(/\btext-default-secondary\b/);
   });
