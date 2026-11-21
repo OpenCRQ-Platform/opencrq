@@ -1,48 +1,76 @@
-import { Icon, useNavbarCollapsed } from '@filigran/design-system';
+import { Icon, ProductSwitcher } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
-import { Link, linkOptions } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
+import logoOpenAevDark from '/logo-openaev-dark.png';
+import logoOpenAevLight from '/logo-openaev-light.png';
+import logoOpenCtiDark from '/logo-opencti-dark.svg';
+import logoOpenCtiLight from '/logo-opencti-light.svg';
+import logoXtmHubDark from '/logo-xtm-hub-dark.svg';
+import logoXtmHubLight from '/logo-xtm-hub-light.svg';
 import { useThemeLogo } from '../../../../hooks';
-import { useOptionalTenant } from '../../../../providers';
-import { cn } from '../../../../utils';
+import { useTRPC } from '../../../../lib';
+import { useOptionalTenant, useTheme } from '../../../../providers';
+import { navbarLogoPath, productSwitcherDestinations } from './navbar-logo-utils';
+
+const productLogo = (src: string) => (
+  <img src={src} alt="" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
+);
 
 /**
- * Inside a tenant the logo opens that tenant's home: `/` only redirects to the first tenant, so
- * sending a reader there would take them through a tenant-less route and, with several tenants,
- * to another tenant than the one on screen. Outside a tenant (the platform surface) it keeps `/`.
- */
-export const navbarLogoLink = (tenantId: string | undefined) => (tenantId
-  ? linkOptions({ to: '/$tenantId/{-$organizationId}', params: { tenantId, organizationId: undefined } })
-  : linkOptions({ to: '/' }));
-
-/**
- * Brand row of the navbar header band, sized on the design system's own
- * `ProductSwitcher` slots: a 126x28 box for the wordmark, a 28x28 square for
- * the collapsed rail. The collapsed state uses the design system's `opencrq`
- * glyph rather than a crop of the wordmark, which no square crop can centre.
+ * Brand row of the navbar header band: the design system's `ProductSwitcher`, as OpenCTI and
+ * OpenAEV render it. The wordmark is the home link, the chevron opens the other XTM Platform
+ * products; the collapsed rail shows the `opencrq` glyph, the home link alone.
  */
 export const NavbarLogo = () => {
+  const trpc = useTRPC();
   const logo = useThemeLogo();
-  const collapsed = useNavbarCollapsed();
+  const { effectiveTheme } = useTheme();
   const tenant = useOptionalTenant();
+  const { data: connectorsStatus } = useQuery({ ...trpc.integrations.getConnectorsStatus.queryOptions(), enabled: tenant !== undefined });
+  const dark = effectiveTheme === 'dark';
+  const destinations = productSwitcherDestinations({
+    openctiUrl: connectorsStatus?.opencti?.url ?? null,
+    openaevUrl: connectorsStatus?.openaev?.url ?? null,
+  });
 
   return (
-    <Link
-      {...navbarLogoLink(tenant?.tenantId)}
-      aria-label={t`OpenCRQ home`}
-      className={cn(
-        'inline-flex h-7 shrink-0 items-center overflow-hidden',
-        collapsed ? 'w-7 justify-center' : 'w-[126px]',
-      )}
-    >
-      {collapsed ? (
-        <Icon name="custom/opencrq" size={24} aria-hidden />
-      ) : (
+    <ProductSwitcher
+      label={t`Filigran products`}
+      logo={(
         <img
           src={logo}
-          alt={t`OpenCRQ`}
-          className="w-[126px]"
+          alt=""
+          style={{ height: 28, width: '100%', objectFit: 'contain', objectPosition: 'left center' }}
         />
       )}
-    </Link>
+      logoCollapsed={<Icon name="custom/opencrq" size={24} aria-hidden />}
+      logoTo={navbarLogoPath(tenant?.tenantId)}
+      logoLabel={t`OpenCRQ home`}
+      linkComponent={Link}
+      options={[
+        {
+          id: 'opencti',
+          label: 'OpenCTI',
+          logo: productLogo(dark ? logoOpenCtiDark : logoOpenCtiLight),
+          tooltip: destinations.opencti.connected ? t`Platform connected` : t`Get OpenCTI now`,
+          href: destinations.opencti.href,
+        },
+        {
+          id: 'openaev',
+          label: 'OpenAEV',
+          logo: productLogo(dark ? logoOpenAevDark : logoOpenAevLight),
+          tooltip: destinations.openaev.connected ? t`Platform connected` : t`Get OpenAEV now`,
+          href: destinations.openaev.href,
+        },
+        {
+          id: 'xtm-hub',
+          label: 'XTM Hub',
+          logo: productLogo(dark ? logoXtmHubDark : logoXtmHubLight),
+          tooltip: t`Get XTM Hub now`,
+          href: destinations.xtmHub.href,
+        },
+      ]}
+    />
   );
 };

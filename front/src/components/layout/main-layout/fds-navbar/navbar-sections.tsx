@@ -1,4 +1,5 @@
 import type { FunctionComponent } from 'react';
+import { ScopeSlot } from '../../scope-slot';
 import { NavRows } from './nav-items';
 import { getPlatformNavigationNodes } from './nav-model';
 import { ScopeNavigationSections } from './scope-navigation-sections';
@@ -11,7 +12,12 @@ interface NavbarSectionsProps {
 
 export const NavbarSections: FunctionComponent<NavbarSectionsProps> = ({ tenantId, onPlatformSurface }) => {
   if (tenantId !== undefined) {
-    return <ScopeNavigationSections tenantId={tenantId} />;
+    return (
+      <>
+        <ScopeSlot />
+        <ScopeNavigationSections tenantId={tenantId} />
+      </>
+    );
   }
   return onPlatformSurface ? <NavRows nodes={getPlatformNavigationNodes()} /> : null;
 };

@@ -5453,6 +5453,9 @@ msgstr "Licence Filigran"
 msgid "Filigran license removed."
 msgstr "Licence Filigran retirée."
 
+msgid "Filigran products"
+msgstr "Produits Filigran"
+
 msgid "Fill in a Threat Event Frequency to compute loss event frequency."
 msgstr "Renseignez une fréquence des événements de menace pour calculer la fréquence des événements de perte."
 
@@ -5829,8 +5832,17 @@ msgstr "Actif générique"
 msgid "Get a first quantified risk scenario in a few minutes."
 msgstr "Obtenez un premier scénario de risque chiffré en quelques minutes."
 
+msgid "Get OpenAEV now"
+msgstr "Obtenir OpenAEV"
+
+msgid "Get OpenCTI now"
+msgstr "Obtenir OpenCTI"
+
 msgid "Get started"
 msgstr "Bien démarrer"
+
+msgid "Get XTM Hub now"
+msgstr "Obtenir XTM Hub"
 
 msgid "gets through"
 msgstr "ce qui passe"
@@ -9320,6 +9332,9 @@ msgstr "Accès à l'administration de la plateforme"
 
 msgid "Platform Capabilities"
 msgstr "Capacités de la plateforme"
+
+msgid "Platform connected"
+msgstr "Plateforme connectée"
 
 msgid "Platform family"
 msgstr "Famille de plateforme"

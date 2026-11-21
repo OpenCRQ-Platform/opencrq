@@ -31,6 +31,11 @@ vi.mock('./scope-navigation-sections', () => ({
   ScopeNavigationSections: ({ tenantId }: { tenantId: string }) => <p>{`tenant bar of ${tenantId}`}</p>,
 }));
 
+// The tenant switcher reads the reader's tenants from the server, out of scope here.
+vi.mock('../../scope-slot', () => ({
+  ScopeSlot: () => null,
+}));
+
 beforeAll(() => {
   i18n.load('en', {});
   i18n.activate('en');

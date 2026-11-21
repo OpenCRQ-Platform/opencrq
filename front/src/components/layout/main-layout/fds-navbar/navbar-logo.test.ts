@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { navbarLogoLink } from './navbar-logo';
+import { navbarLogoPath } from './navbar-logo-utils';
 
-describe('navbarLogoLink', () => {
+describe('navbarLogoPath', () => {
   it('opens the home of the tenant on screen, never the tenant-less landing route', () => {
-    expect(navbarLogoLink('tenant-1')).toEqual({
-      to: '/$tenantId/{-$organizationId}',
-      params: { tenantId: 'tenant-1', organizationId: undefined },
-    });
+    expect(navbarLogoPath('tenant-1')).toBe('/tenant-1');
   });
 
   it('keeps the landing route outside a tenant', () => {
-    expect(navbarLogoLink(undefined)).toEqual({ to: '/' });
+    expect(navbarLogoPath(undefined)).toBe('/');
   });
 });

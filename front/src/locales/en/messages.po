@@ -5453,6 +5453,9 @@ msgstr "Filigran license"
 msgid "Filigran license removed."
 msgstr "Filigran license removed."
 
+msgid "Filigran products"
+msgstr "Filigran products"
+
 msgid "Fill in a Threat Event Frequency to compute loss event frequency."
 msgstr "Fill in a Threat Event Frequency to compute loss event frequency."
 
@@ -5829,8 +5832,17 @@ msgstr "Generic asset"
 msgid "Get a first quantified risk scenario in a few minutes."
 msgstr "Get a first quantified risk scenario in a few minutes."
 
+msgid "Get OpenAEV now"
+msgstr "Get OpenAEV now"
+
+msgid "Get OpenCTI now"
+msgstr "Get OpenCTI now"
+
 msgid "Get started"
 msgstr "Get started"
+
+msgid "Get XTM Hub now"
+msgstr "Get XTM Hub now"
 
 msgid "gets through"
 msgstr "gets through"
@@ -9320,6 +9332,9 @@ msgstr "Platform Administration Access"
 
 msgid "Platform Capabilities"
 msgstr "Platform Capabilities"
+
+msgid "Platform connected"
+msgstr "Platform connected"
 
 msgid "Platform family"
 msgstr "Platform family"

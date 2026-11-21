@@ -169,7 +169,7 @@ const AskArianeButton: FunctionComponent<AskArianeButtonProps> = ({ isEnterprise
           ref={ref}
           variant="ia"
           priority="tertiary"
-          startIcon={<Icon name="custom/xtmone" size={16} aria-hidden />}
+          startIcon={<Icon name="custom/xtmone" size={20} aria-hidden />}
           endIcon={isEnterpriseEdition ? undefined : <span aria-hidden><Chip label={t`EE`} severity="ee" size="sm" /></span>}
           aria-label={label}
           onClick={onClick}
