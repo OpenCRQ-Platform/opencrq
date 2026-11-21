@@ -27,21 +27,27 @@ const RAIL_ROW_CLASSES = cn(
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset ring-focus',
 );
 
-const RAIL_ROW_ACTIVE_CLASSES = 'bg-filigran-brand-primary-transparency-10 shadow-[inset_2px_0px] shadow-primary hover:bg-filigran-brand-primary-transparency-10';
+const RAIL_ROW_ACTIVE_CLASSES = cn(
+  'bg-filigran-brand-primary-transparency-10 hover:bg-filigran-brand-primary-transparency-10',
+  'shadow-[inset_2px_0px] shadow-primary',
+);
 
-const RailIcon: FunctionComponent<{ icon?: ReactElement, active?: boolean }> = ({ icon, active }) => (icon
-  ? (
-      <span
-        aria-hidden
-        className={cn(
-          'flex size-4 shrink-0 items-center justify-center [&_svg]:size-4',
-          active ? 'text-default-primary opacity-100' : 'text-default-secondary opacity-50 group-data-[status=active]/rail-row:text-default-primary group-data-[status=active]/rail-row:opacity-100',
-        )}
-      >
-        {icon}
-      </span>
-    )
-  : null);
+const RailIcon: FunctionComponent<{ icon?: ReactElement, active?: boolean }> = ({ icon, active }) => {
+  if (!icon) {
+    return null;
+  }
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'flex size-4 shrink-0 items-center justify-center [&_svg]:size-4',
+        active ? 'text-default-primary opacity-100' : 'text-default-secondary opacity-50 group-data-[status=active]/rail-row:text-default-primary group-data-[status=active]/rail-row:opacity-100',
+      )}
+    >
+      {icon}
+    </span>
+  );
+};
 
 const RailLabel: FunctionComponent<{ entry: MenuEntry }> = ({ entry }) => (
   <span className="min-w-0 flex-1 truncate" title={entry.label}>

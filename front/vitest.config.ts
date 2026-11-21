@@ -11,6 +11,7 @@ const publicDir = normalizePath(resolve(dirname(fileURLToPath(import.meta.url)),
 const ISOLATED_TESTS = [
   'src/components/layout/main-layout/fds-navbar/nav-items.test.tsx',
   'src/components/layout/main-layout/fds-navbar/navbar-sections.test.tsx',
+  'src/components/layout/settings-layout/nav-toolbar-menu.test.tsx',
   'src/components/shared/column-graph.test.tsx',
   'src/components/shared/ttp-matrix-view.test.tsx',
   'src/features/asset-dependencies/components/dependency-graph-card.test.tsx',
