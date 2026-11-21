@@ -54,6 +54,7 @@ import { assetEvidence,
   primaryAssetBusinessValueCategories,
   primaryAssets,
   primaryAssetTenantIsolationPolicy,
+  reportRefMarkingPolicy,
   riskScenarioBusinessValueCategories,
   riskScenarioPrimaryAssets,
   riskScenarioRiskTolerances,
@@ -69,6 +70,7 @@ import { assetEvidence,
   serviceAccountGroups,
   serviceAccounts,
   serviceAccountTokens,
+  streamObjectMarkingPolicy,
   supportingAssetCriticalityLifts,
   supportingAssetIdentityProperties,
   supportingAssetMachineProperties,
@@ -1727,6 +1729,8 @@ describe('Platform Seed', () => {
       // (opencrq #31): the plain client origins below carry none, so they see the whole tenant.
       threatMarkingPolicy,
       threatAnalysisMarkingPolicy,
+      streamObjectMarkingPolicy,
+      reportRefMarkingPolicy,
     ];
     const tableKeys: ReadonlyArray<string> = Object.entries(schema).flatMap(([key, value]) => (is(value, PgTable) ? [key] : []));
     const isTableKey = (key: string): key is keyof SecuredSchema => tableKeys.includes(key);
