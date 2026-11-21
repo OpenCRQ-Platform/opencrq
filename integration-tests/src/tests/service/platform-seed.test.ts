@@ -46,6 +46,8 @@ import { assetEvidence,
   jobChildTenantIsolationPolicy,
   lossDrivers,
   notifications,
+  ONBOARDING_RISK_SCOPE_NAME,
+  onboardingWizards,
   organizationRiskTolerances,
   organizations,
   organizationTenantIsolationPolicy,
@@ -258,8 +260,11 @@ describe('Platform Seed', () => {
     expect(tarnwickOrgs[0].name).toBe('Tarnwick Industries');
 
     const freshStart = await db.select().from(tenants).where(eq(tenants.name, 'Fresh Start'));
+    // Fresh Start is born as a tenant created from the administration: its first scope and its Get started wizard.
     const freshStartOrgs = await db.select().from(organizations).where(eq(organizations.tenantId, freshStart[0].id));
-    expect(freshStartOrgs).toHaveLength(0);
+    expect(freshStartOrgs.map((o) => o.name)).toEqual([ONBOARDING_RISK_SCOPE_NAME]);
+    const freshStartWizards = await db.select().from(onboardingWizards).where(eq(onboardingWizards.tenantId, freshStart[0].id));
+    expect(freshStartWizards.map((w) => w.organizationId)).toEqual([freshStartOrgs[0].id]);
   });
 
   it('should seed a fully-answered financial profile for Acme Bank', async () => {
