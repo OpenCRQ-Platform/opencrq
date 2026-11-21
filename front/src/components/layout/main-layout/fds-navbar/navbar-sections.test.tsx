@@ -56,7 +56,8 @@ describe('NavbarSections', () => {
   it('gives the tenant-less platform surface Settings > Security, pointing at the platform pages', () => {
     render(<NavbarSections tenantId={undefined} onPlatformSurface={true} />);
 
-    expect(screen.getByText('Administration')).toBeTruthy();
+    // No section title: blocks are set apart by a separator alone, as in every Filigran product.
+    expect(screen.queryByText('Administration')).toBeNull();
     expect(screen.getByRole('link', { name: 'Security' }).getAttribute('href')).toBe('/platform/security');
   });
 
