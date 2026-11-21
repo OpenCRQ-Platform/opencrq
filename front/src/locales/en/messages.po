@@ -25,12 +25,6 @@ msgstr ", the declaration"
 msgid ": the tests do better, no gap"
 msgstr ": the tests do better, no gap"
 
-msgid "{holder}, leads to {other} on an attack path, which gives it {band}."
-msgstr "{holder}, leads to {other} on an attack path, which gives it {band}."
-
-msgid "{holder}, leads to {other} on an attack path."
-msgstr "{holder}, leads to {other} on an attack path."
-
 msgid "“{ownerName}” was merged into “{targetName}”. Merge “{name}” into “{targetName}”?"
 msgstr "“{ownerName}” was merged into “{targetName}”. Merge “{name}” into “{targetName}”?"
 
@@ -840,6 +834,12 @@ msgstr "{holder}, assigned to {other}, which gives it {band}."
 
 msgid "{holder}, assigned to {other}."
 msgstr "{holder}, assigned to {other}."
+
+msgid "{holder}, leads to {other} on an attack path, which gives it {band}."
+msgstr "{holder}, leads to {other} on an attack path, which gives it {band}."
+
+msgid "{holder}, leads to {other} on an attack path."
+msgstr "{holder}, leads to {other} on an attack path."
 
 msgid "{hours}h {remainingMinutes}m"
 msgstr "{hours}h {remainingMinutes}m"
@@ -9814,15 +9814,15 @@ msgstr "reached"
 msgid "Reached"
 msgstr "Reached"
 
-#. js-lingui-explicit-id
-msgid "Read as {low} to {high}. Specify the number beyond that."
-msgstr "Read as {low} to {high}. Specify the number beyond that."
-
 msgid "Reached from"
 msgstr "Reached from"
 
 msgid "Reached from: {named}"
 msgstr "Reached from: {named}"
+
+#. js-lingui-explicit-id
+msgid "Read as {low} to {high}. Specify the number beyond that."
+msgstr "Read as {low} to {high}. Specify the number beyond that."
 
 msgid "Read from each day's latest simulation, on its annual loss distribution as the curve reads it. A day whose simulation kept no distribution is skipped."
 msgstr "Read from each day's latest simulation, on its annual loss distribution as the curve reads it. A day whose simulation kept no distribution is skipped."
