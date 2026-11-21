@@ -36,26 +36,28 @@ interface ScopeToggleProps {
 }
 
 /**
- * One half of the scope switch, drawn as the OpenAEV `SecurityMenu` toggle: an icon over an 11px
- * semibold label in an outlined tile; the selected tile is tinted with the brand primary (16%,
- * 22% on hover) and carries the primary ink, the other one stays neutral. The design system draws
- * icons at 16, 20 or 24px only: 20px stands for OpenAEV's 18px (fds-migration/LIBRARY-FEEDBACK.md).
+ * One half of the scope switch, drawn with the computed values of the OpenAEV `SecurityMenu` toggle: an
+ * icon over an 11px semibold label (line height 1.2, normal letter spacing, never wrapped) in a tile
+ * padded 14px by 12px with a 1px neutral border, selected or not. The selected tile only tints its
+ * background with the brand primary (16%, 22% on hover) and carries the primary ink; the other one
+ * stays neutral and takes a 15% primary wash on hover, as OpenAEV's toggle override does. The design
+ * system draws icons at 16, 20 or 24px only: 20px stands for OpenAEV's 18px (fds-migration/LIBRARY-FEEDBACK.md).
  */
 const ScopeToggle: FunctionComponent<ScopeToggleProps> = ({ active, linkOption, icon, label }) => (
   <ScopeLink
     {...scopeLinkProps(linkOption)}
     selected={active}
     className={cn(
-      'flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-[var(--fds-radius-sm)] border px-3 py-3.5',
-      'text-center text-[11px] font-semibold leading-[1.2] transition-colors',
+      'flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-[var(--fds-radius-sm)] border border-elevation-subtle-soft px-3 py-3.5',
+      'text-center text-[11px] font-semibold leading-[1.2] tracking-[normal] whitespace-nowrap transition-colors',
       'focus-visible:outline-none focus-visible:ring-2 ring-focus',
       active
-        ? 'border-filigran-brand-primary-transparency-55 bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_16%,transparent)] text-filigran-brand-primary hover:bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_22%,transparent)]'
-        : 'border-elevation-subtle-soft text-default-secondary hover:bg-[var(--fds-bg-elevation-hover-layer-1)]',
+        ? 'bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_16%,transparent)] text-filigran-brand-primary hover:bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_22%,transparent)]'
+        : 'text-default-secondary hover:bg-[color-mix(in_srgb,var(--fds-color-filigran-brand-primary)_15%,transparent)]',
     )}
   >
     <Icon name={icon} size={20} aria-hidden />
-    <span>{label}</span>
+    <span className="tracking-[normal]">{label}</span>
   </ScopeLink>
 );
 

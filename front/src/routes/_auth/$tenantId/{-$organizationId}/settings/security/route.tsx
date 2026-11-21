@@ -1,4 +1,5 @@
 import { PlatformCapability_ManageUsers } from '@app/module/client';
+import { Icon } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
 import { createFileRoute, redirect, useLocation } from '@tanstack/react-router';
 import { z } from 'zod';
@@ -23,14 +24,11 @@ type SecurityMenuEntry = MenuEntry & { linkOption: ComponentProps<typeof Link> }
 
 // `Link`'s generic `search` typing only resolves against one literal `to` at a time, so a table of
 // entries pointing at different routes builds a plain `href` instead.
-const buildEntry = (tenantId: string, organizationId: string | undefined, securityScope: SecurityScope, key: SecurityEntryKey): SecurityMenuEntry => {
-  const Icon = SECURITY_ENTRY_ICONS[key];
-  return {
-    linkOption: { href: securityScopeHref(tenantId, organizationId, securityScopePin(key) ?? securityScope, key) },
-    label: securityEntryLabel(key),
-    icon: <Icon />,
-  };
-};
+const buildEntry = (tenantId: string, organizationId: string | undefined, securityScope: SecurityScope, key: SecurityEntryKey): SecurityMenuEntry => ({
+  linkOption: { href: securityScopeHref(tenantId, organizationId, securityScopePin(key) ?? securityScope, key) },
+  label: securityEntryLabel(key),
+  icon: <Icon name={SECURITY_ENTRY_ICONS[key]} size={16} aria-hidden />,
+});
 
 const buildEntries = (tenantId: string, organizationId: string | undefined, securityScope: SecurityScope): Record<SecurityEntryKey, SecurityMenuEntry> => ({
   roles: buildEntry(tenantId, organizationId, securityScope, 'roles'),

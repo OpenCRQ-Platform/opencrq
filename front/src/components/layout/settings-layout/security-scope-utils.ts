@@ -1,6 +1,5 @@
 import { t } from '@lingui/core/macro';
-import { KeyRound, Landmark, Shield, User, Users } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import type { IconName } from '@filigran/design-system';
 import { scopePath } from '../scope-path-utils';
 
 export type SecurityScope = 'tenant' | 'platform';
@@ -12,13 +11,19 @@ const PLATFORM_ENTRIES: Array<SecurityEntryKey> = ['roles', 'groups', 'users', '
 const PLATFORM_ENTRIES_TENANTS_ONLY: Array<SecurityEntryKey> = ['tenants'];
 const ALL_ENTRY_KEYS: Array<SecurityEntryKey> = ['roles', 'groups', 'users', 'service-accounts', 'tenants'];
 
-/** The icon a Security nav entry renders, shared by the tenant-scoped and the tenant-less menu. */
-export const SECURITY_ENTRY_ICONS: Record<SecurityEntryKey, LucideIcon> = {
-  roles: Shield,
-  groups: Users,
-  users: User,
-  'service-accounts': KeyRound,
-  tenants: Landmark,
+/**
+ * The design system icon a Security nav entry renders, shared by the tenant-scoped and the tenant-less
+ * menu. The same glyph per entry as the OpenAEV Security menu (one table for both products): Users
+ * `user`, Groups `users`, Roles `shield`, Organizations `building-2`, Sessions `key`, Policies
+ * `shield-check`, Marking definitions `focus`, Service accounts `key-round`, Tenants `landmark`,
+ * This tenant `building-2`, Platform `earth`.
+ */
+export const SECURITY_ENTRY_ICONS: Record<SecurityEntryKey, IconName> = {
+  roles: 'shield',
+  groups: 'users',
+  users: 'user',
+  'service-accounts': 'key-round',
+  tenants: 'landmark',
 };
 
 /** The label a Security nav entry renders, shared by the tenant-scoped and the tenant-less menu. */

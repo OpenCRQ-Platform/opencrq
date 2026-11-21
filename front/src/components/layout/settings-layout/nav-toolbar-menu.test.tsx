@@ -48,7 +48,7 @@ describe('NavToolbarMenu', () => {
     expect(row.getAttribute('class')).not.toMatch(/hover:bg-elevation-hover\b/);
   });
 
-  it('draws the selected row icon at full opacity in the primary ink, the others at half opacity', async () => {
+  it('draws the selected row icon at full opacity, the others at half opacity, all in the secondary ink', async () => {
     renderInRouter(
       <NavToolbarMenu
         entries={[
@@ -62,7 +62,7 @@ describe('NavToolbarMenu', () => {
     const other = screen.getByRole('link', { name: 'Groups' });
     expect(selected.getAttribute('aria-current')).toBe('page');
     expect(iconSlotOf(selected)?.getAttribute('class')).toMatch(/\bopacity-100\b/);
-    expect(iconSlotOf(selected)?.getAttribute('class')).toMatch(/\btext-default-primary\b/);
+    expect(iconSlotOf(selected)?.getAttribute('class')).toMatch(/\btext-default-secondary\b/);
     expect(iconSlotOf(other)?.getAttribute('class')).toMatch(/\bopacity-50\b/);
     expect(iconSlotOf(other)?.getAttribute('class')).toMatch(/\btext-default-secondary\b/);
   });
@@ -97,5 +97,21 @@ describe('ScopeSwitcher', () => {
     expect(selected.getAttribute('class')).toContain('text-filigran-brand-primary');
     expect(other.getAttribute('class')).toContain('text-default-secondary');
     expect(selected.getAttribute('class')).not.toMatch(/\bbutton\b/);
+  });
+
+  // OpenAEV keeps the neutral 1px border on the selected tile and only tints it, and its labels never wrap.
+  it('keeps the neutral border on both tiles and the labels on one line', async () => {
+    renderInRouter(
+      <ScopeSwitcher scope="tenant" tenantLinkOption={{ href: '/security' }} platformLinkOption={{ href: '/security?scope=platform' }} />,
+      '/security',
+    );
+    const tenant = await screen.findByRole('link', { name: 'This tenant' });
+    const platform = screen.getByRole('link', { name: 'Platform' });
+    for (const tile of [tenant, platform]) {
+      const classes = tile.getAttribute('class') ?? '';
+      expect(classes).toContain('border-elevation-subtle-soft');
+      expect(classes).toContain('whitespace-nowrap');
+      expect(classes).not.toContain('border-filigran-brand-primary');
+    }
   });
 });
