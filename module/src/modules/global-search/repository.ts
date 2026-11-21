@@ -52,17 +52,20 @@ export const globalSearchRepository = defineRepository({
     return Number(row?.total ?? 0);
   },
 
+  // Threats match by prefix, as the threat center list does (threat-analyses repository,
+  // findScoredAnalysesPage and countScoredAnalyses): the card's count is the number of rows its
+  // "View all" link opens.
   findThreats: ({ db, views }, search: string, limit: number) =>
     db.select({ id: views.threatAnalyses.id, name: views.threatAnalyses.name })
       .from(views.threatAnalyses)
-      .where(foldedLike(views.threatAnalyses.nameFolded, search, 'contains'))
+      .where(foldedLike(views.threatAnalyses.nameFolded, search, 'prefix'))
       .orderBy(asc(views.threatAnalyses.nameFolded), asc(views.threatAnalyses.id))
       .limit(limit),
 
   countThreats: async ({ db, views }, search: string) => {
     const [row] = await db.select({ total: count() })
       .from(views.threatAnalyses)
-      .where(foldedLike(views.threatAnalyses.nameFolded, search, 'contains'));
+      .where(foldedLike(views.threatAnalyses.nameFolded, search, 'prefix'));
     return Number(row?.total ?? 0);
   },
 
