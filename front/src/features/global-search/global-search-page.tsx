@@ -17,8 +17,6 @@ const HitList: FunctionComponent<{ title: string, hits: Array<Hit>, render: (hit
   </SectionCard>
 );
 
-const linkClass = 'text-primary hover:underline';
-
 /**
  * The results of the header's "Search the platform": the first matches of each entity type of the
  * tenant on screen, each linking to its page; a type with no match is left out.
@@ -45,7 +43,7 @@ export const GlobalSearchPage: FunctionComponent<{ tenantId: string, search: str
             title={t`Risk Scenarios`}
             hits={data.riskScenarios}
             render={(hit) => (
-              <Link to="/$tenantId/{-$organizationId}/risk-scenarios/$riskScenarioId" params={{ tenantId, riskScenarioId: hit.id }} className={linkClass}>{hit.name}</Link>
+              <Link to="/$tenantId/{-$organizationId}/risk-scenarios/$riskScenarioId" params={{ tenantId, riskScenarioId: hit.id }} className="text-primary hover:underline">{hit.name}</Link>
             )}
           />
         )}
@@ -54,7 +52,7 @@ export const GlobalSearchPage: FunctionComponent<{ tenantId: string, search: str
             title={t`Primary Assets`}
             hits={data.primaryAssets}
             render={(hit) => (
-              <Link to="/$tenantId/{-$organizationId}/primary-assets/$primaryAssetId" params={{ tenantId, primaryAssetId: hit.id }} className={linkClass}>{hit.name}</Link>
+              <Link to="/$tenantId/{-$organizationId}/primary-assets/$primaryAssetId" params={{ tenantId, primaryAssetId: hit.id }} className="text-primary hover:underline">{hit.name}</Link>
             )}
           />
         )}
@@ -63,7 +61,7 @@ export const GlobalSearchPage: FunctionComponent<{ tenantId: string, search: str
             title={t`Assets`}
             hits={data.supportingAssets}
             render={(hit) => (
-              <Link to="/$tenantId/{-$organizationId}/assets/$supportingAssetId" params={{ tenantId, supportingAssetId: hit.id }} className={linkClass}>{hit.name}</Link>
+              <Link to="/$tenantId/{-$organizationId}/assets/$supportingAssetId" params={{ tenantId, supportingAssetId: hit.id }} className="text-primary hover:underline">{hit.name}</Link>
             )}
           />
         )}
@@ -72,7 +70,7 @@ export const GlobalSearchPage: FunctionComponent<{ tenantId: string, search: str
             title={t`Threats`}
             hits={data.threats}
             render={(hit) => (
-              <Link to="/$tenantId/{-$organizationId}/threat-center/threats/$threatId" params={{ tenantId, threatId: hit.id }} className={linkClass}>{hit.name}</Link>
+              <Link to="/$tenantId/{-$organizationId}/threat-center/threats/$threatId" params={{ tenantId, threatId: hit.id }} className="text-primary hover:underline">{hit.name}</Link>
             )}
           />
         )}
@@ -81,7 +79,7 @@ export const GlobalSearchPage: FunctionComponent<{ tenantId: string, search: str
             title={t`Risk scopes`}
             hits={data.organizations}
             render={(hit) => (
-              <Link to="/$tenantId/{-$organizationId}" params={{ tenantId, organizationId: hit.id }} className={linkClass}>{hit.name}</Link>
+              <Link to="/$tenantId/{-$organizationId}" params={{ tenantId, organizationId: hit.id }} className="text-primary hover:underline">{hit.name}</Link>
             )}
           />
         )}
@@ -90,7 +88,7 @@ export const GlobalSearchPage: FunctionComponent<{ tenantId: string, search: str
             title={t`Controls`}
             hits={data.controls}
             render={(hit) => (
-              <Link to="/$tenantId/{-$organizationId}/controls" params={{ tenantId }} search={{ search: hit.name ?? '' }} className={linkClass}>{hit.name}</Link>
+              <Link to="/$tenantId/{-$organizationId}/controls" params={{ tenantId }} search={{ search: hit.name ?? '' }} className="text-primary hover:underline">{hit.name}</Link>
             )}
           />
         )}

@@ -2,7 +2,7 @@ import { HeaderGroup, SearchField } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
 import type { FunctionComponent } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 /** OpenAEV's top bar search window: the field grows between these bounds with the header. */
 const SEARCH_MIN_WIDTH = 200;
@@ -19,7 +19,12 @@ export const HeaderSearch: FunctionComponent<{ tenantId: string }> = ({ tenantId
     select: ({ location }) => (location.pathname.endsWith('/search') ? new URLSearchParams(location.searchStr).get('search') ?? '' : ''),
   });
   const [value, setValue] = useState(current);
-  useEffect(() => setValue(current), [current]);
+  // Follow the page's search when the location changes, without an effect (no cascading render).
+  const [shown, setShown] = useState(current);
+  if (shown !== current) {
+    setShown(current);
+    setValue(current);
+  }
 
   const onSubmit = (search?: string) => {
     const trimmed = search?.trim();
