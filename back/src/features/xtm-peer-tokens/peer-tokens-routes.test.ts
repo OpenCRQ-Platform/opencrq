@@ -19,8 +19,8 @@ const buildServer = (overrides: Partial<PeerTokensDeps> = {}) => {
   return { server, deps };
 };
 
-const post = (server: ReturnType<typeof fastify>, url: string, payload: unknown, token: string | null = ADMIN_TOKEN) =>
-  server.inject({ method: 'POST', url, payload: payload as Record<string, unknown>, headers: token === null ? {} : { authorization: `Bearer ${token}` } });
+const post = (server: ReturnType<typeof fastify>, url: string, payload: Record<string, unknown>, token: string | null = ADMIN_TOKEN) =>
+  server.inject({ method: 'POST', url, payload, headers: token === null ? {} : { authorization: `Bearer ${token}` } });
 
 describe('isAdminBearer', () => {
   it('accepts the admin token as a bearer and nothing else', () => {

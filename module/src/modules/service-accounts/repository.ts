@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { newError } from '@app/utils';
 import { defineRepository } from '../../registry';
 import { groupRoles } from '../schema';
@@ -100,7 +100,7 @@ export const serviceAccountsRepository = defineRepository({
   upsertProvisionedServiceAccount: ({ db }, serviceAccount: { id: string, tenantId: string, name: string, description: string }) =>
     db.insert(serviceAccounts).values(serviceAccount).onConflictDoUpdate({
       target: serviceAccounts.id,
-      set: { name: serviceAccount.name, description: serviceAccount.description, updatedAt: new Date() },
+      set: { name: serviceAccount.name, description: serviceAccount.description, updatedAt: sql`now()` },
     }),
   /** A tenant's group seeded under `slug`, read for a caller (the system) that carries no tenant. */
   findTenantGroupIdBySlug: async ({ db, views }, tenantId: string, slug: string) => db.select({ id: views.groups.id })
