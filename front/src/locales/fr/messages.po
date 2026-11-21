@@ -8761,9 +8761,6 @@ msgctxt "findings still open, column header"
 msgid "Open"
 msgstr "Ouverts"
 
-msgid "Open assets"
-msgstr "Ouvrir les actifs"
-
 msgid "Open {cveId} in OpenCTI"
 msgstr "Ouvrir {cveId} dans OpenCTI"
 
@@ -8773,6 +8770,9 @@ msgstr "Findings {label} ouverts à la fin de chaque mois"
 
 msgid "Open {primaryAssetName}"
 msgstr "Ouvrir {primaryAssetName}"
+
+msgid "Open assets"
+msgstr "Ouvrir les actifs"
 
 msgid "Open CTEM Command Center in XTM One"
 msgstr "Ouvrir le CTEM Command Center dans XTM One"
