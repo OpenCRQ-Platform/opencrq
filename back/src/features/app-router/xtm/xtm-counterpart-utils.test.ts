@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CounterpartProvider, XtmCounterpart } from './xtm-counterpart-utils';
-import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, switcherProducts, xtmConnections } from './xtm-counterpart-utils';
 import type { ReaderAuthorization } from './xtm-providers';
+import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, switcherProducts, xtmConnections } from './xtm-counterpart-utils';
 import { openaevProvider, openctiProvider } from './xtm-providers';
 
 const NO_READER: ReaderAuthorization = () => Promise.resolve(null);
@@ -127,7 +127,7 @@ describe('xtmConnections', () => {
 });
 
 describe('providers', () => {
-  const authHeaderOf = (init: RequestInit | undefined): string | undefined => (init?.headers as Record<string, string> | undefined)?.Authorization;
+  const authHeaderOf = (init: RequestInit | undefined): string | undefined => new Headers(init?.headers).get('Authorization') ?? undefined;
 
   it('asks OpenAEV its reverse lookup as the reader, and keeps only the keys asked', async () => {
     const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response(JSON.stringify([
