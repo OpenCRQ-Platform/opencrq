@@ -60,11 +60,53 @@ export type XtmLookupKind = typeof XTM_LOOKUP_KINDS[number];
 const enc = encodeURIComponent;
 
 /**
- * Whether a caller of the lookup reads the facts: a person (a session, or a JWT XTM One signed for
- * them, both a `client` origin) with their own rights in this tenant; never a service account
- * (`connector` origin), which reads for whoever its product shows the answer to.
+ * The header a service-account caller (OpenCTI, OpenAEV) sends beside its bearer to read for one
+ * person: a short-lived JWT XTM One signed for that person, addressed to this platform. XTM One is
+ * the single issuer of it (Sam, 21 Nov 2026); the sibling products only forward it.
  */
-export const callerReadsLookupFacts = (origin: { type: string }): boolean => origin.type === 'client';
+export const XTM_USER_TOKEN_HEADER = 'x-xtm-user-token';
+
+type LookupOrigin =
+  | { type: 'client', userId: string, tenantId: string }
+  | { type: 'connector', serviceAccountId: string, tenantId: string };
+
+export type LookupFactsOrigin = { type: 'client', userId: string, tenantId: string } | null;
+
+/**
+ * Who the facts of a lookup are read for, or `null` for the links only.
+ *
+ * - A person (`client` origin, a session or an XTM One JWT as bearer): themselves, as before.
+ * - A service account (`connector` origin) with no user token: links only (opencrq #26).
+ * - A service account forwarding a user token: the person XTM One signed it for, resolved by its
+ *   subject (`authenticate`, the same verification as an XTM One bearer: issuer, keys, audience,
+ *   expiry), and only when that person reaches the service account's own tenant
+ *   (`reachesTenant`, the tenants policy: a member or the super administrator). A token that does
+ *   not verify, names no known account, or a person outside the tenant: links only, never an error,
+ *   so a lookup never tells the caller why.
+ */
+export const resolveLookupFactsOrigin = async (
+  origin: LookupOrigin,
+  userToken: string | undefined,
+  deps: {
+    authenticate: (token: string) => Promise<{ user: { id: string } } | null>,
+    reachesTenant: (userId: string, tenantId: string) => Promise<boolean>,
+  },
+): Promise<LookupFactsOrigin> => {
+  if (origin.type === 'client') {
+    return { type: 'client', userId: origin.userId, tenantId: origin.tenantId };
+  }
+  if (!userToken || userToken.split('.').length !== 3) {
+    return null;
+  }
+  const authenticated = await deps.authenticate(userToken);
+  if (!authenticated) {
+    return null;
+  }
+  if (!(await deps.reachesTenant(authenticated.user.id, origin.tenantId))) {
+    return null;
+  }
+  return { type: 'client', userId: authenticated.user.id, tenantId: origin.tenantId };
+};
 
 export const lookupXtmObjects = async (
   params: { kind: XtmLookupKind, keys: ReadonlyArray<string>, baseUrl: string, tenantId: string, withFacts: boolean },

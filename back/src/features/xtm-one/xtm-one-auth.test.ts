@@ -40,6 +40,20 @@ describe('authenticateXtmOneJwt', () => {
     expect(await authenticateXtmOneJwt(db, 'a.b.c')).toBeNull();
   });
 
+  it('should resolve nothing from a token that fails verification (bad signature, expired, other audience)', async () => {
+    verifyXtmOneJwt.mockRejectedValue(new Error('signature verification failed'));
+
+    expect(await authenticateXtmOneJwt(db, 'a.b.c')).toBeNull();
+    expect(getUserByXtmSubject).not.toHaveBeenCalled();
+  });
+
+  it('should resolve nothing from a token another issuer signed', async () => {
+    verifyXtmOneJwt.mockResolvedValue(null);
+
+    expect(await authenticateXtmOneJwt(db, 'a.b.c')).toBeNull();
+    expect(getUserByXtmSubject).not.toHaveBeenCalled();
+  });
+
   it('should resolve nothing from a token naming no XTM One user', async () => {
     verifyXtmOneJwt.mockResolvedValue({ email: 'jane@example.com', exp });
 

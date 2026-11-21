@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { XtmLookupExposure, XtmLookupReader } from './xtm-lookup';
-import { callerReadsLookupFacts, exposureFacts, lookupXtmObjects } from './xtm-lookup';
+import { exposureFacts, lookupXtmObjects, resolveLookupFactsOrigin } from './xtm-lookup';
 
 const STIX = 'intrusion-set--11111111-1111-1111-1111-111111111111';
 const BASE = { baseUrl: 'https://crq.example.com/', tenantId: 'tenant-1', withFacts: true };
@@ -100,12 +100,6 @@ describe('lookupXtmObjects', () => {
     }]);
   });
 
-  it('gives the facts to a person only, never to a service account', () => {
-    expect(callerReadsLookupFacts({ type: 'client' })).toBe(true);
-    expect(callerReadsLookupFacts({ type: 'connector' })).toBe(false);
-    expect(callerReadsLookupFacts({ type: 'platform' })).toBe(false);
-  });
-
   it('leaves an unpriced figure out instead of writing a zero', () => {
     expect(exposureFacts(undefined)).toEqual([]);
     expect(exposureFacts({ scenarioCount: 0, aleMean: null, aleReductionMean: null })).toEqual([]);
@@ -117,5 +111,49 @@ describe('lookupXtmObjects', () => {
       assetsByHostnames: () => Promise.resolve([{ id: 'x y', name: 'n', hostname: 'h' }]),
     }));
     expect(out[0].object_url).toBe('https://crq.example.com/a%2Fb/assets/x%20y');
+  });
+});
+
+describe('resolveLookupFactsOrigin', () => {
+  const SA = { type: 'connector' as const, serviceAccountId: 'sa-1', tenantId: 'tenant-1' };
+  const TOKEN = 'h.p.s';
+  const deps = (overrides: Partial<Parameters<typeof resolveLookupFactsOrigin>[2]> = {}) => ({
+    authenticate: vi.fn((token: string) => Promise.resolve(token === TOKEN ? { user: { id: 'u-member' } } : null)),
+    reachesTenant: vi.fn((userId: string, tenantId: string) => Promise.resolve(userId === 'u-member' && tenantId === 'tenant-1')),
+    ...overrides,
+  });
+
+  it('reads for the person of a session or an XTM One bearer, as before', async () => {
+    const d = deps();
+    expect(await resolveLookupFactsOrigin({ type: 'client', userId: 'u-1', tenantId: 'tenant-1' }, undefined, d))
+      .toEqual({ type: 'client', userId: 'u-1', tenantId: 'tenant-1' });
+    expect(d.authenticate).not.toHaveBeenCalled();
+  });
+
+  it('gives a service account without a user token the links only (opencrq #26)', async () => {
+    const d = deps();
+    expect(await resolveLookupFactsOrigin(SA, undefined, d)).toBeNull();
+    expect(await resolveLookupFactsOrigin(SA, 'not-a-jwt', d)).toBeNull();
+    expect(d.authenticate).not.toHaveBeenCalled();
+  });
+
+  it('reads as the person XTM One signed the forwarded token for, in the service account tenant', async () => {
+    const d = deps();
+    expect(await resolveLookupFactsOrigin(SA, TOKEN, d)).toEqual({ type: 'client', userId: 'u-member', tenantId: 'tenant-1' });
+    expect(d.reachesTenant).toHaveBeenCalledWith('u-member', 'tenant-1');
+  });
+
+  it('gives links only for a token that does not verify or names no known account', async () => {
+    // authenticate answers null for a bad signature, a foreign issuer, a wrong audience, an expired
+    // token and an unknown subject (xtm-one-auth.test.ts covers each).
+    const d = deps();
+    expect(await resolveLookupFactsOrigin(SA, 'x.y.z', d)).toBeNull();
+    expect(d.reachesTenant).not.toHaveBeenCalled();
+  });
+
+  it('gives links only to a known person who does not reach the service account tenant', async () => {
+    const d = deps({ authenticate: vi.fn(() => Promise.resolve({ user: { id: 'u-outsider' } })) });
+    expect(await resolveLookupFactsOrigin(SA, TOKEN, d)).toBeNull();
+    expect(d.reachesTenant).toHaveBeenCalledWith('u-outsider', 'tenant-1');
   });
 });
