@@ -28,7 +28,7 @@ const buildEntry = (tenantId: string, organizationId: string | undefined, securi
   return {
     linkOption: { href: securityScopeHref(tenantId, organizationId, securityScopePin(key) ?? securityScope, key) },
     label: securityEntryLabel(key),
-    icon: <Icon className="h-4 w-4" />,
+    icon: <Icon />,
   };
 };
 
