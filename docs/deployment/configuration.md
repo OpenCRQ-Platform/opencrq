@@ -349,7 +349,7 @@ Subscribes to an OpenCTI Live Stream (Server-Sent Events) to automatically keep 
 | `CONNECTORS__OPENCTI__<tenant-uuid>__URL`   | **Yes**  | -             | Base URL of that tenant's OpenCTI instance (e.g. `https://opencti.example.com`). |
 | `CONNECTORS__OPENCTI__<tenant-uuid>__TOKEN` | **Yes**  | -             | API token used to authenticate against that tenant's OpenCTI Live Stream/GraphQL API. Pass through a secret store. |
 
-At boot, an existing tenant given both variables and whose OpenCTI integration nobody configured gets the account `OpenCTI (deployment)`, in its `connectors` group, bound with the first Live Stream the token sees that delivers every claim OpenCRQ reads, and the connector enabled. No such stream: it is left for an admin, and the next boot tries again. A configuration an admin made, a disabled connector included, is never replaced. A peer unreachable at boot never blocks the boot.
+OpenCRQ never binds a Live Stream by itself: what a stream carries is shown to every member of the tenant, so an admin picks the stream with **Configure** on the OpenCTI connector. Until then the connector stays idle and reads "Not configured". The variables only make the connection available to that form.
 
 See [OpenCTI Connector](opencti-connector.md) for the setup required on the OpenCTI side: the Live Stream filter this connector needs, and the access its token must have.
 
