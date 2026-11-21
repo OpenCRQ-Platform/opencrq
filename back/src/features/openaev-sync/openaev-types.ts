@@ -130,6 +130,34 @@ export const openaevAssetGroupSchema = z.looseObject({
 });
 export type OpenaevAssetGroup = z.infer<typeof openaevAssetGroupSchema>;
 
+/** `GET /attack-path/simulations`: the simulations of the tenant that hold attack-path executions. */
+export const attackPathSimulationSchema = z.looseObject({
+  simulationId: z.string(),
+  endpointCount: z.number().optional(),
+  executionCount: z.number().optional(),
+});
+export type AttackPathSimulation = z.infer<typeof attackPathSimulationSchema>;
+
+/**
+ * `GET /attack-path/simulations/{id}/graph?mode=collapsed`, the parts the sync reads: the nodes with
+ * their type, the OpenAEV id they stand for (`ref`, the asset id for an asset node) and the worst
+ * verdict of the executions that reached them (`status`: RED neither prevented nor detected, ORANGE
+ * detected only, GREEN prevented), and the source-to-target edges between them.
+ */
+export const attackPathGraphSchema = z.looseObject({
+  attackPathNodes: z.array(z.looseObject({
+    id: z.string(),
+    type: z.string().nullable().optional(),
+    ref: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+  })).nullable().optional(),
+  attackPathEdges: z.array(z.looseObject({
+    edgeSourceId: z.string(),
+    edgeTargetId: z.string(),
+  })).nullable().optional(),
+});
+export type AttackPathGraph = z.infer<typeof attackPathGraphSchema>;
+
 /**
  * `GET /assets/{id}` (`EndpointOverviewOutput`), the only route serving a description for an asset
  * that is neither an endpoint nor an AI target — one call per asset, which is why it is reserved
