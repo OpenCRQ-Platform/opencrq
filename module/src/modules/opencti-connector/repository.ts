@@ -109,6 +109,25 @@ export const openctiConnectorRepository = defineRepository({
       });
   },
 
+  /**
+   * `upsertConfig` for a stream the deployment provides, applied only to a tenant nobody configured
+   * (no row, or a row with neither account nor stream): an admin's choice, a disabled connector
+   * included, is never overwritten. Answers whether it configured.
+   */
+  configureIfUnconfigured: async ({ db }, tenantId: string, id: string, serviceAccountId: string, streamId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
+    const updatedAt = sql`now()` as unknown as Date;
+    const configured = await db.insert(openctiConnectorSettings)
+      .values([{ id, tenantId, serviceAccountId, streamId, enabled: true }])
+      .onConflictDoUpdate({
+        target: openctiConnectorSettings.tenantId,
+        set: { serviceAccountId, streamId, enabled: true, updatedAt },
+        setWhere: and(isNull(openctiConnectorSettings.serviceAccountId), isNull(openctiConnectorSettings.streamId)),
+      })
+      .returning();
+    return configured.length > 0;
+  },
+
   // Any explicit `setEnabled` call (either direction) clears `authFailedAt` — it represents the
   // user taking manual control again, whether that's a deliberate disable or a retry after fixing
   // the token; a still-broken token gets `authFailedAt` re-set within moments by the next attempt.

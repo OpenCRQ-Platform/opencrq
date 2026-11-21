@@ -24,6 +24,7 @@ import './features/jobs';
 import './features/jobs-retention';
 import './features/microsoft-graph';
 import './features/opencti';
+import './features/deployment-integrations';
 import './features/opencti-mirror-rebuild';
 import './features/recompute-dispatcher';
 import './features/job-scheduler';

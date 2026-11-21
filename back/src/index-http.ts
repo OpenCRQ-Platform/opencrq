@@ -11,5 +11,6 @@ import './features/web-app/web-app-feature';
 import './features/file-storage';
 import './features/maps';
 import './features/threat-uploader';
+import './features/xtm-peer-tokens';
 
 boot();

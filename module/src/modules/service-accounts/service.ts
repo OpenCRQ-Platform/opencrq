@@ -1,3 +1,4 @@
+import { newError } from '@app/utils';
 import { uuidv7 } from 'uuidv7';
 import { defineService } from '../../registry';
 import { requireTenantId } from '../../security';
@@ -27,6 +28,21 @@ export const serviceAccountsService = defineService('serviceAccounts', serviceAc
       await repo.addServiceAccountGroup(id, connectorsGroupId);
     }
     return id;
+  },
+  /**
+   * Creates, or converges, an account the deployment provisions for a sibling product (an OpenAEV
+   * reading this platform, say) under an id derived by the caller, in the tenant's Connectors group.
+   * Idempotent: the same id renames the account and keeps its tokens. System origin only.
+   */
+  provisionServiceAccount: async ({ repo, eventOrigin }, account: { id: string, tenantId: string, name: string, description: string }) => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    await repo.upsertProvisionedServiceAccount(account);
+    const connectorsGroupId = await repo.findTenantGroupIdBySlug(account.tenantId, CONNECTORS_GROUP_SLUG);
+    if (connectorsGroupId !== null) {
+      await repo.linkServiceAccountGroup(account.id, connectorsGroupId);
+    }
   },
   updateServiceAccount: async ({ repo }, id: string, values: { name?: string, active?: boolean, description?: string | null }) =>
     await repo.updateServiceAccount(id, { ...values, updatedAt: new Date() }),

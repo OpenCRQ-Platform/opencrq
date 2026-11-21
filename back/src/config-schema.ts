@@ -303,6 +303,24 @@ export const featureConfigs = {
     })).optional(),
   }).optional(),
 
+  // The deployment's bootstrap admin token (APP__ADMIN__TOKEN, a UUIDv4), the counterpart of
+  // OpenCTI's APP__ADMIN__TOKEN and OpenAEV's OPENAEV_ADMIN_TOKEN: it authenticates the
+  // provisioning API (`/api/xtm/peer-tokens`) a deployment manager calls to give a sibling product a
+  // service account here. Unset, that API answers 404.
+  // nconf splits env names on `__`: APP__ADMIN__TOKEN is `app.admin.token`.
+  app: z.object({
+    admin: z.object({
+      token: z.uuid({ version: 'v4' }).optional(),
+    }).prefault({}),
+  }),
+
+  // The sibling XTM products of this deployment, for the product switcher (XTM__OPENCTI_URL,
+  // XTM__OPENAEV_URL). A URL only: the connections themselves are `connectors.<name>.<tenant>`.
+  xtm: z.object({
+    opencti_url: z.url().optional(),
+    openaev_url: z.url().optional(),
+  }),
+
   // XTM One (Filigran agentic AI platform) integration: the platform registers itself with XTM One
   // (heartbeat every 5 minutes), publishes an Ed25519 JWKS for cross-platform authentication, and
   // proxies the embedded "Ask Ariane" chat, and signs the users in. Required in every build. Env vars: XTM_ONE__URL, XTM_ONE__TOKEN, XTM_ONE__PLATFORM_URL, and XTM_ONE__ENABLED if
@@ -341,6 +359,8 @@ export const configSchema = z.object({
   recompute: featureConfigs.recompute.prefault({}),
   events: featureConfigs.events.prefault({}),
   connectors: featureConfigs.connectors.optional(),
+  app: featureConfigs.app.prefault({}),
+  xtm: featureConfigs.xtm.prefault({}),
   xtm_one: featureConfigs.xtm_one,
   file_storage: featureConfigs.file_storage.optional(),
   feature_flags: featureConfigs.feature_flags.default([]),

@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { IntegrationSource } from './schema';
 import { defineRepository } from '../../registry';
 import { integrationSettings } from './schema';
@@ -22,6 +22,22 @@ export const integrationSettingsRepository = defineRepository({
         target: [integrationSettings.tenantId, integrationSettings.source],
         set: { serviceAccountId, updatedAt: sql`now()` },
       }),
+
+  /**
+   * Binds `serviceAccountId` unless an account is already bound: what the deployment provides never
+   * overwrites what an admin chose. Answers whether it bound.
+   */
+  bindIfUnbound: async ({ db }, tenantId: string, source: IntegrationSource, serviceAccountId: string, id: string) => {
+    const bound = await db.insert(integrationSettings)
+      .values([{ id, tenantId, source, serviceAccountId }])
+      .onConflictDoUpdate({
+        target: [integrationSettings.tenantId, integrationSettings.source],
+        set: { serviceAccountId, updatedAt: sql`now()` },
+        setWhere: isNull(integrationSettings.serviceAccountId),
+      })
+      .returning();
+    return bound.length > 0;
+  },
 
   markSynced: async ({ db }, tenantId: string, source: IntegrationSource, id: string, syncedAt?: Date) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns

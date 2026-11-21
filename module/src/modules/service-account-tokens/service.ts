@@ -94,6 +94,39 @@ export const serviceAccountTokensService = defineService('serviceAccountTokens',
     return { id, plainToken };
   },
 
+  /**
+   * Replaces the token named `name` of an account the deployment provisioned: the live ones under
+   * that name are revoked and one that never expires is issued, so a sibling product re-provisioned
+   * holds exactly one working token. System origin only: the caller is the deployment, not a tenant.
+   */
+  replaceProvisionedToken: async ({ atomic, eventOrigin }, params: { serviceAccountId: string, tenantId: string, name: string }) => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    return atomic(async ({ repo }) => {
+      await repo.revokeTokensByName(params.serviceAccountId, params.name);
+      const { tokenIdPart, plainToken, tokenHash } = generateTokenParts();
+      await repo.insertToken({
+        id: uuidv7(),
+        serviceAccountId: params.serviceAccountId,
+        tenantId: params.tenantId,
+        name: params.name,
+        tokenId: tokenIdPart,
+        tokenHash,
+        expiresAt: null,
+      });
+      return { plainToken };
+    });
+  },
+
+  /** Revokes the live tokens named `name` of a provisioned account; answers how many. System origin only. */
+  revokeProvisionedTokens: async ({ repo, eventOrigin }, serviceAccountId: string, name: string) => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    return repo.revokeTokensByName(serviceAccountId, name);
+  },
+
   revokeToken: async ({ repo }, tokenId: string) =>
     repo.revokeToken(tokenId),
 

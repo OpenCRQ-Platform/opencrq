@@ -67,6 +67,18 @@ export const openctiConnectorService = defineService(
     await repo.upsertConfig(tenantId, uuidv7(), serviceAccountId, streamId);
   },
 
+  /**
+   * The deployment's own configuration of the Live Stream it provides, for a tenant nobody
+   * configured: binds `serviceAccountId` and `streamId` and enables the connector. Never overwrites an
+   * admin's choice. System origin only. Answers whether it configured.
+   */
+  configureDeploymentStream: async ({ repo, eventOrigin }, tenantId: string, serviceAccountId: string, streamId: string): Promise<boolean> => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    return repo.configureIfUnconfigured(tenantId, uuidv7(), serviceAccountId, streamId);
+  },
+
   /** `configure` with the service account created in the same transaction. Returns its id. */
   configureWithNewServiceAccount: async ({ atomic }, tenantId: string, serviceAccountName: string, streamId: string): Promise<string> =>
     atomic(async ({ repo, deps }) => {
