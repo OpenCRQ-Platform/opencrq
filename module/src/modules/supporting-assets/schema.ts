@@ -478,6 +478,8 @@ export const supportingAssetRelations = pgTable('supporting_asset_relations', {
   toAssetId: uuid('to_asset_id').notNull(),
   kind: text('kind').notNull().$type<AssetRelationKind>(),
   source: text('source').notNull().$type<AssetRelationSource>(),
+  /** What showed the relation at its last report, when the source names one: the OpenAEV simulation of an attack-path hop. */
+  evidenceRef: text('evidence_ref'),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull(),
   lastReportedAt: timestamp('last_reported_at', { withTimezone: true }).notNull(),
 }, (table) => [

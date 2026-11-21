@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { SeverityBand } from '../finding-score/bands';
 import type { SupportToPrimaryLinkRole } from './link-roles';
 import type { PrimaryToPrimaryLinkStrength } from './link-strengths';
@@ -398,6 +398,34 @@ export const assetDependenciesRepository = defineRepository({
       providerAssetId: views.supportToSupportLinks.providerAssetId,
     }).from(views.supportToSupportLinks)
       .where(inUuids(views.supportToSupportLinks.dependentAssetId, dependentIds));
+  },
+  /** The `reachable_from` hops leaving `assetIds` that were reported at or after `freshSince`, from any connector. */
+  findAttackPathHopsFrom: async ({ db, views }, assetIds: ReadonlyArray<string>, freshSince: Date) => {
+    if (assetIds.length === 0) {
+      return [];
+    }
+    return db.select({
+      fromAssetId: views.supportingAssetRelations.fromAssetId,
+      toAssetId: views.supportingAssetRelations.toAssetId,
+    }).from(views.supportingAssetRelations)
+      .where(and(
+        eq(views.supportingAssetRelations.kind, 'reachable_from'),
+        inUuids(views.supportingAssetRelations.toAssetId, assetIds),
+        gte(views.supportingAssetRelations.lastReportedAt, freshSince),
+      ));
+  },
+  /** The primary assets whose reach holds any of `supportingAssetIds`, by name. */
+  findPrimaryAssetsReaching: async ({ db, views }, supportingAssetIds: ReadonlyArray<string>) => {
+    if (supportingAssetIds.length === 0) {
+      return [];
+    }
+    return db.select({
+      primaryAssetId: views.primaryAssetReach.primaryAssetId,
+      primaryAssetName: views.primaryAssets.name,
+      supportingAssetId: views.primaryAssetReach.supportingAssetId,
+    }).from(views.primaryAssetReach)
+      .innerJoin(views.primaryAssets, eq(views.primaryAssetReach.primaryAssetId, views.primaryAssets.id))
+      .where(inUuids(views.primaryAssetReach.supportingAssetId, supportingAssetIds));
   },
   findReachOf: ({ db, views }, primaryAssetId: string): Promise<Array<ReachRow>> =>
     db.select({

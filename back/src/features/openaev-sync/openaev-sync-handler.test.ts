@@ -13,6 +13,7 @@ import type * as Utils from '../../utils';
 const HOUR_MS = 60 * 60 * 1000;
 
 const { mockSyncAssetGroups } = vi.hoisted(() => ({ mockSyncAssetGroups: vi.fn().mockResolvedValue({ groups: 0, membersAdded: 0, membersRemoved: 0, groupsDeleted: 0 }) }));
+const { mockSyncAttackPaths } = vi.hoisted(() => ({ mockSyncAttackPaths: vi.fn().mockResolvedValue({ simulations: 0, skipped: 0, written: 0, removed: 0 }) }));
 
 const {
   mockBulkUpsertAssets,
@@ -197,6 +198,7 @@ vi.mock('../../config', () => ({
 // The phase and the retirement have their own tests: here they are the seams the handler wires.
 vi.mock('./openaev-observation-phase', () => ({ syncObservationStreams: mockSyncObservationStreams }));
 vi.mock('./openaev-group-phase', () => ({ syncAssetGroups: mockSyncAssetGroups }));
+vi.mock('./openaev-attack-path-phase', () => ({ syncAttackPaths: mockSyncAttackPaths }));
 vi.mock('./openaev-description-phase', async (importOriginal) => ({
   ...(await importOriginal<typeof DescriptionPhase>()),
   syncDescriptions: mockSyncDescriptions,

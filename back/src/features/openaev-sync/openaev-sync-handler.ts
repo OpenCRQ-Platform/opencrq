@@ -17,6 +17,7 @@ import {
 } from './openaev-mapping-utils';
 import { DESCRIPTION_FETCH_BUDGET, descriptionBudgetShare, syncDescriptions } from './openaev-description-phase';
 import { syncAssetGroups } from './openaev-group-phase';
+import { syncAttackPaths } from './openaev-attack-path-phase';
 import { syncObservationStreams } from './openaev-observation-phase';
 import { onCompleteMirrors } from './openaev-reconciliation-scope';
 import { retireAttackEvidence, retireCveEvidence } from './openaev-retirement';
@@ -352,6 +353,11 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       }
       await ctx.updateProgress({ message: 'Reading OpenAEV asset groups' });
       await syncAssetGroups({ client, svc, connectorId, openaevTenantIds: openaevTenants.map((tenant) => tenant.tenant_id), assetIdMapByTenant });
+      if (ctx.signal.aborted) {
+        return;
+      }
+      await ctx.updateProgress({ message: 'Reading OpenAEV attack paths' });
+      await syncAttackPaths({ client, svc, connectorId, openaevTenantIds: openaevTenants.map((tenant) => tenant.tenant_id), assetIdMapByTenant, observedAt: new Date() });
       if (ctx.signal.aborted) {
         return;
       }

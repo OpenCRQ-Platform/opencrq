@@ -25,6 +25,12 @@ msgstr ", le déclaré"
 msgid ": the tests do better, no gap"
 msgstr " : les tests font mieux, aucun écart"
 
+msgid "{holder}, leads to {other} on an attack path, which gives it {band}."
+msgstr "{holder}, mène à {other} sur un chemin d'attaque, qui lui donne {band}."
+
+msgid "{holder}, leads to {other} on an attack path."
+msgstr "{holder}, mène à {other} sur un chemin d'attaque."
+
 msgid "“{ownerName}” was merged into “{targetName}”. Merge “{name}” into “{targetName}”?"
 msgstr "« {ownerName} » a été fusionné dans « {targetName} ». Fusionner « {name} » dans « {targetName} » ?"
 
@@ -2909,6 +2915,9 @@ msgstr "Issues d'attaque"
 
 msgid "Attack Outcomes"
 msgstr "Issues d'attaque"
+
+msgid "attack path"
+msgstr "chemin d'attaque"
 
 msgid "Attack Path"
 msgstr "Chemin d'attaque"
@@ -6719,6 +6728,12 @@ msgstr "Simulation d'après"
 msgid "Latest run {latestAge}"
 msgstr "Dernière simulation {latestAge}"
 
+msgid "Leads to"
+msgstr "Mène à"
+
+msgid "Leads to: {named}"
+msgstr "Mène à : {named}"
+
 msgid "Leave empty to let a result count however old it is."
 msgstr "Laisser vide pour qu'un résultat compte quel que soit son âge."
 
@@ -8896,6 +8911,12 @@ msgstr "OpenAEV teste {control} sur cette technique, que {control} ne déclare p
 msgid "OpenAEV tests exercise this control although it is declared not deployed: they are not taken into account."
 msgstr "Des tests OpenAEV portent sur ce contrôle déclaré non déployé : ils ne sont pas pris en compte."
 
+msgid "OpenAEV, inferred"
+msgstr "OpenAEV, déduit"
+
+msgid "OpenAEV, proven by a test"
+msgstr "OpenAEV, prouvé par un test"
+
 msgid "OpenAI-compatible"
 msgstr "Compatible OpenAI"
 
@@ -9796,6 +9817,12 @@ msgstr "Atteint"
 #. js-lingui-explicit-id
 msgid "Read as {low} to {high}. Specify the number beyond that."
 msgstr "Lu comme {low} à {high}. Au-delà, précisez le nombre."
+
+msgid "Reached from"
+msgstr "Atteint depuis"
+
+msgid "Reached from: {named}"
+msgstr "Atteint depuis : {named}"
 
 msgid "Read from each day's latest simulation, on its annual loss distribution as the curve reads it. A day whose simulation kept no distribution is skipped."
 msgstr "Lue sur la dernière simulation de chaque jour, dans sa distribution des pertes annuelles, comme la courbe la lit. Un jour dont la simulation n'a gardé aucune distribution est ignoré."

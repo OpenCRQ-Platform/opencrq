@@ -1326,7 +1326,7 @@ export const supportingAssetsRepository = defineRepository({
       eq(views.supportingAssetSources.connectorId, connectorId),
       eq(views.supportingAssetSources.reportedCategoryId, 'identity'),
     )),
-  /** A re-observed relation keeps its first sighting and takes the source that reported it this time. */
+  /** A re-observed relation keeps its first sighting and takes the source and evidence that reported it this time. */
   upsertRelationsBatch: async ({ db }, rows: Array<typeof supportingAssetRelations.$inferInsert>) => {
     if (rows.length === 0) {
       return;
@@ -1341,6 +1341,7 @@ export const supportingAssetsRepository = defineRepository({
       ],
       set: {
         source: sql`excluded.source`,
+        evidenceRef: sql`excluded.evidence_ref`,
         lastReportedAt: sql`excluded.last_reported_at`,
       },
     });

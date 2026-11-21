@@ -21,6 +21,7 @@ import { ASSET_CRITICALITY_SEVERITY } from '../supporting-assets/constants';
 import { primaryAssetsService } from '../primary-assets/service';
 import { liftGivesBand } from '../supporting-assets/criticality-lift';
 import { supportingAssetsService } from '../supporting-assets/service';
+import { attackPathFreshSince, primaryAssetsBehind, walkAttackPath } from './attack-path-reach';
 import { DEPENDENCY_GRAPH_MAX_ASSETS, DEPENDENCY_GRAPH_PROVIDERS_PER_ASSET } from './constants';
 import { canonicalLinkRoles, isStorableLinkRoleSet, UNKNOWN_LINK_ROLE } from './link-roles';
 import { UNKNOWN_LINK_STRENGTH } from './link-strengths';
@@ -720,6 +721,19 @@ export const assetDependenciesService = defineService(
       }
       return outcome;
     });
+  },
+
+  /**
+   * What a finding on `supportingAssetId` can reach along the attack paths OpenAEV showed: the
+   * assets reached hop by hop (stale hops left out) and the primary assets behind them, so a weakness
+   * on an asset nothing depends on still counts towards the primary assets it opens the way to.
+   */
+  getAttackPathReach: async ({ repo }, supportingAssetId: string, now: Date = new Date()) => {
+    const freshSince = attackPathFreshSince(now);
+    const depthOf = await walkAttackPath(supportingAssetId, (assetIds) => repo.findAttackPathHopsFrom(assetIds, freshSince));
+    const reached = [...depthOf].filter(([, depth]) => depth > 0).map(([assetId, depth]) => ({ assetId, depth }));
+    const primaryAssets = primaryAssetsBehind(depthOf, await repo.findPrimaryAssetsReaching([...depthOf.keys()]));
+    return { reachedAssets: reached, primaryAssets };
   },
 
   getSupportToSupportLinks: async ({ repo }, assetId: string) => {
