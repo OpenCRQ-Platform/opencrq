@@ -3,6 +3,7 @@ import { uuidv7 } from 'uuidv7';
 import type { ParsedThreatInput } from '../threat-analyses';
 import type { PendingMark } from './pending-batch';
 import { defineService } from '../../registry';
+import { serviceAccountsService } from '../service-accounts/service';
 import { threatAnalysesService } from '../threat-analyses';
 import { isThreatEntityType } from '../threat-analyses/entity-types';
 import { buildThreatEntriesFromObjects, threatRefsOf } from '../threat-analyses/stix-bundle-parser';
@@ -49,7 +50,7 @@ export type BuildEntriesFromMirror = (
 export const openctiConnectorService = defineService(
   'openctiConnector',
   openctiConnectorRepository,
-).dependsOn(() => [threatAnalysesService]).implement({
+).dependsOn(() => [threatAnalysesService, serviceAccountsService]).implement({
   getSettings: async ({ repo }, tenantId: string) => repo.findByTenant(tenantId),
 
   // Cross-tenant — used by the worker's connector manager at boot/reconcile to know which
@@ -65,6 +66,14 @@ export const openctiConnectorService = defineService(
   configure: async ({ repo }, tenantId: string, serviceAccountId: string, streamId: string) => {
     await repo.upsertConfig(tenantId, uuidv7(), serviceAccountId, streamId);
   },
+
+  /** `configure` with the service account created in the same transaction. Returns its id. */
+  configureWithNewServiceAccount: async ({ atomic }, tenantId: string, serviceAccountName: string, streamId: string): Promise<string> =>
+    atomic(async ({ repo, deps }) => {
+      const serviceAccountId = await deps.serviceAccounts.createConnectorServiceAccount(serviceAccountName);
+      await repo.upsertConfig(tenantId, uuidv7(), serviceAccountId, streamId);
+      return serviceAccountId;
+    }),
 
   setEnabled: async ({ repo }, tenantId: string, enabled: boolean) => {
     await repo.setEnabled(tenantId, uuidv7(), enabled);

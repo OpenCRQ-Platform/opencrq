@@ -49,10 +49,10 @@ export const serviceAccountsRepository = defineRepository({
     db.update(serviceAccounts).set(values).where(eq(serviceAccounts.id, id)),
 
   addServiceAccountGroup: async ({ db, views }, serviceAccountId: string, groupId: string) => {
-    const [account, group] = await Promise.all([
-      db.select({ id: views.serviceAccounts.id }).from(views.serviceAccounts).where(eq(views.serviceAccounts.id, serviceAccountId)).limit(1),
-      db.select({ id: views.groups.id }).from(views.groups).where(eq(views.groups.id, groupId)).limit(1),
-    ]);
+    // One after the other: this also runs inside the transaction that creates the account with an
+    // integration, and a transaction's single connection takes one query at a time.
+    const account = await db.select({ id: views.serviceAccounts.id }).from(views.serviceAccounts).where(eq(views.serviceAccounts.id, serviceAccountId)).limit(1);
+    const group = await db.select({ id: views.groups.id }).from(views.groups).where(eq(views.groups.id, groupId)).limit(1);
     if (account.length === 0 || group.length === 0) {
       throw newError('Access Denied');
     }
@@ -92,6 +92,12 @@ export const serviceAccountsRepository = defineRepository({
     .innerJoin(views.serviceAccounts, eq(views.serviceAccountGroups.serviceAccountId, views.serviceAccounts.id))
     .where(eq(views.serviceAccountGroups.serviceAccountId, serviceAccountId)),
 
+  /** The tenant's group seeded under `slug` (e.g. `connectors`), if the caller sees it. */
+  findGroupIdBySlug: async ({ db, views }, slug: string) => db.select({ id: views.groups.id })
+    .from(views.groups)
+    .where(eq(views.groups.slug, slug))
+    .limit(1)
+    .then((rows) => rows.at(0)?.id ?? null),
   findGroupServiceAccounts: async ({ db, views }, groupId: string) => db.select({
     serviceAccount: {
       id: views.serviceAccounts.id,

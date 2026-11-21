@@ -37,6 +37,7 @@ registerPlatformSeed('tenants', async ({ db, services, state }) => {
 
   await db.insert(tenantUsers).values({ tenantId: Tenant_Tarnwick, userId: User_Eve });
 
-  // No organizations, to test first-login flows.
-  await systemServices.tenants.createTenant({ id: Tenant_FreshStart, name: 'Fresh Start' }, state.adminUserId);
+  // Born as a tenant created from the platform administration: its first risk scope and its Get started
+  // wizard, nothing else, so the first-login flow and the Get started drawers render on a seeded platform.
+  await systemServices.tenants.createTenant({ id: Tenant_FreshStart, name: 'Fresh Start' }, state.adminUserId, { provisionOnboarding: true });
 });

@@ -19,6 +19,12 @@ vi.mock('@tanstack/react-router', async (importOriginal) => ({
 }));
 
 beforeAll(() => {
+  // The service account choice is a Radix radio group, which measures its items.
+  vi.stubGlobal('ResizeObserver', class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  });
   i18n.load('en', {});
   i18n.activate('en');
 });
@@ -57,7 +63,9 @@ describe('DrataSourceDrawer', () => {
     renderCard(true, true);
 
     expect(await screen.findByRole('button', { name: 'Save' })).toBeTruthy();
-    expect(screen.getByRole('combobox', { name: /Service account/ })).toBeTruthy();
+    // No account bound yet: the drawer offers a new one by default, beside the tenant's existing one.
+    expect(screen.getByRole('radio', { name: 'Create a new service account' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'Use an existing service account' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sync now' })).toBeTruthy();
   });
 

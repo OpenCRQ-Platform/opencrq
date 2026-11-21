@@ -1847,6 +1847,9 @@ msgstr "Une lacune du modèle, pas la vôtre : elle ne dit rien de votre posture
 msgid "A name is required"
 msgstr "Un nom est requis"
 
+msgid "A new service account is created with the integration, in the Connectors group."
+msgstr "Un nouveau compte de service est créé avec l'intégration, dans le groupe Connecteurs."
+
 msgid "A non-hostile actor whose benevolent or harmless intent inadvertently causes harm."
 msgstr "Un acteur non hostile dont l'intention bienveillante ou inoffensive cause un préjudice par inadvertance."
 
@@ -4109,9 +4112,6 @@ msgstr "Créer et gérer les utilisateurs de la plateforme."
 msgid "Create and manage tenants."
 msgstr "Créer et gérer les tenants."
 
-msgid "Create one first."
-msgstr "Commencez par en créer un."
-
 msgid "Create Risk Scenario"
 msgstr "Créer un scénario de risque"
 
@@ -4126,6 +4126,9 @@ msgstr "Créer des tenants"
 
 msgid "Created"
 msgstr "Créé"
+
+msgid "Created with the integration, in the Connectors group."
+msgstr "Créé avec l'intégration, dans le groupe Connecteurs."
 
 msgid "Creating..."
 msgstr "Création en cours..."
@@ -5040,6 +5043,9 @@ msgstr "Anglais"
 
 msgid "Enter a maximum probability."
 msgstr "Saisissez une probabilité maximale."
+
+msgid "Enter a name for the service account."
+msgstr "Saisissez un nom pour le compte de service."
 
 msgid "Enter a name."
 msgstr "Saisissez un nom."
@@ -10849,6 +10855,9 @@ msgstr "Sélectionner un secteur"
 msgid "Select a service account"
 msgstr "Sélectionner un compte de service"
 
+msgid "Select a service account."
+msgstr "Sélectionnez un compte de service."
+
 msgid "Select a tag"
 msgstr "Sélectionner un tag"
 
@@ -12217,6 +12226,9 @@ msgstr "La probabilité maximale, acceptée par l'organisation, que la perte d'u
 msgid "The highest probability the organization accepts that a year's loss exceeds an amount. Applied to each scenario of the scope on its own, never to their sum."
 msgstr "La probabilité maximale que l'organisation accepte qu'une perte annuelle dépasse un montant. Appliquée à chaque scénario du périmètre séparément, jamais à leur somme."
 
+msgid "The integration runs as an account the tenant already has."
+msgstr "L'intégration s'exécute avec un compte que le tenant possède déjà."
+
 msgid "The kind of asset this is."
 msgstr "Le type de cet actif."
 
@@ -13553,6 +13565,9 @@ msgstr "USD / jour"
 
 msgid "Use “{input}”"
 msgstr "Utiliser « {input} »"
+
+msgid "Use an existing service account"
+msgstr "Utiliser un compte de service existant"
 
 msgid "Use as many as you need, they add up."
 msgstr "Utilisez-en autant que nécessaire, elles se cumulent."

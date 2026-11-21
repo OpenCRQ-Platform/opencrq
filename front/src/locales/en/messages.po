@@ -1847,6 +1847,9 @@ msgstr "A modelling gap, not yours: it says nothing about your posture. These at
 msgid "A name is required"
 msgstr "A name is required"
 
+msgid "A new service account is created with the integration, in the Connectors group."
+msgstr "A new service account is created with the integration, in the Connectors group."
+
 msgid "A non-hostile actor whose benevolent or harmless intent inadvertently causes harm."
 msgstr "A non-hostile actor whose benevolent or harmless intent inadvertently causes harm."
 
@@ -4109,9 +4112,6 @@ msgstr "Create and manage platform users."
 msgid "Create and manage tenants."
 msgstr "Create and manage tenants."
 
-msgid "Create one first."
-msgstr "Create one first."
-
 msgid "Create Risk Scenario"
 msgstr "Create Risk Scenario"
 
@@ -4126,6 +4126,9 @@ msgstr "Create Tenants"
 
 msgid "Created"
 msgstr "Created"
+
+msgid "Created with the integration, in the Connectors group."
+msgstr "Created with the integration, in the Connectors group."
 
 msgid "Creating..."
 msgstr "Creating..."
@@ -5040,6 +5043,9 @@ msgstr "English"
 
 msgid "Enter a maximum probability."
 msgstr "Enter a maximum probability."
+
+msgid "Enter a name for the service account."
+msgstr "Enter a name for the service account."
 
 msgid "Enter a name."
 msgstr "Enter a name."
@@ -10849,6 +10855,9 @@ msgstr "Select a sector"
 msgid "Select a service account"
 msgstr "Select a service account"
 
+msgid "Select a service account."
+msgstr "Select a service account."
+
 msgid "Select a tag"
 msgstr "Select a tag"
 
@@ -12217,6 +12226,9 @@ msgstr "The highest probability of a year's loss exceeding an amount the organis
 msgid "The highest probability the organization accepts that a year's loss exceeds an amount. Applied to each scenario of the scope on its own, never to their sum."
 msgstr "The highest probability the organization accepts that a year's loss exceeds an amount. Applied to each scenario of the scope on its own, never to their sum."
 
+msgid "The integration runs as an account the tenant already has."
+msgstr "The integration runs as an account the tenant already has."
+
 msgid "The kind of asset this is."
 msgstr "The kind of asset this is."
 
@@ -13553,6 +13565,9 @@ msgstr "USD / day"
 
 msgid "Use “{input}”"
 msgstr "Use “{input}”"
+
+msgid "Use an existing service account"
+msgstr "Use an existing service account"
 
 msgid "Use as many as you need, they add up."
 msgstr "Use as many as you need, they add up."

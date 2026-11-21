@@ -17,21 +17,25 @@ import { useTRPC } from '../../../lib';
 import { browserTimeZone } from '../../../utils/date-utils';
 import { getTimeZoneOptions, toSchedule, toScheduleFields } from '../connector-schedule-utils';
 import { formatNextRun, getWeekdayOptions, scheduleCadenceLabel } from '../connector-vocabulary';
-import { ServiceAccountSelect } from './service-account-select';
+import { defaultServiceAccountChoice, refineServiceAccountChoice, serviceAccountChoiceFields, toServiceAccountChoice } from '../service-account-choice-utils';
+import { getConnectors } from './connectors-list';
+import { ServiceAccountChoiceFields } from './service-account-choice-fields';
 
 export const MANUAL_SCHEDULE = { cadence: 'manual', atMinute: null, weekday: null, timeZone: null } as const;
 
-// Empty is a legitimate service account: it unbinds the connector from the account it was running as.
+// An empty existing account is legitimate: it unbinds the connector from the account it was running as.
 export const buildConfigureSchema = () => z.object({
-  serviceAccountId: z.string(),
+  ...serviceAccountChoiceFields(),
   cadence: z.enum(SCHEDULE_CADENCES),
   weekday: z.number(),
   time: z.string(),
   timeZone: z.string(),
-}).refine(
-  (values) => toSchedule(values) !== null,
-  { path: ['time'], message: t`Enter a time as HH:MM.` },
-);
+}).superRefine((values, ctx) => {
+  refineServiceAccountChoice(values, ctx, { accountRequired: false });
+  if (toSchedule(values) === null) {
+    ctx.addIssue({ code: 'custom', path: ['time'], message: t`Enter a time as HH:MM.` });
+  }
+});
 
 export type ConfigureValues = z.infer<ReturnType<typeof buildConfigureSchema>>;
 
@@ -143,7 +147,7 @@ export const useConfigureIntegration = ({ sourceId, schedule, onSaved }: UseConf
   const form = useForm<ConfigureValues>({
     resolver: zodResolver(buildConfigureSchema()),
     defaultValues: {
-      serviceAccountId: currentSettings?.serviceAccountId ?? '',
+      ...defaultServiceAccountChoice(getConnectors()[sourceId].name, serviceAccounts, currentSettings?.serviceAccountId),
       ...toScheduleFields(schedule ?? MANUAL_SCHEDULE, browserTimeZone()),
     },
   });
@@ -159,10 +163,7 @@ export const useConfigureIntegration = ({ sourceId, schedule, onSaved }: UseConf
 
   const submit = (values: ConfigureValues) => {
     const saved = schedule === null ? null : toSchedule(values);
-    configureMutation.mutate({
-      source: sourceId,
-      serviceAccountId: values.serviceAccountId === '' ? null : values.serviceAccountId,
-    }, {
+    configureMutation.mutate({ source: sourceId, ...toServiceAccountChoice(values) }, {
       onSuccess: () => {
         if (saved === null) {
           onSaved?.();
@@ -190,22 +191,11 @@ export const ConfigureIntegrationFields: FunctionComponent<{ configure: Configur
   const { form, serviceAccounts, configuredServiceAccountId, schedule, openedAtMs } = configure;
   return (
     <>
-      <Controller
+      <ServiceAccountChoiceFields
         control={form.control}
-        name="serviceAccountId"
-        render={({ field, fieldState }) => (
-          <ServiceAccountSelect
-            value={field.value}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-            triggerRef={field.ref}
-            serviceAccounts={serviceAccounts}
-            configuredServiceAccountId={configuredServiceAccountId}
-            allowClear
-            label={t`Service account`}
-            error={fieldState.error?.message}
-          />
-        )}
+        serviceAccounts={serviceAccounts}
+        configuredServiceAccountId={configuredServiceAccountId}
+        allowClear
       />
       {schedule !== null && <ScheduleFields control={form.control} offered={schedule.offeredCadences} openedAtMs={openedAtMs} />}
     </>

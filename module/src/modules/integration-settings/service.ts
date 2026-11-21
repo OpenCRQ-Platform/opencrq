@@ -2,12 +2,13 @@ import { newError } from '@app/utils';
 import { uuidv7 } from 'uuidv7';
 import type { IntegrationSource } from './schema';
 import { defineService } from '../../registry';
+import { serviceAccountsService } from '../service-accounts/service';
 import { integrationSettingsRepository } from './repository';
 
 export const integrationSettingsService = defineService(
   'integrationSettings',
   integrationSettingsRepository,
-).implement({
+).dependsOn(() => [serviceAccountsService]).implement({
   getIntegrationSettings: async ({ repo, eventOrigin }, source: IntegrationSource) => {
     if (!('tenantId' in eventOrigin)) {
       throw newError('Tenant context required');
@@ -30,6 +31,22 @@ export const integrationSettingsService = defineService(
       throw newError('Tenant context required');
     }
     await repo.configureIntegration(eventOrigin.tenantId, source, serviceAccountId, uuidv7());
+  },
+
+  /**
+   * Creates the service account the integration runs as and binds it, in one transaction: a failed
+   * bind leaves no orphan account behind. Returns the new account's id.
+   */
+  configureIntegrationWithNewServiceAccount: async ({ atomic, eventOrigin }, source: IntegrationSource, serviceAccountName: string): Promise<string> => {
+    if (!('tenantId' in eventOrigin)) {
+      throw newError('Tenant context required');
+    }
+    const { tenantId } = eventOrigin;
+    return atomic(async ({ repo, deps }) => {
+      const serviceAccountId = await deps.serviceAccounts.createConnectorServiceAccount(serviceAccountName);
+      await repo.configureIntegration(tenantId, source, serviceAccountId, uuidv7());
+      return serviceAccountId;
+    });
   },
 
   markSynced: async ({ repo, eventOrigin }, source: IntegrationSource, syncedAt?: Date) => {

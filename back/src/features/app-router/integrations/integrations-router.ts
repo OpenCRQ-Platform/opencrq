@@ -7,6 +7,7 @@ import { isOriginAuthorizedForItsTenant } from '../tenant-access-utils';
 import { config } from '../../../config';
 import { router } from '../../../trpc';
 import { defaultThreatsRunState, resolveConnectorConfigurations } from '../connectors/connector-configuration';
+import { assertOneServiceAccountChoice, NewServiceAccountSchema } from './new-service-account-input';
 
 const SourceSchema = z.enum(INTEGRATION_SOURCES);
 const IntegrationSettingsSchema = createSelectSchema(integrationSettings, {
@@ -55,8 +56,15 @@ export const integrationsRouter = (procedure: TenantProcedure) => router({
     }),
 
   configure: procedure
-    .input(z.object({ source: SourceSchema, serviceAccountId: z.uuid().nullable() }))
+    .input(z.object({
+      source: SourceSchema,
+      serviceAccountId: z.uuid().nullable().optional(),
+      // Creates the account the integration runs as, in the same transaction as the binding.
+      newServiceAccount: NewServiceAccountSchema.optional(),
+    }))
+    .output(z.object({ serviceAccountId: z.string().nullable() }))
     .mutation(async ({ input, ctx: { services, origin } }) => {
+      assertOneServiceAccountChoice(input);
       if (!origin.tenantId) {
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
@@ -64,13 +72,21 @@ export const integrationsRouter = (procedure: TenantProcedure) => router({
       if (!canManage) {
         throw new TRPCError({ code: 'FORBIDDEN' });
       }
+      const scoped = services.withOrigin(origin);
+      if (input.newServiceAccount !== undefined) {
+        const serviceAccountId = await scoped.integrationSettings
+          .configureIntegrationWithNewServiceAccount(input.source, input.newServiceAccount.name);
+        return { serviceAccountId };
+      }
+      const serviceAccountId = input.serviceAccountId ?? null;
       // Verify the service account exists and belongs to this tenant (view is scoped)
-      if (input.serviceAccountId !== null) {
-        const sa = await services.withOrigin(origin).serviceAccounts.getServiceAccount(input.serviceAccountId);
+      if (serviceAccountId !== null) {
+        const sa = await scoped.serviceAccounts.getServiceAccount(serviceAccountId);
         if (!sa) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Service account not found' });
         }
       }
-      await services.withOrigin(origin).integrationSettings.configureIntegration(input.source, input.serviceAccountId);
+      await scoped.integrationSettings.configureIntegration(input.source, serviceAccountId);
+      return { serviceAccountId };
     }),
 });
