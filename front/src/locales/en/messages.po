@@ -5044,11 +5044,11 @@ msgstr "English"
 msgid "Enter a maximum probability."
 msgstr "Enter a maximum probability."
 
-msgid "Enter a name."
-msgstr "Enter a name."
-
 msgid "Enter a name for the service account."
 msgstr "Enter a name for the service account."
+
+msgid "Enter a name."
+msgstr "Enter a name."
 
 msgid "Enter a number of days."
 msgstr "Enter a number of days."

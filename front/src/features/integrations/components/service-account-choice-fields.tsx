@@ -30,9 +30,12 @@ export const ServiceAccountChoiceFields = <T extends FieldValues & ServiceAccoun
   allowClear,
 }: ServiceAccountChoiceFieldsProps<T>) => {
   // The generic form type hides these names from react-hook-form's path inference: they are
-  // guaranteed by `ServiceAccountChoiceValues`.
+  // guaranteed by `ServiceAccountChoiceValues`, which `T` extends.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- a key of ServiceAccountChoiceValues, which T extends
   const modeName = 'serviceAccountMode' as Path<T>;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- a key of ServiceAccountChoiceValues, which T extends
   const nameName = 'newServiceAccountName' as Path<T>;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- a key of ServiceAccountChoiceValues, which T extends
   const idName = 'serviceAccountId' as Path<T>;
   const mode = useWatch({ control, name: modeName }) as ServiceAccountMode;
   const canReuse = selectableServiceAccounts(serviceAccounts, configuredServiceAccountId).length > 0;
@@ -81,7 +84,7 @@ export const ServiceAccountChoiceFields = <T extends FieldValues & ServiceAccoun
           render={({ field, fieldState }) => (
             <Input
               {...field}
-              value={field.value as string}
+              value={field.value}
               label={t`Service account name`}
               required
               error={fieldState.error?.message}
@@ -95,7 +98,7 @@ export const ServiceAccountChoiceFields = <T extends FieldValues & ServiceAccoun
           name={idName}
           render={({ field, fieldState }) => (
             <ServiceAccountSelect
-              value={field.value as string}
+              value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}
               triggerRef={field.ref}

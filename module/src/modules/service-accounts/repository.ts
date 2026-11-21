@@ -49,10 +49,10 @@ export const serviceAccountsRepository = defineRepository({
     db.update(serviceAccounts).set(values).where(eq(serviceAccounts.id, id)),
 
   addServiceAccountGroup: async ({ db, views }, serviceAccountId: string, groupId: string) => {
-    const [account, group] = await Promise.all([
-      db.select({ id: views.serviceAccounts.id }).from(views.serviceAccounts).where(eq(views.serviceAccounts.id, serviceAccountId)).limit(1),
-      db.select({ id: views.groups.id }).from(views.groups).where(eq(views.groups.id, groupId)).limit(1),
-    ]);
+    // One after the other: this also runs inside the transaction that creates the account with an
+    // integration, and a transaction's single connection takes one query at a time.
+    const account = await db.select({ id: views.serviceAccounts.id }).from(views.serviceAccounts).where(eq(views.serviceAccounts.id, serviceAccountId)).limit(1);
+    const group = await db.select({ id: views.groups.id }).from(views.groups).where(eq(views.groups.id, groupId)).limit(1);
     if (account.length === 0 || group.length === 0) {
       throw newError('Access Denied');
     }
