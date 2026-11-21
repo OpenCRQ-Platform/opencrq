@@ -10191,6 +10191,9 @@ msgstr "Résultat du test exécuté le {day}"
 msgid "Result stays valid for (days)"
 msgstr "Validité d'un résultat (jours)"
 
+msgid "Results for “{search}”"
+msgstr "Résultats pour « {search} »"
+
 msgid "Results on {technique}"
 msgstr "Résultats sur {technique}"
 
@@ -10609,6 +10612,9 @@ msgstr "Score passé de {from} à {score}."
 msgid "Score: no finding"
 msgstr "Score : aucun finding"
 
+msgid "Search"
+msgstr "Recherche"
+
 msgid "Search a loss driver"
 msgstr "Rechercher un inducteur de pertes"
 
@@ -10692,6 +10698,12 @@ msgstr "Rechercher une technique..."
 
 msgid "Search tenants..."
 msgstr "Rechercher des tenants…"
+
+msgid "Search the platform"
+msgstr "Rechercher dans la plateforme"
+
+msgid "Search the platform..."
+msgstr "Rechercher dans la plateforme..."
 
 msgid "Search these results..."
 msgstr "Rechercher dans ces résultats..."

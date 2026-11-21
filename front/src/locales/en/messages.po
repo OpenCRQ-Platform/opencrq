@@ -10191,6 +10191,9 @@ msgstr "Result of the test run on {day}"
 msgid "Result stays valid for (days)"
 msgstr "Result stays valid for (days)"
 
+msgid "Results for “{search}”"
+msgstr "Results for “{search}”"
+
 msgid "Results on {technique}"
 msgstr "Results on {technique}"
 
@@ -10609,6 +10612,9 @@ msgstr "Score went from {from} to {score}."
 msgid "Score: no finding"
 msgstr "Score: no finding"
 
+msgid "Search"
+msgstr "Search"
+
 msgid "Search a loss driver"
 msgstr "Search a loss driver"
 
@@ -10692,6 +10698,12 @@ msgstr "Search techniques..."
 
 msgid "Search tenants..."
 msgstr "Search tenants..."
+
+msgid "Search the platform"
+msgstr "Search the platform"
+
+msgid "Search the platform..."
+msgstr "Search the platform..."
 
 msgid "Search these results..."
 msgstr "Search these results..."

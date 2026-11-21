@@ -34,6 +34,7 @@ import { riskScenariosRouter } from './risk-scenarios';
 import { rolesRouter } from './roles';
 import { scenarioLossEstimatesRouter } from './scenario-loss-estimates';
 import { sectorsRouter } from './sectors';
+import { globalSearchRouter } from './global-search';
 import { supportingAssetsRouter } from './supporting-assets';
 import { threatRelevanceSettingsRouter } from './threat-relevance-settings';
 import { tenantsRouter } from './tenants';
@@ -214,6 +215,7 @@ export const appRouter = (
     declaredEstate: declaredEstateRouter(authProcedure),
     findingScore: findingScoreRouter(authProcedure),
     cve: cveRouter(authProcedure),
+    globalSearch: globalSearchRouter(authProcedure),
     cwe: cweRouter(authProcedure, tenantSecurityProcedure),
     fileStorage: fileStorageRouter(authProcedure),
     serviceAccounts: serviceAccountsRouter(tenantSecurityProcedure),

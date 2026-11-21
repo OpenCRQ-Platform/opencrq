@@ -4,6 +4,7 @@ import { NotificationBell } from '../../features/notifications';
 import { AskAriane, CtemCommandCenterButton, useXtmOneSettings } from '../../features/xtm-one';
 import { useOptionalTenant } from '../../providers';
 import { Route } from '../../routes/_auth/route';
+import { HeaderSearch } from './header-search';
 import { UserProfileMenu } from './user-profile-menu';
 
 export const Header: FunctionComponent = () => {
@@ -14,7 +15,7 @@ export const Header: FunctionComponent = () => {
 
   return (
     <FdsHeader className="shrink-0">
-      <HeaderGroup />
+      {tenantContext ? <HeaderSearch tenantId={tenantContext.tenantId} /> : <HeaderGroup />}
       {/* The AI cluster, then the platform actions behind the leading rule, as in OpenAEV and OpenCTI. */}
       <HeaderGroup>
         {xtmOneConfigured && (
