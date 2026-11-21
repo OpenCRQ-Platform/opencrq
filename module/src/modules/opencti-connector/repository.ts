@@ -124,7 +124,7 @@ export const openctiConnectorRepository = defineRepository({
         set: { serviceAccountId, streamId, enabled: true, updatedAt },
         setWhere: and(isNull(openctiConnectorSettings.serviceAccountId), isNull(openctiConnectorSettings.streamId)),
       })
-      .returning({ id: openctiConnectorSettings.id });
+      .returning();
     return configured.length > 0;
   },
 

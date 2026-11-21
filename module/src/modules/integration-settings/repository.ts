@@ -35,7 +35,7 @@ export const integrationSettingsRepository = defineRepository({
         set: { serviceAccountId, updatedAt: sql`now()` },
         setWhere: isNull(integrationSettings.serviceAccountId),
       })
-      .returning({ id: integrationSettings.id });
+      .returning();
     return bound.length > 0;
   },
 

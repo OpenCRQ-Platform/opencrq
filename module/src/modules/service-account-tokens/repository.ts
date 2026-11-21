@@ -81,7 +81,7 @@ export const serviceAccountTokensRepository = defineRepository({
         eq(serviceAccountTokens.name, name),
         isNull(serviceAccountTokens.revokedAt),
       ))
-      .returning({ id: serviceAccountTokens.id });
+      .returning();
     return revoked.length;
   },
 
