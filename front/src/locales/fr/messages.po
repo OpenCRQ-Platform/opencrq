@@ -8119,6 +8119,9 @@ msgstr "Aucun scénario de risque dans ce périmètre pour l'instant."
 msgid "No risk scenario names this outcome yet."
 msgstr "Aucun scénario de risque ne désigne encore cette issue."
 
+msgid "No risk scenario, asset, threat, risk scope or control of this tenant has a name that contains “{search}”. Check the spelling, or open a list to browse what the tenant holds."
+msgstr "Aucun scénario de risque, actif, menace, périmètre de risque ou contrôle de ce tenant n'a un nom contenant « {search} ». Vérifiez l'orthographe, ou ouvrez une liste pour parcourir le contenu du tenant."
+
 msgid "No risk scope found"
 msgstr "Aucun périmètre de risque trouvé"
 
@@ -8603,6 +8606,9 @@ msgstr "Rien n'y est mesuré tant qu'aucun actif du parc n'y est rattaché."
 msgid "Nothing is running."
 msgstr "Rien n'est en cours."
 
+msgid "Nothing matches this search"
+msgstr "Aucun résultat pour cette recherche"
+
 msgid "Nothing read yet"
 msgstr "Rien lu pour l'instant"
 
@@ -8755,6 +8761,9 @@ msgctxt "findings still open, column header"
 msgid "Open"
 msgstr "Ouverts"
 
+msgid "Open assets"
+msgstr "Ouvrir les actifs"
+
 msgid "Open {cveId} in OpenCTI"
 msgstr "Ouvrir {cveId} dans OpenCTI"
 
@@ -8804,6 +8813,9 @@ msgstr "Ouvrir Paramètres"
 
 msgid "Open prevention"
 msgstr "Ouvrir la prévention"
+
+msgid "Open risk scenarios"
+msgstr "Ouvrir les scénarios de risque"
 
 msgid "Open technique findings grouped by technique, ranked by how many land on each. A technique finding is one OpenAEV detection or prevention result on one asset, counted while its latest state is applicable: the attack was not detected or not prevented, or a person marked it applicable. The chip is the ATT&CK id and the row opens that technique, where the same estate can be read against the actors that use it. The exposure Sankey shows the same counts on its technique column, so the two screens agree by construction."
 msgstr "Les findings de technique ouverts regroupés par technique, classés selon le nombre qui aboutit sur chacune. Un finding de technique est un résultat de détection ou de prévention OpenAEV sur un actif, compté tant que son dernier état est applicable : l'attaque n'a pas été détectée ou pas été bloquée, ou une personne l'a marqué applicable. La puce est l'identifiant ATT&CK et la ligne ouvre cette technique, où le même parc peut être lu en regard des acteurs qui l'utilisent. Le Sankey d'exposition affiche les mêmes décomptes sur sa colonne des techniques : les deux écrans concordent donc par construction."
@@ -13379,6 +13391,9 @@ msgstr "Deux simulations du même scénario sur des parcs différents répondent
 
 msgid "Type"
 msgstr "Type"
+
+msgid "Type a search in the header to find risk scenarios, assets, threats, risk scopes and controls."
+msgstr "Saisissez une recherche dans l'en-tête pour trouver des scénarios de risque, des actifs, des menaces, des périmètres de risque et des contrôles."
 
 msgid "Type at least two characters of a name or an email"
 msgstr "Saisissez au moins deux caractères d'un nom ou d'un e-mail"

@@ -8119,6 +8119,9 @@ msgstr "No risk scenario in this scope yet."
 msgid "No risk scenario names this outcome yet."
 msgstr "No risk scenario names this outcome yet."
 
+msgid "No risk scenario, asset, threat, risk scope or control of this tenant has a name that contains “{search}”. Check the spelling, or open a list to browse what the tenant holds."
+msgstr "No risk scenario, asset, threat, risk scope or control of this tenant has a name that contains “{search}”. Check the spelling, or open a list to browse what the tenant holds."
+
 msgid "No risk scope found"
 msgstr "No risk scope found"
 
@@ -8603,6 +8606,9 @@ msgstr "Nothing is measured over it until an asset of the estate is mapped to it
 msgid "Nothing is running."
 msgstr "Nothing is running."
 
+msgid "Nothing matches this search"
+msgstr "Nothing matches this search"
+
 msgid "Nothing read yet"
 msgstr "Nothing read yet"
 
@@ -8755,6 +8761,9 @@ msgctxt "findings still open, column header"
 msgid "Open"
 msgstr "Open"
 
+msgid "Open assets"
+msgstr "Open assets"
+
 msgid "Open {cveId} in OpenCTI"
 msgstr "Open {cveId} in OpenCTI"
 
@@ -8804,6 +8813,9 @@ msgstr "Open Parameters"
 
 msgid "Open prevention"
 msgstr "Open prevention"
+
+msgid "Open risk scenarios"
+msgstr "Open risk scenarios"
 
 msgid "Open technique findings grouped by technique, ranked by how many land on each. A technique finding is one OpenAEV detection or prevention result on one asset, counted while its latest state is applicable: the attack was not detected or not prevented, or a person marked it applicable. The chip is the ATT&CK id and the row opens that technique, where the same estate can be read against the actors that use it. The exposure Sankey shows the same counts on its technique column, so the two screens agree by construction."
 msgstr "Open technique findings grouped by technique, ranked by how many land on each. A technique finding is one OpenAEV detection or prevention result on one asset, counted while its latest state is applicable: the attack was not detected or not prevented, or a person marked it applicable. The chip is the ATT&CK id and the row opens that technique, where the same estate can be read against the actors that use it. The exposure Sankey shows the same counts on its technique column, so the two screens agree by construction."
@@ -13379,6 +13391,9 @@ msgstr "Two runs of the same scenario over different estates answer two differen
 
 msgid "Type"
 msgstr "Type"
+
+msgid "Type a search in the header to find risk scenarios, assets, threats, risk scopes and controls."
+msgstr "Type a search in the header to find risk scenarios, assets, threats, risk scopes and controls."
 
 msgid "Type at least two characters of a name or an email"
 msgstr "Type at least two characters of a name or an email"
