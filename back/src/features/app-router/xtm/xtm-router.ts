@@ -7,7 +7,7 @@ import { config } from '../../../config';
 import { router } from '../../../trpc';
 import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
 import { COUNTERPART_KINDS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
-import { lookupXtmObjects, XTM_LOOKUP_KINDS } from './xtm-lookup';
+import { callerReadsLookupFacts, lookupXtmObjects, XTM_LOOKUP_KINDS } from './xtm-lookup';
 import { openaevProvider, openctiProvider } from './xtm-providers';
 
 /** The providers of one tenant, from the connections its deployment already configures. */
@@ -105,7 +105,9 @@ export const xtmRouter = (procedure: TenantProcedure) => router({
         return [];
       }
       const scoped = services.withOrigin(origin);
-      return lookupXtmObjects({ kind: input.kind, keys: input.keys, baseUrl, tenantId }, {
+      // A service account gets the link only, a person the facts with their own rights (opencrq #26).
+      const withFacts = callerReadsLookupFacts(origin);
+      return lookupXtmObjects({ kind: input.kind, keys: input.keys, baseUrl, tenantId, withFacts }, {
         threatsByStixIds: (stixIds) => scoped.threatAnalyses.getByStixIds(stixIds),
         cvesByCveIds: (cveIds) => scoped.cve.getCvesByCveIds(cveIds),
         assetsByHostnames: (hostnames) => scoped.supportingAssets.getByHostnames(hostnames),
