@@ -72,7 +72,7 @@ export interface ParsedThreat {
     sophistication: string | null,
     objective: string | null,
     labels: Array<string>,
-    markingRefs: Array<string>,
+    markingRefs?: Array<string>,
   },
   aliases: Array<string>,
   secondaryMotivations: Array<string>,

@@ -7,8 +7,9 @@ import { isRecord } from './xtm-counterpart-utils';
  * never with the connector token, so OpenCTI's own marking rules decide. A threat mirrored from
  * OpenCTI is then read only when all its markings are among them.
  *
- * `null` when the answer is unknown (no OpenCTI connection, no identity to sign for, a refusal, a
- * timeout, a malformed answer): the reader then sees no mirrored threat (fail closed). Answers are
+ * `null` when the answer is unknown (no identity to sign for, a refusal, a timeout, a malformed
+ * answer): the reader then sees no mirrored threat (fail closed). `undefined` when the tenant has no
+ * OpenCTI connection: there is no OpenCTI to ask and no marking to enforce, so nothing is narrowed. Answers are
  * kept a short while per tenant and user so a page's burst of reads asks OpenCTI once.
  */
 
@@ -58,7 +59,7 @@ const fetchAllowedMarkings = async (
 interface CachedMarkings { markings: ReadonlyArray<string> | null, expiresAt: number }
 
 export interface ReaderMarkingsResolver {
-  resolve: (tenantId: string, userId: string, connection: ProductConnection | undefined, authorization: ReaderAuthorization) => Promise<ReadonlyArray<string> | null>,
+  resolve: (tenantId: string, userId: string, connection: ProductConnection | undefined, authorization: ReaderAuthorization) => Promise<ReadonlyArray<string> | null | undefined>,
   clear: () => void,
 }
 
@@ -71,7 +72,7 @@ export const createReaderMarkingsResolver = (
   return {
     resolve: async (tenantId, userId, connection, authorization) => {
       if (!connection?.url) {
-        return null;
+        return undefined;
       }
       const key = `${tenantId}:${userId}`;
       const cached = cache.get(key);

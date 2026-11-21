@@ -11,15 +11,16 @@ import type { EventOrigin, GatekeeperResult, SecurityPolicyRule } from '../polic
 
 /**
  * The OpenCTI markings a client origin may read, or `undefined` when the origin carries no marking
- * scope (a job, a job run borrowing a person's origin, a connector, an internal read): only a
- * person's own request is narrowed, so a score still blends every mirrored object (opencrq #31, a
- * stated limit). `null` is a person whose markings are unknown: they read no mirrored object.
+ * scope (a job, a job run borrowing a person's origin, a connector, an internal read, a tenant with
+ * no OpenCTI connection): only a person's own request is narrowed, and only by the tenant procedure
+ * that asked OpenCTI, so a score still blends every mirrored object (opencrq #31, a stated limit).
+ * `null` is a person whose markings OpenCTI did not answer: they read no mirrored object.
  */
 export const originMarkingScope = (origin: EventOrigin): ReadonlyArray<string> | null | undefined => {
   if (origin.type !== 'client' || origin.job !== undefined) {
     return undefined;
   }
-  return origin.markings ?? null;
+  return origin.markings;
 };
 
 const markingArray = (markings: ReadonlyArray<string>): SQL =>

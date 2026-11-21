@@ -92,10 +92,12 @@ import { assetEvidence,
   threatAnalysisCves,
   threatAnalysisGoals,
   threatAnalysisLocations,
+  threatAnalysisMarkingPolicy,
   threatAnalysisSecondaryMotivations,
   threatAnalysisSectors,
   threatAnalysisTechniques,
   threatAnalysisTenantIsolationPolicy,
+  threatMarkingPolicy,
   treatmentPlanMoves,
   treatmentPlans,
   treatmentPlanTenantIsolationPolicy,
@@ -1721,6 +1723,10 @@ describe('Platform Seed', () => {
       attackSurfaceTenantIsolationPolicy,
       treatmentPlanTenantIsolationPolicy,
       budgetReviewTenantIsolationPolicy,
+      // The OpenCTI marking policies narrow only an origin the tenant procedure resolved markings for
+      // (opencrq #31): the plain client origins below carry none, so they see the whole tenant.
+      threatMarkingPolicy,
+      threatAnalysisMarkingPolicy,
     ];
     const tableKeys: ReadonlyArray<string> = Object.entries(schema).flatMap(([key, value]) => (is(value, PgTable) ? [key] : []));
     const isTableKey = (key: string): key is keyof SecuredSchema => tableKeys.includes(key);

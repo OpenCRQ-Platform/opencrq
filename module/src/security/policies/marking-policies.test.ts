@@ -27,9 +27,12 @@ describe('originMarkingScope', () => {
     expect(originMarkingScope(client([TLP_GREEN]))).toEqual([TLP_GREEN]);
   });
 
-  it('should fail closed for a person whose markings are unknown', () => {
-    expect(originMarkingScope(client())).toBeNull();
+  it('should fail closed for a person whose markings OpenCTI did not answer', () => {
     expect(originMarkingScope(client(null))).toBeNull();
+  });
+
+  it('should not narrow a person no marking scope was resolved for', () => {
+    expect(originMarkingScope(client())).toBeUndefined();
   });
 
   it.each<EventOrigin>([

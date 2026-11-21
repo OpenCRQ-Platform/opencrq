@@ -5,6 +5,7 @@ import type { PublicProcedure } from '../../trpc';
 import type { ServedProcedureManifest } from './procedure-manifest';
 import { authenticatedProcedure, router, tenantScopedProcedure } from '../../trpc';
 import { platformVersion } from '../../utils/platform-version';
+import { config } from '../../config';
 import { aleChangeExplainRouter } from './ale-change-explain';
 import { attackOutcomesRouter } from './attack-outcomes';
 import { assetDependenciesRouter } from './asset-dependencies';
@@ -45,7 +46,7 @@ import { cweRouter } from './cwe';
 import { fileStorageRouter } from './file-storage';
 import { serviceAccountsRouter } from './service-accounts';
 import { integrationsRouter } from './integrations/integrations-router';
-import { xtmRouter } from './xtm/xtm-router';
+import { readerAuthorization, xtmRouter } from './xtm/xtm-router';
 import { connectorsRouter } from './connectors/connectors-router';
 import { openctiRouter } from './opencti/opencti-router';
 import { defaultThreatsRouter } from './default-threats/default-threats-router';
@@ -56,9 +57,7 @@ import { complianceAssessmentsRouter } from './compliance-assessments';
 import { usersRouter } from './users';
 
 import { isTenantReachableOnce } from './tenant-edition-utils';
-import { config } from '../../config';
 import { readerMarkings } from './xtm/reader-markings';
-import { readerAuthorization } from './xtm/xtm-router';
 
 const instantiateServices = (db: DrizzleDB) => createServices([...allServiceDefinitions], db);
 

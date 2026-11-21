@@ -33,12 +33,18 @@ describe('createReaderMarkingsResolver', () => {
     expect(JSON.parse(init.body)).toEqual({ query: READER_MARKINGS_QUERY });
   });
 
-  it('should fail closed without a connection, an identity, on a refusal or an error', async () => {
+  it('should not narrow a tenant with no OpenCTI connection', async () => {
+    const unused = vi.fn();
+
+    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', undefined, SIGN)).toBeUndefined();
+    expect(unused).not.toHaveBeenCalled();
+  });
+
+  it('should fail closed without an identity, on a refusal or an error', async () => {
     const refused = createReaderMarkingsResolver(vi.fn().mockResolvedValue(new Response('no', { status: 401 })));
     const broken = createReaderMarkingsResolver(vi.fn().mockRejectedValue(new Error('timeout')));
     const unused = vi.fn();
 
-    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', undefined, SIGN)).toBeNull();
     expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', CONNECTION, NO_SIGN)).toBeNull();
     expect(unused).not.toHaveBeenCalled();
     expect(await refused.resolve('t-1', 'u-1', CONNECTION, SIGN)).toBeNull();
