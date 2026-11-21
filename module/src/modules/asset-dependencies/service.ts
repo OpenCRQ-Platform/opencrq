@@ -728,6 +728,7 @@ export const assetDependenciesService = defineService(
    * assets reached hop by hop (stale hops left out) and the primary assets behind them, so a weakness
    * on an asset nothing depends on still counts towards the primary assets it opens the way to.
    */
+  // eslint-disable-next-line app/no-unused-service-method -- no router caller yet; the attack-path layer of the dependency graph is its first reader
   getAttackPathReach: async ({ repo }, supportingAssetId: string, now: Date = new Date()) => {
     const freshSince = attackPathFreshSince(now);
     const depthOf = await walkAttackPath(supportingAssetId, (assetIds) => repo.findAttackPathHopsFrom(assetIds, freshSince));
