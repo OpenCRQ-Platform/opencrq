@@ -1,8 +1,9 @@
 /** @vitest-environment jsdom */
+import { i18n } from '@lingui/core';
 import { cleanup, render, screen } from '@testing-library/react';
 import { Users } from 'lucide-react';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { NavToolbarMenu } from './nav-toolbar-menu';
 import { ScopeSwitcher } from './scope-switcher';
 
@@ -16,6 +17,11 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
       <a {...props}>{children}</a>
     ),
   };
+});
+
+beforeAll(() => {
+  i18n.load('en', {});
+  i18n.activate('en');
 });
 
 afterEach(() => {
