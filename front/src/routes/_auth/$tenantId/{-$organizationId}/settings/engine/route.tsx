@@ -1,5 +1,6 @@
 import { t } from '@lingui/core/macro';
 import { createFileRoute, linkOptions, Outlet, redirect } from '@tanstack/react-router';
+import { Gauge, Radar } from 'lucide-react';
 import { NavToolbarMenu } from '../../../../../../components';
 import { trpcClient } from '../../../../../../lib';
 
@@ -12,8 +13,8 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/settin
   loader: () => ({ crumb: t`Engine` }),
   component: () => {
     const entries = [
-      { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}/settings/engine', to: 'threat-relevance' }), label: t`Threat Relevance` },
-      { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}/settings/engine', to: 'crq-indicators' }), label: t`CRQ Indicators` },
+      { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}/settings/engine', to: 'threat-relevance' }), label: t`Threat Relevance`, icon: <Radar /> },
+      { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}/settings/engine', to: 'crq-indicators' }), label: t`CRQ Indicators`, icon: <Gauge /> },
     ];
     return (
       <div className="mr-[200px]">
