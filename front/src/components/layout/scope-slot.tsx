@@ -18,9 +18,9 @@ import { t } from '@lingui/core/macro';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { FunctionComponent } from 'react';
-import { NavbarRowContent } from './main-layout/fds-navbar/navbar-row-content';
 import { useTRPC } from '../../lib';
 import { useOptionalTenant } from '../../providers';
+import { NavbarRowContent } from './main-layout/fds-navbar/navbar-row-content';
 
 /**
  * The tenant switcher, the first row of the navbar as in OpenAEV: shown only to a reader who can

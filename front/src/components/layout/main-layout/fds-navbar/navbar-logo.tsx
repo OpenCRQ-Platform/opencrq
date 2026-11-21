@@ -51,6 +51,7 @@ export const NavbarLogo = () => {
       options={[
         {
           id: 'opencti',
+          // eslint-disable-next-line lingui/no-unlocalized-strings -- product name, not copy
           label: 'OpenCTI',
           logo: productLogo(dark ? logoOpenCtiDark : logoOpenCtiLight),
           tooltip: destinations.opencti.connected ? t`Platform connected` : t`Get OpenCTI now`,
@@ -58,6 +59,7 @@ export const NavbarLogo = () => {
         },
         {
           id: 'openaev',
+          // eslint-disable-next-line lingui/no-unlocalized-strings -- product name, not copy
           label: 'OpenAEV',
           logo: productLogo(dark ? logoOpenAevDark : logoOpenAevLight),
           tooltip: destinations.openaev.connected ? t`Platform connected` : t`Get OpenAEV now`,
@@ -65,6 +67,7 @@ export const NavbarLogo = () => {
         },
         {
           id: 'xtm-hub',
+          // eslint-disable-next-line lingui/no-unlocalized-strings -- product name, not copy
           label: 'XTM Hub',
           logo: productLogo(dark ? logoXtmHubDark : logoXtmHubLight),
           tooltip: t`Get XTM Hub now`,
