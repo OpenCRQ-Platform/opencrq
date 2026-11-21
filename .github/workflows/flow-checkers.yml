@@ -1,4 +1,4 @@
-# Filigran Flow - the gate of the guidelines' checkers: the one check the default branch's ruleset requires,
+# Filigran Flow - the gate of the Flow checkers - the guidelines' and the FEPs' -: the one check the default branch's ruleset requires,
 # "Flow checkers" (FEP-0003 3.3). It runs no checker: it finds the checkers distributed here - each folder of
 # .flow/checkers/ with a distributed.json -, waits for the job of each, named after its guideline, on the same
 # commit, and fails when one fails, is skipped or never reports. A guideline added or removed changes only its own
@@ -7,12 +7,19 @@ name: Flow checkers
 
 on:
   pull_request:
+    # a pull request's body or labels change a checker's result too - the method's, the specification link (FEP-0001 3.1)
+    types: [opened, edited, synchronize, reopened, ready_for_review, labeled, unlabeled]
   merge_group:
   push:
 
 permissions:
   contents: read
   checks: read
+
+# a newer event of the same pull request decides: the run it replaces stops
+concurrency:
+  group: flow-checkers-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   gate:
@@ -39,12 +46,14 @@ jobs:
           while :; do
             pending=""; failed=""
             for id in $checkers; do
-              # Every run of its job on the commit, each by its last attempt - a run re-run is decided by its new
-              # attempt, never by the one before: a pull request's and a push's both run it, and the push's is
-              # skipped off the default branch. One that fails fails it; one that passes passes it; a skipped run
-              # counts only when no other ran.
+              # The last run of its job on the commit decides, each run by its last attempt - a run re-run is decided
+              # by its new attempt, never by the one before -, a skipped run only when no other ran: a pull request's
+              # and a push's both run it, the push's skipped off the default branch; and a pull request's body edited
+              # runs the method's checker again, whose new run decides (FEP-0001 3.1).
               runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs?check_name=$id&filter=all&per_page=100" \
-                     --jq '[.check_runs | group_by(.check_suite.id)[] | max_by(.id) | .status + " " + (.conclusion // "")] | join(",")')
+                     --jq '[.check_runs | group_by(.check_suite.id)[] | max_by(.id)]
+                           | (map(select(.conclusion != "skipped")) | if length > 0 then . else null end) // .
+                           | if length > 0 then (max_by(.id) | .status + " " + (.conclusion // "")) else "" end')
               case ",$runs," in
                 *",completed failure,"*|*",completed cancelled,"*|*",completed timed_out,"*|*",completed action_required,"*|*",completed startup_failure,"*)
                   failed="$failed $id (failure)" ;;
