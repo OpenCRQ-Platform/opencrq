@@ -2,8 +2,8 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { describe, expect, it } from 'vitest';
 import type { EventOrigin, GatekeeperResult } from '../policy';
-import { threatAnalyses, threatAnalysisAliases } from '../../modules';
-import { originMarkingScope, threatAnalysisMarkingPolicy, threatMarkingPolicy } from './marking-policies';
+import { openctiStreamObjects, openctiStreamReportRefs, threatAnalyses, threatAnalysisAliases } from '../../modules';
+import { originMarkingScope, reportRefMarkingPolicy, streamObjectMarkingPolicy, threatAnalysisMarkingPolicy, threatMarkingPolicy } from './marking-policies';
 
 const userId = uuidv7();
 const tenantId = uuidv7();
@@ -92,5 +92,48 @@ describe('threatAnalysisMarkingPolicy', () => {
 
   it('should add no predicate for a connector origin', () => {
     expect(readAliases({ type: 'connector', serviceAccountId: uuidv7(), tenantId })).toBeUndefined();
+  });
+});
+
+describe('streamObjectMarkingPolicy', () => {
+  const readMirror = (origin: EventOrigin) => streamObjectMarkingPolicy.read?.(origin, openctiStreamObjects);
+
+  it('should keep a mirrored object only when all the markings of its body are the reader\'s', () => {
+    const { sql, params } = render(readMirror(client([TLP_GREEN])));
+
+    expect(sql).toContain('object_marking_refs');
+    expect(sql).toContain('<@ array[');
+    expect(params).toEqual([TLP_GREEN]);
+  });
+
+  it('should hide every mirrored object from a person whose markings are unknown', () => {
+    const { sql } = render(readMirror(client(null)));
+
+    expect(sql).toBe('false');
+  });
+
+  it('should add no predicate for the rebuild job', () => {
+    expect(readMirror({ type: 'job', tenantId, jobKind: 'threat-activity-recompute', interactive: false })).toBeUndefined();
+  });
+
+  it('should leave the connector writes to the tenant rules', () => {
+    expect(streamObjectMarkingPolicy.update?.(client([]), openctiStreamObjects)).toBeUndefined();
+    expect(streamObjectMarkingPolicy.delete?.(client([]), openctiStreamObjects)).toBeUndefined();
+  });
+});
+
+describe('reportRefMarkingPolicy', () => {
+  const readRefs = (origin: EventOrigin) => reportRefMarkingPolicy.read?.(origin, openctiStreamReportRefs);
+
+  it('should make a citation follow the markings of its report', () => {
+    const { sql, params } = render(readRefs(client([TLP_RED])));
+
+    expect(sql).toContain('from opencti_stream_objects as cited_report');
+    expect(sql).toContain('"report_stix_id"');
+    expect(params).toEqual([TLP_RED]);
+  });
+
+  it('should not narrow a person no marking scope was resolved for', () => {
+    expect(readRefs(client())).toBeUndefined();
   });
 });

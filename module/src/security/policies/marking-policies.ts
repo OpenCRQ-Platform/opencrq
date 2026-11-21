@@ -78,4 +78,47 @@ export const threatAnalysisMarkingPolicy: SecurityPolicyRule<TableWithAnalysisId
   delete: noWritePredicate,
 };
 
+/**
+ * The markings a mirrored STIX body carries, read from its `object_marking_refs`; a body whose
+ * markings are not an array (absent included) carries none, as OpenCTI writes an unmarked object.
+ */
+const bodyMarkings = (data: SQL | PgColumn): SQL =>
+  sql`(case when jsonb_typeof(${data}->'object_marking_refs') = 'array' then array(select jsonb_array_elements_text(${data}->'object_marking_refs')) else '{}'::text[] end)`;
+
+const readableBody = (data: SQL | PgColumn, markings: ReadonlyArray<string> | null): SQL =>
+  (markings === null ? sql`false` : sql`(${bodyMarkings(data)} <@ ${markingArray(markings)})`);
+
+type TableWithStixBody = PgTableWithColumns<any> & { data: PgColumn };
+
+/**
+ * A raw mirrored object (a report, a relationship, an identity) a reader may see: all its markings
+ * are among the reader's. Read-only, as above: the connector writes and the rebuild job reads all.
+ */
+export const streamObjectMarkingPolicy: SecurityPolicyRule<TableWithStixBody> = {
+  read: (origin, table): GatekeeperResult => {
+    const markings = originMarkingScope(origin);
+    return markings === undefined ? undefined : readableBody(table.data, markings);
+  },
+  update: noWritePredicate,
+  delete: noWritePredicate,
+};
+
+type TableWithReportRef = PgTableWithColumns<any> & { tenantId: PgUUID<any>, reportStixId: PgColumn };
+
+/**
+ * Which threats a report cites follows the report: a reader who cannot read the report in OpenCTI
+ * does not learn what it cites. A report with no mirror body left is hidden from a narrowed reader.
+ */
+export const reportRefMarkingPolicy: SecurityPolicyRule<TableWithReportRef> = {
+  read: (origin, table): GatekeeperResult => {
+    const markings = originMarkingScope(origin);
+    if (markings === undefined) {
+      return undefined;
+    }
+    return exists(sql`(select 1 from opencti_stream_objects as cited_report where cited_report.tenant_id = ${table.tenantId} and cited_report.stix_id = ${table.reportStixId} and ${readableBody(sql`cited_report.data`, markings)})`);
+  },
+  update: noWritePredicate,
+  delete: noWritePredicate,
+};
+
 /* eslint-enable @typescript-eslint/no-explicit-any */

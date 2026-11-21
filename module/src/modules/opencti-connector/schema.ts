@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
-import { defineSecurityPolicies, tenantIsolationPolicy } from '../../security';
+import { defineSecurityPolicies, reportRefMarkingPolicy, streamObjectMarkingPolicy, tenantIsolationPolicy } from '../../security';
 import { serviceAccounts } from '../service-accounts/schema';
 import { tenants } from '../tenants';
 
@@ -84,7 +84,8 @@ export const openctiStreamObjects = pgTable('opencti_stream_objects', {
     .where(sql`${table.pending}`),
 ]);
 
-defineSecurityPolicies(openctiStreamObjects, tenantIsolationPolicy);
+// A person's own read sees only the objects whose markings OpenCTI lets them read (opencrq #31).
+defineSecurityPolicies(openctiStreamObjects, tenantIsolationPolicy, streamObjectMarkingPolicy);
 
 // Which threats (by STIX id) each mirrored `report` object refers to, read from its `object_refs`, so
 // a report's threats are found by an indexed lookup rather than by scanning every report's `data`.
@@ -99,4 +100,4 @@ export const openctiStreamReportRefs = pgTable('opencti_stream_report_refs', {
   index('opencti_stream_report_refs_threat_idx').on(table.tenantId, table.threatStixId),
 ]);
 
-defineSecurityPolicies(openctiStreamReportRefs, tenantIsolationPolicy);
+defineSecurityPolicies(openctiStreamReportRefs, tenantIsolationPolicy, reportRefMarkingPolicy);
