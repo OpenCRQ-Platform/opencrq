@@ -200,7 +200,7 @@ export const registerXtmOneRoutes = (server: FastifyInstance, db: DrizzleDB): vo
     }
   };
 
-  // -- Agents (intent catalog, vertical = grc) -----------------------------
+  // -- Agents (intent catalog, vertical = crq) -----------------------------
   const intentCatalogAgentSchema = z.object({
     agent_id: z.string().optional(),
     agent_name: z.string().optional(),
@@ -218,7 +218,7 @@ export const registerXtmOneRoutes = (server: FastifyInstance, db: DrizzleDB): vo
     }
     try {
       const response = await fetch(
-        `${ctx.settings.url}/api/v1/intents/catalog?vertical=grc&intent=${encodeURIComponent('global.assistant')}`,
+        `${ctx.settings.url}/api/v1/intents/catalog?vertical=crq&intent=${encodeURIComponent('global.assistant')}`,
         { headers: ctx.headers, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) },
       );
       if (!response.ok) {

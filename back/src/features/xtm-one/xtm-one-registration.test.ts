@@ -32,7 +32,7 @@ describe('XTM One registration payload', () => {
     vi.unstubAllEnvs();
   });
 
-  it('declares the platform identity, its version, grc vertical, and intents', () => {
+  it('declares the platform identity, its version, crq vertical, and intents', () => {
     vi.stubEnv('APP_VERSION', '0.261112.0-dev.0fed327');
     const body = buildRegistrationBody(SETTINGS, 'instance-1', { ...WITHOUT_MANIFEST, supportsApprovalPrompts: true });
     expect(body).toMatchObject({
@@ -41,7 +41,7 @@ describe('XTM One registration payload', () => {
       platform_version: '0.261112.0-dev.0fed327',
       platform_title: 'OpenCRQ',
       platform_id: 'instance-1',
-      business_vertical: 'grc',
+      business_vertical: 'crq',
       intents: DECLARED_INTENTS,
     });
     // The platform carries no license of its own: XTM One resolves the

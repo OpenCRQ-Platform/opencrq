@@ -22,7 +22,9 @@ export const REGISTRATION_INTERVAL_MS = 5 * 60_000;
 
 /**
  * Intents declared at registration - the seven shared `global.*` editing
- * intents plus the GRC-specific capabilities. XTM One binds each intent to
+ * intents plus the `crq.*` capabilities (cyber risk quantification; named
+ * `grc.*` before the OpenCRQ rename, which XTM One still reads as `crq.*`).
+ * XTM One binds each intent to
  * the best agent (the seeded `opencrq-assistant` by default) and returns
  * the catalog in the registration response.
  */
@@ -34,8 +36,8 @@ export const DECLARED_INTENTS: Array<{ name: string, description: string }> = [
   { name: 'global.change_tone', description: 'Change the tone of content' },
   { name: 'global.summarize', description: 'Summarize content' },
   { name: 'global.explain', description: 'Explain content in simple terms' },
-  { name: 'grc.control_gap_analysis', description: 'Analyze control maturity gaps against a compliance framework' },
-  { name: 'grc.risk_scenario_generator', description: 'Draft risk scenarios from business and threat context' },
+  { name: 'crq.control_gap_analysis', description: 'Analyze control maturity gaps against a compliance framework' },
+  { name: 'crq.risk_scenario_generator', description: 'Draft risk scenarios from business and threat context' },
 ];
 
 export const registrationResultSchema = z.object({
@@ -205,7 +207,7 @@ export const buildRegistrationBody = (
   platform_title: 'OpenCRQ',
   platform_version: platformVersion(),
   platform_id: instanceId,
-  business_vertical: 'grc',
+  business_vertical: 'crq',
   intents: DECLARED_INTENTS,
   supports_approval_prompts: supportsApprovalPrompts,
   ...(procedureManifest && { procedure_manifest_fingerprint: procedureManifest.fingerprint }),
