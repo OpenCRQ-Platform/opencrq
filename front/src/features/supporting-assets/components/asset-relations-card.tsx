@@ -41,7 +41,7 @@ const RelationRow: FunctionComponent<{ relation: AssetRelationEntry, isLast: boo
       className="flex items-center justify-between gap-4 py-3"
       style={{ borderBottom: isLast ? undefined : '1px solid var(--fds-border-elevation-subtle-soft)' }}
     >
-      <span className="flex min-w-0 flex-col">
+      <span className="flex min-w-0 flex-1 flex-col">
         <Link
           to="/$tenantId/{-$organizationId}/assets/$supportingAssetId"
           params={{ tenantId, supportingAssetId: otherAsset.id }}
@@ -50,9 +50,9 @@ const RelationRow: FunctionComponent<{ relation: AssetRelationEntry, isLast: boo
           <AssetName name={otherAsset.name} derivedName={otherAsset.derivedName} />
         </Link>
         <span className="txt-sub-content text-muted-foreground">{family}</span>
-      </span>
-      <span className="flex shrink-0 items-center gap-3">
         <span className="txt-sub-content text-muted-foreground"><Trans>{source}, last seen {lastSeen}</Trans></span>
+      </span>
+      <span className="shrink-0">
         <AssetCriticalityChip criticality={otherAsset.criticality} />
       </span>
     </div>

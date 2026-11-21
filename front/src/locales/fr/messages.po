@@ -835,6 +835,12 @@ msgstr "{holder}, attribué à {other}, qui lui donne {band}."
 msgid "{holder}, assigned to {other}."
 msgstr "{holder}, attribué à {other}."
 
+msgid "{holder}, leads to {other} on an attack path, which gives it {band}."
+msgstr "{holder}, mène à {other} sur un chemin d'attaque, qui lui donne {band}."
+
+msgid "{holder}, leads to {other} on an attack path."
+msgstr "{holder}, mène à {other} sur un chemin d'attaque."
+
 msgid "{hours}h {remainingMinutes}m"
 msgstr "{hours}h {remainingMinutes}m"
 
@@ -2909,6 +2915,9 @@ msgstr "Issues d'attaque"
 
 msgid "Attack Outcomes"
 msgstr "Issues d'attaque"
+
+msgid "attack path"
+msgstr "chemin d'attaque"
 
 msgid "Attack Path"
 msgstr "Chemin d'attaque"
@@ -6719,6 +6728,12 @@ msgstr "Simulation d'après"
 msgid "Latest run {latestAge}"
 msgstr "Dernière simulation {latestAge}"
 
+msgid "Leads to"
+msgstr "Mène à"
+
+msgid "Leads to: {named}"
+msgstr "Mène à : {named}"
+
 msgid "Leave empty to let a result count however old it is."
 msgstr "Laisser vide pour qu'un résultat compte quel que soit son âge."
 
@@ -8896,6 +8911,12 @@ msgstr "OpenAEV teste {control} sur cette technique, que {control} ne déclare p
 msgid "OpenAEV tests exercise this control although it is declared not deployed: they are not taken into account."
 msgstr "Des tests OpenAEV portent sur ce contrôle déclaré non déployé : ils ne sont pas pris en compte."
 
+msgid "OpenAEV, inferred"
+msgstr "OpenAEV, déduit"
+
+msgid "OpenAEV, proven by a test"
+msgstr "OpenAEV, prouvé par un test"
+
 msgid "OpenAI-compatible"
 msgstr "Compatible OpenAI"
 
@@ -9792,6 +9813,12 @@ msgstr "atteinte"
 
 msgid "Reached"
 msgstr "Atteint"
+
+msgid "Reached from"
+msgstr "Atteint depuis"
+
+msgid "Reached from: {named}"
+msgstr "Atteint depuis : {named}"
 
 #. js-lingui-explicit-id
 msgid "Read as {low} to {high}. Specify the number beyond that."

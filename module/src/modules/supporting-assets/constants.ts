@@ -127,13 +127,28 @@ export type AssetSourceOrigin = (typeof ASSET_SOURCE_ORIGIN_VALUES)[number];
  * A typed link a connector observes between two assets, read from its first end to its second.
  * `primary_user_of` runs from an identity to the device it is the primary user of. It is not a
  * dependency: nothing fails along it, which is why it never shares the dependency link tables.
+ * `reachable_from` runs from an asset an attack path reached to the asset it was reached from, as
+ * OpenAEV showed it in a simulation: it is not a dependency either, it is a way in.
  */
-export const ASSET_RELATION_KIND_VALUES = ['primary_user_of'] as const;
+export const ASSET_RELATION_KIND_VALUES = ['primary_user_of', 'reachable_from'] as const;
 export type AssetRelationKind = (typeof ASSET_RELATION_KIND_VALUES)[number];
 
 /** Which of a connector's reads produced a relation: they are not equally strong, and the detail names it. */
-export const ASSET_RELATION_SOURCE_VALUES = ['entra_registered_owner', 'intune_primary_user'] as const;
+export const ASSET_RELATION_SOURCE_VALUES = [
+  'entra_registered_owner',
+  'intune_primary_user',
+  // An attack-path hop an OpenAEV execution ran and nothing prevented.
+  'openaev_attack_path_proven',
+  // An attack-path hop OpenAEV drew with no verdict on it yet: the conditions are met, no execution proved it.
+  'openaev_attack_path_inferred',
+] as const;
 export type AssetRelationSource = (typeof ASSET_RELATION_SOURCE_VALUES)[number];
+
+/**
+ * An attack-path hop OpenAEV has not confirmed for this long reads as stale: it is kept, never
+ * deleted by the sync, and no longer counts towards what a finding can reach.
+ */
+export const ATTACK_PATH_STALE_AFTER_DAYS = 30;
 
 /**
  * The attributes a resolution rule can produce and a person can therefore override by hand.

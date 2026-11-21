@@ -2237,7 +2237,7 @@ export const supportingAssetsService = defineService(
     connectorId: string,
     kind: AssetRelationKind,
     observedAt: Date,
-    relations: ReadonlyArray<{ fromAssetId: string, toAssetId: string, source: AssetRelationSource }>,
+    relations: ReadonlyArray<{ fromAssetId: string, toAssetId: string, source: AssetRelationSource, evidenceRef?: string | null }>,
     retiredIds: ReadonlyArray<string>,
   }) => {
     if (!('tenantId' in eventOrigin)) {
@@ -2255,6 +2255,7 @@ export const supportingAssetsService = defineService(
         toAssetId: relation.toAssetId,
         kind: params.kind,
         source: relation.source,
+        evidenceRef: relation.evidenceRef ?? null,
         firstSeenAt: params.observedAt,
         lastReportedAt: params.observedAt,
       }));

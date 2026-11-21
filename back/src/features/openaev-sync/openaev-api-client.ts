@@ -1,11 +1,13 @@
 import { NonRetryableError, TimeoutError } from '@app/module';
-import type { AiTargetAsset, AssetInventoryRow, AssetOverview, AttackObservation, EndpointEntity, OpenaevAssetGroup, OpenaevTag, OpenaevUser, SnapshotPage, TenantOutput, VulnerabilityObservation } from './openaev-types';
+import type { AiTargetAsset, AssetInventoryRow, AssetOverview, AttackObservation, AttackPathGraph, AttackPathSimulation, EndpointEntity, OpenaevAssetGroup, OpenaevTag, OpenaevUser, SnapshotPage, TenantOutput, VulnerabilityObservation } from './openaev-types';
 import { fromError, newError, StructuredError } from '@app/utils';
 import {
   aiTargetAssetSchema,
   assetInventoryRowSchema,
   assetOverviewSchema,
   attackObservationSchema,
+  attackPathGraphSchema,
+  attackPathSimulationSchema,
   endpointEntitySchema,
   openaevAssetGroupSchema,
   openaevPageSchema,
@@ -240,6 +242,18 @@ export const createOpenaevClient = (baseUrl: string, token: string, signal: Abor
     listTags: async (tenantId: string): Promise<Array<OpenaevTag>> => {
       const raw = await get(tenantPath(tenantId, '/tags'));
       return openaevTagSchema.array().parse(raw);
+    },
+
+    /** The simulations of the tenant that hold attack-path executions. */
+    listAttackPathSimulations: async (tenantId: string): Promise<Array<AttackPathSimulation>> => {
+      const raw = await get(tenantPath(tenantId, '/attack-path/simulations'));
+      return attackPathSimulationSchema.array().parse(raw);
+    },
+
+    /** One simulation's attack path, collapsed: one edge per source and target, never one per execution. */
+    getAttackPathGraph: async (tenantId: string, simulationId: string): Promise<AttackPathGraph> => {
+      const raw = await get(tenantPath(tenantId, `/attack-path/simulations/${encodeURIComponent(simulationId)}/graph?mode=collapsed`));
+      return attackPathGraphSchema.parse(raw);
     },
 
     /** Every asset group of the tenant, with its static members and its dynamic members as resolved now. */
