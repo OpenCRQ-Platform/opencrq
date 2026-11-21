@@ -41,6 +41,13 @@
       "when": 1795286514105,
       "tag": "0005_threat_marking_refs",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795294700000,
+      "tag": "0006_attack_path_relations",
+      "breakpoints": true
     }
   ],
   "version": "7",
