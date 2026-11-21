@@ -49,6 +49,18 @@ export const integrationSettingsService = defineService(
     });
   },
 
+  /**
+   * The deployment's own binding of an integration it provides (`CONNECTORS__<NAME>__<tenant>__*`):
+   * binds `serviceAccountId` only where no account is bound yet. System origin only, so the
+   * tenant is named. Answers whether it bound.
+   */
+  bindDeploymentIntegration: async ({ repo, eventOrigin }, tenantId: string, source: IntegrationSource, serviceAccountId: string): Promise<boolean> => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    return repo.bindIfUnbound(tenantId, source, serviceAccountId, uuidv7());
+  },
+
   markSynced: async ({ repo, eventOrigin }, source: IntegrationSource, syncedAt?: Date) => {
     if (!('tenantId' in eventOrigin)) {
       throw newError('Tenant context required');

@@ -59,6 +59,18 @@ In **non-production**, the bucket is created automatically at startup if missing
 | `HTTP_SERVER__HOST`                    |    -     | `0.0.0.0`                          | Defines the internal listening interface of the container.                                 |
 | `HTTP_SERVER__PORT`                    |    -     | `3002`                             | Internal listening port of the application.                                                |
 | `HEALTHCHECK_HTTP_SERVER__PORT`        |    -     | `8444`                             | Internal listening port for healthchecks.                                                  |
+| `APP__ADMIN__TOKEN`                    |    No    | -                                  | Bootstrap admin token, a UUIDv4 (the counterpart of OpenCTI's `APP__ADMIN__TOKEN`). It authenticates the peer provisioning API below; unset, that API answers 404. Pass through a secret store. |
+| `XTM__OPENCTI_URL`                     |    No    | -                                  | URL of the deployment's OpenCTI, where the product switcher sends a person. Unset: the URL of the tenant's OpenCTI connection, if any. |
+| `XTM__OPENAEV_URL`                     |    No    | -                                  | URL of the deployment's OpenAEV, for the product switcher. Unset: the URL of the tenant's OpenAEV connection, if any. |
+
+### Peer provisioning API
+
+A deployment manager gives a sibling XTM product (an OpenAEV or an OpenCTI reading this platform) a service account and a token here, with the bootstrap admin token as bearer. No session and no tenant header: the account is created in the initial tenant (`INITIAL_TENANT__ID`), in its `connectors` group.
+
+- `POST /api/xtm/peer-tokens` with `Authorization: Bearer <APP__ADMIN__TOKEN>` and `{"consumer": "openaev", "name": "OpenAEV", "email": "openaev@example.com", "token_name": "opencrq-link"}`. Idempotent on `email` (lower-cased): the same account is converged and renamed, its live tokens named `token_name` are revoked, and a non-expiring `flgrn_ocrq_tkn_` token is issued. Answers `200 {"user_id", "email", "name", "token_name", "token"}`; the token is shown once.
+- `POST /api/xtm/peer-tokens/revoke` with the same bearer and `{"email", "token_name"}`: revokes those tokens. Answers `200 {"revoked": <count>}`.
+
+A missing or wrong bearer answers 401, an invalid body 400.
 
 ## Telemetry
 
@@ -319,7 +331,7 @@ The count is written at the end of the identity pass, in the log of the sync run
 
 ### OpenAEV (Adversary Exposure Validation)
 
-Syncs the asset inventory, the latest attack verdicts (prevention and detection per technique) and the CVEs from an [OpenAEV](https://github.com/OpenAEV-Platform/openaev) instance, to support attack-outcome and exposure analyses. A tenant activates once it has both variables below set.
+Syncs the asset inventory, the latest attack verdicts (prevention and detection per technique) and the CVEs from an [OpenAEV](https://github.com/OpenAEV-Platform/openaev) instance, to support attack-outcome and exposure analyses. A tenant activates once it has both variables below set: at boot, an existing tenant given them and with no account bound gets the account `OpenAEV (deployment)`, in its `connectors` group, bound to the integration, so it comes up enabled. An account an admin bound is never replaced; the binding stays editable from the Integrations page.
 
 | Variable                                        | Required | Default Value | Architectural/Functional Impact                                     |
 |:----------------------------------------------------|:--------:|:--------------|:-----------------------------------------------------------------------|
@@ -336,6 +348,8 @@ Subscribes to an OpenCTI Live Stream (Server-Sent Events) to automatically keep 
 |:----------------------------------------------------|:--------:|:--------------|:-----------------------------------------------------------------------|
 | `CONNECTORS__OPENCTI__<tenant-uuid>__URL`   | **Yes**  | -             | Base URL of that tenant's OpenCTI instance (e.g. `https://opencti.example.com`). |
 | `CONNECTORS__OPENCTI__<tenant-uuid>__TOKEN` | **Yes**  | -             | API token used to authenticate against that tenant's OpenCTI Live Stream/GraphQL API. Pass through a secret store. |
+
+At boot, an existing tenant given both variables and whose OpenCTI integration nobody configured gets the account `OpenCTI (deployment)`, in its `connectors` group, bound with the first Live Stream the token sees that delivers every claim OpenCRQ reads, and the connector enabled. No such stream: it is left for an admin, and the next boot tries again. A configuration an admin made, a disabled connector included, is never replaced. A peer unreachable at boot never blocks the boot.
 
 See [OpenCTI Connector](opencti-connector.md) for the setup required on the OpenCTI side: the Live Stream filter this connector needs, and the access its token must have.
 

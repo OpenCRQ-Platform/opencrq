@@ -92,6 +92,24 @@ export const serviceAccountsRepository = defineRepository({
     .innerJoin(views.serviceAccounts, eq(views.serviceAccountGroups.serviceAccountId, views.serviceAccounts.id))
     .where(eq(views.serviceAccountGroups.serviceAccountId, serviceAccountId)),
 
+  /**
+   * Inserts an account the deployment provisions under a derived id, or renames the one already
+   * there: provisioning again converges instead of adding a second account. `active` is left as an
+   * admin set it.
+   */
+  upsertProvisionedServiceAccount: ({ db }, serviceAccount: { id: string, tenantId: string, name: string, description: string }) =>
+    db.insert(serviceAccounts).values(serviceAccount).onConflictDoUpdate({
+      target: serviceAccounts.id,
+      set: { name: serviceAccount.name, description: serviceAccount.description, updatedAt: new Date() },
+    }),
+  /** A tenant's group seeded under `slug`, read for a caller (the system) that carries no tenant. */
+  findTenantGroupIdBySlug: async ({ db, views }, tenantId: string, slug: string) => db.select({ id: views.groups.id })
+    .from(views.groups)
+    .where(and(eq(views.groups.tenantId, tenantId), eq(views.groups.slug, slug)))
+    .limit(1)
+    .then((rows) => rows.at(0)?.id ?? null),
+  linkServiceAccountGroup: ({ db }, serviceAccountId: string, groupId: string) =>
+    db.insert(serviceAccountGroups).values({ serviceAccountId, groupId }).onConflictDoNothing(),
   /** The tenant's group seeded under `slug` (e.g. `connectors`), if the caller sees it. */
   findGroupIdBySlug: async ({ db, views }, slug: string) => db.select({ id: views.groups.id })
     .from(views.groups)

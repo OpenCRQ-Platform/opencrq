@@ -72,6 +72,19 @@ export const serviceAccountTokensRepository = defineRepository({
     return result[0];
   },
 
+  /** Revokes the live tokens of an account that carry `name`; answers how many it revoked. */
+  revokeTokensByName: async ({ db }, serviceAccountId: string, name: string) => {
+    const revoked = await db.update(serviceAccountTokens)
+      .set({ revokedAt: sqlAsDate(sql`now()`) })
+      .where(and(
+        eq(serviceAccountTokens.serviceAccountId, serviceAccountId),
+        eq(serviceAccountTokens.name, name),
+        isNull(serviceAccountTokens.revokedAt),
+      ))
+      .returning({ id: serviceAccountTokens.id });
+    return revoked.length;
+  },
+
   updateLastUsed: ({ db }, id: string) =>
     db.update(serviceAccountTokens).set({ lastUsedAt: sqlAsDate(sql`now()`) }).where(eq(serviceAccountTokens.id, id)),
 });

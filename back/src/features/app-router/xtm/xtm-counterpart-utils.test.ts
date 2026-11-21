@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CounterpartProvider, XtmCounterpart } from './xtm-counterpart-utils';
-import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, xtmConnections } from './xtm-counterpart-utils';
+import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, switcherProducts, xtmConnections } from './xtm-counterpart-utils';
 import { openaevProvider, openctiProvider } from './xtm-providers';
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
@@ -79,6 +79,23 @@ describe('resolveCounterparts', () => {
     const p = provider();
     expect(await resolveCounterparts(TENANT, 'THREAT', ['apt28'], [p])).toEqual([]);
     expect(p.resolve).not.toHaveBeenCalled();
+  });
+});
+
+describe('switcherProducts', () => {
+  it('prefers the URL the deployment declares, else the connection, without a trailing slash', () => {
+    const providers = [openctiProvider({ url: 'https://opencti.connection/', token: 'secret' }), openaevProvider({ url: 'https://openaev.connection/', token: 'secret' })];
+    expect(switcherProducts({ openaev_url: 'https://openaev.declared/' }, providers)).toEqual([
+      { product: 'opencti', url: 'https://opencti.connection' },
+      { product: 'openaev', url: 'https://openaev.declared' },
+    ]);
+  });
+
+  it('answers no URL for a product neither declared nor connected', () => {
+    expect(switcherProducts({}, [openctiProvider(undefined), openaevProvider(undefined)])).toEqual([
+      { product: 'opencti', url: null },
+      { product: 'openaev', url: null },
+    ]);
   });
 });
 

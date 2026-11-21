@@ -205,3 +205,18 @@ export const resolveCounterparts = async (
 
 export const xtmConnections = (providers: ReadonlyArray<CounterpartProvider>): Array<XtmConnection> =>
   providers.map((p) => ({ product: p.product, connected: p.isConnected, url: p.isConnected ? p.url : null }));
+
+/**
+ * Where the product switcher sends a person: the sibling product's URL the deployment declares
+ * (`XTM__OPENCTI_URL`, `XTM__OPENAEV_URL`), else the URL of the tenant's connection to it.
+ */
+export const switcherProducts = (
+  declared: { opencti_url?: string | undefined, openaev_url?: string | undefined },
+  providers: ReadonlyArray<CounterpartProvider>,
+): Array<{ product: XtmProduct, url: string | null }> =>
+  XTM_PRODUCTS.map((product) => {
+    const url = (product === 'opencti' ? declared.opencti_url : declared.openaev_url)
+      ?? providers.find((provider) => provider.product === product && provider.isConnected)?.url
+      ?? null;
+    return { product, url: url === null ? null : url.replace(/\/+$/, '') };
+  });
