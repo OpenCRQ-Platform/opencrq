@@ -25,7 +25,6 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTitle,
-  Icon,
 } from '@filigran/design-system';
 import { LogoXtmOneIcon } from '@filigran/icon';
 import { t } from '@lingui/core/macro';
@@ -185,7 +184,9 @@ const AskArianeButton: FunctionComponent<AskArianeButtonProps> = ({ isEnterprise
           ref={ref}
           variant="ia"
           priority="tertiary"
-          startIcon={<Icon name="custom/xtmone" size={20} aria-hidden />}
+          // As OpenCTI's AskArianeButton: the filigran-icon XTM One logo at 20px, painted plain AI purple. The `ia`
+          // variant gradients the label only and the icon keeps `currentColor`, which is white in the dark header.
+          startIcon={<LogoXtmOneIcon width={20} height={20} aria-hidden className="text-filigran-ia-primary" />}
           endIcon={isEnterpriseEdition ? undefined : <span aria-hidden><Chip label={t`EE`} severity="ee" size="sm" /></span>}
           aria-label={label}
           onClick={onClick}
