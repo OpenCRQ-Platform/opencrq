@@ -12977,6 +12977,9 @@ msgstr "This scope has no asset: nothing is measured over it until one is mapped
 msgid "This scope is measured over its mapped assets and holds none, so no simulation can run."
 msgstr "This scope is measured over its mapped assets and holds none, so no simulation can run."
 
+msgid "This score is computed from every object mirrored from OpenCTI, including sources some users may not see there. It is not recomputed for what each user can read."
+msgstr "This score is computed from every object mirrored from OpenCTI, including sources some users may not see there. It is not recomputed for what each user can read."
+
 msgid "This search only finds outcomes this threat does not match."
 msgstr "This search only finds outcomes this threat does not match."
 

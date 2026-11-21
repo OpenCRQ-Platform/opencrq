@@ -30,7 +30,15 @@ export interface JobRunTag {
  * make a missing tenant read the whole table.
  */
 export type EventOrigin =
-  | { readonly type: 'client', readonly userId: string, readonly tenantId: string, readonly job?: JobRunTag }
+  /**
+   * `markings` are the OpenCTI marking definitions the person may read there (opencrq #31), resolved
+   * once per request with their own identity: a threat mirrored from OpenCTI is read only when all
+   * its markings are among them. `null` is a person whose markings OpenCTI did not answer, who holds
+   * no clearance and reads only unmarked mirrored threats (fail closed, OpenAEV ADR-009). Absent is an origin no marking scope was resolved for (a tenant
+   * with no OpenCTI connection, a server-side read): it is not narrowed. A job run borrowing the origin (`job` set) reads them all, so a
+   * score blends every source whoever asked for it.
+   */
+  | { readonly type: 'client', readonly userId: string, readonly tenantId: string, readonly job?: JobRunTag, readonly markings?: ReadonlyArray<string> | null }
   | { readonly type: 'platform', readonly userId: string }
   | { readonly type: 'auth' }
   | { readonly type: 'system' }
