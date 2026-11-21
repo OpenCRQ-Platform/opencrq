@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CounterpartProvider, XtmCounterpart } from './xtm-counterpart-utils';
 import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, switcherProducts, xtmConnections } from './xtm-counterpart-utils';
+import type { ReaderAuthorization } from './xtm-providers';
 import { openaevProvider, openctiProvider } from './xtm-providers';
+
+const NO_READER: ReaderAuthorization = () => Promise.resolve(null);
+const READER = 'reader-1';
+const OTHER_READER = 'reader-2';
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
 const STIX = 'intrusion-set--4f2c6c8e-0b8a-4b8e-9b1a-2f1d3c4b5a69';
@@ -48,8 +53,8 @@ describe('resolveCounterparts', () => {
 
   it('resolves once and answers the next call from the cache, misses included', async () => {
     const p = provider({ resolve: vi.fn(() => Promise.resolve([counterpart('CVE-2024-3400')])) });
-    const first = await resolveCounterparts(TENANT, 'VULNERABILITY', ['CVE-2024-3400', 'CVE-2023-1111'], [p]);
-    const second = await resolveCounterparts(TENANT, 'VULNERABILITY', ['cve-2024-3400', 'CVE-2023-1111'], [p]);
+    const first = await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400', 'CVE-2023-1111'], [p]);
+    const second = await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['cve-2024-3400', 'CVE-2023-1111'], [p]);
     expect(first.map((c) => c.key)).toEqual(['CVE-2024-3400']);
     expect(second.map((c) => c.key)).toEqual(['CVE-2024-3400']);
     expect(p.resolve).toHaveBeenCalledTimes(1);
@@ -58,7 +63,7 @@ describe('resolveCounterparts', () => {
   it('skips a product that is not connected or does not hold the kind', async () => {
     const off = provider({ isConnected: false });
     const other = provider({ product: 'openaev', supports: () => false });
-    expect(await resolveCounterparts(TENANT, 'VULNERABILITY', ['CVE-2024-3400'], [off, other])).toEqual([]);
+    expect(await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400'], [off, other])).toEqual([]);
     expect(off.resolve).not.toHaveBeenCalled();
     expect(other.resolve).not.toHaveBeenCalled();
   });
@@ -66,25 +71,33 @@ describe('resolveCounterparts', () => {
   it('answers nothing for a failing product and does not cache the failure', async () => {
     const resolve = vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([counterpart('T1059')]);
     const p = provider({ resolve });
-    expect(await resolveCounterparts(TENANT, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual([]);
-    expect((await resolveCounterparts(TENANT, 'ATTACK_PATTERN', ['T1059'], [p])).map((c) => c.key)).toEqual(['T1059']);
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual([]);
+    expect((await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).map((c) => c.key)).toEqual(['T1059']);
   });
 
   it('drops a counterpart whose link is not http(s)', async () => {
     const p = provider({ resolve: vi.fn(() => Promise.resolve([{ ...counterpart('T1059'), objectUrl: 'javascript:alert(1)' }])) });
-    expect(await resolveCounterparts(TENANT, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual([]);
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual([]);
+  });
+
+  it('never serves one reader the answer another reader got: the cache is per reader', async () => {
+    const p = provider({ resolve: vi.fn(() => Promise.resolve([counterpart('CVE-2024-3400')])) });
+    await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400'], [p]);
+    const restricted = provider({ resolve: vi.fn(() => Promise.resolve([])) });
+    expect(await resolveCounterparts(TENANT, OTHER_READER, 'VULNERABILITY', ['CVE-2024-3400'], [restricted])).toEqual([]);
+    expect(restricted.resolve).toHaveBeenCalledTimes(1);
   });
 
   it('never calls a product with no valid key', async () => {
     const p = provider();
-    expect(await resolveCounterparts(TENANT, 'THREAT', ['apt28'], [p])).toEqual([]);
+    expect(await resolveCounterparts(TENANT, READER, 'THREAT', ['apt28'], [p])).toEqual([]);
     expect(p.resolve).not.toHaveBeenCalled();
   });
 });
 
 describe('switcherProducts', () => {
   it('prefers the URL the deployment declares, else the connection, without a trailing slash', () => {
-    const providers = [openctiProvider({ url: 'https://opencti.connection/', token: 'secret' }), openaevProvider({ url: 'https://openaev.connection/', token: 'secret' })];
+    const providers = [openctiProvider({ url: 'https://opencti.connection/', token: 'secret' }, NO_READER), openaevProvider({ url: 'https://openaev.connection/', token: 'secret' }, NO_READER)];
     expect(switcherProducts({ openaev_url: 'https://openaev.declared/' }, providers)).toEqual([
       { product: 'opencti', url: 'https://opencti.connection' },
       { product: 'openaev', url: 'https://openaev.declared' },
@@ -92,7 +105,7 @@ describe('switcherProducts', () => {
   });
 
   it('answers no URL for a product neither declared nor connected', () => {
-    expect(switcherProducts({}, [openctiProvider(undefined), openaevProvider(undefined)])).toEqual([
+    expect(switcherProducts({}, [openctiProvider(undefined, NO_READER), openaevProvider(undefined, NO_READER)])).toEqual([
       { product: 'opencti', url: null },
       { product: 'openaev', url: null },
     ]);
@@ -102,8 +115,8 @@ describe('switcherProducts', () => {
 describe('xtmConnections', () => {
   it('reports each product without its credential', () => {
     const connections = xtmConnections([
-      openctiProvider({ url: 'https://opencti.example/', token: 'secret' }),
-      openaevProvider(undefined),
+      openctiProvider({ url: 'https://opencti.example/', token: 'secret' }, NO_READER),
+      openaevProvider(undefined, NO_READER),
     ]);
     expect(connections).toEqual([
       { product: 'opencti', connected: true, url: 'https://opencti.example' },
@@ -114,30 +127,56 @@ describe('xtmConnections', () => {
 });
 
 describe('providers', () => {
-  it('asks OpenAEV its reverse lookup and keeps only the keys asked', async () => {
+  const authHeaderOf = (init: RequestInit | undefined): string | undefined => (init?.headers as Record<string, string> | undefined)?.Authorization;
+
+  it('asks OpenAEV its reverse lookup as the reader, and keeps only the keys asked', async () => {
     const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response(JSON.stringify([
       { object_key: 'cve-2024-3400', object_id: 'v1', object_type: 'vulnerability', object_name: 'PAN-OS', object_url: 'https://openaev.example/v/v1', object_facts: [{ fact_key: 'findings', fact_value: '2' }] },
       { object_key: 'CVE-2000-0001', object_id: 'v2', object_url: 'https://openaev.example/v/v2' },
     ]))));
-    const p = openaevProvider({ url: 'https://openaev.example', token: 't' }, fetchImpl);
+    const authorization = vi.fn((_productUrl: string) => Promise.resolve('reader-jwt'));
+    const p = openaevProvider({ url: 'https://openaev.example/', token: 'connector-token' }, authorization, fetchImpl);
     const found = await p.resolve('VULNERABILITY', ['CVE-2024-3400']);
     expect(fetchImpl.mock.calls[0][0]).toBe('https://openaev.example/api/tenants/2cffad3a-0001-4078-b0e2-ef74274022c3/xtm/objects/vulnerabilities');
+    expect(authorization).toHaveBeenCalledWith('https://openaev.example');
+    expect(authHeaderOf(fetchImpl.mock.calls[0][1])).toBe('Bearer reader-jwt');
     expect(found).toEqual([{ key: 'CVE-2024-3400', product: 'openaev', objectId: 'v1', objectType: 'vulnerability', objectName: 'PAN-OS', objectUrl: 'https://openaev.example/v/v1', facts: [{ key: 'findings', value: '2' }] }]);
   });
 
-  it('asks OpenCTI by STIX id and links to the object', async () => {
+  it('asks OpenCTI by STIX id as the reader and links to the object', async () => {
     const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response(JSON.stringify({ data: { stixCoreObjects: { edges: [
       { node: { id: 'abc', standard_id: STIX, entity_type: 'Intrusion-Set', representative: { main: 'APT28' } } },
     ] } } }))));
-    const p = openctiProvider({ url: 'https://opencti.example/', token: 't' }, fetchImpl);
+    const p = openctiProvider({ url: 'https://opencti.example/', token: 'connector-token' }, () => Promise.resolve('reader-jwt'), fetchImpl);
     const found = await p.resolve('THREAT', [STIX]);
+    expect(authHeaderOf(fetchImpl.mock.calls[0][1])).toBe('Bearer reader-jwt');
     expect(found).toEqual([{ key: STIX, product: 'opencti', objectId: 'abc', objectType: 'Intrusion-Set', objectName: 'APT28', objectUrl: 'https://opencti.example/dashboard/id/abc', facts: [] }]);
   });
 
-  it('fails the lookup on an error status, without the token in the message', async () => {
-    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response('no', { status: 401 })));
-    const p = openaevProvider({ url: 'https://openaev.example', token: 'secret-token' }, fetchImpl);
-    await expect(p.resolve('ASSET', ['web-01'])).rejects.toThrow(/401/);
-    await expect(p.resolve('ASSET', ['web-01'])).rejects.not.toThrow(/secret-token/);
+  it('never sends the connector token: no reader identity means no call and no counterpart', async () => {
+    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response('[]')));
+    const connection = { url: 'https://product.example', token: 'connector-token' };
+    for (const p of [openaevProvider(connection, NO_READER, fetchImpl), openctiProvider(connection, NO_READER, fetchImpl)]) {
+      expect(await p.resolve('VULNERABILITY', ['CVE-2024-3400'])).toEqual([]);
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('sends the reader bearer, never the connector token, on every lookup', async () => {
+    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response('[]')));
+    const connection = { url: 'https://product.example', token: 'connector-token' };
+    await openaevProvider(connection, () => Promise.resolve('reader-jwt'), fetchImpl).resolve('ASSET', ['web-01']);
+    await openctiProvider(connection, () => Promise.resolve('reader-jwt'), fetchImpl).resolve('ASSET', ['web-01']);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchImpl.mock.calls) {
+      expect(JSON.stringify(init)).not.toContain('connector-token');
+    }
+  });
+
+  it('fails the lookup on a refusal (the reader has no right there), without the bearer in the message', async () => {
+    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response('no', { status: 403 })));
+    const p = openaevProvider({ url: 'https://openaev.example', token: 't' }, () => Promise.resolve('secret-reader-jwt'), fetchImpl);
+    await expect(p.resolve('ASSET', ['web-01'])).rejects.toThrow(/403/);
+    await expect(p.resolve('ASSET', ['web-01'])).rejects.not.toThrow(/secret-reader-jwt/);
   });
 });
