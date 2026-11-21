@@ -171,6 +171,39 @@ describe('XTM One cross-platform JWT', () => {
 
       await expect(verifyXtmOneJwt(settings, await forged.sign(PUBLIC_ISSUER))).rejects.toThrow();
     });
+
+    it('refuses an expired token XTM One signed', async () => {
+      const settings = internalSettings();
+      const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+      serveXtmOne(settings, { keys: [{ ...publicKey.export({ format: 'jwk' }), kid: 'xtm-one', alg: 'EdDSA', use: 'sig' }] }, PUBLIC_ISSUER);
+      const now = Math.floor(Date.now() / 1000);
+      const expired = await new SignJWT({ email: 'jane@example.com' })
+        .setProtectedHeader({ alg: 'EdDSA', kid: 'xtm-one' })
+        .setIssuer(PUBLIC_ISSUER)
+        .setSubject('xtm-user')
+        .setAudience(SETTINGS.platformUrl)
+        .setIssuedAt(now - 1200)
+        .setExpirationTime(now - 600)
+        .sign(privateKey);
+
+      await expect(verifyXtmOneJwt(settings, expired)).rejects.toThrow();
+    });
+
+    it('refuses a token XTM One signed for another platform', async () => {
+      const settings = internalSettings();
+      const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+      serveXtmOne(settings, { keys: [{ ...publicKey.export({ format: 'jwk' }), kid: 'xtm-one', alg: 'EdDSA', use: 'sig' }] }, PUBLIC_ISSUER);
+      const elsewhere = await new SignJWT({ email: 'jane@example.com' })
+        .setProtectedHeader({ alg: 'EdDSA', kid: 'xtm-one' })
+        .setIssuer(PUBLIC_ISSUER)
+        .setSubject('xtm-user')
+        .setAudience('https://opencti.example.com')
+        .setIssuedAt()
+        .setExpirationTime('5m')
+        .sign(privateKey);
+
+      await expect(verifyXtmOneJwt(settings, elsewhere)).rejects.toThrow();
+    });
   });
 
   it('builds an OKP/Ed25519 JWKS document', () => {

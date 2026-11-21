@@ -1,4 +1,4 @@
-import { Button, Icon, IconButton } from '@filigran/design-system';
+import { Button, IconButton } from '@filigran/design-system';
 import { Popover, PopoverContent, PopoverTrigger } from '@filigran/ui';
 import { Link } from '@tanstack/react-router';
 import { t } from '@lingui/core/macro';
@@ -6,6 +6,7 @@ import { Trans } from '@lingui/react/macro';
 import type { FunctionComponent } from 'react';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { NotificationsOutlinedIcon } from '../../../components/shared/top-bar-icons';
 import { useTRPC } from '../../../lib';
 import { useOptionalTenant } from '../../../providers';
 import { NotificationList } from './notification-list';
@@ -34,7 +35,7 @@ export const NotificationBell: FunctionComponent = () => {
           <IconButton
             priority="tertiary"
             aria-label={t`Notifications`}
-            icon={<Icon name="bell" size={24} aria-hidden />}
+            icon={<NotificationsOutlinedIcon />}
           />
         </PopoverTrigger>
         {count > 0 && (

@@ -28,7 +28,6 @@ import type {
   AttackObservation,
   CveEvidenceRow,
   EndpointEntity,
-  EsSeries,
   ExpectationEvidenceRow,
   OpenaevAgent,
   OpenaevUser,
@@ -349,30 +348,6 @@ export const mergeAiTargetDetail = (base: ConnectorAssetInput, detail: AiTargetA
   description: descriptionOf(detail),
   properties: aiTargetToProperties(detail),
 });
-
-/**
- * Sums a posture widget's `SUCCESS`/`FAILED` series into per-asset counts. A bucket's key falls
- * back to its label, mirroring OpenAEV's own `usePostureScores.ts` reader — the dashboard engine
- * uses one or the other depending on the aggregation, never both.
- */
-export const parsePostureSeries = (series: ReadonlyArray<EsSeries>): Map<string, { success: number, failed: number }> => {
-  const counters = new Map<string, { success: number, failed: number }>();
-  const bump = (label: string, field: 'success' | 'failed') => {
-    const data = series.find((s) => s.label === label)?.data ?? [];
-    for (const bucket of data) {
-      const assetId = bucket.key ?? bucket.label;
-      if (!assetId) {
-        continue;
-      }
-      const entry = counters.get(assetId) ?? { success: 0, failed: 0 };
-      entry[field] += bucket.value;
-      counters.set(assetId, entry);
-    }
-  };
-  bump('SUCCESS', 'success');
-  bump('FAILED', 'failed');
-  return counters;
-};
 
 const CVE_IDENTIFIER_PATTERN = /^CVE-\d{4}-\d{4,}$/i;
 

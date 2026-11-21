@@ -4,7 +4,7 @@ import type { ActivityAnchorKind } from './activity-scoring';
 import type { ActorClass } from './actor-classes';
 import type { ThreatEntityType } from './entity-types';
 import type { ThreatSourceKind } from './source-kinds';
-import { defineSecurityPolicies, tenantIsolationPolicy, threatAnalysisTenantIsolationPolicy } from '../../security';
+import { defineSecurityPolicies, tenantIsolationPolicy, threatAnalysisMarkingPolicy, threatAnalysisTenantIsolationPolicy, threatMarkingPolicy } from '../../security';
 import { attackOutcomes } from '../attack-outcomes/schema';
 import { tenants } from '../tenants';
 
@@ -34,6 +34,12 @@ export const threatAnalyses = pgTable('threat_analyses', {
   resourceLevel: text('resource_level'),
   sophistication: text('sophistication'),
   objective: text('objective'),
+  /**
+   * The OpenCTI marking definitions (`object_marking_refs`) the mirrored object carries, read at each
+   * ingestion. Only a `connector` row is filtered on it at read: null is a row ingested before the
+   * column existed and not re-read since, which no reader sees (fail closed) until the next replay.
+   */
+  markingRefs: text('marking_refs').array(),
   actorClass: text('actor_class').notNull().default('default').$type<ActorClass>(),
   /** Manual class. Ingestion rewrites only `actor_class`, which is how this survives a resync. */
   actorClassOverride: text('actor_class_override').$type<ActorClass>(),
@@ -78,7 +84,8 @@ export const threatAnalyses = pgTable('threat_analyses', {
   check('threat_analyses_entity_type_ck', sql`${table.entityType} IN ('intrusion-set', 'threat-actor', 'campaign')`),
 ]);
 
-defineSecurityPolicies(threatAnalyses, tenantIsolationPolicy);
+// The marking rule narrows a person's reads to the mirrored threats they may read in OpenCTI (opencrq #31).
+defineSecurityPolicies(threatAnalyses, tenantIsolationPolicy, threatMarkingPolicy);
 
 export const threatAnalysisAliases = pgTable('threat_analysis_aliases', {
   id: uuid('id').primaryKey(),
@@ -89,7 +96,7 @@ export const threatAnalysisAliases = pgTable('threat_analysis_aliases', {
   uniqueIndex('threat_analysis_aliases_analysis_alias_unique').on(table.analysisId, sql`lower(${table.alias})`),
 ]);
 
-defineSecurityPolicies(threatAnalysisAliases, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisAliases, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 // SQL identifiers use "motives" (not "motivations"): the full word pushes the
 // "${table}_notify_data_changed" trigger name past Postgres's 63-byte identifier limit.
@@ -102,7 +109,7 @@ export const threatAnalysisSecondaryMotivations = pgTable('threat_analysis_secon
   uniqueIndex('threat_analysis_secondary_motives_analysis_value_unique').on(table.analysisId, sql`lower(${table.value})`),
 ]);
 
-defineSecurityPolicies(threatAnalysisSecondaryMotivations, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisSecondaryMotivations, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 export const threatAnalysisGoals = pgTable('threat_analysis_goals', {
   id: uuid('id').primaryKey(),
@@ -113,7 +120,7 @@ export const threatAnalysisGoals = pgTable('threat_analysis_goals', {
   uniqueIndex('threat_analysis_goals_analysis_value_unique').on(table.analysisId, sql`lower(${table.value})`),
 ]);
 
-defineSecurityPolicies(threatAnalysisGoals, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisGoals, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 export const threatAnalysisThreatActorTypes = pgTable('threat_analysis_threat_actor_types', {
   id: uuid('id').primaryKey(),
@@ -125,7 +132,7 @@ export const threatAnalysisThreatActorTypes = pgTable('threat_analysis_threat_ac
   uniqueIndex('threat_analysis_threat_actor_types_analysis_value_unique').on(table.analysisId, sql`lower(${table.value})`),
 ]);
 
-defineSecurityPolicies(threatAnalysisThreatActorTypes, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisThreatActorTypes, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 export const threatAnalysisRoles = pgTable('threat_analysis_roles', {
   id: uuid('id').primaryKey(),
@@ -136,7 +143,7 @@ export const threatAnalysisRoles = pgTable('threat_analysis_roles', {
   uniqueIndex('threat_analysis_roles_analysis_value_unique').on(table.analysisId, sql`lower(${table.value})`),
 ]);
 
-defineSecurityPolicies(threatAnalysisRoles, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisRoles, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 /**
  * One row per STIX `attributed-to` a threat states toward another threat. The target is held by STIX
@@ -163,7 +170,7 @@ export const threatAnalysisAttributions = pgTable('threat_analysis_attributions'
   unique('threat_analysis_attributions_analysis_relation_unique').on(table.analysisId, table.stixRelationId),
 ]);
 
-defineSecurityPolicies(threatAnalysisAttributions, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisAttributions, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 export const threatAnalysisLocations = pgTable('threat_analysis_locations', {
   id: uuid('id').primaryKey(),
@@ -185,7 +192,7 @@ export const threatAnalysisLocations = pgTable('threat_analysis_locations', {
   unique('threat_analysis_locations_analysis_relation_unique').on(table.analysisId, table.stixRelationId),
 ]);
 
-defineSecurityPolicies(threatAnalysisLocations, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisLocations, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 export const threatAnalysisSectors = pgTable('threat_analysis_sectors', {
   id: uuid('id').primaryKey(),
@@ -206,7 +213,7 @@ export const threatAnalysisSectors = pgTable('threat_analysis_sectors', {
   unique('threat_analysis_sectors_analysis_relation_unique').on(table.analysisId, table.stixRelationId),
 ]);
 
-defineSecurityPolicies(threatAnalysisSectors, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisSectors, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 export const threatAnalysisCves = pgTable('threat_analysis_cves', {
   id: uuid('id').primaryKey(),
@@ -229,7 +236,7 @@ export const threatAnalysisCves = pgTable('threat_analysis_cves', {
   unique('threat_analysis_cves_analysis_relation_unique').on(table.analysisId, table.stixRelationId),
 ]);
 
-defineSecurityPolicies(threatAnalysisCves, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisCves, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 export const threatAnalysisTechniques = pgTable('threat_analysis_techniques', {
   id: uuid('id').primaryKey(),
@@ -258,7 +265,7 @@ export const threatAnalysisTechniques = pgTable('threat_analysis_techniques', {
   unique('threat_analysis_techniques_analysis_relation_unique').on(table.analysisId, table.stixRelationId),
 ]);
 
-defineSecurityPolicies(threatAnalysisTechniques, threatAnalysisTenantIsolationPolicy);
+defineSecurityPolicies(threatAnalysisTechniques, threatAnalysisTenantIsolationPolicy, threatAnalysisMarkingPolicy);
 
 /**
  * One dated row per relationship that can date an actor, plus one per actor for its own

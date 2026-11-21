@@ -7,6 +7,10 @@ import { normaliseCounterpartKeys } from './xtm-counterpart-utils';
  * (`object_key`, `object_id`, `object_type`, `object_name`, `object_url`, `object_facts`), so the
  * three products read one contract. The caller authenticates with an OpenCRQ service-account
  * token, whose tenant is bound server-side.
+ *
+ * The facts (risk scenarios, annual loss, fix value) are a person's to read, with that person's
+ * rights here: a service-account caller gets the object id, name and link only, never a figure
+ * (opencrq #26, CTEM data segregation), since it reads for whoever its product shows them to.
  */
 
 export interface XtmLookupObject {
@@ -55,10 +59,62 @@ export type XtmLookupKind = typeof XTM_LOOKUP_KINDS[number];
 
 const enc = encodeURIComponent;
 
+/**
+ * The header a service-account caller (OpenCTI, OpenAEV) sends beside its bearer to read for one
+ * person: a short-lived JWT XTM One signed for that person, addressed to this platform. XTM One is
+ * the single issuer of it (Sam, 21 Nov 2026); the sibling products only forward it.
+ */
+export const XTM_USER_TOKEN_HEADER = 'x-xtm-user-token';
+
+type LookupOrigin =
+  | { type: 'client', userId: string, tenantId: string }
+  | { type: 'connector', serviceAccountId: string, tenantId: string };
+
+export type LookupFactsOrigin = { type: 'client', userId: string, tenantId: string } | null;
+
+/**
+ * Who the facts of a lookup are read for, or `null` for the links only.
+ *
+ * - A person (`client` origin, a session or an XTM One JWT as bearer): themselves, as before.
+ * - A service account (`connector` origin) with no user token: links only (opencrq #26).
+ * - A service account forwarding a user token: the person XTM One signed it for, resolved by its
+ *   subject (`authenticate`, the same verification as an XTM One bearer: issuer, keys, audience,
+ *   expiry), and only when that person reaches the service account's own tenant
+ *   (`reachesTenant`, the tenants policy: a member or the super administrator). A token that does
+ *   not verify, names no known account, or a person outside the tenant: links only, never an error,
+ *   so a lookup never tells the caller why.
+ */
+export const resolveLookupFactsOrigin = async (
+  origin: LookupOrigin,
+  userToken: string | undefined,
+  deps: {
+    authenticate: (token: string) => Promise<{ user: { id: string } } | null>,
+    reachesTenant: (userId: string, tenantId: string) => Promise<boolean>,
+  },
+): Promise<LookupFactsOrigin> => {
+  if (origin.type === 'client') {
+    return { type: 'client', userId: origin.userId, tenantId: origin.tenantId };
+  }
+  if (!userToken || userToken.split('.').length !== 3) {
+    return null;
+  }
+  const authenticated = await deps.authenticate(userToken);
+  if (!authenticated) {
+    return null;
+  }
+  if (!(await deps.reachesTenant(authenticated.user.id, origin.tenantId))) {
+    return null;
+  }
+  return { type: 'client', userId: authenticated.user.id, tenantId: origin.tenantId };
+};
+
 export const lookupXtmObjects = async (
-  params: { kind: XtmLookupKind, keys: ReadonlyArray<string>, baseUrl: string, tenantId: string },
+  params: { kind: XtmLookupKind, keys: ReadonlyArray<string>, baseUrl: string, tenantId: string, withFacts: boolean },
   reader: XtmLookupReader,
 ): Promise<Array<XtmLookupObject>> => {
+  const noExposure = new Map<string, XtmLookupExposure>();
+  const exposureOf = async (kind: XtmLookupKind, objectIds: Array<string>): Promise<ReadonlyMap<string, XtmLookupExposure>> =>
+    (params.withFacts && objectIds.length > 0 ? reader.exposure(kind, objectIds) : noExposure);
   const keys = normaliseCounterpartKeys(params.kind, params.keys);
   if (keys.length === 0) {
     return [];
@@ -67,7 +123,7 @@ export const lookupXtmObjects = async (
   switch (params.kind) {
     case 'THREAT': {
       const threats = await reader.threatsByStixIds(keys);
-      const exposure = threats.length === 0 ? new Map<string, XtmLookupExposure>() : await reader.exposure('THREAT', threats.map((threat) => threat.id));
+      const exposure = await exposureOf('THREAT', threats.map((threat) => threat.id));
       return threats.map((threat) => ({
         object_key: threat.stixId.toLowerCase(),
         object_id: threat.id,
@@ -79,7 +135,7 @@ export const lookupXtmObjects = async (
     }
     case 'VULNERABILITY': {
       const cves = await reader.cvesByCveIds(keys);
-      const exposure = cves.length === 0 ? new Map<string, XtmLookupExposure>() : await reader.exposure('VULNERABILITY', cves.map((cve) => cve.id));
+      const exposure = await exposureOf('VULNERABILITY', cves.map((cve) => cve.id));
       return cves.map((cve) => ({
         object_key: cve.cveId.toUpperCase(),
         object_id: cve.cveId,
@@ -93,7 +149,7 @@ export const lookupXtmObjects = async (
       const seen = new Set<string>();
       const out: Array<XtmLookupObject> = [];
       const assets = await reader.assetsByHostnames(keys);
-      const exposure = assets.length === 0 ? new Map<string, XtmLookupExposure>() : await reader.exposure('ASSET', [...new Set(assets.map((asset) => asset.id))]);
+      const exposure = await exposureOf('ASSET', [...new Set(assets.map((asset) => asset.id))]);
       for (const asset of assets) {
         // One asset may be reported by several sources under one hostname: answered once.
         if (!asset.hostname || seen.has(`${asset.hostname}|${asset.id}`)) {

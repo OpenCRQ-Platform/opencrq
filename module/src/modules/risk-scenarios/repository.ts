@@ -443,6 +443,24 @@ export const riskScenariosRepository = defineRepository({
     .where(eq(views.riskScenarios.id, riskScenarioId))
     .limit(1)).at(0),
 
+  /** The exposure of each asset of `supportingAssetIds` the tenant sees; an absent id is an asset it does not. */
+  findSupportingAssetExposures: async ({ db, views }, supportingAssetIds: Array<string>) => {
+    if (supportingAssetIds.length === 0) {
+      return [];
+    }
+    return db.select({ id: views.supportingAssets.id, exposure: views.supportingAssets.exposure })
+      .from(views.supportingAssets)
+      .where(inUuids(views.supportingAssets.id, supportingAssetIds));
+  },
+
+  /** The tenant's vulnerability row of a CVE id, matched as a connector may have written it (case, spaces). */
+  findCveRowByCveId: async ({ db, views }, cveId: string) => (await db
+    .select({ id: views.cve.id, cveId: views.cve.cveId, cveTitle: views.cve.cveTitle, cvss: views.cve.cvss, cvssVector: views.cve.cvssVector })
+    .from(views.cve)
+    .where(sql`upper(btrim(${views.cve.cveId}, E' \\t\\n\\r\\f\\v')) = ${cveId.trim().toUpperCase()}`)
+    .orderBy(asc(views.cve.cveId))
+    .limit(1)).at(0),
+
   findAssetIdsMappedToScope: async ({ db, views }, organizationId: string, supportingAssetIds: Array<string>) => {
     if (supportingAssetIds.length === 0) {
       return [];

@@ -300,6 +300,13 @@ const ThreatScoreExplanation: FunctionComponent<ThreatScoreExplanationProps> = (
           )}
       </ExplanationCaveat>
 
+      <ExplanationCaveat>
+        <Trans>
+          This score is computed from every object mirrored from OpenCTI, including sources some users
+          may not see there. It is not recomputed for what each user can read.
+        </Trans>
+      </ExplanationCaveat>
+
       <ExplanationSection label={t`The bands`}>
         <div className="flex flex-col gap-1">
           {SEVERITY_BANDS.map((entry) => (

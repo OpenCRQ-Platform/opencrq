@@ -136,13 +136,14 @@ export interface CounterpartProvider {
 interface CacheEntry { at: number, value: XtmCounterpart | null }
 
 /**
- * Short-TTL cache per tenant, product, kind and key: a found counterpart or a known miss (null).
- * The lookups use the tenant's connector token, so the answer does not depend on the reader; the
- * reader's right to see the tenant is checked by the procedure before any lookup.
+ * Short-TTL cache per tenant, reader, product, kind and key: a found counterpart or a known miss
+ * (null). The lookups run with the reader's own identity, so the answer depends on the reader and
+ * is never served to another one (opencrq #24).
  */
 const cache = new Map<string, CacheEntry>();
 const MAX_CACHE_ENTRIES = 20_000;
-const cacheKey = (tenantId: string, product: string, kind: CounterpartKind, key: string) => `${tenantId}|${product}|${kind}|${key}`;
+const cacheKey = (tenantId: string, readerId: string, product: string, kind: CounterpartKind, key: string) =>
+  `${tenantId}|${readerId}|${product}|${kind}|${key}`;
 
 export const resetCounterpartCache = () => cache.clear();
 
@@ -152,6 +153,7 @@ export const resetCounterpartCache = () => cache.clear();
  */
 export const resolveCounterparts = async (
   tenantId: string,
+  readerId: string,
   kind: CounterpartKind,
   keys: ReadonlyArray<string>,
   providers: ReadonlyArray<CounterpartProvider>,
@@ -168,7 +170,7 @@ export const resolveCounterparts = async (
     }
     const missing: Array<string> = [];
     for (const key of normalised) {
-      const entry = cache.get(cacheKey(tenantId, provider.product, kind, key));
+      const entry = cache.get(cacheKey(tenantId, readerId, provider.product, kind, key));
       if (entry && now() - entry.at < COUNTERPART_CACHE_TTL_MS) {
         if (entry.value) {
           results.push(entry.value);
@@ -194,7 +196,7 @@ export const resolveCounterparts = async (
     }
     for (const key of missing) {
       const value = byKey.get(key) ?? null;
-      cache.set(cacheKey(tenantId, provider.product, kind, key), { at, value });
+      cache.set(cacheKey(tenantId, readerId, provider.product, kind, key), { at, value });
       if (value) {
         results.push(value);
       }

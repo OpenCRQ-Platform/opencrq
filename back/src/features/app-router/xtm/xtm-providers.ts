@@ -3,9 +3,12 @@ import type { CounterpartKind, CounterpartProvider, XtmCounterpart } from './xtm
 import { isHttpUrl, isRecord, normaliseCounterpartKey, sanitiseFacts } from './xtm-counterpart-utils';
 
 /**
- * The providers OpenCRQ resolves counterparts with, built from the connections it already holds
- * (`connectors.opencti.<tenant>` and `connectors.openaev.<tenant>`): no second connection model,
- * and the tokens never leave the server.
+ * The providers OpenCRQ resolves counterparts with, built from the URLs of the connections it
+ * already holds (`connectors.opencti.<tenant>` and `connectors.openaev.<tenant>`). A lookup runs for
+ * one reader and authenticates as that reader (`authorization`: a short-lived JWT this platform
+ * signs for them, opencrq #24): the product applies the reader's own rights, and the connector
+ * token, which reads everything the sync reads, is never sent on a reader's behalf. No identity for
+ * the reader, or a refusal, gives no counterpart.
  */
 
 // OpenAEV's default tenant (io.openaev.database.model.Tenant.DEFAULT_TENANT_UUID), the one a
@@ -15,14 +18,20 @@ const LOOKUP_TIMEOUT_MS = 5_000;
 
 export interface ProductConnection { url: string, token: string }
 
+/**
+ * The bearer of one reader for one product, addressed to its base URL; `null` when this platform
+ * cannot sign for the reader (no user session, no public URL configured).
+ */
+export type ReaderAuthorization = (productUrl: string) => Promise<string | null>;
+
 type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 const trimSlash = (url: string) => url.replace(/\/+$/, '');
 
-const postJson = async (fetchImpl: FetchLike, url: string, token: string, body: unknown): Promise<unknown> => {
+const postJson = async (fetchImpl: FetchLike, url: string, bearer: string, body: unknown): Promise<unknown> => {
   const res = await fetchImpl(url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
   });
@@ -42,7 +51,11 @@ const OPENAEV_PATHS: Partial<Record<CounterpartKind, string>> = {
   THREAT: 'threats',
 };
 
-export const openaevProvider = (connection: ProductConnection | undefined, fetchImpl: FetchLike = fetch): CounterpartProvider => ({
+export const openaevProvider = (
+  connection: ProductConnection | undefined,
+  authorization: ReaderAuthorization,
+  fetchImpl: FetchLike = fetch,
+): CounterpartProvider => ({
   product: 'openaev',
   url: connection ? trimSlash(connection.url) : null,
   isConnected: !!connection?.url && !!connection.token,
@@ -52,8 +65,13 @@ export const openaevProvider = (connection: ProductConnection | undefined, fetch
     if (!connection || !path) {
       return [];
     }
-    const url = `${trimSlash(connection.url)}/api/tenants/${OPENAEV_DEFAULT_TENANT_ID}/xtm/objects/${path}`;
-    const data = await postJson(fetchImpl, url, connection.token, { counterpart_keys: keys });
+    const base = trimSlash(connection.url);
+    const bearer = await authorization(base);
+    if (!bearer) {
+      return [];
+    }
+    const url = `${base}/api/tenants/${OPENAEV_DEFAULT_TENANT_ID}/xtm/objects/${path}`;
+    const data = await postJson(fetchImpl, url, bearer, { counterpart_keys: keys });
     return toCounterparts('openaev', kind, keys, Array.isArray(data) ? data : []);
   },
 });
@@ -121,7 +139,11 @@ const openctiNodes = (answer: unknown): Array<Record<string, unknown>> => {
   return edges.flatMap((edge: unknown) => (isRecord(edge) && isRecord(edge.node) ? [edge.node] : []));
 };
 
-export const openctiProvider = (connection: ProductConnection | undefined, fetchImpl: FetchLike = fetch): CounterpartProvider => ({
+export const openctiProvider = (
+  connection: ProductConnection | undefined,
+  authorization: ReaderAuthorization,
+  fetchImpl: FetchLike = fetch,
+): CounterpartProvider => ({
   product: 'opencti',
   url: connection ? trimSlash(connection.url) : null,
   isConnected: !!connection?.url && !!connection.token,
@@ -132,7 +154,11 @@ export const openctiProvider = (connection: ProductConnection | undefined, fetch
       return [];
     }
     const base = trimSlash(connection.url);
-    const data = await postJson(fetchImpl, `${base}/graphql`, connection.token, {
+    const bearer = await authorization(base);
+    if (!bearer) {
+      return [];
+    }
+    const data = await postJson(fetchImpl, `${base}/graphql`, bearer, {
       query: OPENCTI_LOOKUP_QUERY,
       variables: {
         types: lookup.types,

@@ -4,6 +4,7 @@ import type { FunctionComponent } from 'react';
 import { t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import type { AuthContextType } from '../../features/auth/auth-context';
+import { AccountCircleOutlinedIcon } from '../shared/top-bar-icons';
 
 interface UserProfileMenuProps {
   auth: Extract<AuthContextType, { status: 'logged-in' }>,
@@ -19,7 +20,7 @@ export const UserProfileMenu: FunctionComponent<UserProfileMenuProps> = ({ auth,
         <IconButton
           priority="tertiary"
           aria-label={t`Account`}
-          icon={<Icon name="circle-user" size={24} aria-hidden />}
+          icon={<AccountCircleOutlinedIcon />}
         />
       </MenuTrigger>
       <MenuContent align="end">

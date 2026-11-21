@@ -38,11 +38,10 @@ export interface OpenaevAssetInput {
   needsDescriptionFetch: boolean,
 }
 
-/** One OpenAEV source of a supporting asset, with the OpenAEV tenant that serves it. */
-export interface OpenaevPostureTarget {
-  tenantId: string,
-  openaevTenantId: string,
-  sourceAssetId: string,
+/** The OpenAEV test results of one asset as the sync stored them: findings OpenAEV last proved held, and last proved exposed. */
+export interface StoredPostureCounts {
+  success: number,
+  failed: number,
 }
 
 const streamKeyMatches = (key: StreamKey) => and(
@@ -365,24 +364,29 @@ export const openaevConnectorRepository = defineRepository({
     .limit(limit)
     .then((rows) => rows.map((row) => row.sourceAssetId)),
 
-  findPostureTargets: async (
+  findStoredPosture: async (
     { db, views }, supportingAssetId: string,
-  ): Promise<Array<OpenaevPostureTarget>> => db
-    .selectDistinct({
-      tenantId: views.supportingAssetSources.tenantId,
-      openaevTenantId: views.openaevAssets.openaevTenantId,
-      sourceAssetId: views.supportingAssetSources.sourceAssetId,
-    })
-    .from(views.supportingAssetSources)
-    .innerJoin(views.integrationSettings, and(
-      eq(views.integrationSettings.id, views.supportingAssetSources.connectorId),
-      eq(views.integrationSettings.source, 'openaev'),
-    ))
-    .innerJoin(views.openaevAssets, and(
-      eq(views.openaevAssets.connectorId, views.supportingAssetSources.connectorId),
-      eq(views.openaevAssets.sourceAssetId, views.supportingAssetSources.sourceAssetId),
-    ))
-    .where(eq(views.supportingAssetSources.supportingAssetId, supportingAssetId)),
+  ): Promise<StoredPostureCounts | null> => {
+    const exposed = views.assetEvidence.latestVerdictExposed;
+    const fromOpenaev = db.select({ assetEvidenceId: views.assetEvidenceSources.assetEvidenceId })
+      .from(views.assetEvidenceSources)
+      .innerJoin(views.integrationSettings, and(
+        eq(views.integrationSettings.id, views.assetEvidenceSources.connectorId),
+        eq(views.integrationSettings.source, 'openaev'),
+      ));
+    const [row] = await db
+      .select({
+        success: sql<number>`count(*) filter (where ${exposed} = false)`.mapWith(Number),
+        failed: sql<number>`count(*) filter (where ${exposed} = true)`.mapWith(Number),
+      })
+      .from(views.assetEvidence)
+      .where(and(
+        eq(views.assetEvidence.supportingAssetId, supportingAssetId),
+        isNotNull(exposed),
+        inArray(views.assetEvidence.id, fromOpenaev),
+      ));
+    return row && row.success + row.failed > 0 ? row : null;
+  },
 
   stampDescriptionsFetched: async (
     { db }, connectorId: string, sourceAssetIds: Array<string>, fetchedAt: Date,
