@@ -11949,9 +11949,6 @@ msgstr "Testée, non déclarée"
 msgid "Text"
 msgstr "Texte"
 
-msgid "The integration runs as an account the tenant already has."
-msgstr "L'intégration s'exécute avec un compte que le tenant possède déjà."
-
 msgid "The {listed} most recent are listed."
 msgstr "Les {listed} plus récents sont listés."
 
@@ -12228,6 +12225,9 @@ msgstr "La probabilité maximale, acceptée par l'organisation, que la perte d'u
 
 msgid "The highest probability the organization accepts that a year's loss exceeds an amount. Applied to each scenario of the scope on its own, never to their sum."
 msgstr "La probabilité maximale que l'organisation accepte qu'une perte annuelle dépasse un montant. Appliquée à chaque scénario du périmètre séparément, jamais à leur somme."
+
+msgid "The integration runs as an account the tenant already has."
+msgstr "L'intégration s'exécute avec un compte que le tenant possède déjà."
 
 msgid "The kind of asset this is."
 msgstr "Le type de cet actif."
@@ -13563,11 +13563,11 @@ msgstr "USD"
 msgid "USD / day"
 msgstr "USD / jour"
 
-msgid "Use an existing service account"
-msgstr "Utiliser un compte de service existant"
-
 msgid "Use “{input}”"
 msgstr "Utiliser « {input} »"
+
+msgid "Use an existing service account"
+msgstr "Utiliser un compte de service existant"
 
 msgid "Use as many as you need, they add up."
 msgstr "Utilisez-en autant que nécessaire, elles se cumulent."

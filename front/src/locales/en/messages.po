@@ -11949,9 +11949,6 @@ msgstr "Tested, not declared"
 msgid "Text"
 msgstr "Text"
 
-msgid "The integration runs as an account the tenant already has."
-msgstr "The integration runs as an account the tenant already has."
-
 msgid "The {listed} most recent are listed."
 msgstr "The {listed} most recent are listed."
 
@@ -12228,6 +12225,9 @@ msgstr "The highest probability of a year's loss exceeding an amount the organis
 
 msgid "The highest probability the organization accepts that a year's loss exceeds an amount. Applied to each scenario of the scope on its own, never to their sum."
 msgstr "The highest probability the organization accepts that a year's loss exceeds an amount. Applied to each scenario of the scope on its own, never to their sum."
+
+msgid "The integration runs as an account the tenant already has."
+msgstr "The integration runs as an account the tenant already has."
 
 msgid "The kind of asset this is."
 msgstr "The kind of asset this is."
@@ -13563,11 +13563,11 @@ msgstr "USD"
 msgid "USD / day"
 msgstr "USD / day"
 
-msgid "Use an existing service account"
-msgstr "Use an existing service account"
-
 msgid "Use “{input}”"
 msgstr "Use “{input}”"
+
+msgid "Use an existing service account"
+msgstr "Use an existing service account"
 
 msgid "Use as many as you need, they add up."
 msgstr "Use as many as you need, they add up."
