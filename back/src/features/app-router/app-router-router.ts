@@ -222,7 +222,7 @@ export const appRouter = (
     integrations: integrationsRouter(authProcedure),
     connectors: connectorsRouter(authProcedure, telemetry),
     opencti: openctiRouter(authProcedure),
-    xtm: xtmRouter(authProcedure),
+    xtm: xtmRouter(authProcedure, db),
     defaultThreats: defaultThreatsRouter(authProcedure),
     drata: drataRouter(authProcedure),
     treatmentPlans: treatmentPlansRouter(authProcedure),

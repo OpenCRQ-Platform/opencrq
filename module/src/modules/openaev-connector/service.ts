@@ -1,6 +1,6 @@
 import { newError } from '@app/utils';
 import { uuidv7 } from 'uuidv7';
-import type { AttackObservationMirror, EvidenceWrittenEntry, ObservationPair, OpenaevAssetInput, OpenaevPostureTarget } from './repository';
+import type { AttackObservationMirror, EvidenceWrittenEntry, ObservationPair, OpenaevAssetInput, StoredPostureCounts } from './repository';
 import type { OpenaevStream } from './schema';
 import { defineService } from '../../registry';
 import { openaevConnectorRepository } from './repository';
@@ -218,14 +218,14 @@ export const openaevConnectorService = defineService(
   ),
 
   /**
-   * The OpenAEV sources of one supporting asset, each with the OpenAEV tenant that serves it: what a
-   * live read of the asset's posture has to ask. Several sources of one connector can sit on one
-   * asset, and several connectors' tenants can too. Empty for an asset with no OpenAEV source, an
-   * unknown asset, and another tenant's asset, which the caller cannot see.
+   * The asset's OpenAEV posture as the sync stored it, read under the caller's tenant isolation and
+   * never live from OpenAEV: the OpenAEV findings of the asset whose latest test held (`success`)
+   * and whose latest test found it exposed (`failed`). `null` while no OpenAEV test spoke about the
+   * asset, for an unknown asset, and for another tenant's asset.
    */
-  listPostureTargets: async (
+  getStoredPosture: async (
     { repo }, supportingAssetId: string,
-  ): Promise<Array<OpenaevPostureTarget>> => repo.findPostureTargets(supportingAssetId),
+  ): Promise<StoredPostureCounts | null> => repo.findStoredPosture(supportingAssetId),
 
   /**
    * Stamps `description_fetched_at` on the given registered assets, sending them to the back of the
