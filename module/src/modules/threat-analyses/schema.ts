@@ -34,6 +34,12 @@ export const threatAnalyses = pgTable('threat_analyses', {
   resourceLevel: text('resource_level'),
   sophistication: text('sophistication'),
   objective: text('objective'),
+  /**
+   * The OpenCTI marking definitions (`object_marking_refs`) the mirrored object carries, read at each
+   * ingestion. Only a `connector` row is filtered on it at read: null is a row ingested before the
+   * column existed and not re-read since, which no reader sees (fail closed) until the next replay.
+   */
+  markingRefs: text('marking_refs').array(),
   actorClass: text('actor_class').notNull().default('default').$type<ActorClass>(),
   /** Manual class. Ingestion rewrites only `actor_class`, which is how this survives a resync. */
   actorClassOverride: text('actor_class_override').$type<ActorClass>(),

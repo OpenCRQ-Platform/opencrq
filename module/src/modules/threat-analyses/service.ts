@@ -343,6 +343,9 @@ export interface ParsedThreatInput {
     // Read at ingestion, never stored: they feed the outcome counter, and derive the class the actor
     // row keeps unless the producer states one (`statedActorClass`).
     labels: Array<string>,
+    // The OpenCTI markings of the object, stored so a reader is shown only what OpenCTI lets them
+    // read. Optional: a producer outside the mirror states none, and its rows are not filtered on them.
+    markingRefs?: Array<string>,
   },
   // Required (not optional): `replaceAnalysisChildren` makes the stored aliases equal to this list, so a
   // producer that simply forgets the field would silently wipe previously ingested aliases.
@@ -503,6 +506,7 @@ export const threatAnalysesService = defineService(
         const actorValues = {
           kind: sourceKind,
           ...stated,
+          markingRefs: [...new Set(entry.threat.markingRefs ?? [])].sort(),
           outcomeModelVersion: OUTCOME_COUNTER_VERSION,
           // A judgment is the evidence, including one that the threat leads to no outcome at all.
           outcomeEvidenceSufficient: judged !== undefined || hasMinimumEvidence(counterRecord),
