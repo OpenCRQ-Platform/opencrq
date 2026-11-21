@@ -282,6 +282,25 @@ export const registerXtmOneRoutes = (server: FastifyInstance, db: DrizzleDB): vo
     return forwardJson(reply, ctx, 'DELETE', `/api/v1/platform/chat/sessions/${conversationId}`);
   });
 
+  // -- Composer: prompt picker and credits indicator ------------------------
+  // Read-only, as OpenCTI and OpenAEV proxy them: the panel hides the picker
+  // or the indicator when its route fails or has nothing to show.
+  server.get(`${CHAT_BASE}/prompts`, async (req, reply) => {
+    const ctx = await chatContext(req, reply);
+    if (!ctx) {
+      return;
+    }
+    return forwardJson(reply, ctx, 'GET', '/api/v1/platform/chat/prompts');
+  });
+
+  server.get(`${CHAT_BASE}/quota`, async (req, reply) => {
+    const ctx = await chatContext(req, reply);
+    if (!ctx) {
+      return;
+    }
+    return forwardJson(reply, ctx, 'GET', '/api/v1/platform/chat/quota');
+  });
+
   // -- Steering (mid-run user message) --------------------------------------
   server.post(`${CHAT_BASE}/messages/steer`, async (req, reply) => {
     const ctx = await chatContext(req, reply);
