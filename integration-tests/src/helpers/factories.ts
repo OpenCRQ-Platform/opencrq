@@ -10,28 +10,35 @@ import {
   platformRoles,
   users,
 } from '@app/module';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import type { TestServices } from '../setup/test-context';
 import { db as testDb } from '../setup/db';
 
 /**
  * A platform administrator: every platform capability through an `Admin` platform group, as the
- * platform seed makes its administrator.
+ * platform seed makes its administrator. Platform role and group names are unique, so a second
+ * administrator joins the `Admin` group the first one created.
  */
 export const createPlatformAdmin = async (db: DrizzleDB, { id = uuidv7(), email }: { id?: string, email?: string } = {}) => {
-  const userEmail = email ?? `admin-${id.substring(0, 8)}@test.com`;
-  const roleId = uuidv7();
-  const groupId = uuidv7();
+  // The full id: the first 8 characters of a uuidv7 are its millisecond timestamp, equal for about
+  // 65 seconds, so two admins created in one test would collide on users_email_unique.
+  const userEmail = email ?? `admin-${id}@test.com`;
   await db.insert(users).values({ id, email: userEmail });
-  await db.insert(platformRoles).values({ id: roleId, name: 'Admin' });
-  await db.insert(platformRoleCapabilities).values([
-    PlatformCapability_CreateTenants,
-    PlatformCapability_ManageUsers,
-    PlatformCapability_PlatformAccess,
-  ].map((capabilityId) => ({ platformRoleId: roleId, capabilityId })));
-  await db.insert(platformGroups).values({ id: groupId, name: 'Admin' });
-  await db.insert(platformGroupRoles).values({ platformGroupId: groupId, platformRoleId: roleId });
+  const [existingGroup] = await db.select({ id: platformGroups.id }).from(platformGroups).where(eq(platformGroups.name, 'Admin'));
+  let groupId = existingGroup?.id;
+  if (!groupId) {
+    const roleId = uuidv7();
+    groupId = uuidv7();
+    await db.insert(platformRoles).values({ id: roleId, name: 'Admin' });
+    await db.insert(platformRoleCapabilities).values([
+      PlatformCapability_CreateTenants,
+      PlatformCapability_ManageUsers,
+      PlatformCapability_PlatformAccess,
+    ].map((capabilityId) => ({ platformRoleId: roleId, capabilityId })));
+    await db.insert(platformGroups).values({ id: groupId, name: 'Admin' });
+    await db.insert(platformGroupRoles).values({ platformGroupId: groupId, platformRoleId: roleId });
+  }
   await db.insert(platformGroupUsers).values({ platformGroupId: groupId, userId: id });
   return { userId: id, email: userEmail };
 };

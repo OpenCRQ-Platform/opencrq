@@ -18,6 +18,7 @@ import { financialProfilesRouter } from './financial-profiles';
 import { declaredEstateRouter } from './declared-estate';
 import { findingScoreRouter } from './finding-score';
 import { groupsRouter } from './groups';
+import { markingDefinitionsRouter } from './marking-definitions';
 import { threatsRouter } from './threats';
 import { jobsRouter } from './jobs';
 import { lossDriversRouter } from './loss-drivers';
@@ -200,6 +201,7 @@ export const appRouter = (
     platformGroups: platformGroupsRouter(platformSecurityProcedure),
     platformRoles: platformRolesRouter(platformSecurityProcedure),
     groups: groupsRouter(tenantSecurityProcedure),
+    markingDefinitions: markingDefinitionsRouter(authProcedure, tenantSecurityProcedure),
     roles: rolesRouter(tenantSecurityProcedure),
     capabilities: capabilitiesRouter(authProcedure),
     organizations: organizationsRouter(authProcedure),

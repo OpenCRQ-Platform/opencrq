@@ -5,6 +5,7 @@ import { authService } from './auth';
 import { capabilitiesService } from './capabilities';
 import { countriesService } from './countries';
 import { groupsService } from './groups';
+import { markingDefinitionsService } from './marking-definitions';
 import { membersService } from './members';
 // A seed registers when its module is first evaluated, and evaluation follows the whole import
 // graph, not the order of these lines: seedLossDrivers registers before seedBusinessValueCategories
@@ -134,6 +135,7 @@ export const allServiceDefinitions = [
   platformGroupsService,
   platformRolesService,
   groupsService,
+  markingDefinitionsService,
   rolesService,
   capabilitiesService,
   organizationsService,
