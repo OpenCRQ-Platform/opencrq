@@ -1,7 +1,7 @@
 export const ASSET_CATEGORY_VALUES = [
   'host', 'container_workload', 'cloud_resource', 'web_application',
   'network_device', 'mobile_device', 'iot_ot_device', 'identity',
-  'saas_application', 'ai_target', 'security_platform', 'generic_asset',
+  'saas_application', 'ai_target', 'source_code', 'security_platform', 'generic_asset',
 ] as const;
 export type AssetCategory = (typeof ASSET_CATEGORY_VALUES)[number];
 
@@ -42,6 +42,7 @@ export const ASSET_SUBCATEGORY_VALUES = [
   'user_account', 'service_account', 'group', 'role', 'shared_mailbox', 'non_human_identity',
   'saas_app', 'saas_tenant',
   'llm_model', 'ai_agent', 'mcp_server', 'rag_pipeline',
+  'code_repository', 'ci_cd_pipeline', 'package_registry', 'software_package', 'code_other',
   'edr', 'xdr', 'siem', 'soar', 'ndr', 'ispm', 'email_security', 'llm_firewall', 'ai_gateway', 'vulnerability_scanner',
 ] as const;
 export type AssetSubcategory = (typeof ASSET_SUBCATEGORY_VALUES)[number];
@@ -59,6 +60,9 @@ export const SUBCATEGORY_TO_CATEGORY: Record<AssetSubcategory, AssetCategory> = 
   user_account: 'identity', service_account: 'identity', group: 'identity', role: 'identity', shared_mailbox: 'identity', non_human_identity: 'identity',
   saas_app: 'saas_application', saas_tenant: 'saas_application',
   llm_model: 'ai_target', ai_agent: 'ai_target', mcp_server: 'ai_target', rag_pipeline: 'ai_target',
+  // Code the organisation builds and ships. Third-party dependencies are not assets: they are the
+  // software list a repository's SBOM carries.
+  code_repository: 'source_code', ci_cd_pipeline: 'source_code', package_registry: 'source_code', software_package: 'source_code', code_other: 'source_code',
   edr: 'security_platform', xdr: 'security_platform', siem: 'security_platform', soar: 'security_platform', ndr: 'security_platform',
   ispm: 'security_platform', email_security: 'security_platform', llm_firewall: 'security_platform', ai_gateway: 'security_platform', vulnerability_scanner: 'security_platform',
 };

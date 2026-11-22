@@ -23,6 +23,9 @@ const CATEGORY_TO_FAMILY: Record<AssetCategory, IdentityFamily> = {
   // Its own family: an AI target's properties are not a web app's, and the two need different
   // matchers.
   ai_target: 'ai_target',
+  // A repository, pipeline, registry or published package is addressed by its URL or name like an
+  // application, and never fused with the host that builds it.
+  source_code: 'application',
   // Its own family with no matcher: a detection or prevention source is a product console, not a
   // machine, and fusing it with a host on a shared hostname would turn the tool into a target.
   security_platform: 'security_platform',
