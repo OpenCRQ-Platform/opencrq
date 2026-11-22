@@ -1,9 +1,9 @@
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { describe, expect, it } from 'vitest';
-import type { EventOrigin, GatekeeperResult } from '../policy';
+import type { EventOrigin, GatekeeperResult, OpenCtiReaderAccess } from '../policy';
 import { openctiStreamObjects, openctiStreamReportRefs, threatAnalyses, threatAnalysisAliases } from '../../modules';
-import { originMarkingScope, reportRefMarkingPolicy, streamObjectMarkingPolicy, threatAnalysisMarkingPolicy, threatMarkingPolicy } from './marking-policies';
+import { originMarkingScope, originOpenCtiAccess, reportRefMarkingPolicy, streamObjectMarkingPolicy, threatAnalysisMarkingPolicy, threatMarkingPolicy } from './marking-policies';
 
 const userId = uuidv7();
 const tenantId = uuidv7();
@@ -11,6 +11,10 @@ const TLP_GREEN = 'marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da';
 const TLP_RED = 'marking-definition--5e57c739-391a-4eb3-b6be-7d15ca92d5ed';
 
 const client = (markings?: ReadonlyArray<string> | null): EventOrigin => ({ type: 'client', userId, tenantId, markings });
+const ACCESS: OpenCtiReaderAccess = {
+  userId: 'octi-user', individualId: 'octi-individual', organizationIds: ['org-a'], groupIds: ['group-1'], bypass: false, platformOrganizationId: 'org-platform',
+};
+const identified = (markings: ReadonlyArray<string>, access: OpenCtiReaderAccess | null): EventOrigin => ({ type: 'client', userId, tenantId, markings, openctiAccess: access });
 
 const render = (result: GatekeeperResult) => {
   if (!result) {
@@ -78,6 +82,60 @@ describe('threatMarkingPolicy', () => {
     expect(threatMarkingPolicy.update?.(client([]), threatAnalyses)).toBeUndefined();
     expect(threatMarkingPolicy.delete?.(client([]), threatAnalyses)).toBeUndefined();
     expect(threatMarkingPolicy.create).toBeUndefined();
+  });
+});
+
+describe('organization sharing and authorized members (opencrq #35)', () => {
+  const readMirror = (origin: EventOrigin) => streamObjectMarkingPolicy.read?.(origin, openctiStreamObjects);
+
+  it('should carry the identity only with a marking scope', () => {
+    expect(originOpenCtiAccess(identified([TLP_GREEN], ACCESS))).toEqual(ACCESS);
+    expect(originOpenCtiAccess(identified([], null))).toBeNull();
+    expect(originOpenCtiAccess({ type: 'client', userId, tenantId, openctiAccess: ACCESS })).toBeUndefined();
+    expect(originOpenCtiAccess({ type: 'client', userId, tenantId, markings: [], openctiAccess: ACCESS, job: { jobKind: 'crq-simulation', interactive: true } })).toBeUndefined();
+  });
+
+  it('should check members and organization sharing of a reader outside the platform organization', () => {
+    const { sql, params } = render(readMirror(identified([TLP_GREEN], ACCESS)));
+
+    expect(sql).toContain('authorized_members');
+    expect(sql).toContain('granted_refs_ids');
+    expect(sql).toContain('groups_restriction_ids');
+    expect(params).toEqual(expect.arrayContaining(['octi-user', 'org-a', 'group-1', 'octi-individual', 'Organization']));
+  });
+
+  it('should not restrict on organizations a reader inside the platform organization', () => {
+    const { sql } = render(readMirror(identified([TLP_GREEN], { ...ACCESS, organizationIds: ['org-platform'] })));
+
+    expect(sql).toContain('authorized_members');
+    expect(sql).not.toContain('granted_refs_ids\') as organization');
+  });
+
+  it('should hide every member-restricted or organization-shared object from a reader OpenCTI did not answer for', () => {
+    const { sql } = render(readMirror(identified([], null)));
+
+    expect(sql).toContain('not (jsonb_array_length(');
+    expect(sql).toContain('granted_refs_ids');
+  });
+
+  it('should admit a BYPASS reader past members and organizations, markings still applied', () => {
+    const { sql } = render(readMirror(identified([TLP_GREEN], { ...ACCESS, bypass: true })));
+
+    expect(sql).not.toContain('authorized_members');
+    expect(sql).toContain('object_marking_refs');
+  });
+
+  it('should make a mirrored threat follow the sharing of its mirrored body', () => {
+    const { sql } = render(readThreats(identified([TLP_GREEN], ACCESS)));
+
+    expect(sql).toContain('from opencti_stream_objects as threat_body');
+    expect(sql).toContain('authorized_members');
+  });
+
+  it('should leave the threat rule as #31 wrote it when no identity was resolved', () => {
+    const { sql } = render(readThreats(client([TLP_GREEN])));
+
+    expect(sql).not.toContain('threat_body');
   });
 });
 

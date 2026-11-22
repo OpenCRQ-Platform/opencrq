@@ -84,15 +84,18 @@ export const createTenantProcedure = (services: ReturnType<typeof instantiateSer
       if (!reachable) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Reaching more than one tenant requires an Enterprise Edition license' });
       }
-      // The threats mirrored from OpenCTI a person reads are the ones OpenCTI lets them read
-      // (opencrq #31): their allowed markings, asked as them, ride on the origin every view reads.
-      const markings = await readerMarkings.resolve(
+      // The objects mirrored from OpenCTI a person reads are the ones OpenCTI lets them read
+      // (opencrq #31, #35): their markings and identity there, asked as them, ride on the origin
+      // every view reads.
+      const scope = await readerMarkings.resolve(
         tenantId,
         origin.userId,
         config().connectors?.opencti?.[tenantId],
         readerAuthorization(db, ctx.user),
       );
-      const markedOrigin: UserOrigin | ConnectorOrigin = { ...origin, markings };
+      const markedOrigin: UserOrigin | ConnectorOrigin = scope === undefined
+        ? origin
+        : { ...origin, markings: scope?.markings ?? null, openctiAccess: scope?.access ?? null };
       return next({ ctx: { ...ctx, origin: markedOrigin, services } });
     }
     return next({ ctx: { ...ctx, services } });

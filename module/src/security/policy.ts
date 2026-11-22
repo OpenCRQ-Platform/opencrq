@@ -22,6 +22,20 @@ export interface JobRunTag {
 }
 
 /**
+ * Who a person is in the tenant's OpenCTI (opencrq #35), read from `me` as them: the ids OpenCTI
+ * checks organization sharing (`granted_refs`) and authorized members against. All ids are OpenCTI
+ * internal ids. `bypass` is the BYPASS capability, which reads everything there.
+ */
+export interface OpenCtiReaderAccess {
+  readonly userId: string,
+  readonly individualId: string | null,
+  readonly organizationIds: ReadonlyArray<string>,
+  readonly groupIds: ReadonlyArray<string>,
+  readonly bypass: boolean,
+  readonly platformOrganizationId: string | null,
+}
+
+/**
  * Who a database access is made on behalf of.
  *
  * `client` and `platform` are the two modes of one authenticated user: inside a tenant, and on the
@@ -37,8 +51,11 @@ export type EventOrigin =
    * no clearance and reads only unmarked mirrored threats (fail closed, OpenAEV ADR-009). Absent is an origin no marking scope was resolved for (a tenant
    * with no OpenCTI connection, a server-side read): it is not narrowed. A job run borrowing the origin (`job` set) reads them all, so a
    * score blends every source whoever asked for it.
+   * `openctiAccess` is who the person is in OpenCTI (opencrq #35), resolved with the markings: a
+   * mirrored object is read only when its organization sharing and authorized members admit them.
+   * `null` is a person OpenCTI did not answer for, who belongs to no organization and no member list.
    */
-  | { readonly type: 'client', readonly userId: string, readonly tenantId: string, readonly job?: JobRunTag, readonly markings?: ReadonlyArray<string> | null }
+  | { readonly type: 'client', readonly userId: string, readonly tenantId: string, readonly job?: JobRunTag, readonly markings?: ReadonlyArray<string> | null, readonly openctiAccess?: OpenCtiReaderAccess | null }
   | { readonly type: 'platform', readonly userId: string }
   | { readonly type: 'auth' }
   | { readonly type: 'system' }
