@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { PgColumn, PgTableWithColumns } from 'drizzle-orm/pg-core';
+import type { PgColumn, PgTableWithColumns, PgUUID } from 'drizzle-orm/pg-core';
 import type { EventOrigin, GatekeeperResult, SecurityPolicyRule } from '../policy';
 import { userIsSuperAdmin } from './super-admin-policies';
 
@@ -57,6 +57,24 @@ export const nativeMarkingPolicy: SecurityPolicyRule<TableWithNativeMarkings> = 
       return undefined;
     }
     return sql`(${userIsSuperAdmin(reader.userId)} or ${textArray(assigned)} <@ ${clearedMarkings(reader.userId, reader.tenantId)})`;
+  },
+};
+
+type TableWithSupportingAssetId = PgTableWithColumns<any> & { supportingAssetId: PgUUID<any> };
+
+/**
+ * A row hanging off a supporting asset (a finding) follows its asset: a person who cannot read the
+ * asset, its markings being out of their clearance, does not read the row either, so a CVE or a
+ * technique page never reveals a hidden asset through its findings. The asset is named in raw SQL,
+ * as `threatAnalysisMarkingPolicy` names its threat, since the asset schema imports this module.
+ * `update` and `delete` fall back to `read`; jobs and connectors are not narrowed.
+ */
+export const supportingAssetMarkingPolicy: SecurityPolicyRule<TableWithSupportingAssetId> = {
+  read: (origin, table): GatekeeperResult => {
+    const reader = nativeClearanceReader(origin);
+    return reader === undefined
+      ? undefined
+      : sql`(${userIsSuperAdmin(reader.userId)} or exists(select 1 from supporting_assets as marked_asset where marked_asset.id = ${table.supportingAssetId} and marked_asset.marking_refs <@ ${clearedMarkings(reader.userId, reader.tenantId)}))`;
   },
 };
 

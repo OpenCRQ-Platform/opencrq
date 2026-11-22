@@ -3,7 +3,7 @@ import { boolean, check, foreignKey, index, pgTable, primaryKey, text, timestamp
 import { sql } from 'drizzle-orm';
 import type { AiTargetModality, AiTargetProvider, AssetCategory, AssetCriticality, AssetCriticalityRule, AssetIdentityProvider, AssetManualAttribute, AssetRelationKind, AssetRelationSource, AssetSourceOrigin, AssetSubcategory, CloudProvider, DismissalReasonCode, DismissalType, EndpointArch, EvidenceHistoryOrigin, EvidenceState, ExpectationType } from './constants';
 import type { AssetOwnerSource } from './owner-resolution';
-import { defineSecurityPolicies, nativeMarkingPolicy, tenantIsolationPolicy } from '../../security';
+import { defineSecurityPolicies, nativeMarkingPolicy, supportingAssetMarkingPolicy, tenantIsolationPolicy } from '../../security';
 import { supportingAssetTenantIsolationPolicy } from '../../security/policies/tenant-policies';
 import { mitreTechniques } from '../mitre-attack/schema';
 import { integrationSettings } from '../integration-settings/schema';
@@ -558,6 +558,11 @@ export const assetEvidence = pgTable('asset_evidence', {
   sourceInjectId: text('source_inject_id'),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   /**
+   * The OpenCRQ markings the finding carries, by STIX id (CTEM marking parity, G2): a person reads it
+   * only when they are cleared for all of them and can read its supporting asset. Unmarked by default.
+   */
+  markingRefs: text('marking_refs').array().notNull().default(sql`'{}'::text[]`),
+  /**
    * The finding's latest history row, re-derived from its whole history (`asset_evidence_derived_state`)
    * by `asset_evidence_history_refresh_state` after every insert into or delete from
    * `asset_evidence_history`: the state it is in, the date of that row, and when the state was entered
@@ -615,7 +620,8 @@ export const assetEvidence = pgTable('asset_evidence', {
   }).onDelete('cascade'),
 ]);
 
-defineSecurityPolicies(assetEvidence, tenantIsolationPolicy);
+// A finding carries its own markings and follows its asset's (CTEM marking parity, G2 slice 3c).
+defineSecurityPolicies(assetEvidence, tenantIsolationPolicy, nativeMarkingPolicy, supportingAssetMarkingPolicy);
 
 /**
  * One row per connector reporting a finding on a canonical `asset_evidence` row: its own first

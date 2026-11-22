@@ -1,0 +1,1 @@
+ALTER TABLE "asset_evidence" ADD COLUMN "marking_refs" text[] DEFAULT '{}'::text[] NOT NULL;

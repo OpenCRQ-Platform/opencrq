@@ -2,8 +2,8 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { describe, expect, it } from 'vitest';
 import type { EventOrigin, GatekeeperResult } from '../policy';
-import { riskScenarios, supportingAssets } from '../../modules';
-import { nativeClearanceReader, nativeMarkingPolicy } from './native-marking-policies';
+import { assetEvidence, riskScenarios, supportingAssets } from '../../modules';
+import { nativeClearanceReader, nativeMarkingPolicy, supportingAssetMarkingPolicy } from './native-marking-policies';
 
 const userId = uuidv7();
 const tenantId = uuidv7();
@@ -37,7 +37,7 @@ describe('nativeClearanceReader', () => {
 });
 
 describe('nativeMarkingPolicy.read', () => {
-  it.each([['supporting_assets', supportingAssets], ['risk_scenarios', riskScenarios]] as const)(
+  it.each([['supporting_assets', supportingAssets], ['risk_scenarios', riskScenarios], ['asset_evidence', assetEvidence]] as const)(
     'should keep a %s row only when all its markings are in the reader\'s clearance or the reader is super administrator',
     (table, columns) => {
       const { sql, params } = render(nativeMarkingPolicy.read?.(client, columns));
@@ -54,6 +54,28 @@ describe('nativeMarkingPolicy.read', () => {
   it('should leave update and delete to the read rule, so nobody changes a row they cannot see', () => {
     expect(nativeMarkingPolicy.update).toBeUndefined();
     expect(nativeMarkingPolicy.delete).toBeUndefined();
+  });
+});
+
+describe('supportingAssetMarkingPolicy.read', () => {
+  it('should keep a finding only when its supporting asset is in the reader\'s clearance or the reader is super administrator', () => {
+    const { sql, params } = render(supportingAssetMarkingPolicy.read?.(client, assetEvidence));
+
+    expect(sql).toContain('from supporting_assets as marked_asset where marked_asset.id = "asset_evidence"."supporting_asset_id"');
+    expect(sql).toContain('marked_asset.marking_refs <@ array(select cleared.stix_id');
+    expect(sql).toContain('is_super_admin');
+    expect(params).toContain(userId);
+    expect(params).toContain(tenantId);
+  });
+
+  it('should not narrow a job or a connector, so finding scores blend every finding', () => {
+    expect(supportingAssetMarkingPolicy.read?.({ type: 'job', tenantId, jobKind: 'finding-score', interactive: false }, assetEvidence)).toBeUndefined();
+    expect(supportingAssetMarkingPolicy.read?.({ type: 'connector', serviceAccountId: uuidv7(), tenantId }, assetEvidence)).toBeUndefined();
+  });
+
+  it('should leave update and delete to the read rule', () => {
+    expect(supportingAssetMarkingPolicy.update).toBeUndefined();
+    expect(supportingAssetMarkingPolicy.delete).toBeUndefined();
   });
 });
 
