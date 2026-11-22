@@ -2019,6 +2019,9 @@ msgstr "Demande absorbée"
 msgid "Access control, HVAC or other building system"
 msgstr "Contrôle d’accès, CVC ou autre système du bâtiment"
 
+msgid "Access data sharing"
+msgstr "Partage des données d'accès"
+
 msgid "Access held or outside the perimeter"
 msgstr "Accès acquis ou hors du périmètre"
 
@@ -3296,6 +3299,9 @@ msgstr "En l'empêchant"
 
 msgid "By severity"
 msgstr "Par sévérité"
+
+msgid "Bypass all capabilities"
+msgstr "Contourner toutes les capacités"
 
 msgctxt "initial of Confidentiality"
 msgid "C"
@@ -7091,6 +7097,9 @@ msgstr "Gérer les actifs"
 msgid "Manage columns visibility"
 msgstr "Gérer l'affichage des colonnes"
 
+msgid "Manage data sharing"
+msgstr "Gérer le partage des données"
+
 msgid "Manage dependencies"
 msgstr "Gérer les dépendances"
 
@@ -8942,10 +8951,10 @@ msgid "OpenCRQ"
 msgstr "OpenCRQ"
 
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability."
-msgstr "OpenCRQ n'a pas pu créer son Live Stream dans OpenCTI : le jeton du déploiement n'a pas la capacité {capability}."
+msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du déploiement n'a pas la capacité {capability}."
 
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
-msgstr "OpenCRQ n'a pas pu créer son Live Stream dans OpenCTI : le jeton du déploiement n'a pas la capacité {capability}. Accordez-la à l'utilisateur de ce jeton et redémarrez OpenCRQ, ou cliquez sur Configurer pour choisir un stream."
+msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du déploiement n'a pas la capacité {capability}. Accordez-la à l'utilisateur de ce jeton et redémarrez OpenCRQ, ou utilisez Configurer pour choisir un flux en direct."
 
 msgid "OpenCRQ home"
 msgstr "Accueil OpenCRQ"

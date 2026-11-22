@@ -143,6 +143,19 @@ export const streamConnectionLabel = (connection: StreamConnection): string => {
   }
 };
 
+/**
+ * An OpenCTI capability as OpenCTI's role editor names it, so an administrator finds it where it is
+ * granted. The backend reports the code; an unknown code falls back to the code itself.
+ */
+export const openctiCapabilityLabel = (code: string): string => {
+  switch (code) {
+    case 'TAXIIAPI': return t`Access data sharing`;
+    case 'TAXIIAPI_SETCOLLECTIONS': return t`Manage data sharing`;
+    case 'BYPASS': return t`Bypass all capabilities`;
+    default: return code;
+  }
+};
+
 export const STREAM_CONNECTION_SEVERITY: Record<StreamConnection, ChipSeverity> = {
   not_configured: 'neutral',
   auth_failed: 'critical',

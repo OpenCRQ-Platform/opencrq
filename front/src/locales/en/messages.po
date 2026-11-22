@@ -2019,6 +2019,9 @@ msgstr "Absorbed ask"
 msgid "Access control, HVAC or other building system"
 msgstr "Access control, HVAC or other building system"
 
+msgid "Access data sharing"
+msgstr "Access data sharing"
+
 msgid "Access held or outside the perimeter"
 msgstr "Access held or outside the perimeter"
 
@@ -3296,6 +3299,9 @@ msgstr "By preventing it"
 
 msgid "By severity"
 msgstr "By severity"
+
+msgid "Bypass all capabilities"
+msgstr "Bypass all capabilities"
 
 msgctxt "initial of Confidentiality"
 msgid "C"
@@ -7090,6 +7096,9 @@ msgstr "Manage assets"
 
 msgid "Manage columns visibility"
 msgstr "Manage columns visibility"
+
+msgid "Manage data sharing"
+msgstr "Manage data sharing"
 
 msgid "Manage dependencies"
 msgstr "Manage dependencies"

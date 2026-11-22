@@ -16,7 +16,8 @@ import { useHasManageSecurity } from '../../../hooks';
 import { useTRPC } from '../../../lib';
 import { formatCompactCount, formatDateTime } from '../../../utils';
 import { isStreamReadStale, msUntilStreamReadStale, streamReadRate } from '../connector-stream-utils';
-import { STREAM_CONNECTION_SEVERITY, streamConnectionLabel } from '../connector-vocabulary';
+import { openctiCapabilityLabel, STREAM_CONNECTION_SEVERITY, streamConnectionLabel } from '../connector-vocabulary';
+import { ConnectorBanner } from './connector-banner';
 import { OpenctiConfiguredStream } from './opencti-configured-stream';
 
 const DateField: FunctionComponent<{ title: string, instant: string | null }> = ({ title, instant }) => (
@@ -159,13 +160,16 @@ export const ConnectorStreamPanel: FunctionComponent<{ source: ConnectorSource }
   // Not `connection === 'not_configured'`, which also covers a stream this tenant did bind but whose
   // deployment credentials are missing: there, the state card is what the reader needs.
   if (stream.streamId === null && stream.missingCapability !== null) {
-    const capability = stream.missingCapability;
+    // The label OpenCTI's role editor shows, where an administrator grants it; never the bare code.
+    const capability = openctiCapabilityLabel(stream.missingCapability);
     return (
-      <p role="alert" className="txt-sub-content text-muted-foreground">
-        {hasManageSecurity
-          ? <Trans>OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream.</Trans>
-          : <Trans>OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability.</Trans>}
-      </p>
+      <div role="alert">
+        <ConnectorBanner severity="warning">
+          {hasManageSecurity
+            ? <Trans>OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream.</Trans>
+            : <Trans>OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability.</Trans>}
+        </ConnectorBanner>
+      </div>
     );
   }
 
