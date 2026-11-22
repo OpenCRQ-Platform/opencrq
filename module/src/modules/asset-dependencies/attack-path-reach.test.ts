@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { attackPathFreshSince, isAttackPathHopStale, MAX_ATTACK_PATH_DEPTH, primaryAssetsBehind, walkAttackPath } from './attack-path-reach';
+import { attackPathFreshSince, attackPathHops, isAttackPathHopStale, MAX_ATTACK_PATH_DEPTH, primaryAssetsBehind, walkAttackPath } from './attack-path-reach';
 
 type Hop = { fromAssetId: string, toAssetId: string };
 
@@ -37,6 +37,39 @@ describe('primaryAssetsBehind', () => {
       { primaryAssetId: 'p-data', primaryAssetName: 'Customer data', throughAssetIds: ['database', 'cache'] },
       { primaryAssetId: 'p-service', primaryAssetName: 'SaaS service delivery', throughAssetIds: ['cache'] },
     ]);
+  });
+});
+
+describe('attackPathHops', () => {
+  const depthOf = new Map([['a', 0], ['b', 1], ['c', 2]]);
+  const visible = new Set(['a', 'b', 'c']);
+  const row = (reached: string, from: string, source: string, at: string, evidenceRef: string | null = null) =>
+    ({ fromAssetId: reached, toAssetId: from, source, evidenceRef, lastReportedAt: new Date(at) });
+
+  it('keeps one hop per pair, proven over inferred, ordered by depth', () => {
+    expect(attackPathHops(depthOf, [
+      row('c', 'b', 'openaev_attack_path_inferred', '2026-11-20T00:00:00Z', 'sim-2'),
+      row('b', 'a', 'openaev_attack_path_inferred', '2026-11-21T00:00:00Z', 'sim-3'),
+      row('b', 'a', 'openaev_attack_path_proven', '2026-11-19T00:00:00Z', 'sim-1'),
+    ], visible)).toEqual([
+      { fromAssetId: 'b', toAssetId: 'a', nature: 'proven', evidenceRef: 'sim-1', lastReportedAt: new Date('2026-11-19T00:00:00Z') },
+      { fromAssetId: 'c', toAssetId: 'b', nature: 'inferred', evidenceRef: 'sim-2', lastReportedAt: new Date('2026-11-20T00:00:00Z') },
+    ]);
+  });
+
+  it('keeps the latest report between two hops of the same nature', () => {
+    expect(attackPathHops(depthOf, [
+      row('b', 'a', 'openaev_attack_path_proven', '2026-11-19T00:00:00Z', 'old'),
+      row('b', 'a', 'openaev_attack_path_proven', '2026-11-21T00:00:00Z', 'new'),
+    ], visible).map((hop) => hop.evidenceRef)).toEqual(['new']);
+  });
+
+  it('leaves out hops back up the path, to assets outside the reach, and to assets the caller cannot read', () => {
+    expect(attackPathHops(depthOf, [
+      row('a', 'b', 'openaev_attack_path_proven', '2026-11-21T00:00:00Z'),
+      row('z', 'a', 'openaev_attack_path_proven', '2026-11-21T00:00:00Z'),
+      row('c', 'b', 'openaev_attack_path_proven', '2026-11-21T00:00:00Z'),
+    ], new Set(['a', 'b']))).toEqual([]);
   });
 });
 

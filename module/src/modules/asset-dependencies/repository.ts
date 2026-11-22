@@ -399,7 +399,10 @@ export const assetDependenciesRepository = defineRepository({
     }).from(views.supportToSupportLinks)
       .where(inUuids(views.supportToSupportLinks.dependentAssetId, dependentIds));
   },
-  /** The `reachable_from` hops leaving `assetIds` that were reported at or after `freshSince`, from any connector. */
+  /**
+   * The `reachable_from` hops leaving `assetIds` that were reported at or after `freshSince`, from any connector,
+   * with what showed each one (its source and the OpenAEV simulation) and when it was last reported.
+   */
   findAttackPathHopsFrom: async ({ db, views }, assetIds: ReadonlyArray<string>, freshSince: Date) => {
     if (assetIds.length === 0) {
       return [];
@@ -407,6 +410,9 @@ export const assetDependenciesRepository = defineRepository({
     return db.select({
       fromAssetId: views.supportingAssetRelations.fromAssetId,
       toAssetId: views.supportingAssetRelations.toAssetId,
+      source: views.supportingAssetRelations.source,
+      evidenceRef: views.supportingAssetRelations.evidenceRef,
+      lastReportedAt: views.supportingAssetRelations.lastReportedAt,
     }).from(views.supportingAssetRelations)
       .where(and(
         eq(views.supportingAssetRelations.kind, 'reachable_from'),
