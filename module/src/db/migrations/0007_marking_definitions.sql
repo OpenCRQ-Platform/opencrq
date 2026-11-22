@@ -41,4 +41,6 @@ SELECT g."tenant_id", g."id", md."id"
 FROM "groups" g
 JOIN "marking_definitions" md ON md."tenant_id" = g."tenant_id"
 WHERE g."slug" = 'admin'
-ON CONFLICT DO NOTHING;
+ON CONFLICT DO NOTHING;--> statement-breakpoint
+CREATE TRIGGER marking_definitions_notify_data_changed AFTER INSERT OR DELETE OR UPDATE ON public.marking_definitions FOR EACH ROW EXECUTE FUNCTION public.notify_data_changed_tenant();--> statement-breakpoint
+CREATE TRIGGER group_marking_definitions_notify_data_changed AFTER INSERT OR DELETE OR UPDATE ON public.group_marking_definitions FOR EACH ROW EXECUTE FUNCTION public.notify_data_changed_tenant();
