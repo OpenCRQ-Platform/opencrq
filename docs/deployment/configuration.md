@@ -59,7 +59,7 @@ In **non-production**, the bucket is created automatically at startup if missing
 | `HTTP_SERVER__HOST`                    |    -     | `0.0.0.0`                          | Defines the internal listening interface of the container.                                 |
 | `HTTP_SERVER__PORT`                    |    -     | `3002`                             | Internal listening port of the application.                                                |
 | `HEALTHCHECK_HTTP_SERVER__PORT`        |    -     | `8444`                             | Internal listening port for healthchecks.                                                  |
-| `APP__ADMIN__TOKEN`                    |    No    | -                                  | Bootstrap admin token, a UUIDv4 (the counterpart of OpenCTI's `APP__ADMIN__TOKEN`). It authenticates the peer provisioning API below; unset, that API answers 404. Pass through a secret store. |
+| `APP__ADMIN__TOKEN`                    |    No    | -                                  | Bootstrap admin token, a UUIDv4 (the counterpart of OpenCTI's `APP__ADMIN__TOKEN`). It authenticates the peer provisioning API below and is an admin bearer on the API (see [Admin token as a bearer](#admin-token-as-a-bearer)); unset, both are off. Pass through a secret store. |
 | `XTM__OPENCTI_URL`                     |    No    | -                                  | URL of the deployment's OpenCTI, where the product switcher sends a person. Unset: the URL of the tenant's OpenCTI connection, if any. |
 | `XTM__OPENAEV_URL`                     |    No    | -                                  | URL of the deployment's OpenAEV, for the product switcher. Unset: the URL of the tenant's OpenAEV connection, if any. |
 
@@ -71,6 +71,10 @@ A deployment manager gives a sibling XTM product (an OpenAEV or an OpenCTI readi
 - `POST /api/xtm/peer-tokens/revoke` with the same bearer and `{"email", "token_name"}`: revokes those tokens. Answers `200 {"revoked": <count>}`.
 
 A missing or wrong bearer answers 401, an invalid body 400.
+
+### Admin token as a bearer
+
+As with OpenCTI's `APP__ADMIN__TOKEN`, a sibling product of a single-token deployment (xtm-docker) calls OpenCRQ's API with `Authorization: Bearer <APP__ADMIN__TOKEN>`, with no init step issuing a `flgrn_ocrq_tkn_` token first. At every start OpenCRQ converges a service account named "Deployment admin token" in the initial tenant (`INITIAL_TENANT__ID`), in its `admin` group (every capability, every marking that group is cleared for), and a request carrying the admin token acts as that account. No token is stored: the bearer is compared in constant time with the configured value. Unset, or while the initial tenant does not exist, the admin token is no bearer. Rotating it is a restart with the new value. A SaaS deployment, whose peers get their own `flgrn_ocrq_tkn_` tokens from the provisioning API, keeps the admin token in its secret store and never hands it to a peer.
 
 ## Telemetry
 

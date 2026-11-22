@@ -33,15 +33,18 @@ export const serviceAccountsService = defineService('serviceAccounts', serviceAc
    * Creates, or converges, an account the deployment provisions for a sibling product (an OpenAEV
    * reading this platform, say) under an id derived by the caller, in the tenant's Connectors group.
    * Idempotent: the same id renames the account and keeps its tokens. System origin only.
+   * `groupSlug` names another seeded group (`admin` for the account the deployment's admin token
+   * acts as); the Connectors group by default.
    */
-  provisionServiceAccount: async ({ repo, eventOrigin }, account: { id: string, tenantId: string, name: string, description: string }) => {
+  provisionServiceAccount: async ({ repo, eventOrigin }, account: { id: string, tenantId: string, name: string, description: string, groupSlug?: string }) => {
     if (eventOrigin.type !== 'system') {
       throw newError('System origin required');
     }
-    await repo.upsertProvisionedServiceAccount(account);
-    const connectorsGroupId = await repo.findTenantGroupIdBySlug(account.tenantId, CONNECTORS_GROUP_SLUG);
-    if (connectorsGroupId !== null) {
-      await repo.linkServiceAccountGroup(account.id, connectorsGroupId);
+    const { groupSlug = CONNECTORS_GROUP_SLUG, ...row } = account;
+    await repo.upsertProvisionedServiceAccount(row);
+    const groupId = await repo.findTenantGroupIdBySlug(account.tenantId, groupSlug);
+    if (groupId !== null) {
+      await repo.linkServiceAccountGroup(account.id, groupId);
     }
   },
   updateServiceAccount: async ({ repo }, id: string, values: { name?: string, active?: boolean, description?: string | null }) =>

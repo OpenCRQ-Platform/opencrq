@@ -10,6 +10,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z, ZodError } from 'zod';
 import { observeQueryProcedure } from './features/events/query-dependency-index';
 import { authenticateXtmOneJwt, looksLikeJwt, XTM_ONE_SESSION_ID } from './features/xtm-one/xtm-one-auth';
+import { isAdminToken } from './features/xtm-peer-tokens/peer-tokens-routes';
 import { MAX_RESPONSE_ITEMS_DEFAULT } from './config-schema';
 import { instrumentTrpcCall } from './utils/trpc-telemetry';
 
@@ -78,6 +79,23 @@ declare module 'fastify' {
   }
 }
 
+/**
+ * The deployment's `APP__ADMIN__TOKEN` as a bearer, the way OpenCTI's admin token is one: set once
+ * the account it acts as is provisioned (the initial tenant's Admin group), `null` while it is not or
+ * when no admin token is configured. A request carrying it is that service account.
+ */
+export interface AdminBearer {
+  readonly token: string,
+  readonly serviceAccountId: string,
+  readonly tenantId: string,
+}
+
+let adminBearer: AdminBearer | null = null;
+
+export const setAdminBearer = (value: AdminBearer | null): void => {
+  adminBearer = value;
+};
+
 const authenticateServiceAccountToken = (db: DrizzleDB, rawToken: string) =>
   createServices([serviceAccountTokensService], db)
     .withOrigin({ type: 'system' })
@@ -108,6 +126,11 @@ export const resolveRequestAuth = (db: DrizzleDB) => async (req: FastifyRequest,
   const authHeader = req.headers['authorization'];
   if (authHeader?.startsWith('Bearer ')) {
     const rawToken = authHeader.slice('Bearer '.length);
+
+    if (adminBearer && isAdminToken(rawToken, adminBearer.token)) {
+      req.authServiceAccount = { id: adminBearer.serviceAccountId, tenantId: adminBearer.tenantId };
+      return;
+    }
 
     // Cross-platform JWTs minted by XTM One (agent tool calls running as a
     // real user, matched by email). Tokens with a JWT shape try this path
