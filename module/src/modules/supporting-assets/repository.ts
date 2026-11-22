@@ -1100,6 +1100,7 @@ export const supportingAssetsRepository = defineRepository({
       externalReference: sql`excluded.external_reference`,
       reportedUrl: sql`excluded.reported_url`,
       reportedLinkedPerson: sql`excluded.reported_linked_person`,
+      reportedMarkingRefs: sql`excluded.reported_marking_refs`,
       firstSeenAt: sql`LEAST(supporting_asset_sources.first_seen_at, excluded.first_seen_at)`,
       lastSeenAt: sql`GREATEST(supporting_asset_sources.last_seen_at, excluded.last_seen_at)`,
     };
@@ -1530,6 +1531,10 @@ export const supportingAssetsRepository = defineRepository({
         linkedPerson: caseExpression<string | null>(supportingAssets.linkedPerson, (row) => row.linkedPerson),
         firstSeenAt: caseExpression<Date | null>(supportingAssets.firstSeenAt, (row) => row.firstSeenAt),
         lastSeenAt: caseExpression<Date | null>(supportingAssets.lastSeenAt, (row) => row.lastSeenAt),
+        // The union of the markings its sources state (CTEM marking parity, G4): a source that
+        // restricts the asset restricts the fused asset, as a multi-marked row is read under AND.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: a subquery carries no column type
+        markingRefs: sql`array(select distinct source_marking from supporting_asset_sources as marking_source, unnest(marking_source.reported_marking_refs) as source_marking where marking_source.supporting_asset_id = ${supportingAssets.id} order by source_marking)` as unknown as Array<string>,
       };
       await db.update(supportingAssets).set({
         ...resolved,

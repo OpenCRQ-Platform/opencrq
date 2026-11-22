@@ -1923,6 +1923,7 @@ export const supportingAssetsService = defineService(
           externalReference: observation.externalReference,
           reportedUrl: observation.reportedUrl,
           reportedLinkedPerson: observation.reportedLinkedPerson,
+          reportedMarkingRefs: [...new Set(a.markingRefs ?? [])].sort(),
           firstSeenAt: observation.firstSeenAt,
           lastSeenAt: observation.lastSeenAt,
         });
