@@ -1,0 +1,90 @@
+# Filigran Flow - the checker of FEP-0001: every implementation pull request cites an approved RFC - a bug fix too,
+# whose RFC has no PRD (bug circuit) - and, but for a bug fix, the RFC's PRD is approved and planned (FEP-0001 3.1).
+# Distributed to every product repository as .github/workflows/flow-fep-0001.yml, with the checker in
+# .flow/checkers/FEP-0001/; never edited there (FEP-0003 3.3). Its job is named after the FEP: the gate "Flow checkers",
+# the one check the default branch's ruleset requires, waits for it on every pull request and merge queue. The check
+# blocks from the repository's date, which the registry sets and distributed.json records; before it, and for a pull
+# request opened before it, what is missing is a warning (FEP-0001 3.1, owner, 2026-11-15).
+#
+# The link is the pull request's: a merge queue and the default branch pass, the pull request was checked. A pull
+# request from a fork cannot read the central repository (FEP-0007 3.1): the product team writes its RFC and PRD from
+# it, and a maintainer adds the label flow:rfc-verified once the RFC is approved and the PRD approved and planned - or
+# once they have checked that the pull request needs no document (documentation, CI, a release: FEP-0001 3.1). Before
+# the repository's date, and for a fork's pull request opened before it, a missing label only warns, as for the team's
+# own pull requests; the date is read from the target branch, never from the fork's code (FEP-0001 3.1).
+#
+# Secret: FLOW_TOKEN  read-only access to the central repository, which distributed.json names as the checker's source.
+name: Flow - FEP-0001
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  merge_group:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  spec-link:
+    name: FEP-0001
+    # every pull request; on a push, the default branch only
+    if: github.event_name != 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-26.04
+    env:
+      SAME_REPO: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+      HAS_TOKEN: ${{ secrets.FLOW_TOKEN != '' }}
+    steps:
+      - name: Not a pull request - the link was checked on it
+        if: github.event_name != 'pull_request'
+        run: echo "::notice::The specification link is a pull request's - this run passes (FEP-0001 3.1)."
+      - name: Pull request from a fork, checked by a maintainer
+        if: github.event_name == 'pull_request' && env.SAME_REPO != 'true' && contains(github.event.pull_request.labels.*.name, 'flow:rfc-verified')
+        run: echo "::notice::A maintainer checked that this pull request cites an approved RFC, or needs none (label flow:rfc-verified)."
+      - name: Check out the target branch - never the fork's code - for the repository's date
+        if: github.event_name == 'pull_request' && env.SAME_REPO != 'true' && !contains(github.event.pull_request.labels.*.name, 'flow:rfc-verified')
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Pull request from a fork - a maintainer checks its link
+        if: github.event_name == 'pull_request' && env.SAME_REPO != 'true' && !contains(github.event.pull_request.labels.*.name, 'flow:rfc-verified')
+        env:
+          PR_CREATED_AT: ${{ github.event.pull_request.created_at }}
+        run: python3 .flow/checkers/FEP-0001/check.py --fork --repo . || exit 1
+      - name: Check out this repository, at the pull request's head
+        if: env.SAME_REPO == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: List the changed files, and the central repository the checker comes from
+        id: read
+        if: env.SAME_REPO == 'true'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only "$BASE" "$HEAD" > "$RUNNER_TEMP/changed-files.txt"
+          # the CI configuration's diff: a change of its permissions, secrets, triggers or release steps cites its RFC
+          git diff "$BASE" "$HEAD" -- .github .circleci .gitlab-ci.yml Jenkinsfile > "$RUNNER_TEMP/ci.diff"
+          echo "central=$(python3 -c 'import json; print(json.load(open(".flow/checkers/FEP-0001/distributed.json"))["source"].split("@")[0])')" >> "$GITHUB_OUTPUT"
+      - name: Check out the central repository
+        if: env.SAME_REPO == 'true' && env.HAS_TOKEN == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.read.outputs.central }}
+          token: ${{ secrets.FLOW_TOKEN }}
+          path: .flow-specs
+          persist-credentials: false
+      - name: Check the specification link
+        if: env.SAME_REPO == 'true'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+          PR_CREATED_AT: ${{ github.event.pull_request.created_at }}
+          FLOW_EXEMPT: ${{ vars.FLOW_EXEMPT_PATHS }}
+        run: python3 .flow/checkers/FEP-0001/check.py --specs .flow-specs --repo . --changed-files "$RUNNER_TEMP/changed-files.txt" --ci-diff "$RUNNER_TEMP/ci.diff" ${FLOW_EXEMPT:+--exempt-paths "$FLOW_EXEMPT"}

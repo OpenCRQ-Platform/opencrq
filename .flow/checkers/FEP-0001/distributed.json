@@ -1,0 +1,13 @@
+{
+  "fep": "FEP-0001",
+  "source": "XTM-Flow/filigran-flow@2af45ce57957d6b1fd552cf66d429ea7774fd9b4",
+  "files": {
+    ".flow/checkers/FEP-0001/README.md": "c850c21e527548960acffa4f979f84c7d06bb545c3a67a0bda4530ac77f815d1",
+    ".flow/checkers/FEP-0001/check.py": "c80bcc82ea038cddcbda33427d9070c0bb55e1fc96cbb2c5873ede7469cf094d",
+    ".github/workflows/flow-fep-0001.yml": "92a47b8589173a9cf23edc64c83e327b42f23419367d332de1b39b62519f2a83"
+  },
+  "enforce_from": "2027-02-01",
+  "gate": {
+    ".github/workflows/flow-checkers.yml": "a6be9b01bed752f022d1493e96b6ca88148979d1b5d4bab387da6195e814ccff"
+  }
+}
