@@ -2,7 +2,7 @@ import type { EventOrigin, OpenCtiReaderAccess, ParsedThreatInput } from '@app/m
 import { openctiStreamObjects } from '@app/module';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createTenantWithAdmin } from '../../helpers/factories';
+import { createTenantUser, createTenantWithAdmin } from '../../helpers/factories';
 import { buildParsedEntry, DEFAULT_LIST_PARAMS } from '../../helpers/threat-analyses-fixtures';
 import { db } from '../../setup/db';
 import { createTestServices, truncateAllTables } from '../../setup/test-context';
@@ -82,6 +82,45 @@ describe('OpenCTI marking segregation of mirrored threats', () => {
 
   it('should not narrow an origin that carries no marking scope', async () => {
     expect(await listedStixIds(adminOrigin)).toEqual([MARKED_ID, UNMARKED_ID]);
+  });
+});
+
+/**
+ * A threat the tenant imported from a STIX file follows the reader's OpenCRQ clearance (CTEM marking
+ * parity, G2 slice 3c-2): every marking it carries that the tenant defines must be held through one
+ * of the reader's groups; a marking the tenant does not define (a producer's own statement) does not
+ * restrict it; a hidden threat's detail is not found.
+ */
+describe('OpenCRQ clearance on imported threats', () => {
+  const IMPORTED_RED_ID = 'intrusion-set--66666666-6666-4666-8666-666666666661';
+  const IMPORTED_STATEMENT_ID = 'intrusion-set--66666666-6666-4666-8666-666666666662';
+  const STATEMENT = 'marking-definition--fa42a846-8d90-4e51-bc29-71d5b4802168';
+  let adminOrigin: Extract<EventOrigin, { type: 'client' }>;
+  let memberOrigin: EventOrigin;
+
+  const listedStixIds = async (origin: EventOrigin): Promise<Array<string>> =>
+    (await services.withOrigin(origin).threatAnalyses.list(DEFAULT_LIST_PARAMS)).items.map((item) => item.stixId).sort();
+
+  beforeEach(async () => {
+    await truncateAllTables(db);
+    const setup = await createTenantWithAdmin(services);
+    adminOrigin = setup.origin;
+    memberOrigin = (await createTenantUser(services, db, adminOrigin)).origin;
+    await services.withOrigin(adminOrigin).threatAnalyses.ingestBundle([
+      mirrored(IMPORTED_RED_ID, 'Imported Red Actor', [TLP_RED]),
+      mirrored(IMPORTED_STATEMENT_ID, 'Imported Statement Actor', [STATEMENT]),
+    ], setup.tenantId, 'stix-import');
+  });
+
+  it('should list a marked import to a member of a group cleared for its marking', async () => {
+    expect(await listedStixIds(adminOrigin)).toEqual([IMPORTED_RED_ID, IMPORTED_STATEMENT_ID]);
+  });
+
+  it('should hide a marked import from a member with no clearance, and answer its detail as not found', async () => {
+    expect(await listedStixIds(memberOrigin)).toEqual([IMPORTED_STATEMENT_ID]);
+    const redId = (await services.withOrigin(adminOrigin).threatAnalyses.list(DEFAULT_LIST_PARAMS)).items
+      .find((item) => item.stixId === IMPORTED_RED_ID)!.id;
+    expect(await services.withOrigin(memberOrigin).threatAnalyses.getDetail(redId)).toBeUndefined();
   });
 });
 

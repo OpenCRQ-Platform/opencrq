@@ -1,5 +1,5 @@
 import { NonRetryableError, TimeoutError } from '@app/module';
-import type { AiTargetAsset, AssetInventoryRow, AssetOverview, AttackObservation, AttackPathGraph, AttackPathSimulation, EndpointEntity, OpenaevAssetGroup, OpenaevTag, OpenaevUser, SnapshotPage, TenantOutput, VulnerabilityObservation } from './openaev-types';
+import type { AiTargetAsset, AssetInventoryRow, AssetOverview, AttackObservation, AttackPathGraph, AttackPathSimulation, EndpointEntity, OpenaevAssetGroup, OpenaevMarkingDefinition, OpenaevTag, OpenaevUser, SnapshotPage, TenantOutput, VulnerabilityObservation } from './openaev-types';
 import { fromError, newError, StructuredError } from '@app/utils';
 import {
   aiTargetAssetSchema,
@@ -10,6 +10,7 @@ import {
   attackPathSimulationSchema,
   endpointEntitySchema,
   openaevAssetGroupSchema,
+  openaevMarkingDefinitionSchema,
   openaevPageSchema,
   openaevTagSchema,
   openaevUserSchema,
@@ -242,6 +243,23 @@ export const createOpenaevClient = (baseUrl: string, token: string, signal: Abor
     listTags: async (tenantId: string): Promise<Array<OpenaevTag>> => {
       const raw = await get(tenantPath(tenantId, '/tags'));
       return openaevTagSchema.array().parse(raw);
+    },
+
+    /**
+     * One page of the tenant's marking definitions, each with the STIX id OpenCTI gives it when
+     * OpenAEV holds one. An OpenAEV that predates markings answers 404: an empty last page, so its
+     * assets carry no marking, as OpenAEV itself shows them.
+     */
+    searchMarkingDefinitions: async (tenantId: string, page: number): Promise<OpenaevPageResponse<OpenaevMarkingDefinition>> => {
+      try {
+        const raw = await post(tenantPath(tenantId, '/marking_definitions/search'), { page, size: 100 });
+        return openaevPageSchema(openaevMarkingDefinitionSchema).parse(raw);
+      } catch (err) {
+        if (err instanceof OpenaevNotFoundError) {
+          return { content: [], totalElements: 0, totalPages: 0, number: page, size: 100, last: true };
+        }
+        throw err;
+      }
     },
 
     /** The simulations of the tenant that hold attack-path executions. */

@@ -230,8 +230,10 @@ export const assetToConnectorInput = (
   row: AssetInventoryRow,
   connectorId: string,
   tagIdBySourceTagId: ReadonlyMap<string, string>,
+  markingStixIdByOpenaevId: ReadonlyMap<string, string> = new Map(),
 ): { input: ConnectorAssetInput, tagIds: Array<string> } => {
   const { categoryId, subcategoryId } = resolveOpenaevCategory(row);
+  const markingRefs = openaevMarkingRefs(row.asset_markings, markingStixIdByOpenaevId);
   return {
     input: {
       sourceAssetId: row.asset_id,
@@ -245,12 +247,25 @@ export const assetToConnectorInput = (
       externalReference: row.asset_external_reference ?? null,
       firstSeenAt: null,
       lastSeenAt: lastSeenFromAgents(row.asset_agents),
+      ...(markingRefs.length > 0 ? { markingRefs } : {}),
     },
     tagIds: (row.asset_tags ?? [])
       .map((sourceTagId) => tagIdBySourceTagId.get(sourceTagId))
       .filter((tagId): tagId is string => tagId !== undefined),
   };
 };
+
+/**
+ * The markings an OpenAEV asset carries, as STIX marking ids (CTEM marking parity, G4), so OpenCRQ
+ * reads them against the same clearance as an OpenCTI marking. An OpenAEV id the tenant's
+ * definitions do not resolve is kept as it is: no OpenCRQ marking carries it, so nobody but the
+ * super administrator is cleared for it and the asset stays hidden (fail closed), never shown
+ * unmarked.
+ */
+export const openaevMarkingRefs = (
+  openaevMarkingIds: ReadonlyArray<string> | null | undefined,
+  markingStixIdByOpenaevId: ReadonlyMap<string, string>,
+): Array<string> => [...new Set((openaevMarkingIds ?? []).map((id) => markingStixIdByOpenaevId.get(id) ?? id))].sort();
 
 /**
  * What an asset's linked person is shown as, on OpenAEV's own fallback order: a full name, then

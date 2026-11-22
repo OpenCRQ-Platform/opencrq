@@ -187,6 +187,11 @@ export interface ConnectorAssetInput {
   lastSeenAt?: Date | null,
   /** The Defender machine id this device was merged into, when Defender reports a self-merge. */
   mergedIntoSourceAssetId?: string | null,
+  /**
+   * The markings the source states on the asset, as STIX marking ids (CTEM marking parity, G4). Left
+   * out by a source that marks nothing; the asset carries the union over its sources.
+   */
+  markingRefs?: ReadonlyArray<string>,
   properties?: ConnectorAssetProperties,
 }
 

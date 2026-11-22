@@ -142,6 +142,13 @@ export const supportingAssetSources = pgTable('supporting_asset_sources', {
   externalReference: text('external_reference'),
   reportedUrl: text('reported_url'),
   reportedLinkedPerson: text('reported_linked_person'),
+  /**
+   * The markings the source states on the asset, as STIX marking ids (CTEM marking parity, G4): an
+   * OpenAEV asset's `asset_markings`, each resolved to the STIX id of its definition. The asset
+   * carries the union of its sources' markings (`marking_refs`), so a source that restricts it
+   * restricts the fused asset. Empty for a source that states none.
+   */
+  reportedMarkingRefs: text('reported_marking_refs').array().notNull().default(sql`'{}'::text[]`),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
