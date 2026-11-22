@@ -160,6 +160,8 @@ describe('XtmRowMarks', () => {
     rerender(<XtmRowMarks counterparts={[MATCH]} />);
     const link = screen.getByRole('link', { name: 'Open in OpenCTI' });
     expect(link.getAttribute('href')).toBe(MATCH.objectUrl);
-    await waitFor(() => expect(link.querySelector('img')?.getAttribute('width')).toBe('16'));
+    await waitFor(() => expect((link.querySelector('[data-testid="xtm-mark"]') as HTMLElement | null)?.style.width).toBe('16px'));
+    // Found: the design system's highlight ink, the same for every product.
+    expect(link.querySelector('[data-testid="xtm-mark"]')?.className).toContain('text-icon-highlight');
   });
 });

@@ -29,7 +29,9 @@ export type XtmCounterpart = RouterOutputs['xtm']['counterparts'][number];
 
 // eslint-disable-next-line lingui/no-unlocalized-strings -- product names, never translated
 const PRODUCT_NAMES: Record<XtmProduct, string> = { opencti: 'OpenCTI', openaev: 'OpenAEV' };
-const PRODUCT_MARKS: Record<XtmProduct, string> = { opencti: '/img/icon-opencti.png', openaev: '/img/icon-openaev.png' };
+// The product glyphs of the design system's product switcher (filigran-design-system
+// product-logos.generated.tsx, its fill-highlight group), monochrome, painted through a CSS mask.
+const PRODUCT_MARKS: Record<XtmProduct, string> = { opencti: '/img/xtm-mark-opencti.svg', openaev: '/img/xtm-mark-openaev.svg' };
 /** The emblem order of the contract: OpenCTI, OpenAEV, OpenCRQ, this product skipped. */
 export const XTM_PRODUCTS: ReadonlyArray<XtmProduct> = ['opencti', 'openaev'];
 
@@ -59,17 +61,24 @@ export const useCounterparts = (kind: CounterpartKind, keys: ReadonlyArray<strin
   return data ?? [];
 };
 
-const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number, muted?: boolean }> = ({ product, size, muted }) => (
-  <img
-    src={PRODUCT_MARKS[product]}
-    alt=""
-    aria-hidden
-    width={size ?? 16}
-    height={size ?? 16}
-    // Greyed, yet legible on both themes: the OpenAEV emblem is dark, so the dark theme lifts it.
-    className={muted ? 'shrink-0 opacity-60 grayscale dark:brightness-200' : 'shrink-0'}
-  />
-);
+/**
+ * Two colours only, the same for every product (Sam, 22 Nov 2026): found = the design system's
+ * highlight ink (--icon-highlight, the brand primary of the theme, the colour of the product switcher
+ * marks); not found or not connected = its disabled ink (--icon-disabled). No per-product colour.
+ */
+const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number, muted?: boolean }> = ({ product, size, muted }) => {
+  const px = size ?? 16;
+  const mask = `url("${PRODUCT_MARKS[product]}") center / contain no-repeat`;
+  return (
+    <span
+      aria-hidden
+      data-testid="xtm-mark"
+      data-muted={muted ? 'true' : 'false'}
+      className={`inline-block shrink-0 bg-current ${muted ? 'text-icon-disabled' : 'text-icon-highlight'}`}
+      style={{ width: px, height: px, mask, WebkitMask: mask }}
+    />
+  );
+};
 
 const FACT_LABELS = (): Record<string, string> => ({
   findings: t`Findings`,
