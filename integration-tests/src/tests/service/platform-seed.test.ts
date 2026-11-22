@@ -76,6 +76,7 @@ import { assetEvidence,
   supportingAssetIdentityProperties,
   supportingAssetMachineProperties,
   supportingAssetManualValues,
+  supportingAssetMarkingPolicy,
   supportingAssetRelations,
   supportingAssets,
   supportingAssetSources,
@@ -1735,6 +1736,7 @@ describe('Platform Seed', () => {
       // The OpenCRQ clearance narrows only marked rows (CTEM marking parity, G2): the seeded rows are
       // unmarked, so every member sees the whole tenant.
       nativeMarkingPolicy,
+      supportingAssetMarkingPolicy,
     ];
     const tableKeys: ReadonlyArray<string> = Object.entries(schema).flatMap(([key, value]) => (is(value, PgTable) ? [key] : []));
     const isTableKey = (key: string): key is keyof SecuredSchema => tableKeys.includes(key);
