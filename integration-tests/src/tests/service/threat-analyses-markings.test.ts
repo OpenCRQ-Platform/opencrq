@@ -87,9 +87,11 @@ describe('OpenCTI marking segregation of mirrored threats', () => {
 
 /**
  * A threat mirrored from OpenCTI also follows OpenCTI's organization sharing and authorized members
- * (opencrq #35): with a platform organization set, a reader outside it reads a shared threat only
- * when it is shared with one of their organizations; a threat restricted to members is read only by
- * a member; a reader OpenCTI did not answer for reads neither.
+ * (opencrq #35): with a platform organization set, a reader outside it reads a threat of a
+ * restricted type only when it is shared with one of their organizations, an unshared one included
+ * (`isEntityOrganizationsAllowed` in opencti-graphql `utils/access.ts` admits no empty sharing);
+ * a threat restricted to members is read only by a member; a reader OpenCTI did not answer for
+ * reads neither. Expected ids are written sorted, as `listedStixIds` sorts them.
  */
 describe('OpenCTI organization segregation of mirrored threats', () => {
   const OCTI_EXTENSION = 'extension-definition--ea279b3e-5c71-4632-ac08-831c66a786ba';
@@ -129,17 +131,17 @@ describe('OpenCTI organization segregation of mirrored threats', () => {
     await mirror(OPEN_ID, {});
   });
 
-  it('should list a shared threat only to a reader of an organization it is shared with', async () => {
-    expect(await listedStixIds(as(reader(['org-a'])))).toEqual([OPEN_ID, SHARED_ID]);
-    expect(await listedStixIds(as(reader(['org-b'])))).toEqual([OPEN_ID]);
+  it('should list to a reader outside the platform organization only the threats shared with their organizations', async () => {
+    expect(await listedStixIds(as(reader(['org-a'])))).toEqual([SHARED_ID]);
+    expect(await listedStixIds(as(reader(['org-b'])))).toEqual([]);
   });
 
   it('should not restrict on organizations a reader of the platform organization', async () => {
-    expect(await listedStixIds(as(reader(['org-platform'])))).toEqual([OPEN_ID, SHARED_ID]);
+    expect(await listedStixIds(as(reader(['org-platform'])))).toEqual([SHARED_ID, OPEN_ID]);
   });
 
   it('should list a member-restricted threat only to a member', async () => {
-    expect(await listedStixIds(as(reader(['org-platform'], ['group-1'])))).toEqual([MEMBERS_ID, OPEN_ID, SHARED_ID]);
+    expect(await listedStixIds(as(reader(['org-platform'], ['group-1'])))).toEqual([SHARED_ID, MEMBERS_ID, OPEN_ID]);
   });
 
   it('should hide restricted threats from a reader OpenCTI did not answer for', async () => {
@@ -147,6 +149,6 @@ describe('OpenCTI organization segregation of mirrored threats', () => {
   });
 
   it('should leave a BYPASS reader every threat', async () => {
-    expect(await listedStixIds(as({ ...reader([]), bypass: true }))).toEqual([MEMBERS_ID, OPEN_ID, SHARED_ID]);
+    expect(await listedStixIds(as({ ...reader([]), bypass: true }))).toEqual([SHARED_ID, MEMBERS_ID, OPEN_ID]);
   });
 });
