@@ -1,6 +1,7 @@
 export * from './auth/schema';
 export * from './capabilities/schema';
 export * from './groups/schema';
+export * from './marking-definitions/schema';
 export * from './platform-capabilities/schema';
 export * from './platform-groups/schema';
 export * from './platform-roles/schema';

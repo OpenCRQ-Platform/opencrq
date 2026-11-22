@@ -1739,8 +1739,9 @@ describe('Platform Seed', () => {
     const tenantScopedTables = guardedTables.filter(isTenantScoped);
     // A further policy (a capability, an owner) shows a member less than the tenant holds, so these are left out.
     const FURTHER_GUARDED_TABLES = [
-      'crqIndicatorSettings', 'cweTechniqueOverrides', 'dashboardSettings', 'groupRoles', 'groups', 'groupUsers', 'notifications',
-      'organizationAssets', 'organizationUnpins', 'platformGroupRoles', 'platformGroups', 'platformGroupUsers',
+      'crqIndicatorSettings', 'cweTechniqueOverrides', 'dashboardSettings', 'groupMarkingDefinitions', 'groupRoles', 'groups',
+      'groupUsers', 'markingDefinitions', 'notifications', 'organizationAssets', 'organizationUnpins', 'platformGroupRoles',
+      'platformGroups', 'platformGroupUsers',
       'platformRoleCapabilities', 'platformRoles', 'roleCapabilities', 'roles', 'serviceAccountGroups', 'serviceAccounts',
       'serviceAccountTokens', 'tenants', 'tenantUsers', 'threatRelevanceSettings', 'users',
     ];
