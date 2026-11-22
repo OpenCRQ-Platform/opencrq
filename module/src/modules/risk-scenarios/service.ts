@@ -10,6 +10,7 @@ import type { ScenarioReadiness } from './readiness';
 import type { ScenarioFindingsQuery, ScenarioPageQuery, ScenarioSupportingAssetSortKey } from './scenario-lists';
 import type { TefMode } from './schema';
 import type { CveExploitationAnswer, CveExploitationReachedAsset } from './cve-exploitation';
+import type { EvidenceHealthReading, EvidenceHealthSource, EvidenceHealthState, SourceRunHealth } from './evidence-health';
 import { defineService } from '../../registry';
 import { requireTenantId } from '../../security';
 import { canonicalLinkRoles, inheritedCriteriaOfRoles } from '../asset-dependencies/link-roles';
@@ -20,6 +21,7 @@ import { readAttackClaims } from '../technique-mapping/attack-claims';
 import { techniqueMappingService } from '../technique-mapping/service';
 import { foldToParentTechnique } from '../threat-analyses/technique-weighting';
 import { assembleCveExploitation, readExposureExploitation } from './cve-exploitation';
+import { EVIDENCE_HEALTH_STATES, EVIDENCE_SYNC_KINDS, readEvidenceHealth, readSourceRunHealth } from './evidence-health';
 import { computeLifelineChange, LIFELINE_WINDOW_DAYS } from './lifeline';
 import { computeAssetImpacts, shareOfAttackTransmitted, wholePercent } from './impact';
 import { placeFindingRows } from './finding-ways-in';
@@ -588,6 +590,64 @@ export const riskScenariosService = defineService(
       ruleCatalogue: claims.ruleCatalogue,
     })), limit);
     return { answer, cve: { cveId: cve.cveId, cveTitle: cve.cveTitle, cvss: cve.cvss, cvssVector: cve.cvssVector } };
+  },
+
+  /**
+   * Where the evidence behind each supporting asset the scenario reaches stands at `now`, against a
+   * re-test delay of `maxAgeDays` that the caller's policy sets: the assets that are not `current`
+   * first, worst state then highest impact, cut to `limit`, with the counts per state of the whole
+   * walk and the health of the connector syncs. `undefined` for an unknown scenario or one of another tenant.
+   */
+  getEvidenceHealth: async (
+    { repo },
+    riskScenarioId: string,
+    maxAgeDays: number,
+    limit: number,
+    now: Date = new Date(),
+  ): Promise<{
+    assets: Array<EvidenceHealthReading & { supportingAssetId: string, supportingAssetName: string | null, supportingAssetDerivedName: string | null, impact: number, sources: Array<EvidenceHealthSource> }>,
+    counts: Record<EvidenceHealthState, number>,
+    sources: Array<SourceRunHealth>,
+    total: number,
+  } | undefined> => {
+    const loaded = await loadScenarioImpacts(repo, riskScenarioId);
+    if (!loaded) {
+      return undefined;
+    }
+    const { scenario, walk, impacts, names } = loaded;
+    const ranked = rankScenarioSupportingAssets(walk, scenario.primaryAssets, impacts, names);
+    const ids = ranked.map((row) => row.supportingAssetId);
+    const [inputs, runs] = await Promise.all([repo.findEvidenceHealthInputs(ids), repo.findLatestSucceededRunTotals(EVIDENCE_SYNC_KINDS)]);
+    const categoryById = new Map(inputs.assets.map((row) => [row.id, row.categoryId]));
+    const sourcesById = Map.groupBy(inputs.sources, (row) => row.supportingAssetId);
+    const versioned = new Set(inputs.versions.map((row) => row.supportingAssetId));
+    const verdictById = new Map(inputs.verdicts.map((row) => [row.supportingAssetId, row.lastVerdictAt]));
+    const order = new Map(EVIDENCE_HEALTH_STATES.map((state, index) => [state, index]));
+    const rankOf = (state: EvidenceHealthState) => order.get(state) ?? EVIDENCE_HEALTH_STATES.length;
+    // An asset the walk reaches but the tenant's views do not show is left out, never read as a gap.
+    const read = ranked.flatMap((row) => {
+      const categoryId = categoryById.get(row.supportingAssetId);
+      if (categoryId === undefined) {
+        return [];
+      }
+      const sources = (sourcesById.get(row.supportingAssetId) ?? []).map(({ connectorId, origin, lastSeenAt }) => ({ connectorId, origin, lastSeenAt }));
+      const reading = readEvidenceHealth({
+        categoryId,
+        sources,
+        lastVerdictAt: verdictById.get(row.supportingAssetId) ?? null,
+        versionReported: versioned.has(row.supportingAssetId),
+      }, maxAgeDays, now);
+      return [{ ...reading, supportingAssetId: row.supportingAssetId, supportingAssetName: row.supportingAssetName, supportingAssetDerivedName: row.supportingAssetDerivedName, impact: row.impact, sources }];
+    });
+    const counts: Record<EvidenceHealthState, number> = { no_source: 0, attested_only: 0, never_measured: 0, expired: 0, version_unknown: 0, current: 0 };
+    for (const row of read) {
+      counts[row.state] += 1;
+    }
+    const assets = read
+      .filter((row) => row.state !== 'current')
+      .toSorted((a, b) => (rankOf(a.state) - rankOf(b.state)) || (b.impact - a.impact))
+      .slice(0, limit);
+    return { assets, counts, sources: readSourceRunHealth(runs), total: read.length };
   },
 
   /**

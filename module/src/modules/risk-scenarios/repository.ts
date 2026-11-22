@@ -461,6 +461,59 @@ export const riskScenariosRepository = defineRepository({
     .orderBy(asc(views.cve.cveId))
     .limit(1)).at(0),
 
+  /**
+   * What the evidence health of `supportingAssetIds` reads, in four passes the tenant's views bound:
+   * each asset's category, its sources (connector, origin, last seen), whether one of its machine
+   * sources reports an operating system version, and the newest test verdict over its findings.
+   */
+  findEvidenceHealthInputs: async ({ db, views }, supportingAssetIds: Array<string>) => {
+    if (supportingAssetIds.length === 0) {
+      return { assets: [], sources: [], versions: [], verdicts: [] };
+    }
+    const sources = views.supportingAssetSources;
+    const [assets, sourceRows, versions, verdicts] = await Promise.all([
+      db.select({ id: views.supportingAssets.id, categoryId: views.supportingAssets.categoryId })
+        .from(views.supportingAssets)
+        .where(inUuids(views.supportingAssets.id, supportingAssetIds)),
+      // bounded-by: the sources of the scenario's reached assets
+      db.select({ supportingAssetId: sources.supportingAssetId, connectorId: sources.connectorId, origin: sources.origin, lastSeenAt: sources.lastSeenAt })
+        .from(sources)
+        .where(inUuids(sources.supportingAssetId, supportingAssetIds)),
+      db.selectDistinct({ supportingAssetId: sources.supportingAssetId })
+        .from(sources)
+        .innerJoin(views.supportingAssetMachineProperties, eq(views.supportingAssetMachineProperties.supportingAssetSourceId, sources.id))
+        .where(and(
+          inUuids(sources.supportingAssetId, supportingAssetIds),
+          sql`nullif(btrim(${views.supportingAssetMachineProperties.osVersion}), '') is not null`,
+        )),
+      db.select({
+        supportingAssetId: views.assetEvidence.supportingAssetId,
+        lastVerdictAt: sql<Date | null>`max(${views.assetEvidence.latestVerdictObservedAt})`.mapWith(views.assetEvidence.latestVerdictObservedAt),
+      })
+        .from(views.assetEvidence)
+        .where(inUuids(views.assetEvidence.supportingAssetId, supportingAssetIds))
+        .groupBy(views.assetEvidence.supportingAssetId),
+    ]);
+    return { assets, sources: sourceRows, versions, verdicts };
+  },
+
+  /**
+   * The two newest successful runs of each of `kinds`, newest first: what tells a sync that emptied
+   * from one that found nothing new. Bounded by two rows a kind.
+   */
+  findLatestSucceededRunTotals: async ({ db, views }, kinds: ReadonlyArray<string>) => {
+    if (kinds.length === 0) {
+      return [];
+    }
+    const perKind = await Promise.all(kinds.map((kind) => db
+      .select({ kind: views.jobs.kind, finishedAt: views.jobs.finishedAt, processedTotal: views.jobs.processedTotal })
+      .from(views.jobs)
+      .where(and(eq(views.jobs.kind, kind), eq(views.jobs.status, 'succeeded')))
+      .orderBy(desc(views.jobs.finishedAt))
+      .limit(2)));
+    return perKind.flat();
+  },
+
   findAssetIdsMappedToScope: async ({ db, views }, organizationId: string, supportingAssetIds: Array<string>) => {
     if (supportingAssetIds.length === 0) {
       return [];

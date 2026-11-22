@@ -13,6 +13,7 @@ import {
   DEPENDENCY_GRAPH_MAX_DEPTH,
   DEPENDENCY_LINK_KINDS,
   DISMISSAL_TYPE_VALUES,
+  EVIDENCE_HEALTH_STATES,
   EVIDENCE_HISTORY_ORIGINS,
   organizations,
   riskScenarios,
@@ -179,6 +180,28 @@ const CveExploitationSchema = z.object({
     primaryAssets: z.array(RelationSummarySchema),
     techniques: z.array(ExploitationTechniqueSchema),
     reading: ExploitationReadingSchema,
+  })),
+  total: z.number().int(),
+});
+
+const EVIDENCE_HEALTH_MAX_ASSETS = 500;
+const EvidenceHealthSchema = z.object({
+  assets: z.array(z.object({
+    supportingAssetId: z.uuid(),
+    supportingAssetName: z.string().nullable(),
+    supportingAssetDerivedName: z.string().nullable(),
+    impact: z.number(),
+    state: z.enum(EVIDENCE_HEALTH_STATES),
+    lastEvidenceAt: z.date().nullable(),
+    sources: z.array(z.object({ connectorId: z.uuid().nullable(), origin: z.enum(['connector', 'user']), lastSeenAt: z.date().nullable() })),
+  })),
+  counts: z.record(z.enum(EVIDENCE_HEALTH_STATES), z.number().int()),
+  sources: z.array(z.object({
+    kind: z.string(),
+    lastRunAt: z.date().nullable(),
+    latestTotal: z.number().int(),
+    previousTotal: z.number().int().nullable(),
+    emptied: z.boolean(),
   })),
   total: z.number().int(),
 });
@@ -536,6 +559,21 @@ export const riskScenariosRouter = (procedure: TenantProcedure, telemetry: AppRo
         throw new TRPCError({ code: 'NOT_FOUND', message: read.missing === 'scenario' ? 'Risk scenario not found' : `${input.cveId} is not in this platform's vulnerability catalogue` });
       }
       return { cve: read.cve, ...read.answer };
+    }),
+  // eslint-disable-next-line app/no-unused-router-endpoint -- XTM One's CTEM loop polls it for evidence decay and blind spots, by name
+  getEvidenceHealth: procedure
+    .input(z.object({
+      riskScenarioId: z.uuid(),
+      maxAgeDays: z.number().int().min(1).max(3650).default(30),
+      limit: z.number().int().min(1).max(EVIDENCE_HEALTH_MAX_ASSETS).default(100),
+    }))
+    .output(EvidenceHealthSchema)
+    .query(async ({ input, ctx: { services, origin } }) => {
+      const read = await services.withOrigin(origin).riskScenarios.getEvidenceHealth(input.riskScenarioId, input.maxAgeDays, input.limit);
+      if (!read) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Risk scenario not found' });
+      }
+      return read;
     }),
   listDerivedSupportingAssets: procedure
     .input(pagedInput(SCENARIO_SUPPORTING_ASSET_SORT_KEYS).extend({ riskScenarioId: z.uuid() }))
