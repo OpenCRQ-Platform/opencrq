@@ -20,7 +20,9 @@ import { db as testDb } from '../setup/db';
  * platform seed makes its administrator.
  */
 export const createPlatformAdmin = async (db: DrizzleDB, { id = uuidv7(), email }: { id?: string, email?: string } = {}) => {
-  const userEmail = email ?? `admin-${id.substring(0, 8)}@test.com`;
+  // The full id: the first 8 characters of a uuidv7 are its millisecond timestamp, equal for about
+  // 65 seconds, so two admins created in one test would collide on users_email_unique.
+  const userEmail = email ?? `admin-${id}@test.com`;
   const roleId = uuidv7();
   const groupId = uuidv7();
   await db.insert(users).values({ id, email: userEmail });
