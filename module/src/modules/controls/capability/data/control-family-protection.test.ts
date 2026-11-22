@@ -22,6 +22,8 @@ const REQUIRED_PAIRS: ReadonlyArray<readonly [string, AssetCategory]> = [
   ['NDR', 'iot_ot_device'],
   ['PATCH', 'container_workload'],
   ['PATCH', 'web_application'],
+  ['SCA', 'source_code'],
+  ['SSDLC', 'source_code'],
   ['SAT', 'host'],
   ['SAT', 'mobile_device'],
   ['SEG', 'mobile_device'],
@@ -38,7 +40,7 @@ const FORBIDDEN_PAIRS: ReadonlyArray<readonly [string, AssetCategory]> = [
   ['KMS', 'network_device'],
 ];
 
-const PROTECTION_PAIR_COUNT = 165;
+const PROTECTION_PAIR_COUNT = 167;
 
 const externalIds = Object.keys(PROTECTION_BY_EXTERNAL_ID);
 const allEntries = Object.values(PROTECTION_BY_EXTERNAL_ID).flat();
