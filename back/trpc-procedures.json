@@ -6068,6 +6068,151 @@
       }
     },
     {
+      "path": "markingDefinitions.addMarkingToGroup",
+      "type": "mutation",
+      "input": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "markingDefinitionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "groupId",
+          "markingDefinitionId"
+        ]
+      }
+    },
+    {
+      "path": "markingDefinitions.createMarkingDefinition",
+      "type": "mutation",
+      "input": {
+        "type": "object",
+        "properties": {
+          "definitionType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "definition": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "definitionType",
+          "definition"
+        ]
+      }
+    },
+    {
+      "path": "markingDefinitions.deleteMarkingDefinition",
+      "type": "mutation",
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "path": "markingDefinitions.getGroupMarkings",
+      "type": "query",
+      "input": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "groupId"
+        ]
+      }
+    },
+    {
+      "path": "markingDefinitions.listMarkingDefinitions",
+      "type": "query",
+      "input": null
+    },
+    {
+      "path": "markingDefinitions.removeMarkingFromGroup",
+      "type": "mutation",
+      "input": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "markingDefinitionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "groupId",
+          "markingDefinitionId"
+        ]
+      }
+    },
+    {
+      "path": "markingDefinitions.updateMarkingDefinition",
+      "type": "mutation",
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
       "path": "members.addMembers",
       "type": "mutation",
       "input": {
