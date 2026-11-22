@@ -221,6 +221,8 @@ describe('OpenCTI Live Stream replay', () => {
     expect((await mirrored()).map((row) => row.stixId).sort()).toEqual([...CREATED_STIX_IDS].sort());
     expect(await pendingCount()).toBe(0);
     expect(server.requests[0].authorization).toBe(`Bearer ${TOKEN}`);
+    // The marking definitions are read once from the instance when the consumer starts.
+    expect(server.graphqlRequests()).toBe(1);
     expect(await analysisNames()).toEqual(['Fixture Bear', 'Fixture Bear bis']);
 
     server.append(fixture.changes);

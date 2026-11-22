@@ -1,3 +1,4 @@
+import type { SyncedMarkingDefinition } from '@app/module';
 import { allServiceDefinitions, createServices, isRelevantStixObject, STREAM_LOG_SCOPE_KIND, trimRelevantStixObject } from '@app/module';
 // Deep import: the barrel is heavy and this is the one pure helper the consumer needs on every event.
 import { sanitizeStixNullBytes } from '@app/module/stix-sanitize';
@@ -9,6 +10,7 @@ import { runInExecutionScope } from '../../utils/execution-scope';
 import { endLogScope } from '../../utils/log-capture';
 import { createLogger } from '../../utils/logger';
 import { startPgListenLoop } from '../../utils/pg-listen-loop';
+import { fetchOpenCtiMarkingDefinitions, parseStreamMarking } from './opencti-marking-sync';
 import { consumeOpenCtiStream, OpenCtiAuthError, OpenCtiStreamFatalError } from './opencti-sse-client';
 
 const logger = createLogger({ feature: 'opencti' });
@@ -142,6 +144,21 @@ const consumeTenantStream = async (
 
   const origin = { type: 'connector' as const, serviceAccountId: settings.serviceAccountId, tenantId };
   const services = createServices([...allServiceDefinitions], dbEngine.db).withOrigin(origin);
+
+  // The tenant's marking definitions follow OpenCTI's (G2, slice 3b), written as the system: a
+  // connector holds no security capability, and the tenant is named on every row. A failed read
+  // keeps what the tenant holds; the stream's marking objects keep them in step afterwards.
+  const syncMarkings = async (markings: Array<SyncedMarkingDefinition>): Promise<void> => {
+    const { synced, skipped } = await systemServices.markingDefinitions.syncMarkingDefinitions(tenantId, markings);
+    if (skipped > 0) {
+      logTrace('OpenCTI marking definitions skipped: no STIX id, type or definition', { tenantId, synced, skipped });
+    }
+  };
+  try {
+    await syncMarkings(await fetchOpenCtiMarkingDefinitions(openctiConfig.url, openctiConfig.token));
+  } catch (err) {
+    logFromError(err, 'OpenCTI marking definitions sync failed', { tenantId });
+  }
 
   /**
    * Retires an id the stream says another one now stands for: a merge's absorbed object, or the id
@@ -277,11 +294,17 @@ const consumeTenantStream = async (
       // mirrored row the stream no longer sends: it goes the way of a deleted report, under the id a
       // rename in the same update left behind too, since that is the id the mirror holds.
       const droppedReport = stixObject?.['type'] === 'report' && event.event === 'update' && !isRelevantStixObject(stixObject);
+      const streamMarking = stixObject ? parseStreamMarking(stixObject) : null;
       if (stixObject && stixId && droppedReport) {
         await services.openctiConnector.deleteStreamObject(tenantId, stixId);
         const retiredId = extractRetiredStixId(event.data, stixId);
         if (retiredId) {
           await services.openctiConnector.deleteStreamObject(tenantId, retiredId);
+        }
+      } else if (streamMarking !== null) {
+        // A marking OpenCTI deletes stays here: rows and clearances may still name it.
+        if (event.event !== 'delete') {
+          await syncMarkings([streamMarking]).catch((err) => logFromError(err, 'OpenCTI stream marking sync failed', { tenantId, stixId }));
         }
       } else if (stixObject && stixId && isRelevantStixObject(stixObject)) {
         if (event.event === 'delete') {
