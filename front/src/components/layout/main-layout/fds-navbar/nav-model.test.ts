@@ -1,5 +1,4 @@
 import { i18n } from '@lingui/core';
-import { Box, Settings } from 'lucide-react';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { NavEntry, NavGroup, NavNode, NavSeparator, NavSingle } from './nav-model';
 import { filterVisibleEntries, getPlatformNavigationNodes, getScopeNavigationNodes } from './nav-model';
@@ -14,14 +13,14 @@ const entry = (id: string, visible?: boolean): NavEntry => ({
 const single = (id: string, visible?: boolean): NavSingle => ({
   ...entry(id, visible),
   kind: 'single',
-  icon: Box,
+  icon: 'server',
 });
 
 const group = (id: string, entries: Array<NavEntry>, visible?: boolean): NavGroup => ({
   kind: 'group',
   id,
   label: id,
-  icon: Settings,
+  icon: 'settings',
   entries,
   visible,
 });
@@ -110,14 +109,35 @@ describe('getScopeNavigationNodes', () => {
     return node?.kind === 'group' ? node.entries.map((subEntry) => subEntry.id) : [];
   };
 
-  it('lays the tenant entries, the risk scopes and the three titled sections out in order, each section set apart', () => {
+  it('lays the tenant entries, the risk scopes and the three sections out in order, each set apart by a separator alone', () => {
     expect(ids(nodes())).toEqual([
       'home', 'dashboards', 'risk-scenarios', 'treatment-plans', 'budget-reviews',
-      'separator-risk-scopes', 'title-risk-scopes', 'scope-europe', 'scope-retail', 'organizations',
-      'separator-attack-surface', 'title-attack-surface', 'assets', 'findings', 'threats',
-      'separator-defenses', 'title-defenses', 'controls', 'compliance',
-      'separator-administration', 'title-administration', 'integrations', 'settings',
+      'separator-risk-scopes', 'scope-europe', 'scope-retail', 'organizations',
+      'separator-attack-surface', 'assets', 'findings', 'threats',
+      'separator-defenses', 'controls', 'compliance',
+      'separator-administration', 'integrations', 'settings',
     ]);
+  });
+
+  // One concept, one glyph, in every Filigran product's left navigation (the shared table of XTM-Foundation/filigran-design-system#418).
+  it('draws every row with the design system glyph of its concept, Home with the outlined house', () => {
+    const icons = Object.fromEntries(nodes().flatMap((node) => (node.kind === 'single' || node.kind === 'group' ? [[node.id, node.icon]] : [])));
+
+    expect(icons).toEqual({
+      home: 'house',
+      dashboards: 'layout-dashboard',
+      'risk-scenarios': 'route',
+      'treatment-plans': 'list-checks',
+      'budget-reviews': 'scale',
+      organizations: 'building-2',
+      assets: 'server',
+      findings: 'custom/binocular',
+      threats: 'custom/threat-actor-individual',
+      controls: 'shield-check',
+      compliance: 'clipboard-check',
+      integrations: 'puzzle',
+      settings: 'settings',
+    });
   });
 
   it('points every tenant entry out of any scope, whichever scope the page is in', () => {
@@ -150,7 +170,7 @@ describe('getScopeNavigationNodes', () => {
   });
 
   it('keeps the Administration section when Integrations is hidden', () => {
-    expect(ids(nodes({ hasManageSecurity: false })).slice(-2)).toEqual(['title-administration', 'settings']);
+    expect(ids(nodes({ hasManageSecurity: false })).slice(-2)).toEqual(['separator-administration', 'settings']);
   });
 
   it('groups Threats and Threat Event Frequency under Threats', () => {
@@ -257,8 +277,8 @@ describe('getPlatformNavigationNodes', () => {
     return settings?.kind === 'group' ? settings.entries : [];
   };
 
-  it('lays out the Administration title and the Settings group, as the tenant bar ends', () => {
-    expect(ids(getPlatformNavigationNodes())).toEqual(['title-administration', 'settings']);
+  it('lays out the Settings group alone, with no section title', () => {
+    expect(ids(getPlatformNavigationNodes())).toEqual(['settings']);
   });
 
   it('holds Security alone in Settings, pointing at the platform surface', () => {

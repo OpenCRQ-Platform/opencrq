@@ -1,10 +1,11 @@
-import { NavbarItem, NavbarSeparator, NavbarSubmenu, NavbarSubmenuItem, NavbarTitle, ProgressBar, Text, useNavbarCollapsed } from '@filigran/design-system';
+import { Icon, NavbarItem, NavbarSeparator, NavbarSubmenu, NavbarSubmenuItem, ProgressBar, Text, useNavbarCollapsed } from '@filigran/design-system';
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { FunctionComponent, ReactNode } from 'react';
 import type { NavEntry, NavGroup, NavNode, NavScope, NavSingle } from './nav-model';
 import { cn } from '../../../../utils';
 import { NavbarRowContent, NavbarSubmenuRowContent } from './navbar-row-content';
 
+// The design system's row icon: 16 px, from its registry, in every Filigran product's left navigation.
 const ICON_SIZE = 16;
 
 /*
@@ -19,7 +20,6 @@ interface NavSingleRowProps {
 
 const NavSingleRow: FunctionComponent<NavSingleRowProps> = ({ node }) => {
   const collapsed = useNavbarCollapsed();
-  const Icon = node.icon;
 
   return (
     <>
@@ -31,7 +31,7 @@ const NavSingleRow: FunctionComponent<NavSingleRowProps> = ({ node }) => {
           {...node.link}
           activeOptions={{ exact: node.exact === true }}
         >
-          <NavbarRowContent icon={<Icon aria-hidden={true} focusable={false} size={ICON_SIZE} />}>
+          <NavbarRowContent icon={<Icon name={node.icon} size={ICON_SIZE} />}>
             {node.label}
           </NavbarRowContent>
         </Link>
@@ -75,7 +75,6 @@ interface NavGroupRowProps {
 const NavGroupRow: FunctionComponent<NavGroupRowProps> = ({ group, expandedHeader }) => {
   const collapsed = useNavbarCollapsed();
   const matchRoute = useMatchRoute();
-  const Icon = group.icon;
   // The design system looks for the current page in its children's props, where aria-current never
   // is (see above), so a group reached by a direct link or a reload is opened from the location.
   const holdsCurrentPage = group.entries.some((entry) => matchRoute({ to: entry.link.to, params: entry.link.params, fuzzy: entry.exact !== true }) !== false);
@@ -90,7 +89,7 @@ const NavGroupRow: FunctionComponent<NavGroupRowProps> = ({ group, expandedHeade
       // keyed on the current one in fds-navbar.tsx; the user can still fold the group in between.
       key={openOnMount ? 'open' : 'closed'}
       label={group.label}
-      icon={<Icon aria-hidden={true} focusable={false} size={ICON_SIZE} />}
+      icon={<Icon name={group.icon} size={ICON_SIZE} />}
       defaultOpen={openOnMount}
     >
       {collapsed ? null : expandedHeader}
@@ -140,9 +139,6 @@ interface NavNodeRowProps {
 export const NavNodeRow: FunctionComponent<NavNodeRowProps> = ({ node, expandedHeader }) => {
   if (node.kind === 'separator') {
     return <NavbarSeparator />;
-  }
-  if (node.kind === 'title') {
-    return <NavbarTitle>{node.label}</NavbarTitle>;
   }
   if (node.kind === 'scope') {
     return <NavScopeRow scope={node} />;

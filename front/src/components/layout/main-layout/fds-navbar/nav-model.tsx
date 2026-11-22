@@ -1,8 +1,7 @@
 import { t } from '@lingui/core/macro';
 import { linkOptions } from '@tanstack/react-router';
 import type { Link, LinkOptions } from '@tanstack/react-router';
-import { Box, Building2, ClipboardCheck, Crosshair, Flag, House, LayoutDashboard, ListChecks, Plug, Scale, Settings, ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import type { IconName } from '@filigran/design-system';
 import type { ComponentProps } from 'react';
 import { scopeInitials } from './scope-nav-utils';
 
@@ -25,7 +24,8 @@ export interface NavEntry extends NavNodeBase {
 
 export interface NavSingle extends NavEntry {
   kind: 'single',
-  icon: LucideIcon,
+  /** A name of the design system's icon registry: one concept, one glyph, in every Filigran product. */
+  icon: IconName,
   /** A bar under the row while the menu is expanded: `value` is a percentage, `label` the figure beside it. */
   progress?: { value: number, label: string },
 }
@@ -33,17 +33,12 @@ export interface NavSingle extends NavEntry {
 export interface NavGroup extends NavNodeBase {
   kind: 'group',
   label: string,
-  icon: LucideIcon,
+  icon: IconName,
   entries: Array<NavEntry>,
 }
 
 export interface NavSeparator extends NavNodeBase {
   kind: 'separator',
-}
-
-export interface NavTitle extends NavNodeBase {
-  kind: 'title',
-  label: string,
 }
 
 export interface NavScope extends NavNodeBase {
@@ -55,7 +50,7 @@ export interface NavScope extends NavNodeBase {
   entries: Array<NavEntry>,
 }
 
-export type NavNode = NavSingle | NavGroup | NavSeparator | NavTitle | NavScope;
+export type NavNode = NavSingle | NavGroup | NavSeparator | NavScope;
 
 export const filterVisibleEntries = (nodes: Array<NavNode>): Array<NavNode> => nodes
   .filter((node) => node.visible !== false)
@@ -74,7 +69,7 @@ const threatsNode = (params: ScopeParams): NavNode => ({
   kind: 'group',
   id: 'threats',
   label: t`Threats`,
-  icon: Crosshair,
+  icon: 'custom/threat-actor-individual',
   entries: [
     {
       id: 'threat-center',
@@ -102,18 +97,16 @@ const getStartedNode = ({ completed, total, finished }: GetStartedNavProgress, p
   kind: 'single',
   id: 'get-started',
   label: t`Get started`,
-  icon: Flag,
+  icon: 'rocket',
   link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/get-started', params })),
   progress: finished ? undefined : { value: total === 0 ? 0 : completed / total * 100, label: t`${completed} of ${total}` },
 });
-
-const administrationTitle = (): NavTitle => ({ kind: 'title', id: 'title-administration', label: t`Administration` });
 
 const settingsGroup = (entries: Array<NavEntry>): NavGroup => ({
   kind: 'group',
   id: 'settings',
   label: t`Settings`,
-  icon: Settings,
+  icon: 'settings',
   entries,
 });
 
@@ -155,7 +148,6 @@ const settingsNode = (hasManageSecurity: boolean, hasPlatformAccess: boolean, pa
 
 /** The tenant-less platform surface carries Security alone, so its Settings group holds that one entry. */
 export const getPlatformNavigationNodes = (): Array<NavNode> => [
-  administrationTitle(),
   settingsGroup([
     { id: 'settings-security', label: t`Security`, link: scopedLink(linkOptions({ to: '/platform/security' })) },
   ]),
@@ -199,13 +191,13 @@ export const getScopeNavigationNodes = ({ tenantId, hasManageSecurity, hasPlatfo
   const getStartedComplete = getStarted?.finished === true;
   return [
     ...(getStartedComplete ? [] : getStartedNodes),
-    { kind: 'single', id: 'home', label: t`Home`, icon: House, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}', params })), exact: true },
-    { kind: 'single', id: 'dashboards', label: t`Dashboards`, icon: LayoutDashboard, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/dashboards', params })) },
-    { kind: 'single', id: 'risk-scenarios', label: t`Risk Scenarios`, icon: ShieldAlert, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/risk-scenarios', params })) },
-    { kind: 'single', id: 'treatment-plans', label: t`Treatment Plans`, icon: ListChecks, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/treatment-plans', params })) },
-    { kind: 'single', id: 'budget-reviews', label: t`Budget Reviews`, icon: Scale, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/budget-reviews', params })) },
+    { kind: 'single', id: 'home', label: t`Home`, icon: 'house', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}', params })), exact: true },
+    { kind: 'single', id: 'dashboards', label: t`Dashboards`, icon: 'layout-dashboard', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/dashboards', params })) },
+    { kind: 'single', id: 'risk-scenarios', label: t`Risk Scenarios`, icon: 'route', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/risk-scenarios', params })) },
+    { kind: 'single', id: 'treatment-plans', label: t`Treatment Plans`, icon: 'list-checks', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/treatment-plans', params })) },
+    { kind: 'single', id: 'budget-reviews', label: t`Budget Reviews`, icon: 'scale', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/budget-reviews', params })) },
+    // Blocks are set apart by a separator alone, no section title: the design system's integrated product frame, shared by every Filigran product.
     { kind: 'separator', id: 'separator-risk-scopes' },
-    { kind: 'title', id: 'title-risk-scopes', label: t`Risk scopes` },
     ...scopes
       .map((scope): NavScope => ({
         kind: 'scope',
@@ -215,20 +207,17 @@ export const getScopeNavigationNodes = ({ tenantId, hasManageSecurity, hasPlatfo
         current: scope.id === organizationId,
         entries: scopeEntries(tenantId, scope.id),
       })),
-    { kind: 'single', id: 'organizations', label: t`All risk scopes`, icon: Building2, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/risk-scopes', params })) },
+    { kind: 'single', id: 'organizations', label: t`All risk scopes`, icon: 'building-2', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/risk-scopes', params })) },
     { kind: 'separator', id: 'separator-attack-surface' },
-    { kind: 'title', id: 'title-attack-surface', label: t`Attack surface` },
-    { kind: 'single', id: 'assets', label: t`Assets`, icon: Box, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/assets', params })) },
-    { kind: 'single', id: 'findings', label: t`Findings`, icon: TriangleAlert, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/findings', params })) },
+    { kind: 'single', id: 'assets', label: t`Assets`, icon: 'server', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/assets', params })) },
+    { kind: 'single', id: 'findings', label: t`Findings`, icon: 'custom/binocular', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/findings', params })) },
     threatsNode(params),
     { kind: 'separator', id: 'separator-defenses' },
-    { kind: 'title', id: 'title-defenses', label: t`Defenses` },
-    { kind: 'single', id: 'controls', label: t`Controls`, icon: ShieldCheck, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/controls', params })) },
+    { kind: 'single', id: 'controls', label: t`Controls`, icon: 'shield-check', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/controls', params })) },
     // Pointed at the layout rather than at the assessments, so it also lights on a Drata framework's page.
-    { kind: 'single', id: 'compliance', label: t`Compliance`, icon: ClipboardCheck, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/compliance', params })) },
+    { kind: 'single', id: 'compliance', label: t`Compliance`, icon: 'clipboard-check', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/compliance', params })) },
     { kind: 'separator', id: 'separator-administration' },
-    administrationTitle(),
-    { kind: 'single', id: 'integrations', label: t`Integrations`, icon: Plug, visible: hasManageSecurity, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/integrations', params })) },
+    { kind: 'single', id: 'integrations', label: t`Integrations`, icon: 'puzzle', visible: hasManageSecurity, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/integrations', params })) },
     settingsNode(hasManageSecurity, hasPlatformAccess, params),
     ...(getStartedComplete ? getStartedNodes : []),
   ];

@@ -1,6 +1,5 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen } from '@testing-library/react';
-import { Settings } from 'lucide-react';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { NavGroup, NavSingle } from './nav-model';
@@ -46,7 +45,7 @@ const settingsGroup = {
   kind: 'group',
   id: 'settings',
   label: 'Settings',
-  icon: Settings,
+  icon: 'settings',
   entries: [
     { id: 'settings-parameters', label: 'Parameters', link: { to: '/tenant-1/settings/parameters' } },
     { id: 'settings-jobs', label: 'Jobs', link: { to: '/tenant-1/settings/jobs' } },
@@ -143,7 +142,7 @@ describe('NavNodeRow', () => {
       kind: 'single',
       id: 'get-started',
       label: 'Get started',
-      icon: Settings,
+      icon: 'rocket',
       link: { to: '/tenant-1/get-started' },
       progress: { value: 12.5, label: '1 of 8' },
     } as unknown as NavSingle;
