@@ -5,7 +5,7 @@ import { scopePath } from '../../../../../../components/layout/scope-path-utils'
 import { RouteTabs } from '../../../../../../components/shared';
 import { UniqueCveFindingHeader } from '../../../../../../features/unique-cve-finding';
 import { trpcClient, useTRPC } from '../../../../../../lib';
-import { XtmConnectActions, XtmCounterpartPivots } from '../../../../../../features/xtm/xtm-counterparts';
+import { XtmPivotEmblems } from '../../../../../../features/xtm/xtm-counterparts';
 
 const UNIQUE_CVE_FINDING_ROUTE = '/$tenantId/{-$organizationId}/findings/cve/$cveId';
 
@@ -46,13 +46,8 @@ const UniqueCveFindingLayout = () => {
         epss={finding.epss}
         sources={finding.sources}
         composition={finding.composition}
-        actions={(
-          <>
-            {/* The same CVE in OpenCTI (vulnerability, its threats) and OpenAEV (findings, simulations). */}
-            <XtmCounterpartPivots kind="VULNERABILITY" objectKey={finding.cveId} />
-            <XtmConnectActions />
-          </>
-        )}
+        // The same CVE in OpenCTI (vulnerability, its threats) and OpenAEV (findings, simulations).
+        actions={<XtmPivotEmblems kind="VULNERABILITY" objectKey={finding.cveId} />}
       />
       <RouteTabs tabs={tabs} />
       <Outlet />

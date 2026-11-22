@@ -9,11 +9,10 @@ import { FAILED, NEVER, renderWithTrpc } from '../../../providers/trpc-test-harn
 import { ThreatHero } from './threat-hero';
 
 const useOpenCtiBaseUrl = vi.fn<() => string | null>();
-const wide = vi.fn<() => boolean>(() => true);
 vi.mock('../../../hooks', () => ({
   useOpenCtiBaseUrl: () => useOpenCtiBaseUrl(),
-  useMediaQuery: () => wide(),
 }));
+vi.mock('../../../hooks/utils/use-has-manage-security', () => ({ useHasManageSecurity: () => false }));
 
 vi.mock('./threat-actions-menu', () => ({
   ThreatActionsMenu: ({ threatId }: { threatId: string }) => <button type="button" data-threat-id={threatId}>Threat actions</button>,
@@ -72,7 +71,6 @@ beforeAll(() => {
 beforeEach(() => {
   i18n.activate('en');
   useOpenCtiBaseUrl.mockReturnValue('https://opencti.example.com');
-  wide.mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -101,32 +99,23 @@ describe('ThreatHero', () => {
     expect(screen.queryByText('85%')).toBeNull();
   });
 
-  it('opens a connector threat in OpenCTI and offers no delete menu', () => {
+  it('opens a connector threat in OpenCTI from an icon-only emblem and offers no delete menu', () => {
     renderHero(detail({ kind: 'connector' }));
 
     const link = screen.getByRole('link', { name: 'Open in OpenCTI' });
     expect(link.getAttribute('href')).toBe(`https://opencti.example.com/dashboard/id/${STIX_ID}`);
-    expect(link.textContent).toBe('Open in OpenCTI');
+    expect(link.textContent).toBe('');
     expect(screen.queryByRole('button', { name: 'Threat actions' })).toBeNull();
   });
 
-  it('turns the OpenCTI pivot into an icon button below 1280 px, its name kept', () => {
-    wide.mockReturnValue(false);
-    renderHero(detail({ kind: 'connector' }));
-
-    const link = screen.getByRole('link', { name: 'Open in OpenCTI' });
-    expect(link.textContent).toBe('');
-    expect(link.getAttribute('href')).toBe(`https://opencti.example.com/dashboard/id/${STIX_ID}`);
-  });
-
-  it('gives a STIX import the delete menu and no OpenCTI action', () => {
+  it('gives a STIX import the delete menu and no active OpenCTI emblem', () => {
     renderHero(detail({ kind: 'stix-import' }));
 
     expect(screen.getByRole('button', { name: 'Threat actions' })).toBeTruthy();
     expect(screen.queryByRole('link')).toBeNull();
   });
 
-  it('shows no OpenCTI action when no platform is configured', () => {
+  it('keeps the OpenCTI emblem greyed when no platform is configured', () => {
     useOpenCtiBaseUrl.mockReturnValue(null);
     renderHero(detail({ kind: 'connector' }));
 

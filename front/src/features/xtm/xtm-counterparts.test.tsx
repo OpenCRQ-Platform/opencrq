@@ -3,15 +3,17 @@ import { i18n } from '@lingui/core';
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { XtmCounterpart } from './xtm-counterparts';
-import { FAILED, renderWithTrpc } from '../../providers/trpc-test-harness';
-import { XtmConnectActions, XtmCounterpartPivots, XtmPivotButtons, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
+import type { XtmCounterpart, XtmEmblemInput } from './xtm-counterparts';
+import { FAILED, NEVER, renderWithTrpc } from '../../providers/trpc-test-harness';
+import { XtmConnectTeaser, xtmEmblemState, XtmPivotEmblems, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
 
 const canConfigure = vi.fn<() => boolean>();
 vi.mock('../../hooks/utils/use-has-manage-security', () => ({ useHasManageSecurity: () => canConfigure() }));
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  Link: ({ children, params, 'aria-label': label }: { children: ReactNode, params: { connectorSlug: string }, 'aria-label'?: string }) => <a href={`/integrations/connectors/${params.connectorSlug}`} aria-label={label}>{children}</a>,
+  Link: ({ children, params, className, 'aria-label': label }: { children: ReactNode, params: { connectorSlug: string }, className?: string, 'aria-label'?: string }) => (
+    <a href={`/integrations/connectors/${params.connectorSlug}`} aria-label={label} className={className}>{children}</a>
+  ),
 }));
 
 const CVE = 'CVE-2024-3400';
@@ -19,9 +21,16 @@ const CONNECTED = [
   { product: 'opencti', connected: true, url: 'https://opencti.example' },
   { product: 'openaev', connected: false, url: null },
 ];
+const BOTH = [
+  { product: 'opencti', connected: true, url: 'https://opencti.example' },
+  { product: 'openaev', connected: true, url: 'https://openaev.example' },
+];
 const MATCH: XtmCounterpart = {
   key: CVE, product: 'opencti', objectId: 'v1', objectType: 'Vulnerability', objectName: 'PAN-OS GlobalProtect', objectUrl: 'https://opencti.example/dashboard/id/v1',
   facts: [{ key: 'findings', value: '3' }],
+};
+const SOURCED: XtmCounterpart = {
+  key: 'ww-onedev-worker-001', product: 'openaev', objectId: 'a1', objectType: 'Asset', objectName: 'ww-onedev-worker-001', objectUrl: 'https://openaev.example/admin/assets/a1', facts: [],
 };
 
 beforeAll(() => i18n.load('en', {}));
@@ -31,45 +40,75 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
-const renderPivots = (counterparts: unknown, connections: unknown = CONNECTED, skip?: ReadonlyArray<'opencti' | 'openaev'>) => renderWithTrpc(
-  <XtmCounterpartPivots kind="VULNERABILITY" objectKey={CVE} skip={skip} />,
+const renderEmblems = (counterparts: unknown, connections: unknown = CONNECTED, objectKey: string | null = CVE, sourced?: Partial<Record<'opencti' | 'openaev', XtmCounterpart>>) => renderWithTrpc(
+  <XtmPivotEmblems kind="VULNERABILITY" objectKey={objectKey} sourced={sourced} />,
   { answers: { 'xtm.connections': connections, 'xtm.counterparts': counterparts } },
 );
 
-describe('XtmCounterpartPivots', () => {
-  it('opens the counterpart in the connected product, with no card on the page', async () => {
-    const { container } = renderPivots([MATCH]);
-    const link = await screen.findByRole('link', { name: 'Open in OpenCTI' });
-    expect(link.getAttribute('href')).toBe('https://opencti.example/dashboard/id/v1');
-    expect(link.getAttribute('target')).toBe('_blank');
-    expect(container.textContent).not.toContain('In OpenCTI');
-    expect(screen.queryByTestId('xtm-preview')).toBeNull();
+describe('XtmPivotEmblems', () => {
+  it('draws one icon-only emblem per product, OpenCTI then OpenAEV, with no text', async () => {
+    const { container } = renderEmblems([MATCH]);
+    const found = await screen.findByRole('link', { name: 'Open in OpenCTI' });
+    expect(found.getAttribute('href')).toBe('https://opencti.example/dashboard/id/v1');
+    expect(found.getAttribute('target')).toBe('_blank');
+    const connect = screen.getByRole('link', { name: 'Connect OpenAEV' });
+    expect(container.textContent).toBe('');
+    expect(found.compareDocumentPosition(connect) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('renders nothing when the connected product does not hold the object', async () => {
-    const { container } = renderPivots([]);
-    await waitFor(() => expect(container.textContent).toBe(''));
-    expect(container.textContent).not.toContain('Not found');
+  it('greys a connected product that does not hold the object, still focusable and named', async () => {
+    renderEmblems([], BOTH);
+    const notFound = await screen.findByRole('button', { name: 'Not found in OpenCTI' });
+    expect(notFound.getAttribute('aria-disabled')).toBe('true');
+    expect(notFound.hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Not found in OpenAEV' })).toBeTruthy();
   });
 
-  it('renders nothing while the product is not connected (the connect call to action covers it)', async () => {
-    const { container } = renderPivots([{ ...MATCH, product: 'openaev' }]);
-    await waitFor(() => expect(container.textContent).toBe(''));
+  it('gives a reader who cannot configure a disabled emblem for a product not connected', async () => {
+    canConfigure.mockReturnValue(false);
+    renderEmblems([MATCH]);
+    const emblem = await screen.findByRole('button', { name: 'OpenAEV is not connected' });
+    expect(emblem.getAttribute('aria-disabled')).toBe('true');
+    expect(screen.queryByRole('link', { name: 'Connect OpenAEV' })).toBeNull();
   });
 
-  it('degrades silently when the lookup fails', async () => {
-    const { container } = renderPivots(FAILED);
-    await waitFor(() => expect(container.textContent).toBe(''));
+  it('says a lookup that failed could not reach the product, never "not found"', async () => {
+    renderEmblems(FAILED, BOTH);
+    expect(await screen.findByRole('button', { name: 'OpenCTI could not be reached' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Not found/ })).toBeNull();
   });
 
-  it('renders nothing while the connections are unknown', async () => {
-    const { container } = renderPivots([MATCH], FAILED);
-    await waitFor(() => expect(container.textContent).toBe(''));
+  it('shows the emblems as checking while the lookup loads', async () => {
+    renderEmblems(NEVER, BOTH);
+    expect(await screen.findByRole('button', { name: 'Looking in OpenCTI…' })).toBeTruthy();
   });
 
-  it('never pivots to a product the object came from (its source row is the pivot)', async () => {
-    const { container } = renderPivots([MATCH], CONNECTED, ['opencti']);
-    await waitFor(() => expect(container.textContent).toBe(''));
+  it('finds a product the object came from by its source link, with no lookup hit needed', async () => {
+    renderEmblems([], BOTH, 'ww-onedev-worker-001', { openaev: SOURCED });
+    const found = await screen.findByRole('link', { name: 'Open in OpenAEV' });
+    expect(found.getAttribute('href')).toBe(SOURCED.objectUrl);
+    expect(screen.queryByRole('button', { name: 'Not found in OpenAEV' })).toBeNull();
+  });
+});
+
+describe('xtmEmblemState', () => {
+  const base: XtmEmblemInput = { connected: true, connectionsFailed: false, counterparts: [], lookupFailed: false, hasKey: true };
+
+  it('reads each state from the connection and the lookup', () => {
+    expect(xtmEmblemState('opencti', { ...base, counterparts: [MATCH] })).toEqual({ kind: 'found', counterpart: MATCH });
+    expect(xtmEmblemState('opencti', base).kind).toBe('not-found');
+    expect(xtmEmblemState('opencti', { ...base, connected: false }).kind).toBe('not-connected');
+    expect(xtmEmblemState('opencti', { ...base, connected: undefined }).kind).toBe('checking');
+    expect(xtmEmblemState('opencti', { ...base, counterparts: undefined }).kind).toBe('checking');
+    expect(xtmEmblemState('opencti', { ...base, lookupFailed: true }).kind).toBe('unavailable');
+    expect(xtmEmblemState('opencti', { ...base, hasKey: false, counterparts: undefined }).kind).toBe('not-found');
+  });
+
+  it('keeps the source link of a sourced object and takes the facts the lookup answered', () => {
+    const facts = [{ key: 'findings', value: '2' }];
+    const state = xtmEmblemState('openaev', { ...base, sourced: SOURCED, counterparts: [{ ...SOURCED, objectUrl: 'https://elsewhere', facts }] });
+    expect(state).toEqual({ kind: 'found', counterpart: { ...SOURCED, facts } });
+    expect(xtmEmblemState('openaev', { ...base, connected: undefined, sourced: SOURCED }).kind).toBe('found');
   });
 });
 
@@ -80,58 +119,20 @@ describe('xtmSourceProducts', () => {
   });
 });
 
-describe('XtmConnectActions', () => {
-  const renderActions = (products?: ReadonlyArray<'opencti' | 'openaev'>, compact?: boolean) => renderWithTrpc(
-    <XtmConnectActions products={products} compact={compact} />,
-    { answers: { 'xtm.connections': CONNECTED } },
-  );
-
-  it('offers a configurer the connect call to action of each product not connected', async () => {
-    renderActions();
-    const cta = await screen.findByRole('link', { name: /Connect OpenAEV/ });
-    expect(cta.getAttribute('href')).toBe('/integrations/connectors/openaev');
-    expect(screen.queryByRole('link', { name: /Connect OpenCTI/ })).toBeNull();
+describe('XtmConnectTeaser', () => {
+  it('shows example fields as labelled skeletons, never figures, and the connect line for a configurer', () => {
+    const { container } = renderWithTrpc(<XtmConnectTeaser product="openaev" canConfigure />);
+    expect(screen.getByText('OpenAEV is not connected')).toBeTruthy();
+    expect(screen.getByText('Simulations')).toBeTruthy();
+    expect(screen.getAllByText('Example')).toHaveLength(2);
+    expect(screen.getByText('Connect OpenAEV')).toBeTruthy();
+    expect(container.textContent).not.toMatch(/\d/);
   });
 
-  it('gives a reader who cannot configure a disabled button with a read-only hint', async () => {
-    canConfigure.mockReturnValue(false);
-    renderActions();
-    const button = await screen.findByRole('button', { name: /Connect OpenAEV/ });
-    expect(button.hasAttribute('disabled')).toBe(true);
-    expect(screen.getByText(/OpenAEV is not connected/)).toBeTruthy();
-    expect(screen.queryByRole('link')).toBeNull();
-  });
-
-  it('renders the call to action icon-only when compact, named by its label', async () => {
-    renderActions(undefined, true);
-    const cta = await screen.findByRole('link', { name: 'Connect OpenAEV' });
-    expect(cta.textContent).toBe('');
-    expect(cta.getAttribute('href')).toBe('/integrations/connectors/openaev');
-  });
-
-  it('keeps the read-only hint on the compact disabled button', async () => {
-    canConfigure.mockReturnValue(false);
-    renderActions(undefined, true);
-    const button = await screen.findByRole('button', { name: 'Connect OpenAEV' });
-    expect(button.hasAttribute('disabled')).toBe(true);
-    expect(button.textContent).toBe('');
-    expect(screen.getByText(/OpenAEV is not connected/)).toBeTruthy();
-  });
-
-  it('renders nothing for the products left out or connected', async () => {
-    const { container } = renderActions(['opencti']);
-    await waitFor(() => expect(container.textContent).toBe(''));
-  });
-});
-
-describe('XtmPivotButtons', () => {
-  it('shows the label wide and only the mark when compact, same accessible name', () => {
-    const { rerender } = renderWithTrpc(<XtmPivotButtons counterparts={[MATCH]} />);
-    expect(screen.getByRole('link', { name: 'Open in OpenCTI' }).textContent).toBe('Open in OpenCTI');
-    rerender(<XtmPivotButtons counterparts={[MATCH]} compact />);
-    const link = screen.getByRole('link', { name: 'Open in OpenCTI' });
-    expect(link.textContent).toBe('');
-    expect(link.getAttribute('href')).toBe(MATCH.objectUrl);
+  it('gives a reader the read-only line instead', () => {
+    renderWithTrpc(<XtmConnectTeaser product="opencti" canConfigure={false} />);
+    expect(screen.getByText('Ask an administrator to connect OpenCTI.')).toBeTruthy();
+    expect(screen.queryByText('Connect OpenCTI')).toBeNull();
   });
 });
 
@@ -153,10 +154,12 @@ describe('XtmPivotPreview', () => {
 });
 
 describe('XtmRowMarks', () => {
-  it('renders one mark per counterpart, nothing without', () => {
+  it('renders a 16 px mark per counterpart found, nothing without', async () => {
     const { container, rerender } = renderWithTrpc(<XtmRowMarks counterparts={[]} />);
     expect(container.textContent).toBe('');
     rerender(<XtmRowMarks counterparts={[MATCH]} />);
-    expect(screen.getByRole('link', { name: 'Open in OpenCTI' }).getAttribute('href')).toBe(MATCH.objectUrl);
+    const link = screen.getByRole('link', { name: 'Open in OpenCTI' });
+    expect(link.getAttribute('href')).toBe(MATCH.objectUrl);
+    await waitFor(() => expect(link.querySelector('img')?.getAttribute('width')).toBe('16'));
   });
 });

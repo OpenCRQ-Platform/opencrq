@@ -1,5 +1,5 @@
 import type { TRPCRouter } from '@app/back/src/types/trpc-router';
-import { Button } from '@filigran/design-system';
+import { IconButton, Skeleton } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
@@ -12,12 +12,15 @@ import { useTRPC } from '../../lib';
 type RouterOutputs = inferRouterOutputs<TRPCRouter>;
 
 /**
- * Cross-product awareness, the OpenCRQ side of the pattern OpenCTI and OpenAEV share, kept discreet:
- * an "Open in <product>" action in the hero (a mark on a list row) when a connected XTM product holds
- * the same object, its key facts in the hover and focus preview, and a "Connect" call to action in
- * the hero where the product is not connected. A connected product that does not hold the object
- * renders nothing, and a product the object came from is never queried: its source row is the pivot.
- * No overview card, no reserved slot. Same marks, wording and states in the three products.
+ * Cross-product awareness, contract v3, the same in OpenCTI, OpenAEV and OpenCRQ: in every hero, one
+ * icon-only button per counterpart product (OpenCTI, then OpenAEV; OpenCRQ is this product), its
+ * emblem and no text, at the size of the sibling header actions (36 px). Three states, one emblem:
+ * - found: the emblem in colour, the click opens the object there, hover and focus show its facts;
+ * - connected, not found: the emblem greyed, still focusable, a tooltip saying how it gets there;
+ * - not connected: the emblem greyed, a teaser of what the product would show (example fields as
+ *   skeletons, never figures), the connect link for a configurer, a read-only hint for the others.
+ * A product the object came from is found from its source link first, the shared key second.
+ * List rows carry a 16 px mark only when found, nothing otherwise.
  */
 
 export type XtmProduct = 'opencti' | 'openaev';
@@ -27,7 +30,8 @@ export type XtmCounterpart = RouterOutputs['xtm']['counterparts'][number];
 // eslint-disable-next-line lingui/no-unlocalized-strings -- product names, never translated
 const PRODUCT_NAMES: Record<XtmProduct, string> = { opencti: 'OpenCTI', openaev: 'OpenAEV' };
 const PRODUCT_MARKS: Record<XtmProduct, string> = { opencti: '/img/icon-opencti.png', openaev: '/img/icon-openaev.png' };
-const ALL_PRODUCTS: ReadonlyArray<XtmProduct> = ['opencti', 'openaev'];
+/** The emblem order of the contract: OpenCTI, OpenAEV, OpenCRQ, this product skipped. */
+export const XTM_PRODUCTS: ReadonlyArray<XtmProduct> = ['opencti', 'openaev'];
 
 export const productName = (product: XtmProduct) => PRODUCT_NAMES[product];
 
@@ -42,23 +46,29 @@ export const useXtmConnections = () => {
   return useQuery(trpc.xtm.connections.queryOptions(undefined, { staleTime: Infinity }));
 };
 
+const lookupOptions = (keys: ReadonlyArray<string | null | undefined>) => {
+  const present = [...new Set(keys.filter((k): k is string => !!k))].sort();
+  return { present, options: { enabled: present.length > 0, staleTime: 2 * 60 * 1000, retry: false } };
+};
+
 /** The counterparts of one or several keys, one batched call per kind; empty while not connected. */
 export const useCounterparts = (kind: CounterpartKind, keys: ReadonlyArray<string | null | undefined>) => {
   const trpc = useTRPC();
-  const present = [...new Set(keys.filter((k): k is string => !!k))].sort();
-  const { data } = useQuery(trpc.xtm.counterparts.queryOptions(
-    { kind, keys: present },
-    { enabled: present.length > 0, staleTime: 2 * 60 * 1000, retry: false },
-  ));
+  const { present, options } = lookupOptions(keys);
+  const { data } = useQuery(trpc.xtm.counterparts.queryOptions({ kind, keys: present }, options));
   return data ?? [];
 };
 
-const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number }> = ({ product, size }) => (
-  <img src={PRODUCT_MARKS[product]} alt="" aria-hidden width={size ?? 16} height={size ?? 16} className="shrink-0" />
+const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number, muted?: boolean }> = ({ product, size, muted }) => (
+  <img
+    src={PRODUCT_MARKS[product]}
+    alt=""
+    aria-hidden
+    width={size ?? 16}
+    height={size ?? 16}
+    className={muted ? 'shrink-0 opacity-40 grayscale' : 'shrink-0'}
+  />
 );
-
-// eslint-disable-next-line lingui/no-unlocalized-strings -- Tailwind class list, not copy
-const COMPACT_CLASS = 'h-9 w-9 justify-center p-0';
 
 const FACT_LABELS = (): Record<string, string> => ({
   findings: t`Findings`,
@@ -66,15 +76,37 @@ const FACT_LABELS = (): Record<string, string> => ({
   simulations: t`Simulations`,
   last_simulation: t`Last simulation`,
   reports: t`Reports`,
+  relationships: t`Relationships`,
 });
+
+/** The fields a product would show once connected, by their fact key: labels only, never values. */
+const TEASER_FIELDS: Record<XtmProduct, ReadonlyArray<string>> = {
+  opencti: ['reports', 'relationships'],
+  openaev: ['simulations', 'findings'],
+};
 
 const actionIn = (product: XtmProduct) => (product === 'opencti'
   ? t`See the reports, relationships and context of this object in OpenCTI.`
   : t`See the simulations and findings of this object in OpenAEV.`);
 
+/** How an object of `kind` gets into `product`: the key the two products share. */
+const howItGetsThere = (kind: CounterpartKind, product: XtmProduct) => {
+  const name = productName(product);
+  switch (kind) {
+    case 'ASSET':
+      return t`It appears here once ${name} holds a machine with the same hostname.`;
+    case 'VULNERABILITY':
+      return t`It appears here once ${name} holds the same CVE.`;
+    case 'THREAT':
+      return t`It appears here once ${name} holds the same threat, by its STIX id.`;
+    case 'ATTACK_PATTERN':
+      return t`It appears here once ${name} holds the same technique, by its MITRE id.`;
+  }
+};
+
 /**
- * What a pivot opens, shown on hover and keyboard focus: the product, the object's type and name in
- * it, the key facts it answered and what can be done there. The page itself carries only the mark.
+ * What a found emblem opens, shown on hover and keyboard focus: the product, the object's type and
+ * name in it, the key facts it answered and what can be done there.
  */
 export const XtmPivotPreview: FunctionComponent<{ counterpart: XtmCounterpart }> = ({ counterpart }) => {
   const labels = FACT_LABELS();
@@ -101,48 +133,181 @@ export const XtmPivotPreview: FunctionComponent<{ counterpart: XtmCounterpart }>
   );
 };
 
-interface XtmPivotButtonProps {
-  product: XtmProduct,
-  href: string,
-  /** The object's name in the other product, added to the hint when known. */
-  objectName?: string | null,
-  /** The counterpart as answered: its preview replaces the plain hint. */
-  counterpart?: XtmCounterpart,
-  /** A crowded hero (below 1280 px): the product mark alone, 36x36, named by aria-label and the hint. */
-  compact?: boolean,
+/** The teaser of a product not connected: what it would show, example fields as labelled skeletons. */
+export const XtmConnectTeaser: FunctionComponent<{ product: XtmProduct, canConfigure: boolean }> = ({ product, canConfigure }) => {
+  const name = productName(product);
+  const labels = FACT_LABELS();
+  return (
+    <div className="flex max-w-72 flex-col gap-1.5 py-1" data-testid="xtm-teaser">
+      <span className="flex items-center gap-2">
+        <ProductMark product={product} muted />
+        <span className="font-semibold">{t`${name} is not connected`}</span>
+      </span>
+      <span className="text-default-secondary">{actionIn(product)}</span>
+      <dl className="m-0 grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1">
+        {TEASER_FIELDS[product].map((key) => (
+          <div key={key} className="contents">
+            <dt className="text-default-secondary">{labels[key]}</dt>
+            <dd className="m-0"><Skeleton className="h-3 w-12" /></dd>
+            <dd className="m-0 text-xs text-default-secondary">{t`Example`}</dd>
+          </div>
+        ))}
+      </dl>
+      {canConfigure
+        ? <span className="font-semibold">{t`Connect ${name}`}</span>
+        : <span className="text-default-secondary">{t`Ask an administrator to connect ${name}.`}</span>}
+    </div>
+  );
+};
+
+/** The state of one product's emblem for one object. */
+export type XtmEmblemState =
+  | { kind: 'found', counterpart: XtmCounterpart }
+  | { kind: 'not-found' }
+  | { kind: 'not-connected' }
+  | { kind: 'checking' }
+  | { kind: 'unavailable' };
+
+export interface XtmEmblemInput {
+  /** `undefined` while the connections load. */
+  connected: boolean | undefined,
+  connectionsFailed: boolean,
+  /** The object as its source row opens it in this product, when it came from it. */
+  sourced?: XtmCounterpart,
+  /** `undefined` while the lookup loads. */
+  counterparts: ReadonlyArray<XtmCounterpart> | undefined,
+  lookupFailed: boolean,
+  hasKey: boolean,
 }
 
-/** Hero action: "Open in <product>" for one object, with its text or, compact, as an icon button. */
-export const XtmPivotButton: FunctionComponent<XtmPivotButtonProps> = ({ product, href, objectName, counterpart, compact }) => {
-  const label = openIn(product);
-  let hint: ReactNode = objectName ? `${label}: ${objectName}` : label;
-  if (counterpart) {
-    hint = <XtmPivotPreview counterpart={counterpart} />;
+/**
+ * One product's emblem state. A product the object came from is found from its source link, its
+ * facts taken from the lookup when that answered the same product; otherwise the lookup decides.
+ */
+export const xtmEmblemState = (product: XtmProduct, input: XtmEmblemInput): XtmEmblemState => {
+  const match = input.counterparts?.find((c) => c.product === product);
+  if (input.sourced) {
+    return { kind: 'found', counterpart: match ? { ...input.sourced, facts: match.facts } : input.sourced };
   }
+  if (input.connectionsFailed) {
+    return { kind: 'unavailable' };
+  }
+  if (input.connected === undefined) {
+    return { kind: 'checking' };
+  }
+  if (!input.connected) {
+    return { kind: 'not-connected' };
+  }
+  if (!input.hasKey) {
+    return { kind: 'not-found' };
+  }
+  if (input.lookupFailed) {
+    return { kind: 'unavailable' };
+  }
+  if (input.counterparts === undefined) {
+    return { kind: 'checking' };
+  }
+  return match ? { kind: 'found', counterpart: match } : { kind: 'not-found' };
+};
+
+interface XtmEmblemProps {
+  product: XtmProduct,
+  kind: CounterpartKind,
+  state: XtmEmblemState,
+}
+
+const GreyHint: FunctionComponent<{ title: string, line: string }> = ({ title, line }) => (
+  <div className="flex max-w-72 flex-col gap-1 py-1">
+    <span className="font-semibold">{title}</span>
+    <span className="text-default-secondary">{line}</span>
+  </div>
+);
+
+/** The not-connected emblem: the connector link for a configurer, a disabled look and a read-only hint for the others. */
+const NotConnectedEmblem: FunctionComponent<{ product: XtmProduct }> = ({ product }) => {
+  const canConfigure = useHasManageSecurity();
+  const name = productName(product);
+  const control = canConfigure
+    ? (
+      <IconButton asChild priority="secondary" size="md" aria-label={t`Connect ${name}`} icon={<ProductMark product={product} size={20} muted />}>
+        <Link
+          from="/$tenantId/{-$organizationId}"
+          to="/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug"
+          params={{ connectorSlug: product }}
+        />
+      </IconButton>
+    )
+    : <IconButton priority="secondary" size="md" aria-disabled aria-label={t`${name} is not connected`} icon={<ProductMark product={product} size={20} muted />} />;
+  return <TooltipHint hint={<XtmConnectTeaser product={product} canConfigure={canConfigure} />}>{control}</TooltipHint>;
+};
+
+/** One product's icon-only hero button, 36 px like the sibling header actions, in its state. */
+export const XtmEmblem: FunctionComponent<XtmEmblemProps> = ({ product, kind, state }) => {
+  const name = productName(product);
+  let control: ReactElement;
+  let hint: ReactNode;
+  if (state.kind === 'not-connected') {
+    return <NotConnectedEmblem product={product} />;
+  }
+  if (state.kind === 'found') {
+    hint = <XtmPivotPreview counterpart={state.counterpart} />;
+    control = (
+      <IconButton asChild priority="secondary" size="md" aria-label={openIn(product)} icon={<ProductMark product={product} size={20} />}>
+        <a href={state.counterpart.objectUrl} target="_blank" rel="noreferrer noopener" />
+      </IconButton>
+    );
+  } else {
+    let title = t`Not found in ${name}`;
+    let line = howItGetsThere(kind, product);
+    if (state.kind === 'checking') {
+      title = t`Looking in ${name}…`;
+      line = t`The emblem turns active if ${name} holds this object.`;
+    } else if (state.kind === 'unavailable') {
+      title = t`${name} could not be reached`;
+      line = t`Try again later.`;
+    }
+    hint = <GreyHint title={title} line={line} />;
+    control = <IconButton priority="secondary" size="md" aria-disabled aria-label={title} icon={<ProductMark product={product} size={20} muted />} />;
+  }
+  return <TooltipHint hint={hint}>{control}</TooltipHint>;
+};
+
+interface XtmPivotEmblemsProps {
+  kind: CounterpartKind,
+  /** The key the products share (hostname, CVE id, STIX id); `null` when the object has none. */
+  objectKey: string | null | undefined,
+  /** The object as its source opens it in a product it came from: that emblem is found, never looked up. */
+  sourced?: Partial<Record<XtmProduct, XtmCounterpart>>,
+}
+
+/** Hero slot: one emblem per counterpart product, OpenCTI then OpenAEV, always drawn. */
+export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind, objectKey, sourced }) => {
+  const trpc = useTRPC();
+  const connections = useXtmConnections();
+  const { present, options } = lookupOptions([objectKey]);
+  const lookup = useQuery(trpc.xtm.counterparts.queryOptions({ kind, keys: present }, options));
   return (
     <TooltipHintProvider>
-      <TooltipHint hint={hint}>
-        <Button asChild priority="secondary" className={compact ? COMPACT_CLASS : undefined}>
-          <a href={href} target="_blank" rel="noreferrer noopener" aria-label={compact ? label : undefined}>
-            <ProductMark product={product} />
-            {compact ? null : label}
-          </a>
-        </Button>
-      </TooltipHint>
+      {XTM_PRODUCTS.map((product) => (
+        <XtmEmblem
+          key={product}
+          product={product}
+          kind={kind}
+          state={xtmEmblemState(product, {
+            connected: connections.data?.find((c) => c.product === product)?.connected ?? (connections.data ? false : undefined),
+            connectionsFailed: connections.isError,
+            sourced: sourced?.[product],
+            counterparts: lookup.data,
+            lookupFailed: lookup.isError,
+            hasKey: present.length > 0,
+          })}
+        />
+      ))}
     </TooltipHintProvider>
   );
 };
 
-/** Hero actions: "Open in <product>", one per connected product holding the object, its preview on hover and focus. */
-export const XtmPivotButtons: FunctionComponent<{ counterparts: ReadonlyArray<XtmCounterpart>, compact?: boolean }> = ({ counterparts, compact }) => (
-  <>
-    {counterparts.map((c) => (
-      <XtmPivotButton key={`${c.product}-${c.objectId}`} product={c.product} href={c.objectUrl} counterpart={c} compact={compact} />
-    ))}
-  </>
-);
-
-/** List row: the product mark, a link to the counterpart, nothing when none. */
+/** List row: a 16 px product mark per counterpart found, a link to it; nothing otherwise. */
 export const XtmRowMarks: FunctionComponent<{ counterparts: ReadonlyArray<XtmCounterpart> }> = ({ counterparts }): ReactElement | null => {
   if (counterparts.length === 0) {
     return null;
@@ -152,7 +317,7 @@ export const XtmRowMarks: FunctionComponent<{ counterparts: ReadonlyArray<XtmCou
       <span className="inline-flex items-center">
         {counterparts.map((c) => (
           <TooltipHint key={`${c.product}-${c.objectId}`} hint={<XtmPivotPreview counterpart={c} />}>
-            {/* 24 px hit area around the 14 px mark. */}
+            {/* 24 px hit area around the 16 px mark. */}
             <a
               href={c.objectUrl}
               target="_blank"
@@ -161,7 +326,7 @@ export const XtmRowMarks: FunctionComponent<{ counterparts: ReadonlyArray<XtmCou
               className="inline-flex h-6 w-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 ring-focus"
               onClick={(e) => e.stopPropagation()}
             >
-              <ProductMark product={c.product} size={14} />
+              <ProductMark product={c.product} size={16} />
             </a>
           </TooltipHint>
         ))}
@@ -170,91 +335,7 @@ export const XtmRowMarks: FunctionComponent<{ counterparts: ReadonlyArray<XtmCou
   );
 };
 
-/**
- * The "Connect <product>" hero action: the connector settings link for a configurer; for a reader
- * who cannot configure, the same button disabled with a read-only hint (as OpenCTI and OpenAEV do).
- */
-export const XtmConnectCta: FunctionComponent<{ product: XtmProduct, compact?: boolean }> = ({ product, compact }) => {
-  const canConfigure = useHasManageSecurity();
-  const name = productName(product);
-  const label = t`Connect ${name}`;
-  if (!canConfigure) {
-    const hint = t`${name} is not connected. Ask an administrator to connect it to see this object there.`;
-    return (
-      // A disabled button fires no pointer event, so the hint hangs on a focusable wrapper.
-      <TooltipHintProvider>
-        <TooltipHint hint={hint}>
-          <span tabIndex={0} className="inline-flex focus-visible:outline-none focus-visible:ring-2 ring-focus">
-            <Button priority="secondary" disabled className={compact ? COMPACT_CLASS : undefined} aria-label={compact ? label : undefined}>
-              <ProductMark product={product} />
-              {compact ? null : label}
-            </Button>
-            <span className="sr-only">{hint}</span>
-          </span>
-        </TooltipHint>
-      </TooltipHintProvider>
-    );
-  }
-  const link = (
-    <Button asChild priority="secondary" className={compact ? COMPACT_CLASS : undefined}>
-      <Link
-        from="/$tenantId/{-$organizationId}"
-        to="/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug"
-        params={{ connectorSlug: product }}
-        aria-label={compact ? label : undefined}
-      >
-        <ProductMark product={product} />
-        {compact ? null : label}
-      </Link>
-    </Button>
-  );
-  if (!compact) {
-    return link;
-  }
-  return (
-    <TooltipHintProvider>
-      <TooltipHint hint={label}>{link}</TooltipHint>
-    </TooltipHintProvider>
-  );
-};
-
-/** Hero actions: one "Connect <product>" per product of the list that is not connected. */
-export const XtmConnectActions: FunctionComponent<{ products?: ReadonlyArray<XtmProduct>, compact?: boolean }> = ({ products, compact }): ReactElement | null => {
-  const { data: connections } = useXtmConnections();
-  const missing = (products ?? ALL_PRODUCTS).filter((p) => connections?.find((c) => c.product === p)?.connected === false);
-  if (missing.length === 0) {
-    return null;
-  }
-  return <>{missing.map((p) => <XtmConnectCta key={p} product={p} compact={compact} />)}</>;
-};
-
-/** The XTM products an object came from: their source row already opens it there, so no pivot is drawn for them. */
+/** The XTM products among an object's sources. */
 export const xtmSourceProducts = (sources: ReadonlyArray<string | null | undefined>): Array<XtmProduct> => (
-  ALL_PRODUCTS.filter((p) => sources.includes(p))
+  XTM_PRODUCTS.filter((p) => sources.includes(p))
 );
-
-interface XtmCounterpartPivotsProps {
-  kind: CounterpartKind,
-  objectKey: string | null | undefined,
-  /** Products never queried as a counterpart: the object's own sources, which carry the pivot themselves. */
-  skip?: ReadonlyArray<XtmProduct>,
-  compact?: boolean,
-}
-
-/**
- * Hero actions for one object: "Open in <product>" for each connected product that holds it, its
- * facts in the hover and focus preview. Nothing at all when a connected product does not hold it, while
- * a product is not connected (the connect call to action covers it), for an object with no shared key
- * or while the lookup loads or fails.
- */
-export const XtmCounterpartPivots: FunctionComponent<XtmCounterpartPivotsProps> = ({ kind, objectKey, skip, compact }): ReactElement | null => {
-  const { data: connections } = useXtmConnections();
-  const counterparts = useCounterparts(kind, [objectKey]);
-  const shown = counterparts.filter((c) => (
-    !skip?.includes(c.product) && connections?.find((x) => x.product === c.product)?.connected === true
-  ));
-  if (!objectKey || shown.length === 0) {
-    return null;
-  }
-  return <XtmPivotButtons counterparts={shown} compact={compact} />;
-};
