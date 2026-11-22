@@ -192,12 +192,16 @@ const EvidenceHealthSchema = z.object({
     supportingAssetId: z.uuid(),
     supportingAssetName: z.string().nullable(),
     supportingAssetDerivedName: z.string().nullable(),
+    /** The asset's markings (STIX ids): a caller that shows the name to others keeps a marked one out. */
+    markingRefs: z.array(z.string()),
     impact: z.number(),
     state: z.enum(EVIDENCE_HEALTH_STATES),
     lastEvidenceAt: z.date().nullable(),
     sources: z.array(z.object({ connectorId: z.uuid().nullable(), origin: z.enum(['connector', 'user']), lastSeenAt: z.date().nullable() })),
   })),
   counts: z.record(z.enum(EVIDENCE_HEALTH_STATES), z.number().int()),
+  /** The scenario's own markings (STIX ids), for the same reason. */
+  markingRefs: z.array(z.string()),
   sources: z.array(z.object({
     kind: z.string(),
     lastRunAt: z.date().nullable(),

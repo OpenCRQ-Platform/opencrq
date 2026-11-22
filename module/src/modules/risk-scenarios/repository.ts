@@ -472,7 +472,7 @@ export const riskScenariosRepository = defineRepository({
     }
     const sources = views.supportingAssetSources;
     const [assets, sourceRows, versions, verdicts] = await Promise.all([
-      db.select({ id: views.supportingAssets.id, categoryId: views.supportingAssets.categoryId })
+      db.select({ id: views.supportingAssets.id, categoryId: views.supportingAssets.categoryId, markingRefs: views.supportingAssets.markingRefs })
         .from(views.supportingAssets)
         .where(inUuids(views.supportingAssets.id, supportingAssetIds)),
       // bounded-by: the sources of the scenario's reached assets
@@ -802,6 +802,16 @@ export const riskScenariosRepository = defineRepository({
       .leftJoinLateral(tefInput, LATERAL_ON)
       .leftJoin(tefEstimate, eq(tefEstimate.riskScenarioId, scenario.id))
       .where(organizationId ? eq(scenario.organizationId, organizationId) : undefined);
+  },
+
+  /** The scenario's own markings (STIX ids), `undefined` for a scenario the reader cannot see. */
+  findScenarioMarkingRefs: async ({ db, views }, riskScenarioId: string): Promise<Array<string> | undefined> => {
+    const scenario = (await db
+      .select({ markingRefs: views.riskScenarios.markingRefs })
+      .from(views.riskScenarios)
+      .where(eq(views.riskScenarios.id, riskScenarioId))
+      .limit(1)).at(0);
+    return scenario?.markingRefs;
   },
 
   /** Just the mode, for a caller that needs no more than that — never `findRiskScenarioById`'s three statements. */
