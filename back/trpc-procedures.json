@@ -521,6 +521,7 @@
                   "identity",
                   "saas_application",
                   "ai_target",
+                  "source_code",
                   "security_platform",
                   "generic_asset"
                 ]
@@ -9207,6 +9208,7 @@
               "identity",
               "saas_application",
               "ai_target",
+              "source_code",
               "security_platform",
               "generic_asset"
             ]
@@ -9286,6 +9288,11 @@
                   "ai_agent",
                   "mcp_server",
                   "rag_pipeline",
+                  "code_repository",
+                  "ci_cd_pipeline",
+                  "package_registry",
+                  "software_package",
+                  "code_other",
                   "edr",
                   "xdr",
                   "siem",
@@ -10072,6 +10079,7 @@
               "identity",
               "saas_application",
               "ai_target",
+              "source_code",
               "security_platform",
               "generic_asset"
             ]
@@ -10183,6 +10191,7 @@
                   "identity",
                   "saas_application",
                   "ai_target",
+                  "source_code",
                   "security_platform",
                   "generic_asset"
                 ]
@@ -10468,6 +10477,7 @@
               "identity",
               "saas_application",
               "ai_target",
+              "source_code",
               "security_platform",
               "generic_asset"
             ]
@@ -10547,6 +10557,11 @@
                   "ai_agent",
                   "mcp_server",
                   "rag_pipeline",
+                  "code_repository",
+                  "ci_cd_pipeline",
+                  "package_registry",
+                  "software_package",
+                  "code_other",
                   "edr",
                   "xdr",
                   "siem",
