@@ -10,7 +10,7 @@ import { SupportingAssetUpdateSheet } from '../../../../../features';
 import { canResyncWithConnectors } from '../../../../../features/supporting-assets/connectors-utils';
 import { trpcClient, useTRPC } from '../../../../../lib';
 import { assetNameText } from '../../../../../utils/asset-name-utils';
-import { XtmConnectActions, XtmCounterpartCards } from '../../../../../features/xtm/xtm-counterparts';
+import { XtmConnectActions, XtmCounterpartPivots, xtmSourceProducts } from '../../../../../features/xtm/xtm-counterparts';
 
 const assetHostname = (properties: unknown): string | null => {
   const hostname = typeof properties === 'object' && properties !== null && 'hostname' in properties ? properties.hostname : null;
@@ -49,6 +49,10 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
     // Techniques are attached to the category, not to the asset: the tile is labelled accordingly.
     const ttpCount = (techniqueCounts ?? []).find((r) => r.categoryId === supportingAsset.categoryId)?.techniqueCount ?? 0;
     const sources = supportingAsset.sources.flatMap((s) => (s.source ? [s.source] : []));
+    // A product the asset came from is already its pivot (Sources: "Open in <product>"): never looked up again.
+    const sourceProducts = xtmSourceProducts(sources);
+    const otherProducts = (['opencti', 'openaev'] as const).filter((p) => !sourceProducts.includes(p));
+    const hostname = assetHostname(supportingAsset.properties);
     const manualFields = [
       ...supportingAsset.manualValues.map((v) => assetManualAttributeLabel(v.attribute)),
       ...manualPropertyFieldLabels(supportingAsset.manualProperties),
@@ -110,7 +114,9 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
             crqPosture={crqPosture}
             actions={
               <>
-                {assetHostname(supportingAsset.properties) !== null && <XtmConnectActions />}
+                {/* The same machine in OpenCTI (System, Hostname) and OpenAEV (asset), by its hostname. */}
+                <XtmCounterpartPivots kind="ASSET" objectKey={hostname} skip={sourceProducts} />
+                {hostname !== null && otherProducts.length > 0 && <XtmConnectActions products={otherProducts} />}
                 <AssetResyncAction
                   supportingAssetId={supportingAsset.id}
                   canResync={canResyncWithConnectors(manualFields.length, supportingAsset.sources)}
@@ -121,8 +127,6 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
               </>
             }
           />
-          {/* The same machine in OpenCTI (System, Hostname) and OpenAEV (asset), by its hostname. */}
-          <XtmCounterpartCards kind="ASSET" objectKey={assetHostname(supportingAsset.properties)} />
           <RouteTabs tabs={tabs} />
           <Outlet />
         </div>

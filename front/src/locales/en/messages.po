@@ -6296,9 +6296,6 @@ msgstr "improbable (0)"
 msgid "In “{heldName}”"
 msgstr "In “{heldName}”"
 
-msgid "In {name}"
-msgstr "In {name}"
-
 msgid "In brief"
 msgstr "In brief"
 
@@ -8499,9 +8496,6 @@ msgstr "Not exposed"
 msgid "Not externally exposed"
 msgstr "Not externally exposed"
 
-msgid "Not found in {name}."
-msgstr "Not found in {name}."
-
 msgid "not inherited"
 msgstr "not inherited"
 
@@ -10155,6 +10149,9 @@ msgstr "Reported by"
 msgid "Reported: {reported}"
 msgstr "Reported: {reported}"
 
+msgid "Reports"
+msgstr "Reports"
+
 msgid "required"
 msgstr "required"
 
@@ -10861,11 +10858,17 @@ msgstr "See the documentation"
 msgid "See the gap to tolerance"
 msgstr "See the gap to tolerance"
 
+msgid "See the reports, relationships and context of this object in OpenCTI."
+msgstr "See the reports, relationships and context of this object in OpenCTI."
+
 msgid "See the risk scope"
 msgstr "See the risk scope"
 
 msgid "See the Risk treatment dashboard"
 msgstr "See the Risk treatment dashboard"
+
+msgid "See the simulations and findings of this object in OpenAEV."
+msgstr "See the simulations and findings of this object in OpenAEV."
 
 msgid "See the tests in {control} › Validation"
 msgstr "See the tests in {control} › Validation"

@@ -1,12 +1,10 @@
 import type { TRPCRouter } from '@app/back/src/types/trpc-router';
-import { Button, Paper, Text } from '@filigran/design-system';
+import { Button } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
-import { Trans } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
 import { Link } from '@tanstack/react-router';
-import { ExternalLink } from 'lucide-react';
-import type { FunctionComponent, ReactElement } from 'react';
+import type { FunctionComponent, ReactElement, ReactNode } from 'react';
 import { TooltipHint, TooltipHintProvider } from '../../components/shared/tooltip-hint';
 import { useHasManageSecurity } from '../../hooks/utils/use-has-manage-security';
 import { useTRPC } from '../../lib';
@@ -14,10 +12,12 @@ import { useTRPC } from '../../lib';
 type RouterOutputs = inferRouterOutputs<TRPCRouter>;
 
 /**
- * Cross-product awareness, the OpenCRQ side of the pattern OpenCTI and OpenAEV share: a pivot to
- * the same object in a connected XTM product, its key facts on an overview card, and a "Connect"
- * call to action in the hero where the product is not connected. Same marks, wording and placement
- * in the three products: no card while a product is not connected, the call to action in the hero.
+ * Cross-product awareness, the OpenCRQ side of the pattern OpenCTI and OpenAEV share, kept discreet:
+ * an "Open in <product>" action in the hero (a mark on a list row) when a connected XTM product holds
+ * the same object, its key facts in the hover and focus preview, and a "Connect" call to action in
+ * the hero where the product is not connected. A connected product that does not hold the object
+ * renders nothing, and a product the object came from is never queried: its source row is the pivot.
+ * No overview card, no reserved slot. Same marks, wording and states in the three products.
  */
 
 export type XtmProduct = 'opencti' | 'openaev';
@@ -60,21 +60,68 @@ const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number }> = (
 // eslint-disable-next-line lingui/no-unlocalized-strings -- Tailwind class list, not copy
 const COMPACT_CLASS = 'h-9 w-9 justify-center p-0';
 
+const FACT_LABELS = (): Record<string, string> => ({
+  findings: t`Findings`,
+  affected_assets: t`Affected assets`,
+  simulations: t`Simulations`,
+  last_simulation: t`Last simulation`,
+  reports: t`Reports`,
+});
+
+const actionIn = (product: XtmProduct) => (product === 'opencti'
+  ? t`See the reports, relationships and context of this object in OpenCTI.`
+  : t`See the simulations and findings of this object in OpenAEV.`);
+
+/**
+ * What a pivot opens, shown on hover and keyboard focus: the product, the object's type and name in
+ * it, the key facts it answered and what can be done there. The page itself carries only the mark.
+ */
+export const XtmPivotPreview: FunctionComponent<{ counterpart: XtmCounterpart }> = ({ counterpart }) => {
+  const labels = FACT_LABELS();
+  return (
+    <div className="flex max-w-72 flex-col gap-1.5 py-1" data-testid="xtm-preview">
+      <span className="flex items-center gap-2">
+        <ProductMark product={counterpart.product} />
+        <span className="font-semibold">{productName(counterpart.product)}</span>
+        <span className="text-default-secondary">{counterpart.objectType}</span>
+      </span>
+      {counterpart.objectName && <span className="font-semibold">{counterpart.objectName}</span>}
+      {counterpart.facts.length > 0 && (
+        <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5">
+          {counterpart.facts.map((f) => (
+            <div key={f.key} className="contents">
+              <dt className="text-default-secondary">{labels[f.key] ?? f.key}</dt>
+              <dd className="m-0 font-semibold">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      <span className="text-default-secondary">{actionIn(counterpart.product)}</span>
+    </div>
+  );
+};
+
 interface XtmPivotButtonProps {
   product: XtmProduct,
   href: string,
   /** The object's name in the other product, added to the hint when known. */
   objectName?: string | null,
+  /** The counterpart as answered: its preview replaces the plain hint. */
+  counterpart?: XtmCounterpart,
   /** A crowded hero (below 1280 px): the product mark alone, 36x36, named by aria-label and the hint. */
   compact?: boolean,
 }
 
 /** Hero action: "Open in <product>" for one object, with its text or, compact, as an icon button. */
-export const XtmPivotButton: FunctionComponent<XtmPivotButtonProps> = ({ product, href, objectName, compact }) => {
+export const XtmPivotButton: FunctionComponent<XtmPivotButtonProps> = ({ product, href, objectName, counterpart, compact }) => {
   const label = openIn(product);
+  let hint: ReactNode = objectName ? `${label}: ${objectName}` : label;
+  if (counterpart) {
+    hint = <XtmPivotPreview counterpart={counterpart} />;
+  }
   return (
     <TooltipHintProvider>
-      <TooltipHint hint={objectName ? `${label}: ${objectName}` : label}>
+      <TooltipHint hint={hint}>
         <Button asChild priority="secondary" className={compact ? COMPACT_CLASS : undefined}>
           <a href={href} target="_blank" rel="noreferrer noopener" aria-label={compact ? label : undefined}>
             <ProductMark product={product} />
@@ -86,11 +133,11 @@ export const XtmPivotButton: FunctionComponent<XtmPivotButtonProps> = ({ product
   );
 };
 
-/** Hero actions: "Open in <product>", one per connected product holding the object. */
+/** Hero actions: "Open in <product>", one per connected product holding the object, its preview on hover and focus. */
 export const XtmPivotButtons: FunctionComponent<{ counterparts: ReadonlyArray<XtmCounterpart>, compact?: boolean }> = ({ counterparts, compact }) => (
   <>
     {counterparts.map((c) => (
-      <XtmPivotButton key={`${c.product}-${c.objectId}`} product={c.product} href={c.objectUrl} objectName={c.objectName} compact={compact} />
+      <XtmPivotButton key={`${c.product}-${c.objectId}`} product={c.product} href={c.objectUrl} counterpart={c} compact={compact} />
     ))}
   </>
 );
@@ -104,7 +151,7 @@ export const XtmRowMarks: FunctionComponent<{ counterparts: ReadonlyArray<XtmCou
     <TooltipHintProvider>
       <span className="inline-flex items-center">
         {counterparts.map((c) => (
-          <TooltipHint key={`${c.product}-${c.objectId}`} hint={openIn(c.product)}>
+          <TooltipHint key={`${c.product}-${c.objectId}`} hint={<XtmPivotPreview counterpart={c} />}>
             {/* 24 px hit area around the 14 px mark. */}
             <a
               href={c.objectUrl}
@@ -122,13 +169,6 @@ export const XtmRowMarks: FunctionComponent<{ counterparts: ReadonlyArray<XtmCou
     </TooltipHintProvider>
   );
 };
-
-const FACT_LABELS = (): Record<string, string> => ({
-  findings: t`Findings`,
-  affected_assets: t`Affected assets`,
-  simulations: t`Simulations`,
-  last_simulation: t`Last simulation`,
-});
 
 /**
  * The "Connect <product>" hero action: the connector settings link for a configurer; for a reader
@@ -178,12 +218,6 @@ export const XtmConnectCta: FunctionComponent<{ product: XtmProduct, compact?: b
   );
 };
 
-interface XtmCounterpartCardProps {
-  product: XtmProduct,
-  kind: CounterpartKind,
-  objectKey: string | null | undefined,
-}
-
 /** Hero actions: one "Connect <product>" per product of the list that is not connected. */
 export const XtmConnectActions: FunctionComponent<{ products?: ReadonlyArray<XtmProduct>, compact?: boolean }> = ({ products, compact }): ReactElement | null => {
   const { data: connections } = useXtmConnections();
@@ -194,65 +228,33 @@ export const XtmConnectActions: FunctionComponent<{ products?: ReadonlyArray<Xtm
   return <>{missing.map((p) => <XtmConnectCta key={p} product={p} compact={compact} />)}</>;
 };
 
+/** The XTM products an object came from: their source row already opens it there, so no pivot is drawn for them. */
+export const xtmSourceProducts = (sources: ReadonlyArray<string | null | undefined>): Array<XtmProduct> => (
+  ALL_PRODUCTS.filter((p) => sources.includes(p))
+);
+
+interface XtmCounterpartPivotsProps {
+  kind: CounterpartKind,
+  objectKey: string | null | undefined,
+  /** Products never queried as a counterpart: the object's own sources, which carry the pivot themselves. */
+  skip?: ReadonlyArray<XtmProduct>,
+  compact?: boolean,
+}
+
 /**
- * Overview card "In <product>": the counterpart with its key facts, or "Not found in <product>" when
- * the connected product does not hold it. Renders nothing while the product is not connected (the
- * hero carries the connect call to action), for an object with no key the products share, or while
- * the connections load.
+ * Hero actions for one object: "Open in <product>" for each connected product that holds it, its
+ * facts in the hover and focus preview. Nothing at all when a connected product does not hold it, while
+ * a product is not connected (the connect call to action covers it), for an object with no shared key
+ * or while the lookup loads or fails.
  */
-export const XtmCounterpartCard: FunctionComponent<XtmCounterpartCardProps> = ({ product, kind, objectKey }): ReactElement | null => {
+export const XtmCounterpartPivots: FunctionComponent<XtmCounterpartPivotsProps> = ({ kind, objectKey, skip, compact }): ReactElement | null => {
   const { data: connections } = useXtmConnections();
   const counterparts = useCounterparts(kind, [objectKey]);
-  const connection = connections?.find((c) => c.product === product);
-  if (!objectKey || !connection?.connected) {
+  const shown = counterparts.filter((c) => (
+    !skip?.includes(c.product) && connections?.find((x) => x.product === c.product)?.connected === true
+  ));
+  if (!objectKey || shown.length === 0) {
     return null;
   }
-  const name = productName(product);
-  const match = counterparts.find((c) => c.product === product);
-  const labels = FACT_LABELS();
-  return (
-    <Paper padding={16} className="flex flex-col gap-2">
-      <span className="flex items-center gap-2">
-        <ProductMark product={product} />
-        <Text as="h3" variant="content-base-bold" className="m-0">{t`In ${name}`}</Text>
-      </span>
-      {!match && (
-        <Text as="p" variant="content-compact" className="m-0 text-default-secondary">
-          <Trans>Not found in {name}.</Trans>
-        </Text>
-      )}
-      {match && (
-        <>
-          <a href={match.objectUrl} target="_blank" rel="noreferrer noopener" className="flex items-center gap-1.5 text-primary underline-offset-4 hover:underline">
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-            {match.objectName ?? match.key}
-          </a>
-          {match.facts.length > 0 && (
-            <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              {match.facts.map((f) => (
-                <div key={f.key} className="contents">
-                  <dt><Text as="span" variant="content-compact" className="text-default-secondary">{labels[f.key] ?? f.key}</Text></dt>
-                  <dd className="m-0"><Text as="span" variant="content-compact">{f.value}</Text></dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </>
-      )}
-    </Paper>
-  );
-};
-
-/** The cards of the connected products, for an object both other products may hold; nothing when none is connected. */
-export const XtmCounterpartCards: FunctionComponent<{ kind: CounterpartKind, objectKey: string | null | undefined, products?: ReadonlyArray<XtmProduct> }> = ({ kind, objectKey, products }): ReactElement | null => {
-  const { data: connections } = useXtmConnections();
-  const connected = (products ?? ALL_PRODUCTS).filter((p) => connections?.find((c) => c.product === p)?.connected === true);
-  if (!objectKey || connected.length === 0) {
-    return null;
-  }
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {connected.map((p) => <XtmCounterpartCard key={p} product={p} kind={kind} objectKey={objectKey} />)}
-    </div>
-  );
+  return <XtmPivotButtons counterparts={shown} compact={compact} />;
 };

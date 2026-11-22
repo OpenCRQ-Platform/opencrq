@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { XtmCounterpart } from './xtm-counterparts';
 import { FAILED, renderWithTrpc } from '../../providers/trpc-test-harness';
-import { XtmConnectActions, XtmCounterpartCard, XtmCounterpartCards, XtmPivotButtons, XtmRowMarks } from './xtm-counterparts';
+import { XtmConnectActions, XtmCounterpartPivots, XtmPivotButtons, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
 
 const canConfigure = vi.fn<() => boolean>();
 vi.mock('../../hooks/utils/use-has-manage-security', () => ({ useHasManageSecurity: () => canConfigure() }));
@@ -31,59 +31,52 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
-const renderCard = (product: 'opencti' | 'openaev', counterparts: unknown, connections: unknown = CONNECTED) => renderWithTrpc(
-  <XtmCounterpartCard product={product} kind="VULNERABILITY" objectKey={CVE} />,
+const renderPivots = (counterparts: unknown, connections: unknown = CONNECTED, skip?: ReadonlyArray<'opencti' | 'openaev'>) => renderWithTrpc(
+  <XtmCounterpartPivots kind="VULNERABILITY" objectKey={CVE} skip={skip} />,
   { answers: { 'xtm.connections': connections, 'xtm.counterparts': counterparts } },
 );
 
-describe('XtmCounterpartCard', () => {
-  it('links the counterpart and shows its key facts', async () => {
-    renderCard('opencti', [MATCH]);
-    const link = await screen.findByRole('link', { name: 'PAN-OS GlobalProtect' });
+describe('XtmCounterpartPivots', () => {
+  it('opens the counterpart in the connected product, with no card on the page', async () => {
+    const { container } = renderPivots([MATCH]);
+    const link = await screen.findByRole('link', { name: 'Open in OpenCTI' });
     expect(link.getAttribute('href')).toBe('https://opencti.example/dashboard/id/v1');
     expect(link.getAttribute('target')).toBe('_blank');
-    expect(screen.getByText('In OpenCTI')).toBeTruthy();
-    expect(screen.getByText('Findings')).toBeTruthy();
-    expect(screen.getByText('3')).toBeTruthy();
+    expect(container.textContent).not.toContain('In OpenCTI');
+    expect(screen.queryByTestId('xtm-preview')).toBeNull();
   });
 
-  it('says the connected product does not hold the object', async () => {
-    renderCard('opencti', []);
-    expect(await screen.findByText('Not found in OpenCTI.')).toBeTruthy();
+  it('renders nothing when the connected product does not hold the object', async () => {
+    const { container } = renderPivots([]);
+    await waitFor(() => expect(container.textContent).toBe(''));
+    expect(container.textContent).not.toContain('Not found');
   });
 
-  it('renders nothing while the product is not connected (the hero carries the call to action)', async () => {
-    const { container } = renderCard('openaev', []);
+  it('renders nothing while the product is not connected (the connect call to action covers it)', async () => {
+    const { container } = renderPivots([{ ...MATCH, product: 'openaev' }]);
     await waitFor(() => expect(container.textContent).toBe(''));
   });
 
   it('degrades silently when the lookup fails', async () => {
-    renderCard('opencti', FAILED);
-    expect(await screen.findByText('Not found in OpenCTI.')).toBeTruthy();
+    const { container } = renderPivots(FAILED);
+    await waitFor(() => expect(container.textContent).toBe(''));
   });
 
   it('renders nothing while the connections are unknown', async () => {
-    const { container } = renderCard('opencti', [MATCH], FAILED);
+    const { container } = renderPivots([MATCH], FAILED);
+    await waitFor(() => expect(container.textContent).toBe(''));
+  });
+
+  it('never pivots to a product the object came from (its source row is the pivot)', async () => {
+    const { container } = renderPivots([MATCH], CONNECTED, ['opencti']);
     await waitFor(() => expect(container.textContent).toBe(''));
   });
 });
 
-describe('XtmCounterpartCards', () => {
-  it('shows the cards of the connected products only', async () => {
-    renderWithTrpc(
-      <XtmCounterpartCards kind="VULNERABILITY" objectKey={CVE} />,
-      { answers: { 'xtm.connections': CONNECTED, 'xtm.counterparts': [MATCH] } },
-    );
-    expect(await screen.findByText('In OpenCTI')).toBeTruthy();
-    expect(screen.queryByText('In OpenAEV')).toBeNull();
-  });
-
-  it('renders nothing when no product is connected', async () => {
-    const { container } = renderWithTrpc(
-      <XtmCounterpartCards kind="VULNERABILITY" objectKey={CVE} />,
-      { answers: { 'xtm.connections': [{ product: 'opencti', connected: false, url: null }, { product: 'openaev', connected: false, url: null }], 'xtm.counterparts': [] } },
-    );
-    await waitFor(() => expect(container.textContent).toBe(''));
+describe('xtmSourceProducts', () => {
+  it('keeps the XTM products among the sources', () => {
+    expect(xtmSourceProducts(['openaev', 'nist', null])).toEqual(['openaev']);
+    expect(xtmSourceProducts(['microsoft_graph'])).toEqual([]);
   });
 });
 
@@ -139,6 +132,23 @@ describe('XtmPivotButtons', () => {
     const link = screen.getByRole('link', { name: 'Open in OpenCTI' });
     expect(link.textContent).toBe('');
     expect(link.getAttribute('href')).toBe(MATCH.objectUrl);
+  });
+});
+
+describe('XtmPivotPreview', () => {
+  it('shows what the click opens: product, type, name, facts and the next step', () => {
+    renderWithTrpc(<XtmPivotPreview counterpart={MATCH} />);
+    expect(screen.getByText('OpenCTI')).toBeTruthy();
+    expect(screen.getByText('Vulnerability')).toBeTruthy();
+    expect(screen.getByText('PAN-OS GlobalProtect')).toBeTruthy();
+    expect(screen.getByText('Findings')).toBeTruthy();
+    expect(screen.getByText('3')).toBeTruthy();
+    expect(screen.getByText(/See the reports, relationships and context/)).toBeTruthy();
+  });
+
+  it('leaves the fact list out when the product answered none', () => {
+    const { container } = renderWithTrpc(<XtmPivotPreview counterpart={{ ...MATCH, facts: [] }} />);
+    expect(container.querySelector('dl')).toBeNull();
   });
 });
 
