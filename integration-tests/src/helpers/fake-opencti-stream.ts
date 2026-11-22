@@ -26,7 +26,10 @@ export interface FakeStreamRequest {
 
 export interface FakeOpenCtiStream {
   url: string,
+  /** The stream connections only; the GraphQL reads are counted in `graphqlRequests`. */
   requests: Array<FakeStreamRequest>,
+  /** How many GraphQL calls (the marking definitions read at consumer start) the instance answered. */
+  graphqlRequests: () => number,
   /** Serves this many events on each connection, then ends the body. `null` serves everything. */
   closeAfter: (count: number | null) => void,
   /** Publishes more events on the open connection, the way the live edge of a stream moves. */
@@ -77,6 +80,7 @@ export const startFakeOpenCtiStream = (streamId: string, initialEvents: Readonly
   const events: Array<FakeStreamEvent> = [...initialEvents];
   const requests: Array<FakeStreamRequest> = [];
   let closeAfterCount: number | null = null;
+  let graphqlCount = 0;
   const openConnections = new Set<ServerResponse>();
 
   const resumeIndex = (position: string | null): number => {
@@ -89,6 +93,15 @@ export const startFakeOpenCtiStream = (streamId: string, initialEvents: Readonly
 
   const handle = (req: IncomingMessage, res: ServerResponse): void => {
     const url = new URL(req.url ?? '/', 'http://fake');
+    // The consumer reads the instance's marking definitions before it connects: an instance with
+    // none, kept out of the stream connections the tests read.
+    if (req.method === 'POST' && url.pathname === '/graphql') {
+      graphqlCount += 1;
+      req.resume();
+      res.writeHead(200, { 'content-type': 'application/json' })
+        .end(JSON.stringify({ data: { markingDefinitions: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } }));
+      return;
+    }
     const requestedStreamId = url.pathname.startsWith('/stream/') ? url.pathname.slice('/stream/'.length) : '';
     const header = req.headers['last-event-id'];
     const lastEventId = typeof header === 'string' ? header : null;
@@ -157,6 +170,7 @@ export const startFakeOpenCtiStream = (streamId: string, initialEvents: Readonly
       resolve({
         url: `http://127.0.0.1:${port}`,
         requests,
+        graphqlRequests: () => graphqlCount,
         closeAfter: (count: number | null) => {
           closeAfterCount = count;
         },
