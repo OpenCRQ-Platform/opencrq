@@ -69,6 +69,7 @@ export type CategoryGlyph =
   | 'user'
   | 'app-window'
   | 'brain'
+  | 'git-branch'
   | 'shield-check'
   | 'shapes';
 
@@ -83,6 +84,7 @@ const CATEGORY_GLYPH: Record<AssetCategory, CategoryGlyph> = {
   identity: 'user',
   saas_application: 'app-window',
   ai_target: 'brain',
+  source_code: 'git-branch',
   security_platform: 'shield-check',
   generic_asset: 'shapes',
 };
@@ -103,6 +105,7 @@ const CATEGORY_DOMAIN: Record<AssetCategory, AssetDomain> = {
   cloud_resource: 'cloud',
   saas_application: 'cloud',
   ai_target: 'artificial_intelligence',
+  source_code: 'web_application',
   network_device: 'network',
   iot_ot_device: 'network',
   web_application: 'web_application',

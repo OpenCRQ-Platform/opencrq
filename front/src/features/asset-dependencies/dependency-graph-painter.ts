@@ -142,6 +142,11 @@ export const GLYPHS: Record<
     { shape: 'path', d: 'M6 18a4 4 0 01-2-7.465' },
     { shape: 'path', d: 'M6.004 5.125a4 4 0 00-2.526 5.77' },
   ],
+  'git-branch': [
+    { shape: 'path', d: 'M15 6a9 9 0 0 0-9 9V3' },
+    { shape: 'circle', cx: 18, cy: 6, r: 3 },
+    { shape: 'circle', cx: 6, cy: 18, r: 3 },
+  ],
   shapes: [
     { shape: 'path', d: 'M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z' },
     { shape: 'rect', x: 3, y: 14, width: 7, height: 7, rx: 1 },

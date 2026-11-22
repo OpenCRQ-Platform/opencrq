@@ -21,8 +21,8 @@ describe('Attack Surfaces Service', () => {
   describe('auto-creation on tenant creation', () => {
     it('should auto-create one attack surface per asset category', async () => {
       const surfaces = await services.withOrigin(adminOrigin).attackSurfaces.getAttackSurfaces();
-      expect(surfaces.length).toBe(12);
-      expect(new Set(surfaces.map((s) => s.categoryId)).size).toBe(12);
+      expect(surfaces.length).toBe(13);
+      expect(new Set(surfaces.map((s) => s.categoryId)).size).toBe(13);
     });
   });
 
@@ -60,9 +60,9 @@ describe('Attack Surfaces Service', () => {
       }
     });
 
-    it('should give each tenant its own twelve surfaces', async () => {
+    it('should give each tenant its own thirteen surfaces', async () => {
       const tenantBSurfaces = await services.withOrigin(tenantBOrigin).attackSurfaces.getAttackSurfaces();
-      expect(tenantBSurfaces.length).toBe(12);
+      expect(tenantBSurfaces.length).toBe(13);
       expect(new Set(tenantBSurfaces.map((s) => s.tenantId)).size).toBe(1);
     });
   });

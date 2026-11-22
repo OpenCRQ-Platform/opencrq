@@ -3246,6 +3246,9 @@ msgctxt "budget line nature"
 msgid "Build"
 msgstr "Travaux"
 
+msgid "Build and release pipeline that turns code into what ships"
+msgstr "Pipeline de build et de livraison qui transforme le code en ce qui est livré"
+
 msgid "Build line finished"
 msgstr "Fin d'une ligne de travaux"
 
@@ -3461,6 +3464,9 @@ msgstr "Chronologie des changements"
 msgid "CI (continuous integration)"
 msgstr "CI (intégration continue)"
 
+msgid "CI/CD pipeline"
+msgstr "Pipeline CI/CD"
+
 msgid "CISA deadline {dueLabel}"
 msgstr "échéance CISA {dueLabel}"
 
@@ -3605,6 +3611,15 @@ msgstr "Club"
 
 msgid "Code"
 msgstr "Code"
+
+msgid "Code asset that fits no other subcategory"
+msgstr "Actif de code qui n'entre dans aucune autre sous-catégorie"
+
+msgid "Code repository"
+msgstr "Dépôt de code"
+
+msgid "Code repository, pipeline or package your teams build and ship"
+msgstr "Dépôt de code, pipeline ou paquet que vos équipes construisent et livrent"
 
 msgid "Code run on demand by a function platform"
 msgstr "Code exécuté à la demande par une plateforme de fonctions"
@@ -5874,6 +5889,9 @@ msgstr "Obtenir XTM Hub"
 msgid "gets through"
 msgstr "ce qui passe"
 
+msgid "Git repository on GitHub, GitLab, Bitbucket or Azure Repos; its SBOM is attached to it"
+msgstr "Dépôt Git sur GitHub, GitLab, Bitbucket ou Azure Repos ; son SBOM y est rattaché"
+
 msgid "given by the assigned user"
 msgstr "donnée par l'utilisateur attribué"
 
@@ -6790,6 +6808,9 @@ msgstr "Moins"
 
 msgid "Levels"
 msgstr "Niveaux"
+
+msgid "Library or artifact your organisation publishes"
+msgstr "Bibliothèque ou artefact que votre organisation publie"
 
 msgid "License type"
 msgstr "Type de licence"
@@ -9065,6 +9086,9 @@ msgstr "Autres actifs"
 msgid "Other cloud resource"
 msgstr "Autre ressource cloud"
 
+msgid "Other code asset"
+msgstr "Autre actif de code"
+
 msgid "Other controls"
 msgstr "Autres contrôles"
 
@@ -9212,6 +9236,9 @@ msgstr "p90"
 
 msgid "p90 {high}"
 msgstr "p90 {high}"
+
+msgid "Package registry"
+msgstr "Registre de paquets"
 
 msgid "Packaged image a container is started from"
 msgstr "Image empaquetée à partir de laquelle un conteneur démarre"
@@ -10042,6 +10069,9 @@ msgstr "Enregistrement refusé"
 #. js-lingui-explicit-id
 msgid "Registration refused since {since} ({ago})."
 msgstr "Enregistrement refusé depuis le {since} ({ago})."
+
+msgid "Registry your teams publish packages to"
+msgstr "Registre où vos équipes publient leurs paquets"
 
 msgid "Regulated function or data"
 msgstr "Fonction ou donnée réglementée"
@@ -11384,6 +11414,9 @@ msgstr "Service SOAP ou autre service HTTP"
 msgid "SOAR"
 msgstr "SOAR"
 
+msgid "Software package"
+msgstr "Paquet logiciel"
+
 msgid "Software that acts with an LLM and tools"
 msgstr "Logiciel qui agit avec un LLM et des outils"
 
@@ -11413,6 +11446,9 @@ msgstr "Source"
 
 msgid "Source asset id:"
 msgstr "Identifiant dans la source :"
+
+msgid "Source code"
+msgstr "Code source"
 
 msgid "Source finding"
 msgstr "Finding source"

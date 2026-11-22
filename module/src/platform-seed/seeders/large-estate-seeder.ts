@@ -214,6 +214,7 @@ const NAME_PREFIX_BY_CATEGORY: Record<AssetCategory, string> = {
   identity: 'IDP',
   saas_application: 'SAAS',
   ai_target: 'AI',
+  source_code: 'SRC',
   security_platform: 'SEC',
   generic_asset: 'GEN',
 };

@@ -20,7 +20,7 @@ const EMPTY_FAMILIES = ['security_platform', 'generic_asset'] as const;
  */
 const PREPARATION_TACTIC_IDS = new Set([TACTIC_TA0042, TACTIC_TA0043]);
 
-const ENTRY_COUNT = 1637;
+const ENTRY_COUNT = 1646;
 
 const allEntries = ASSET_CATEGORY_VALUES.flatMap((category) => APPLICABLE_TECHNIQUES[category]);
 

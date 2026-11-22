@@ -13,6 +13,7 @@ export const getAssetCategoryLabel = (cat: string): string => {
     mobile_device: t`Mobile device`,
     identity: t`Identity`,
     ai_target: t`AI target`,
+    source_code: t`Source code`,
     security_platform: t`Security platform`,
     generic_asset: t`Generic asset`,
   };
@@ -31,6 +32,7 @@ export const getAssetCategoryDescription = (cat: string): string => {
     mobile_device: t`Smartphone or tablet (iOS / Android)`,
     identity: t`User, service account, group or role`,
     ai_target: t`LLM models, AI agents, MCP servers, and RAG pipelines`,
+    source_code: t`Code repository, pipeline or package your teams build and ship`,
     security_platform: t`EDR, SIEM, email security or other detection and prevention source`,
     generic_asset: t`Anything that does not fit another category yet`,
   };

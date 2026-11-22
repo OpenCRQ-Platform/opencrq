@@ -48,6 +48,7 @@ export const APPLICABLE_TECHNIQUE_PROVENANCE: ApplicableTechniqueProvenance = {
     { family: 'saas_application', release: '20.0', promptVersion: '2', model: 'claude-opus-5-5' },
     { family: 'ai_target', release: '19.2', promptVersion: '1', model: 'claude-opus-5' },
     { family: 'ai_target', release: '20.0', promptVersion: '1', model: 'claude-opus-5-5' },
+    { family: 'source_code', release: '20.0', promptVersion: '1', model: 'claude (CEO Office Developer)' },
   ],
   overrides: [
     { family: 'identity', technique: 'T1189', verdict: true, reason: 'A drive-by targets the person who browses to the compromised site, as phishing does: their account and its session are what it reaches, and the controls watching the account, such as identity threat detection, are what detect its use. The browser exploit itself reaches host through its platform anchor.' },
@@ -292,6 +293,10 @@ export const APPLICABLE_TECHNIQUES = {
     'T1078', 'T1190', 'T1195', 'T1195.001', 'T1195.002', 'T1485', 'T1486', 'T1496',
     'T1496.004', 'T1499', 'T1499.003', 'T1528', 'T1550.001', 'T1565', 'T1565.001', 'T1677',
     'T1685.007', 'T1698', 'T1699', 'T1700',
+  ],
+  source_code: [
+    'T1195', 'T1195.001', 'T1195.002', 'T1213', 'T1213.003', 'T1552', 'T1552.001', 'T1552.004',
+    'T1677',
   ],
   security_platform: [],
   generic_asset: [],
