@@ -68,6 +68,7 @@ export const useCounterparts = (kind: CounterpartKind, keys: ReadonlyArray<strin
  */
 const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number, muted?: boolean }> = ({ product, size, muted }) => {
   const px = size ?? 16;
+  // eslint-disable-next-line lingui/no-unlocalized-strings -- CSS mask value, not copy
   const mask = `url("${PRODUCT_MARKS[product]}") center / contain no-repeat`;
   return (
     <span
