@@ -8,6 +8,8 @@ import { exists, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { PgColumn, PgTableWithColumns, PgUUID } from 'drizzle-orm/pg-core';
 import type { EventOrigin, GatekeeperResult, OpenCtiReaderAccess, SecurityPolicyRule } from '../policy';
+import { clearedMarkings, nativeClearanceReader } from './native-marking-policies';
+import { userIsSuperAdmin } from './super-admin-policies';
 
 /**
  * The OpenCTI markings a client origin may read, or `undefined` when the origin carries no marking
@@ -103,18 +105,51 @@ interface ThreatColumns {
 }
 
 /**
- * A threat row a reader holding `markings` may see: anything the tenant owns (an import, the
- * default catalog), or a row mirrored from OpenCTI whose markings are all among the reader's
- * (multi-marking is AND; an unmarked row is visible to all) and whose mirrored body, when the mirror
- * holds it, admits them on organization sharing and authorized members (opencrq #35). A mirrored row
- * whose markings are unknown (`null`, ingested before they were stored) is hidden.
+ * A row mirrored from OpenCTI a reader holding `markings` may see: its markings are all among the
+ * reader's (multi-marking is AND; an unmarked row is visible to all) and its mirrored body, when the
+ * mirror holds it, admits them on organization sharing and authorized members (opencrq #35). A
+ * mirrored row whose markings are unknown (`null`, ingested before they were stored) is hidden.
  */
-const readableThreat = (row: ThreatColumns, markings: ReadonlyArray<string> | null, access: OpenCtiReaderAccess | null | undefined): SQL => {
+const readableMirroredThreat = (row: ThreatColumns, markings: ReadonlyArray<string> | null, access: OpenCtiReaderAccess | null | undefined): SQL => {
   const marked = sql`${row.markingRefs} is not null and ${row.markingRefs} <@ ${markingArray(markings)}`;
   const admitted = access === undefined
     ? sql`true`
     : sql`not exists(select 1 from opencti_stream_objects as threat_body where threat_body.tenant_id = ${row.tenantId} and threat_body.stix_id = ${row.stixId} and threat_body.deleted_at is null and not ${admittedBody(sql`threat_body.data`, access)})`;
-  return sql`(${row.kind} <> 'connector' or (${marked} and ${admitted}))`;
+  return sql`(${marked} and ${admitted})`;
+};
+
+/**
+ * The markings of an imported row the tenant defines, as a SQL array: a STIX file names whatever
+ * markings its producer used (the MITRE ATT&CK copyright statement on every MITRE object), and only
+ * a marking the tenant defines, created here or synced from its OpenCTI, can be held by a group.
+ */
+const tenantDefinedMarkings = (markingRefs: SQL | PgColumn, tenantId: string): SQL =>
+  sql`array(select imported_ref from unnest(coalesce(${markingRefs}, '{}'::text[])) as imported_ref where exists(select 1 from marking_definitions as defined_marking where defined_marking.tenant_id = ${tenantId} and defined_marking.stix_id = imported_ref))`;
+
+/**
+ * A row the tenant imported (a STIX file a member uploaded, the default catalog) a person may see
+ * (CTEM marking parity, G2 slice 3c-2): every marking it carries that the tenant defines is in their
+ * OpenCRQ clearance, as `nativeMarkingPolicy` decides for a native object (AND, unmarked visible, the
+ * super administrator reads all). A marking the tenant does not define does not restrict the row, a
+ * stated limit: defining the marking, or syncing it from OpenCTI, enforces it from the next read.
+ */
+const readableImportedThreat = (row: ThreatColumns, reader: { userId: string, tenantId: string }): SQL =>
+  sql`(${userIsSuperAdmin(reader.userId)} or ${tenantDefinedMarkings(row.markingRefs, reader.tenantId)} <@ ${clearedMarkings(reader.userId, reader.tenantId)})`;
+
+/**
+ * A threat row the origin may see: a row mirrored from OpenCTI follows the reader's OpenCTI markings
+ * and sharing (when the tenant procedure resolved them), any other row follows the reader's OpenCRQ
+ * clearance. `undefined` when the origin is narrowed on neither (a job, a connector, an internal read).
+ */
+const readableThreat = (row: ThreatColumns, origin: EventOrigin): SQL | undefined => {
+  const markings = originMarkingScope(origin);
+  const reader = nativeClearanceReader(origin);
+  if (markings === undefined && reader === undefined) {
+    return undefined;
+  }
+  const mirrored = markings === undefined ? sql`true` : readableMirroredThreat(row, markings, originOpenCtiAccess(origin));
+  const imported = reader === undefined ? sql`true` : readableImportedThreat(row, reader);
+  return sql`((${row.kind} <> 'connector' and ${imported}) or (${row.kind} = 'connector' and ${mirrored}))`;
 };
 
 type TableWithThreatMarkings = PgTableWithColumns<any> & {
@@ -133,10 +168,7 @@ const noWritePredicate = (): GatekeeperResult => undefined;
 
 /** Read-only: writes keep their tenant rules, and the background jobs that score read everything. */
 export const threatMarkingPolicy: SecurityPolicyRule<TableWithThreatMarkings> = {
-  read: (origin, table): GatekeeperResult => {
-    const markings = originMarkingScope(origin);
-    return markings === undefined ? undefined : readableThreat(table, markings, originOpenCtiAccess(origin));
-  },
+  read: (origin, table): GatekeeperResult => readableThreat(table, origin),
   update: noWritePredicate,
   delete: noWritePredicate,
 };
@@ -149,12 +181,11 @@ type TableWithAnalysisId = PgTableWithColumns<any> & { analysisId: PgUUID<any> }
  */
 export const threatAnalysisMarkingPolicy: SecurityPolicyRule<TableWithAnalysisId> = {
   read: (origin, table): GatekeeperResult => {
-    const markings = originMarkingScope(origin);
-    if (markings === undefined) {
-      return undefined;
-    }
     const row = { tenantId: sql`marked.tenant_id`, stixId: sql`marked.stix_id`, kind: sql`marked.kind`, markingRefs: sql`marked.marking_refs` };
-    return exists(sql`(select 1 from threat_analyses as marked where marked.id = ${table.analysisId} and ${readableThreat(row, markings, originOpenCtiAccess(origin))})`);
+    const readable = readableThreat(row, origin);
+    return readable === undefined
+      ? undefined
+      : exists(sql`(select 1 from threat_analyses as marked where marked.id = ${table.analysisId} and ${readable})`);
   },
   update: noWritePredicate,
   delete: noWritePredicate,

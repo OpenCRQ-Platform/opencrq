@@ -55,9 +55,9 @@ describe('threatMarkingPolicy', () => {
   it('should leave only unmarked mirrored threats to a person whose markings are unknown (no clearance)', () => {
     const { sql, params } = render(readThreats(client(null)));
 
-    expect(sql).toContain('<> \'connector\'');
+    expect(sql).toContain('= \'connector\'');
     expect(sql).toContain('<@ \'{}\'::text[]');
-    expect(params).toEqual([]);
+    expect(params).not.toContain(TLP_GREEN);
   });
 
   it('should keep a mirrored threat only when all its markings are the reader\'s', () => {
@@ -65,7 +65,27 @@ describe('threatMarkingPolicy', () => {
 
     expect(sql).toContain('"marking_refs" is not null');
     expect(sql).toContain('<@ array[');
-    expect(params).toEqual([TLP_GREEN, TLP_RED]);
+    expect(params).toEqual(expect.arrayContaining([TLP_GREEN, TLP_RED]));
+  });
+
+  it('should keep an imported threat only when the reader\'s OpenCRQ clearance holds every marking the tenant defines on it (G2 slice 3c-2)', () => {
+    const { sql, params } = render(readThreats(client([TLP_GREEN])));
+
+    expect(sql).toContain('<> \'connector\'');
+    expect(sql).toContain('from marking_definitions as defined_marking');
+    expect(sql).toContain('from group_marking_definitions as clearance');
+    expect(params).toEqual(expect.arrayContaining([userId, tenantId]));
+  });
+
+  it('should narrow imported threats by OpenCRQ clearance even when no OpenCTI marking scope was resolved', () => {
+    const { sql } = render(readThreats(client()));
+
+    expect(sql).toContain('from group_marking_definitions as clearance');
+    expect(sql).not.toContain('"marking_refs" is not null');
+  });
+
+  it('should add no predicate for a connector origin', () => {
+    expect(readThreats({ type: 'connector', serviceAccountId: uuidv7(), tenantId })).toBeUndefined();
   });
 
   it('should still show unmarked mirrored threats to a reader with no marking', () => {
@@ -145,7 +165,14 @@ describe('threatAnalysisMarkingPolicy', () => {
 
     expect(sql).toContain('from threat_analyses as marked');
     expect(sql).toContain('"analysis_id"');
-    expect(params).toEqual([TLP_GREEN]);
+    expect(params).toEqual(expect.arrayContaining([TLP_GREEN]));
+  });
+
+  it('should make a child row of an imported threat follow its OpenCRQ clearance', () => {
+    const { sql } = render(readAliases(client()));
+
+    expect(sql).toContain('from threat_analyses as marked');
+    expect(sql).toContain('from group_marking_definitions as clearance');
   });
 
   it('should add no predicate for a connector origin', () => {
