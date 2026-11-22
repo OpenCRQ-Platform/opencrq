@@ -1,4 +1,5 @@
 export * from './cve-exploitation';
+export * from './evidence-health';
 export * from './impact';
 export * from './lifeline';
 export * from './readiness';
