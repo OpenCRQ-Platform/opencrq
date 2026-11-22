@@ -1,6 +1,7 @@
 import { sanitizeStixNullBytes } from '@app/module/stix-sanitize';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as AppModule from '@app/module';
+import type * as MarkingSync from './opencti-marking-sync';
 
 // ── Fake mirror (in-memory stand-in for the opencti_stream_objects table) ──────────────
 
@@ -140,6 +141,8 @@ const acceptCursorWrites = (startingLatch: Date | null = null): void => {
 const mockSetEnabled = vi.fn();
 const mockMarkAuthFailed = vi.fn();
 const mockGetServiceAccount = vi.fn();
+const mockSyncMarkingDefinitions = vi.fn().mockResolvedValue({ synced: 0, skipped: 0 });
+const mockFetchOpenCtiMarkingDefinitions = vi.fn().mockResolvedValue([]);
 
 const mockWithOrigin = vi.fn().mockReturnValue({
   openctiConnector: {
@@ -154,6 +157,9 @@ const mockWithOrigin = vi.fn().mockReturnValue({
   },
   serviceAccounts: {
     getServiceAccount: mockGetServiceAccount,
+  },
+  markingDefinitions: {
+    syncMarkingDefinitions: mockSyncMarkingDefinitions,
   },
 });
 
@@ -203,6 +209,11 @@ class MockOpenCtiAuthError extends MockOpenCtiStreamFatalError {
     this.name = 'OpenCtiAuthError';
   }
 }
+vi.mock('./opencti-marking-sync', async () => ({
+  ...await vi.importActual<typeof MarkingSync>('./opencti-marking-sync'),
+  fetchOpenCtiMarkingDefinitions: mockFetchOpenCtiMarkingDefinitions,
+}));
+
 vi.mock('./opencti-sse-client', () => ({
   consumeOpenCtiStream: mockConsumeOpenCtiStream,
   OpenCtiAuthError: MockOpenCtiAuthError,
@@ -347,6 +358,52 @@ describe('opencti-connector-manager', () => {
     await vi.waitFor(() => expect(mockConsumeOpenCtiStream).toHaveBeenCalledWith(
       expect.objectContaining({ lastEventId: '1620249512318-0', needsRecover: false }),
     ));
+  });
+
+  describe('the marking definitions it keeps in step with OpenCTI (G2, slice 3b)', () => {
+    const OCTI_EXTENSION = 'extension-definition--ea279b3e-5c71-4632-ac08-831c66a786ba';
+    const papRed = { stixId: 'marking-definition--ef6c4b7c-5b2a-5a3b-8a39-3b1a2e5ff0d1', definitionType: 'PAP', definition: 'PAP:RED', color: '#E53935', order: 4 };
+
+    it('syncs the markings OpenCTI defines before it reads the stream', async () => {
+      mockFetchOpenCtiMarkingDefinitions.mockResolvedValue([papRed]);
+      mockConsumeOpenCtiStream.mockReturnValue(fakeStream([], controller.signal));
+
+      startAll(controller.signal);
+
+      await vi.waitFor(() => expect(mockConsumeOpenCtiStream).toHaveBeenCalled());
+      expect(mockFetchOpenCtiMarkingDefinitions).toHaveBeenCalledWith('https://opencti.example.com', 'tok');
+      expect(mockSyncMarkingDefinitions).toHaveBeenCalledWith('tenant-a', [papRed]);
+    });
+
+    it('still reads the stream when OpenCTI refuses the marking read', async () => {
+      mockFetchOpenCtiMarkingDefinitions.mockRejectedValue(new Error('OpenCTI marking definitions read failed (403)'));
+      mockConsumeOpenCtiStream.mockReturnValue(fakeStream([], controller.signal));
+
+      startAll(controller.signal);
+
+      await vi.waitFor(() => expect(mockConsumeOpenCtiStream).toHaveBeenCalled());
+      expect(mockSyncMarkingDefinitions).not.toHaveBeenCalled();
+    });
+
+    it('syncs a marking the stream creates and never mirrors it as a stream object', async () => {
+      mockFetchOpenCtiMarkingDefinitions.mockResolvedValue([]);
+      const streamMarking = {
+        id: papRed.stixId, type: 'marking-definition', name: 'PAP:RED', definition_type: 'PAP',
+        extensions: { [OCTI_EXTENSION]: { order: 4, color: '#E53935' } },
+      };
+      mockConsumeOpenCtiStream.mockReturnValue(fakeStream([
+        createEvent('1620249512318-0', 'create', streamMarking),
+        createEvent('1620249512318-1', 'delete', streamMarking),
+      ], controller.signal));
+
+      startAll(controller.signal);
+
+      await vi.waitFor(() => expect(mockSyncMarkingDefinitions).toHaveBeenCalledWith('tenant-a', [papRed]));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(mockSyncMarkingDefinitions).toHaveBeenCalledTimes(2);
+      expect(mockUpsertStreamObject).not.toHaveBeenCalled();
+      expect(mockDeleteStreamObject).not.toHaveBeenCalled();
+    });
   });
 
   describe('the lines it writes to the Logs tab', () => {

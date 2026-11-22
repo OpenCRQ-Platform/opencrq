@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { newError } from '@app/utils';
 import { defineRepository } from '../../registry';
 import { groupMarkingDefinitions, markingDefinitions } from './schema';
@@ -28,6 +28,21 @@ export const markingDefinitionsRepository = defineRepository({
   },
   insertMarkingDefinition: ({ db }, marking: typeof markingDefinitions.$inferInsert) =>
     db.insert(markingDefinitions).values(marking).onConflictDoNothing(),
+  /**
+   * Writes the markings a tenant's OpenCTI defines, keyed by their STIX id: a new one is inserted, a
+   * known one takes OpenCTI's type, definition, colour and order. A row keeps its own id, so every
+   * clearance and every `marking_refs` naming it still holds.
+   */
+  upsertMarkingDefinitions: ({ db }, rows: Array<typeof markingDefinitions.$inferInsert>) =>
+    db.insert(markingDefinitions).values(rows).onConflictDoUpdate({
+      target: [markingDefinitions.tenantId, markingDefinitions.stixId],
+      set: {
+        definitionType: sql`excluded.definition_type`,
+        definition: sql`excluded.definition`,
+        color: sql`excluded.color`,
+        order: sql`excluded."order"`,
+      },
+    }),
   updateMarkingDefinition: ({ db }, id: string, values: { color?: string | null, order?: number }) =>
     db.update(markingDefinitions).set(values).where(eq(markingDefinitions.id, id)),
   deleteMarkingDefinition: ({ db }, id: string) => db.delete(markingDefinitions).where(eq(markingDefinitions.id, id)),
