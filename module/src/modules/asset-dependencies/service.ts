@@ -12,16 +12,17 @@ import type {
 } from './constants';
 import type { InferRepository } from '../../registry';
 import type { AssetCriticality } from '../supporting-assets/constants';
+import type { AttackPathHopRow } from './attack-path-reach';
 import type { SupportToPrimaryLinkRole } from './link-roles';
 import type { PrimaryToPrimaryLinkStrength } from './link-strengths';
 import type { ReachRow } from './reach';
 import { defineService } from '../../registry';
 import { requireTenantId } from '../../security';
-import { ASSET_CRITICALITY_SEVERITY } from '../supporting-assets/constants';
+import { ASSET_CRITICALITY_SEVERITY, ATTACK_PATH_STALE_AFTER_DAYS } from '../supporting-assets/constants';
 import { primaryAssetsService } from '../primary-assets/service';
 import { liftGivesBand } from '../supporting-assets/criticality-lift';
 import { supportingAssetsService } from '../supporting-assets/service';
-import { attackPathFreshSince, primaryAssetsBehind, walkAttackPath } from './attack-path-reach';
+import { attackPathFreshSince, attackPathHops, primaryAssetsBehind, walkAttackPath } from './attack-path-reach';
 import { DEPENDENCY_GRAPH_MAX_ASSETS, DEPENDENCY_GRAPH_PROVIDERS_PER_ASSET } from './constants';
 import { canonicalLinkRoles, isStorableLinkRoleSet, UNKNOWN_LINK_ROLE } from './link-roles';
 import { UNKNOWN_LINK_STRENGTH } from './link-strengths';
@@ -727,14 +728,50 @@ export const assetDependenciesService = defineService(
    * What a finding on `supportingAssetId` can reach along the attack paths OpenAEV showed: the
    * assets reached hop by hop (stale hops left out) and the primary assets behind them, so a weakness
    * on an asset nothing depends on still counts towards the primary assets it opens the way to.
+   * Each hop says whether an OpenAEV execution proved it or it is inferred, and which simulation
+   * showed it; the assets carry the name, exposure and criticality the caller may read. An asset the
+   * caller cannot read stops the walk there and is never named (the origin too: Access Denied).
    */
-  // eslint-disable-next-line app/no-unused-service-method -- no router caller yet; the attack-path layer of the dependency graph is its first reader
   getAttackPathReach: async ({ repo }, supportingAssetId: string, now: Date = new Date()) => {
+    const [origin] = await repo.findSupportingAssetsForGraph([supportingAssetId]);
+    if (origin === undefined) {
+      throw newError('Access Denied');
+    }
     const freshSince = attackPathFreshSince(now);
-    const depthOf = await walkAttackPath(supportingAssetId, (assetIds) => repo.findAttackPathHopsFrom(assetIds, freshSince));
-    const reached = [...depthOf].filter(([, depth]) => depth > 0).map(([assetId, depth]) => ({ assetId, depth }));
+    const rows: Array<AttackPathHopRow> = [];
+    const visible = new Set<string>([origin.id]);
+    const assets = new Map([[origin.id, origin]]);
+    const depthOf = await walkAttackPath(supportingAssetId, async (assetIds) => {
+      const hops = await repo.findAttackPathHopsFrom(assetIds, freshSince);
+      const unseen = [...new Set(hops.map((hop) => hop.fromAssetId))].filter((id) => !assets.has(id));
+      for (const asset of await repo.findSupportingAssetsForGraph(unseen)) {
+        assets.set(asset.id, asset);
+        visible.add(asset.id);
+      }
+      const kept = hops.filter((hop) => visible.has(hop.fromAssetId));
+      rows.push(...kept);
+      return kept;
+    });
+    const hops = attackPathHops(depthOf, rows, visible);
+    const reached = [...depthOf].filter(([, depth]) => depth > 0).map(([assetId, depth]) => {
+      const asset = assets.get(assetId);
+      return {
+        assetId,
+        depth,
+        name: asset?.name ?? null,
+        derivedName: asset?.derivedName ?? null,
+        exposure: asset?.exposure ?? null,
+        criticality: asset?.criticality ?? null,
+      };
+    });
     const primaryAssets = primaryAssetsBehind(depthOf, await repo.findPrimaryAssetsReaching([...depthOf.keys()]));
-    return { reachedAssets: reached, primaryAssets };
+    return {
+      origin: { assetId: origin.id, name: origin.name, derivedName: origin.derivedName, exposure: origin.exposure, criticality: origin.criticality },
+      reachedAssets: reached,
+      hops,
+      primaryAssets,
+      staleAfterDays: ATTACK_PATH_STALE_AFTER_DAYS,
+    };
   },
 
   getSupportToSupportLinks: async ({ repo }, assetId: string) => {

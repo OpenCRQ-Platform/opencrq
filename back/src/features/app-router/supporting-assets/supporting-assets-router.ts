@@ -242,6 +242,16 @@ export const supportingAssetsRouter = (procedure: TenantProcedure) => router({
     .input(z.object({ supportingAssetId: z.uuid() }))
     .output(z.object({ success: z.number().int(), failed: z.number().int() }).nullable())
     .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin).openaevConnector.getStoredPosture(input.supportingAssetId)),
+  /**
+   * What a finding on the asset can reach along the attack paths OpenAEV showed (the hops proven or
+   * inferred, stale ones left out) and the primary assets behind them: the blast radius XTM One
+   * shows on a CTEM case. Read under the caller's tenant isolation from what the sync stored.
+   */
+  // eslint-disable-next-line app/no-unused-router-endpoint -- XTM One's CTEM cases read it through their OpenCRQ tool, by name
+  getAttackPathReach: procedure
+    .input(z.object({ supportingAssetId: z.uuid() }))
+    .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin)
+      .assetDependencies.getAttackPathReach(input.supportingAssetId)),
   getSupportingAssetRelationGraph: procedure
     .input(z.object({
       supportingAssetId: z.uuid(),

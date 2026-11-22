@@ -36,6 +36,66 @@ export const walkAttackPath = async (
   return depthOf;
 };
 
+/** One hop as a `reachable_from` relation stores it, with what showed it. */
+export interface AttackPathHopRow {
+  /** The asset reached. */
+  fromAssetId: string,
+  /** The asset it is reached from. */
+  toAssetId: string,
+  source: string,
+  evidenceRef: string | null,
+  lastReportedAt: Date,
+}
+
+export interface AttackPathHop {
+  fromAssetId: string,
+  toAssetId: string,
+  /** `proven`: an OpenAEV execution got through; `inferred`: the conditions are met, nothing proved it yet. */
+  nature: 'proven' | 'inferred',
+  /** The OpenAEV simulation that showed it at its last report, when the source names one. */
+  evidenceRef: string | null,
+  lastReportedAt: Date,
+}
+
+const natureOf = (source: string): AttackPathHop['nature'] => (source === 'openaev_attack_path_proven' ? 'proven' : 'inferred');
+
+/**
+ * The hops of the reach, between assets `depthOf` holds and kept within `visible` (an asset the
+ * caller cannot read is never named, nor its hops): one hop per pair, a proven hop winning over an
+ * inferred one, then the latest report; ordered by the depth of the asset reached, then by ids.
+ */
+export const attackPathHops = (
+  depthOf: ReadonlyMap<string, number>,
+  rows: ReadonlyArray<AttackPathHopRow>,
+  visible: ReadonlySet<string>,
+): Array<AttackPathHop> => {
+  const byPair = new Map<string, AttackPathHop>();
+  for (const row of rows) {
+    const reached = depthOf.get(row.fromAssetId);
+    const from = depthOf.get(row.toAssetId);
+    if (reached === undefined || from === undefined || reached <= from || !visible.has(row.fromAssetId) || !visible.has(row.toAssetId)) {
+      continue;
+    }
+    const hop: AttackPathHop = {
+      fromAssetId: row.fromAssetId,
+      toAssetId: row.toAssetId,
+      nature: natureOf(row.source),
+      evidenceRef: row.evidenceRef,
+      lastReportedAt: row.lastReportedAt,
+    };
+    const key = `${row.toAssetId}>${row.fromAssetId}`;
+    const held = byPair.get(key);
+    const better = held === undefined
+      || (hop.nature === 'proven' && held.nature === 'inferred')
+      || (hop.nature === held.nature && hop.lastReportedAt.getTime() > held.lastReportedAt.getTime());
+    if (better) {
+      byPair.set(key, hop);
+    }
+  }
+  return [...byPair.values()].sort((a, b) => (depthOf.get(a.fromAssetId) ?? 0) - (depthOf.get(b.fromAssetId) ?? 0)
+    || a.toAssetId.localeCompare(b.toAssetId) || a.fromAssetId.localeCompare(b.fromAssetId));
+};
+
 export interface AttackPathReachedPrimaryAsset {
   primaryAssetId: string,
   primaryAssetName: string,
