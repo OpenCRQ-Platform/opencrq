@@ -100,12 +100,44 @@ export const openctiConnectorRepository = defineRepository({
           backfillTargetAt: null,
           reachedLiveTailAt: null,
           authFailedAt: null,
+          streamMissingCapability: null,
           // The totals belong to the stream that produced them, and this may be binding another one.
           objectsRead: 0,
           objectsReadAt: null,
           streamGeneration: nextGeneration(),
           updatedAt,
         },
+      });
+  },
+
+  /**
+   * `upsertConfig` for the stream the deployment provides, applied only to a tenant nobody configured
+   * (no row, or a row with neither account nor stream): an admin's choice, a disabled connector
+   * included, is never overwritten. Answers whether it configured.
+   */
+  configureIfUnconfigured: async ({ db }, tenantId: string, id: string, serviceAccountId: string, streamId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
+    const updatedAt = sql`now()` as unknown as Date;
+    const configured = await db.insert(openctiConnectorSettings)
+      .values([{ id, tenantId, serviceAccountId, streamId, enabled: true }])
+      .onConflictDoUpdate({
+        target: openctiConnectorSettings.tenantId,
+        set: { serviceAccountId, streamId, enabled: true, streamMissingCapability: null, updatedAt },
+        setWhere: and(isNull(openctiConnectorSettings.serviceAccountId), isNull(openctiConnectorSettings.streamId)),
+      })
+      .returning();
+    return configured.length > 0;
+  },
+
+  /** Records the capability the deployment's token lacks, or clears it with null; leaves every other column alone. */
+  setStreamMissingCapability: async ({ db }, tenantId: string, id: string, capability: string | null) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
+    const updatedAt = sql`now()` as unknown as Date;
+    return db.insert(openctiConnectorSettings)
+      .values([{ id, tenantId, streamMissingCapability: capability }])
+      .onConflictDoUpdate({
+        target: openctiConnectorSettings.tenantId,
+        set: { streamMissingCapability: capability, updatedAt },
       });
   },
 

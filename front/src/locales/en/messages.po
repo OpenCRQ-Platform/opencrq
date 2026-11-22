@@ -2019,6 +2019,9 @@ msgstr "Absorbed ask"
 msgid "Access control, HVAC or other building system"
 msgstr "Access control, HVAC or other building system"
 
+msgid "Access data sharing"
+msgstr "Access data sharing"
+
 msgid "Access held or outside the perimeter"
 msgstr "Access held or outside the perimeter"
 
@@ -3296,6 +3299,9 @@ msgstr "By preventing it"
 
 msgid "By severity"
 msgstr "By severity"
+
+msgid "Bypass all capabilities"
+msgstr "Bypass all capabilities"
 
 msgctxt "initial of Confidentiality"
 msgid "C"
@@ -7091,6 +7097,9 @@ msgstr "Manage assets"
 msgid "Manage columns visibility"
 msgstr "Manage columns visibility"
 
+msgid "Manage data sharing"
+msgstr "Manage data sharing"
+
 msgid "Manage dependencies"
 msgstr "Manage dependencies"
 
@@ -8940,6 +8949,12 @@ msgstr "OpenAI-compatible"
 
 msgid "OpenCRQ"
 msgstr "OpenCRQ"
+
+msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability."
+msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability."
+
+msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
+msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 
 msgid "OpenCRQ home"
 msgstr "OpenCRQ home"

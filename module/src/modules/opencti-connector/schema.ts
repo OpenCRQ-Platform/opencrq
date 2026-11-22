@@ -36,6 +36,9 @@ export const openctiConnectorSettings = pgTable('opencti_connector_settings', {
   objectsReadAt: timestamp('objects_read_at', { withTimezone: true, mode: 'date' }),
   // Set on a 401/403 from OpenCTI (forces `enabled=false` too); cleared on reconfigure or `setEnabled`.
   authFailedAt: timestamp('auth_failed_at', { withTimezone: true, mode: 'date' }),
+  // The OpenCTI capability the deployment's token lacks to create the Live Stream OpenCRQ manages, set
+  // at boot for a tenant with nothing bound; cleared once a stream is bound, by the boot or by Configure.
+  streamMissingCapability: text('stream_missing_capability'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => [

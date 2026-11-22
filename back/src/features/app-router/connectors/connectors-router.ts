@@ -105,6 +105,8 @@ const StreamStateSchema = z.object({
   objectsRead: z.number().int(),
   objectsReadAt: z.string().nullable(),
   objectsHeld: z.number().int(),
+  /** The OpenCTI capability the deployment's token lacks to create the stream OpenCRQ manages. */
+  missingCapability: z.string().nullable(),
 });
 
 const UNCONFIGURED_STREAM_STATE = {
@@ -119,6 +121,7 @@ const UNCONFIGURED_STREAM_STATE = {
   objectsRead: 0,
   objectsReadAt: null,
   objectsHeld: 0,
+  missingCapability: null,
 };
 
 const NamedSchema = z.object({ id: z.string(), name: z.string() });
@@ -461,6 +464,7 @@ export const connectorsRouter = (
         objectsRead: settings?.objectsRead ?? 0,
         objectsReadAt: settings?.objectsReadAt?.toISOString() ?? null,
         objectsHeld,
+        missingCapability: settings?.streamId ? null : settings?.streamMissingCapability ?? null,
       };
     }),
 

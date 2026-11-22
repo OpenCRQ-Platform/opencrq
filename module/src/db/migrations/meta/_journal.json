@@ -76,6 +76,13 @@
       "when": 1795362198255,
       "tag": "0010_source_marking_refs",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795363750858,
+      "tag": "0011_opencti_stream_missing_capability",
+      "breakpoints": true
     }
   ],
   "version": "7",
