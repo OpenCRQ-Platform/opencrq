@@ -18,6 +18,7 @@ import {
 import { DESCRIPTION_FETCH_BUDGET, descriptionBudgetShare, syncDescriptions } from './openaev-description-phase';
 import { syncAssetGroups } from './openaev-group-phase';
 import { syncAttackPaths } from './openaev-attack-path-phase';
+import { syncOpenaevMarkings } from './openaev-marking-phase';
 import { syncObservationStreams } from './openaev-observation-phase';
 import { onCompleteMirrors } from './openaev-reconciliation-scope';
 import { retireAttackEvidence, retireCveEvidence } from './openaev-retirement';
@@ -57,6 +58,9 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
 
   const origin = { type: 'connector' as const, serviceAccountId: ctx.payload.serviceAccountId, tenantId: ctx.tenantId, job: { jobKind: ctx.kind, interactive: ctx.interactive } };
   const svc = services.withOrigin(origin);
+  // Marking definitions are written by the security manager's policy, which no connector holds: the
+  // mirror of the source's vocabulary runs as the platform, as the OpenCTI consumer's does.
+  const systemServices = services.withOrigin({ type: 'system' } as const);
 
   const connectorId = await svc.integrationSettings.getConnectorId('openaev');
   if (!connectorId) {
@@ -108,6 +112,16 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       : new Map<string, string>();
     logTrace('OpenAEV tag vocabulary upserted', { openaevTenantId, tags: sourceTags.length });
 
+    // Before the inventory, so every asset's `asset_markings` reads as the STIX ids the tenant's
+    // clearance names (CTEM marking parity, G4).
+    await ctx.updateProgress({ message: `Syncing OpenAEV marking definitions for tenant ${openaevTenantId}` });
+    const markingStixIdByOpenaevId = await syncOpenaevMarkings({
+      searchMarkingDefinitions: client.searchMarkingDefinitions,
+      syncMarkingDefinitions: (markings) => systemServices.markingDefinitions.syncMarkingDefinitions(ctx.tenantId, markings),
+      signal: ctx.signal,
+    }, openaevTenantId);
+    logTrace('OpenAEV marking definitions mirrored', { openaevTenantId, markings: markingStixIdByOpenaevId.size });
+
     if (ctx.signal.aborted) {
       return sourceAssetIdToSupportingAssetId;
     }
@@ -127,7 +141,7 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
         },
       );
       for (const row of inventoryRows) {
-        const { input, tagIds } = assetToConnectorInput(row, connectorId, tagIdBySourceTagId);
+        const { input, tagIds } = assetToConnectorInput(row, connectorId, tagIdBySourceTagId, markingStixIdByOpenaevId);
         finalInputBySourceAssetId.set(input.sourceAssetId, input);
         tagIdsBySourceAssetId.set(input.sourceAssetId, tagIds);
         if (row.asset_agents) {

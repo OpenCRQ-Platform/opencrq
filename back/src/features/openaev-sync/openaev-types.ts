@@ -49,6 +49,8 @@ export const assetInventoryRowSchema = z.looseObject({
   asset_criticality: z.string().nullable().optional(),
   asset_internet_facing: z.boolean().nullable().optional(),
   asset_tags: z.array(z.string()).nullable().optional(),
+  /** The OpenAEV marking definition ids the asset carries; absent on an OpenAEV that predates markings. */
+  asset_markings: z.array(z.string()).nullable().optional(),
   endpoint_platform: z.string().nullable().optional(),
   asset_agents: z.array(agentSchema).nullable().optional(),
 });
@@ -116,6 +118,21 @@ export const openaevTagSchema = z.looseObject({
   tag_color: z.string().nullable().optional(),
 });
 export type OpenaevTag = z.infer<typeof openaevTagSchema>;
+
+/**
+ * One marking definition of an OpenAEV tenant (`POST /marking_definitions/search`). The STIX id is
+ * the one OpenCTI gives the marking, null when OpenAEV holds none for it (then it is derived from
+ * the type and the definition, as OpenCTI derives it).
+ */
+export const openaevMarkingDefinitionSchema = z.looseObject({
+  marking_definition_id: z.string(),
+  marking_definition_type: z.string(),
+  marking_definition_definition: z.string(),
+  marking_definition_color: z.string().nullable().optional(),
+  marking_definition_order: z.number().nullable().optional(),
+  marking_definition_stix_id: z.string().nullable().optional(),
+});
+export type OpenaevMarkingDefinition = z.infer<typeof openaevMarkingDefinitionSchema>;
 
 /**
  * `GET /asset_groups` (the `AssetGroup` entity): its static members in `asset_group_assets` and the

@@ -1,0 +1,1 @@
+ALTER TABLE "supporting_asset_sources" ADD COLUMN "reported_marking_refs" text[] DEFAULT '{}'::text[] NOT NULL;
