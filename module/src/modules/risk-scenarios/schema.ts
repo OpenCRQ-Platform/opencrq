@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { check, doublePrecision, foreignKey, index, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import { defineSecurityPolicies, riskScenarioTenantIsolationPolicy, tenantIsolationPolicy } from '../../security';
+import { defineSecurityPolicies, nativeMarkingPolicy, riskScenarioTenantIsolationPolicy, tenantIsolationPolicy } from '../../security';
 import { attackOutcomes } from '../attack-outcomes/schema';
 import { businessValueCategories } from '../business-value-categories/schema';
 import { organizations } from '../organizations/schema';
@@ -30,6 +30,11 @@ export const riskScenarios = pgTable('risk_scenarios', {
    * still queued, or failing, leaves this one's figures correctly described as current.
    */
   derivedAnswersUpdatedAt: timestamp('derived_answers_updated_at', { withTimezone: true }),
+  /**
+   * The OpenCRQ markings the scenario carries, by STIX id (CTEM marking parity, G2): a person reads
+   * it only when they are cleared for all of them (`nativeMarkingPolicy`). Unmarked by default.
+   */
+  markingRefs: text('marking_refs').array().notNull().default(sql`'{}'::text[]`),
 }, (table) => [
   // Both references carry the tenant, so a scenario naming another tenant's scope or outcome is
   // refused by the database whatever the service checked.
@@ -46,7 +51,7 @@ export const riskScenarios = pgTable('risk_scenarios', {
   index('risk_scenarios_organization_idx').on(table.organizationId),
 ]);
 
-defineSecurityPolicies(riskScenarios, tenantIsolationPolicy);
+defineSecurityPolicies(riskScenarios, tenantIsolationPolicy, nativeMarkingPolicy);
 
 export const riskScenarioPrimaryAssets = pgTable('risk_scenario_primary_assets', {
   riskScenarioId: uuid('risk_scenario_id').notNull().references(() => riskScenarios.id, { onDelete: 'cascade' }),

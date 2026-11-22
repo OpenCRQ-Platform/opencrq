@@ -45,7 +45,9 @@ const { logFromError } = createLogger({ feature: 'risk-scenarios' });
 
 // The derivation marker is internal bookkeeping, not part of a scenario's wire shape: it says which
 // answers the estimates cover, which the Financial Impact summary already reports as a verdict.
-const RiskScenariosSchema = createSelectSchema(riskScenarios).omit({ tenantId: true, derivedAnswersUpdatedAt: true, nameFolded: true });
+// The markings are enforced by the policy layer and reach the wire with the marking API (CTEM marking
+// parity, G2 slice 3), not before.
+const RiskScenariosSchema = createSelectSchema(riskScenarios).omit({ tenantId: true, derivedAnswersUpdatedAt: true, nameFolded: true, markingRefs: true });
 const OrganizationsSchema = createSelectSchema(organizations);
 const AttackOutcomesSchema = createSelectSchema(attackOutcomes).omit({ nameFolded: true });
 
