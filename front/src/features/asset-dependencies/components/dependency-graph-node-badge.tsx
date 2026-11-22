@@ -6,6 +6,7 @@ import {
   Building2,
   Cloud,
   Cpu,
+  GitBranch,
   Globe,
   Network,
   Server,
@@ -32,6 +33,7 @@ const GLYPH_ICON: Record<CategoryGlyph, LucideIcon> = {
   'user': User,
   'app-window': AppWindow,
   'brain': Brain,
+  'git-branch': GitBranch,
   'shield-check': ShieldCheck,
   'shapes': Shapes,
 };
