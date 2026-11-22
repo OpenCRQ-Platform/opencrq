@@ -5,13 +5,13 @@ import type { FunctionComponent, ReactNode } from 'react';
 import { useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ThreatAnalysisDetailData } from './threat-detail-tabs';
-import { useMediaQuery, useOpenCtiBaseUrl } from '../../../hooks';
+import { useOpenCtiBaseUrl } from '../../../hooks';
 import { useTRPC } from '../../../lib';
 import { formatDate, formatFractionAsPercent } from '../../../utils';
 import { EMPTY_VALUE } from '../../../utils/empty-value';
 import { TooltipHint, TooltipHintProvider } from '../../../components/shared/tooltip-hint';
 import { buildOpenCtiObjectLink } from '../../supporting-assets/connectors-utils';
-import { useCounterparts, XtmConnectActions, XtmPivotButton, XtmPivotButtons } from '../../xtm/xtm-counterparts';
+import { XtmPivotEmblems } from '../../xtm/xtm-counterparts';
 import { ResourceLevelGauge, resourceLevelLabel } from './resource-level-gauge';
 import { ThreatActionsMenu } from './threat-actions-menu';
 import { countConcerningTargets, pickBestOutcomeMatch, threatActivityStatus, threatActivityStatusLabel } from './threat-hero-utils';
@@ -41,10 +41,6 @@ const HeroFigure: FunctionComponent<HeroFigureProps> = ({ icon, alert, value, la
   </Paper>
 );
 
-/** Below it the hero actions leave the title too little room: the cross-product pivots go icon-only. */
-// eslint-disable-next-line lingui/no-unlocalized-strings -- media query, not copy
-export const HERO_WIDE_QUERY = '(min-width: 1280px)';
-
 interface ThreatHeroProps {
   detail: ThreatAnalysisDetailData,
 }
@@ -58,15 +54,15 @@ export const ThreatHero: FunctionComponent<ThreatHeroProps> = ({ detail }) => {
   const { analysis, origin, activity, locations, sectors } = detail;
   const titleId = useId();
   const openctiUrl = useOpenCtiBaseUrl();
-  const compact = !useMediaQuery(HERO_WIDE_QUERY);
   const { data: outcomes } = useQuery(trpc.threats.getOutcomeScoresForAnalysis.queryOptions({ analysisId: analysis.id }));
 
   const openctiLink = origin.kind === 'connector' ? buildOpenCtiObjectLink(openctiUrl, origin.stixId) : null;
-  // The same threat in the other XTM products, by its STIX id: OpenAEV scenarios generated from it,
-  // and OpenCTI when the threat came from a STIX import rather than the OpenCTI stream.
-  const counterparts = useCounterparts('THREAT', [analysis.stixId])
-    .filter((c) => c.product === 'openaev' || openctiLink === null);
-  const pivots = counterparts.length > 0 ? <XtmPivotButtons counterparts={counterparts} compact={compact} /> : null;
+  // The same threat in the other XTM products, by its STIX id. A threat that came from the OpenCTI
+  // stream is found there from its origin link; the lookup decides for OpenAEV and for a STIX import.
+  const sourced = openctiLink === null
+    ? undefined
+    : { opencti: { key: analysis.stixId, product: 'opencti' as const, objectId: analysis.stixId, objectType: t`Threat`, objectName: analysis.name, objectUrl: openctiLink, facts: [] } };
+  const pivots = <XtmPivotEmblems kind="THREAT" objectKey={analysis.stixId} sourced={sourced} />;
 
   const activityStatus = threatActivityStatus(activity.lastObservedAt, new Date());
   const date = activity.lastObservedAt ? formatDate(activity.lastObservedAt) : null;
@@ -75,19 +71,13 @@ export const ThreatHero: FunctionComponent<ThreatHeroProps> = ({ detail }) => {
   const bestMatch = pickBestOutcomeMatch(scored);
   // Cross-module action: the threat, seen in OpenCTI or simulated in OpenAEV, quantified here.
   const quantify = bestMatch === null ? null : <ThreatQuantifyAction attackOutcomeId={bestMatch.attackOutcomeId} outcomeName={bestMatch.outcomeName} />;
-  // Not connected: the connect call to action (or the read-only hint) in the hero, as on the asset
-  // and CVE pages and in OpenCTI and OpenAEV. OpenCTI counts as connected when the threat came from it.
-  const connect = <XtmConnectActions products={openctiLink === null ? undefined : ['openaev']} compact={compact} />;
-  const action = origin.kind === 'stix-import'
-    ? <span className="flex items-center gap-2">{quantify}{pivots}{connect}<ThreatActionsMenu threatId={analysis.id} /></span>
-    : (
-      <span className="flex items-center gap-2">
-        {quantify}
-        {openctiLink !== null && <XtmPivotButton product="opencti" href={openctiLink} compact={compact} />}
-        {pivots}
-        {connect}
-      </span>
-    );
+  const action = (
+    <span className="flex items-center gap-2">
+      {quantify}
+      {pivots}
+      {origin.kind === 'stix-import' && <ThreatActionsMenu threatId={analysis.id} />}
+    </span>
+  );
   const outcome = bestMatch?.outcomeName;
   const concerning = countConcerningTargets(locations, sectors);
 

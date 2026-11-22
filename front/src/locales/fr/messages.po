@@ -1003,14 +1003,17 @@ msgstr "{name} (inactif)"
 msgid "{name} (this concerns you)"
 msgstr "{name} (cela vous concerne)"
 
+msgid "{name} could not be reached"
+msgstr "{name} est injoignable"
+
 msgid "{name} depends on…"
 msgstr "{name} dépend de…"
 
 msgid "{name} import progress"
 msgstr "Progression de l'import {name}"
 
-msgid "{name} is not connected. Ask an administrator to connect it to see this object there."
-msgstr "{name} n'est pas connecté. Demandez à un administrateur de le connecter pour voir cet objet dans {name}."
+msgid "{name} is not connected"
+msgstr "{name} n'est pas connecté"
 
 msgid "{name} is supported by…"
 msgstr "{name} repose sur…"
@@ -2664,6 +2667,9 @@ msgstr "Tel que rapporté par Drata"
 
 msgid "Asc"
 msgstr "Croissant"
+
+msgid "Ask an administrator to connect {name}."
+msgstr "Demandez à un administrateur de connecter {name}."
 
 msgid "Ask an administrator to install the Filigran license in XTM One to switch this instance to Enterprise Edition."
 msgstr "Demandez à un administrateur d'installer la licence Filigran dans XTM One pour passer cette instance en Enterprise Edition."
@@ -5270,6 +5276,9 @@ msgstr "Nombre exact : {exact}."
 msgid "Exact number"
 msgstr "Nombre exact"
 
+msgid "Example"
+msgstr "Exemple"
+
 msgid "Except"
 msgstr "Sauf"
 
@@ -6293,9 +6302,6 @@ msgstr "improbable (0)"
 msgid "In “{heldName}”"
 msgstr "Dans « {heldName} »"
 
-msgid "In {name}"
-msgstr "Dans {name}"
-
 msgid "In brief"
 msgstr "En bref"
 
@@ -6511,6 +6517,18 @@ msgstr "ISO Alpha-3"
 
 msgid "ISPM"
 msgstr "ISPM"
+
+msgid "It appears here once {name} holds a machine with the same hostname."
+msgstr "Il apparaît ici dès que {name} contient une machine avec le même nom d'hôte."
+
+msgid "It appears here once {name} holds the same CVE."
+msgstr "Il apparaît ici dès que {name} contient la même CVE."
+
+msgid "It appears here once {name} holds the same technique, by its MITRE id."
+msgstr "Il apparaît ici dès que {name} contient la même technique, par son identifiant MITRE."
+
+msgid "It appears here once {name} holds the same threat, by its STIX id."
+msgstr "Il apparaît ici dès que {name} contient la même menace, par son identifiant STIX."
 
 msgid "It goes back to draft and can be edited again. Its publication date is cleared and its answers stop feeding the linked controls until it is published again."
 msgstr "Elle repasse en brouillon et redevient modifiable. Sa date de publication est effacée et ses réponses cessent d'alimenter les contrôles liés jusqu'à sa prochaine publication."
@@ -6908,6 +6926,9 @@ msgstr "Journaux"
 
 msgid "Logs / monitors"
 msgstr "Journalise / supervise"
+
+msgid "Looking in {name}…"
+msgstr "Recherche dans {name}…"
 
 msgid "Loss avoided"
 msgstr "Perte évitée"
@@ -8496,8 +8517,8 @@ msgstr "Non exposé"
 msgid "Not externally exposed"
 msgstr "Non exposé vers l'extérieur"
 
-msgid "Not found in {name}."
-msgstr "Absent de {name}."
+msgid "Not found in {name}"
+msgstr "Absent de {name}"
 
 msgid "not inherited"
 msgstr "non héritée"
@@ -10034,6 +10055,9 @@ msgstr "Relations"
 msgid "Relationship"
 msgstr "Relation"
 
+msgid "Relationships"
+msgstr "Relations"
+
 msgid "Relays traffic on behalf of clients"
 msgstr "Relaie le trafic pour le compte des clients"
 
@@ -10151,6 +10175,9 @@ msgstr "Signalé par"
 
 msgid "Reported: {reported}"
 msgstr "Rapporté : {reported}"
+
+msgid "Reports"
+msgstr "Rapports"
 
 msgid "required"
 msgstr "requise"
@@ -10858,11 +10885,17 @@ msgstr "Voir la documentation"
 msgid "See the gap to tolerance"
 msgstr "Voir l'écart à la tolérance"
 
+msgid "See the reports, relationships and context of this object in OpenCTI."
+msgstr "Voir les rapports, les relations et le contexte de cet objet dans OpenCTI."
+
 msgid "See the risk scope"
 msgstr "Voir le périmètre de risque"
 
 msgid "See the Risk treatment dashboard"
 msgstr "Voir le tableau Traitement du risque"
+
+msgid "See the simulations and findings of this object in OpenAEV."
+msgstr "Voir les simulations et les résultats de cet objet dans OpenAEV."
 
 msgid "See the tests in {control} › Validation"
 msgstr "Voir les tests dans {control} › Validation"
@@ -12196,6 +12229,9 @@ msgstr "L'écart entre les deux chiffres est ce que vaut le gain choisi. Un éca
 msgid "The effectiveness history could not be loaded."
 msgstr "L'historique de l'efficacité n'a pas pu être chargé."
 
+msgid "The emblem turns active if {name} holds this object."
+msgstr "L'emblème s'active si {name} contient cet objet."
+
 msgid "The engine prices {control} only on the techniques it covers."
 msgstr "Le moteur ne chiffre le contrôle {control} que sur les techniques qu'il couvre."
 
@@ -13412,6 +13448,9 @@ msgstr "Réessayer"
 
 msgid "Try again in a few minutes. If the problem persists, contact your administrator."
 msgstr "Réessayez dans quelques minutes. Si le problème persiste, contactez votre administrateur."
+
+msgid "Try again later."
+msgstr "Réessayez plus tard."
 
 msgid "TTP"
 msgstr "TTP"

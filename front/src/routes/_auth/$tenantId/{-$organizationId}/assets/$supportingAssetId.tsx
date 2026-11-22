@@ -4,13 +4,15 @@ import { Trans } from '@lingui/react/macro';
 import { createFileRoute, linkOptions, notFound, Outlet } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { XtmCounterpart, XtmProduct } from '../../../../../features/xtm/xtm-counterparts';
 import { RouteTabs } from '../../../../../components/shared';
 import { AssetActionsMenu, AssetHeaderPanel, assetManualAttributeLabel, AssetResyncAction, manualPropertyFieldLabels } from '../../../../../features/supporting-assets';
 import { SupportingAssetUpdateSheet } from '../../../../../features';
 import { canResyncWithConnectors } from '../../../../../features/supporting-assets/connectors-utils';
+import { sourceExternalUrl } from '../../../../../features/supporting-assets/source-external-url';
 import { trpcClient, useTRPC } from '../../../../../lib';
 import { assetNameText } from '../../../../../utils/asset-name-utils';
-import { XtmConnectActions, XtmCounterpartCards } from '../../../../../features/xtm/xtm-counterparts';
+import { XTM_PRODUCTS, XtmPivotEmblems } from '../../../../../features/xtm/xtm-counterparts';
 
 const assetHostname = (properties: unknown): string | null => {
   const hostname = typeof properties === 'object' && properties !== null && 'hostname' in properties ? properties.hostname : null;
@@ -41,6 +43,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
       { supportingAssetId: initialData.id },
       { staleTime: 60_000 },
     ));
+    const { data: connectors } = useQuery(trpc.connectors.listConnectors.queryOptions());
 
     if (!supportingAsset) {
       return null;
@@ -49,6 +52,25 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
     // Techniques are attached to the category, not to the asset: the tile is labelled accordingly.
     const ttpCount = (techniqueCounts ?? []).find((r) => r.categoryId === supportingAsset.categoryId)?.techniqueCount ?? 0;
     const sources = supportingAsset.sources.flatMap((s) => (s.source ? [s.source] : []));
+    const hostname = assetHostname(supportingAsset.properties);
+    // A product the asset came from is found from its source link first; the hostname lookup is the fallback.
+    const sourced: Partial<Record<XtmProduct, XtmCounterpart>> = {};
+    for (const product of XTM_PRODUCTS) {
+      const row = supportingAsset.sources.find((s) => s.source === product);
+      const connectorUrl = connectors?.find((c) => c.source === product)?.url ?? null;
+      const objectUrl = row ? sourceExternalUrl(row.source, row.sourceAssetId, connectorUrl, row.reportedCategoryId) : null;
+      if (row && objectUrl !== null) {
+        sourced[product] = {
+          key: hostname ?? row.sourceAssetId,
+          product,
+          objectId: row.sourceAssetId,
+          objectType: t`Asset`,
+          objectName: row.reportedName ?? hostname,
+          objectUrl,
+          facts: [],
+        };
+      }
+    }
     const manualFields = [
       ...supportingAsset.manualValues.map((v) => assetManualAttributeLabel(v.attribute)),
       ...manualPropertyFieldLabels(supportingAsset.manualProperties),
@@ -110,7 +132,8 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
             crqPosture={crqPosture}
             actions={
               <>
-                {assetHostname(supportingAsset.properties) !== null && <XtmConnectActions />}
+                {/* The same machine in OpenCTI (System, Hostname) and OpenAEV (asset): source link first, hostname second. */}
+                <XtmPivotEmblems kind="ASSET" objectKey={hostname} sourced={sourced} />
                 <AssetResyncAction
                   supportingAssetId={supportingAsset.id}
                   canResync={canResyncWithConnectors(manualFields.length, supportingAsset.sources)}
@@ -121,8 +144,6 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
               </>
             }
           />
-          {/* The same machine in OpenCTI (System, Hostname) and OpenAEV (asset), by its hostname. */}
-          <XtmCounterpartCards kind="ASSET" objectKey={assetHostname(supportingAsset.properties)} />
           <RouteTabs tabs={tabs} />
           <Outlet />
         </div>
