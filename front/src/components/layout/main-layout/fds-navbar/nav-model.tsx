@@ -195,7 +195,7 @@ export const getScopeNavigationNodes = ({ tenantId, hasManageSecurity, hasPlatfo
     { kind: 'single', id: 'dashboards', label: t`Dashboards`, icon: 'layout-dashboard', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/dashboards', params })) },
     { kind: 'single', id: 'risk-scenarios', label: t`Risk Scenarios`, icon: 'route', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/risk-scenarios', params })) },
     { kind: 'single', id: 'treatment-plans', label: t`Treatment Plans`, icon: 'list-checks', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/treatment-plans', params })) },
-    { kind: 'single', id: 'budget-reviews', label: t`Budget Reviews`, icon: 'landmark', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/budget-reviews', params })) },
+    { kind: 'single', id: 'budget-reviews', label: t`Budget Reviews`, icon: 'scale', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/budget-reviews', params })) },
     // Blocks are set apart by a separator alone, no section title: the design system's integrated product frame, shared by every Filigran product.
     { kind: 'separator', id: 'separator-risk-scopes' },
     ...scopes
@@ -215,9 +215,9 @@ export const getScopeNavigationNodes = ({ tenantId, hasManageSecurity, hasPlatfo
     { kind: 'separator', id: 'separator-defenses' },
     { kind: 'single', id: 'controls', label: t`Controls`, icon: 'shield-check', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/controls', params })) },
     // Pointed at the layout rather than at the assessments, so it also lights on a Drata framework's page.
-    { kind: 'single', id: 'compliance', label: t`Compliance`, icon: 'badge-check', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/compliance', params })) },
+    { kind: 'single', id: 'compliance', label: t`Compliance`, icon: 'clipboard-check', link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/compliance', params })) },
     { kind: 'separator', id: 'separator-administration' },
-    { kind: 'single', id: 'integrations', label: t`Integrations`, icon: 'link-2', visible: hasManageSecurity, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/integrations', params })) },
+    { kind: 'single', id: 'integrations', label: t`Integrations`, icon: 'puzzle', visible: hasManageSecurity, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/integrations', params })) },
     settingsNode(hasManageSecurity, hasPlatformAccess, params),
     ...(getStartedComplete ? getStartedNodes : []),
   ];

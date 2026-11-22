@@ -128,14 +128,14 @@ describe('getScopeNavigationNodes', () => {
       dashboards: 'layout-dashboard',
       'risk-scenarios': 'route',
       'treatment-plans': 'list-checks',
-      'budget-reviews': 'landmark',
+      'budget-reviews': 'scale',
       organizations: 'building-2',
       assets: 'server',
       findings: 'custom/binocular',
       threats: 'custom/threat-actor-individual',
       controls: 'shield-check',
-      compliance: 'badge-check',
-      integrations: 'link-2',
+      compliance: 'clipboard-check',
+      integrations: 'puzzle',
       settings: 'settings',
     });
   });
