@@ -39,3 +39,13 @@ vocabulary and the sizes do not offer yet:
 - **18px size.** The OpenAEV scope switch draws its icons at 18px; `<Icon>` allows 16, 20 and 24 only.
   Stopgap: 20px in `front/src/components/layout/settings-layout/scope-switcher.tsx`. Ask: an 18px size, or
   a stated FDS size for the scope switch tile.
+
+## Popover (`@filigran/design-system@1.9.0`)
+
+The FDS has no Popover: a hint that must stay up on a press, or that holds a link, can only be a
+`Tooltip`, which closes on every press of its trigger. The cross-product emblems (OpenCTI, OpenAEV) need
+both: a greyed `aria-disabled` emblem whose hint is the only answer a press gets, and a not-connected
+teaser that carries a "Connect" link. Stopgap: `keepOpenOnPress` on `TooltipHint`
+(`front/src/components/shared/tooltip-hint.tsx`), used by `front/src/features/xtm/xtm-counterparts.tsx`.
+Ask: a `Popover` (trigger, content, open on hover, focus and press, dismiss on Escape and outside press)
+so the stopgap goes.

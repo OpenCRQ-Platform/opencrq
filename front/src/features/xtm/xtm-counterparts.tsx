@@ -239,7 +239,7 @@ const NotConnectedEmblem: FunctionComponent<{ product: XtmProduct }> = ({ produc
       </IconButton>
     )
     : <IconButton priority="secondary" size="md" aria-disabled aria-label={t`${name} is not connected`} icon={<ProductMark product={product} size={20} muted />} />;
-  return <TooltipHint hint={<XtmConnectTeaser product={product} canConfigure={canConfigure} />}>{control}</TooltipHint>;
+  return <TooltipHint hint={<XtmConnectTeaser product={product} canConfigure={canConfigure} />} keepOpenOnPress={!canConfigure}>{control}</TooltipHint>;
 };
 
 /** One product's icon-only hero button, 36 px like the sibling header actions, in its state. */
@@ -270,7 +270,7 @@ export const XtmEmblem: FunctionComponent<XtmEmblemProps> = ({ product, kind, st
     hint = <GreyHint title={title} line={line} />;
     control = <IconButton priority="secondary" size="md" aria-disabled aria-label={title} icon={<ProductMark product={product} size={20} muted />} />;
   }
-  return <TooltipHint hint={hint}>{control}</TooltipHint>;
+  return <TooltipHint hint={hint} keepOpenOnPress={state.kind !== 'found'}>{control}</TooltipHint>;
 };
 
 interface XtmPivotEmblemsProps {
