@@ -42,13 +42,17 @@ export interface PeerTokensDeps {
 
 const digest = (value: string) => createHash('sha256').update(value).digest();
 
-/** Constant-time comparison of the bearer against the admin token (hashed first, so lengths match). */
+/** Constant-time comparison of a raw token against the admin token (hashed first, so lengths match). */
+export const isAdminToken = (rawToken: string, adminToken: string): boolean =>
+  rawToken.length > 0 && timingSafeEqual(digest(rawToken), digest(adminToken));
+
+/** Same, on an `Authorization` header. */
 export const isAdminBearer = (authorization: string | undefined, adminToken: string): boolean => {
   const match = /^Bearer\s+(\S+)$/i.exec(authorization ?? '');
   if (!match?.[1]) {
     return false;
   }
-  return timingSafeEqual(digest(match[1]), digest(adminToken));
+  return isAdminToken(match[1], adminToken);
 };
 
 const authorize = (req: FastifyRequest, adminToken: string | undefined): 404 | 401 | null => {
