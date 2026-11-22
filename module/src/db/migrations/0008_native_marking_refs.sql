@@ -1,0 +1,2 @@
+ALTER TABLE "risk_scenarios" ADD COLUMN "marking_refs" text[] DEFAULT '{}'::text[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "supporting_assets" ADD COLUMN "marking_refs" text[] DEFAULT '{}'::text[] NOT NULL;

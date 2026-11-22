@@ -45,6 +45,7 @@ import { assetEvidence,
   integrationSettings,
   jobChildTenantIsolationPolicy,
   lossDrivers,
+  nativeMarkingPolicy,
   notifications,
   ONBOARDING_RISK_SCOPE_NAME,
   onboardingWizards,
@@ -1731,6 +1732,9 @@ describe('Platform Seed', () => {
       threatAnalysisMarkingPolicy,
       streamObjectMarkingPolicy,
       reportRefMarkingPolicy,
+      // The OpenCRQ clearance narrows only marked rows (CTEM marking parity, G2): the seeded rows are
+      // unmarked, so every member sees the whole tenant.
+      nativeMarkingPolicy,
     ];
     const tableKeys: ReadonlyArray<string> = Object.entries(schema).flatMap(([key, value]) => (is(value, PgTable) ? [key] : []));
     const isTableKey = (key: string): key is keyof SecuredSchema => tableKeys.includes(key);

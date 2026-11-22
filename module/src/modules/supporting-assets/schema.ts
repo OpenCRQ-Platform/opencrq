@@ -3,7 +3,7 @@ import { boolean, check, foreignKey, index, pgTable, primaryKey, text, timestamp
 import { sql } from 'drizzle-orm';
 import type { AiTargetModality, AiTargetProvider, AssetCategory, AssetCriticality, AssetCriticalityRule, AssetIdentityProvider, AssetManualAttribute, AssetRelationKind, AssetRelationSource, AssetSourceOrigin, AssetSubcategory, CloudProvider, DismissalReasonCode, DismissalType, EndpointArch, EvidenceHistoryOrigin, EvidenceState, ExpectationType } from './constants';
 import type { AssetOwnerSource } from './owner-resolution';
-import { defineSecurityPolicies, tenantIsolationPolicy } from '../../security';
+import { defineSecurityPolicies, nativeMarkingPolicy, tenantIsolationPolicy } from '../../security';
 import { supportingAssetTenantIsolationPolicy } from '../../security/policies/tenant-policies';
 import { mitreTechniques } from '../mitre-attack/schema';
 import { integrationSettings } from '../integration-settings/schema';
@@ -88,6 +88,11 @@ export const supportingAssets = pgTable('supporting_assets', {
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   /** A name deduced from the resolved properties, kept whether or not `name` is set; never a person's or a connector's own word. */
   derivedName: text('derived_name'),
+  /**
+   * The OpenCRQ markings the asset carries, by STIX id (CTEM marking parity, G2): a person reads it
+   * only when they are cleared for all of them (`nativeMarkingPolicy`). Unmarked by default.
+   */
+  markingRefs: text('marking_refs').array().notNull().default(sql`'{}'::text[]`),
   /** What lists sort and search on: `name`, or the derived one when the asset has none. */
   displayName: text('display_name').generatedAlwaysAs(sql`coalesce(name, derived_name)`),
   /** `display_name` folded for search and order; a generated column cannot read another one, hence the repeated expression. */
@@ -102,7 +107,7 @@ export const supportingAssets = pgTable('supporting_assets', {
   index('supporting_assets_tenant_display_name_idx').on(table.tenantId, table.displayNameFolded, sql`${table.displayName} collate "C"`, table.id),
 ]);
 
-defineSecurityPolicies(supportingAssets, tenantIsolationPolicy);
+defineSecurityPolicies(supportingAssets, tenantIsolationPolicy, nativeMarkingPolicy);
 
 /**
  * One row per connector reporting an asset. This table carries the identity that used to sit
