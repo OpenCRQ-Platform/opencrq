@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, primaryKey, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, primaryKey, text, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { defineSecurityPolicies, tenantIsolationPolicy } from '../../security';
 import { groupRolesLinkPolicy, groupUsersLinkPolicy, manageSecurityPolicy, manageSecurityWritePolicy } from '../../security/policies';
 import { roles, tenants, users } from '../schema';
@@ -12,6 +12,8 @@ export const groups = pgTable('groups', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
 }, (t) => [
   uniqueIndex('groups_tenant_slug_unique').on(t.tenantId, t.slug),
+  // Redundant with the primary key, and what a composite foreign key naming the tenant can point at.
+  unique('groups_id_tenant_id_uq').on(t.id, t.tenantId),
 ]);
 
 defineSecurityPolicies(groups, tenantIsolationPolicy, manageSecurityPolicy);

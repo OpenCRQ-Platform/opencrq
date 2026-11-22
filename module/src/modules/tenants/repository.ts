@@ -17,6 +17,8 @@ import { buildSectorRows } from '../sectors/data';
 import { sectors } from '../sectors/schema';
 import { CAPABILITIES } from '../capabilities';
 import { groupRoles, groups, groupUsers } from '../groups';
+import { buildDefaultMarkingRows } from '../marking-definitions/default-markings';
+import { groupMarkingDefinitions, markingDefinitions } from '../marking-definitions/schema';
 import { buildLossActivationRows, buildLossCategoryRows, buildLossDriverRows } from '../loss-drivers/data';
 import { lossCategories, lossDriverActivations, lossDrivers } from '../loss-drivers/schema';
 import { roleCapabilities, roles } from '../roles';
@@ -49,6 +51,13 @@ const provisionTenant = async (tx: Transaction, tenant: typeof tenants.$inferIns
   const adminGroupId = uuidv7();
   await tx.insert(groups).values({ id: adminGroupId, name: 'Admin', slug: 'admin', tenantId: tenant.id });
   await tx.insert(groupRoles).values({ groupId: adminGroupId, roleId: adminRoleId });
+
+  // The TLP 2.0 markings under OpenCTI's ids (CTEM marking parity, G2); the Admin group is cleared for them all.
+  const markingRows = buildDefaultMarkingRows(tenant.id);
+  await tx.insert(markingDefinitions).values(markingRows).onConflictDoNothing();
+  await tx.insert(groupMarkingDefinitions)
+    .values(markingRows.map((marking) => ({ tenantId: tenant.id, groupId: adminGroupId, markingDefinitionId: marking.id })))
+    .onConflictDoNothing();
 
   // Every tenant gets a Connectors group for service account automation
   await tx.insert(groups).values({ id: uuidv7(), name: 'Connectors', slug: 'connectors', tenantId: tenant.id });

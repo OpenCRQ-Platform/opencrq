@@ -71,6 +71,7 @@ export * from './platform-groups';
 export * from './platform-roles';
 export * from './roles';
 export * from './groups';
+export * from './marking-definitions';
 export * from './capabilities';
 export * from './organizations';
 export * from './business-value-categories';
