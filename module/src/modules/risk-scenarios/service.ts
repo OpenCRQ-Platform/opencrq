@@ -605,8 +605,9 @@ export const riskScenariosService = defineService(
     limit: number,
     now: Date = new Date(),
   ): Promise<{
-    assets: Array<EvidenceHealthReading & { supportingAssetId: string, supportingAssetName: string | null, supportingAssetDerivedName: string | null, impact: number, sources: Array<EvidenceHealthSource> }>,
+    assets: Array<EvidenceHealthReading & { supportingAssetId: string, supportingAssetName: string | null, supportingAssetDerivedName: string | null, markingRefs: Array<string>, impact: number, sources: Array<EvidenceHealthSource> }>,
     counts: Record<EvidenceHealthState, number>,
+    markingRefs: Array<string>,
     sources: Array<SourceRunHealth>,
     total: number,
   } | undefined> => {
@@ -617,8 +618,15 @@ export const riskScenariosService = defineService(
     const { scenario, walk, impacts, names } = loaded;
     const ranked = rankScenarioSupportingAssets(walk, scenario.primaryAssets, impacts, names);
     const ids = ranked.map((row) => row.supportingAssetId);
-    const [inputs, runs] = await Promise.all([repo.findEvidenceHealthInputs(ids), repo.findLatestSucceededRunTotals(EVIDENCE_SYNC_KINDS)]);
+    const [inputs, runs, scenarioMarkingRefs] = await Promise.all([
+      repo.findEvidenceHealthInputs(ids),
+      repo.findLatestSucceededRunTotals(EVIDENCE_SYNC_KINDS),
+      repo.findScenarioMarkingRefs(riskScenarioId),
+    ]);
     const categoryById = new Map(inputs.assets.map((row) => [row.id, row.categoryId]));
+    // A caller that records what it reads where other people read it (XTM One's CTEM loop) needs the
+    // markings to keep a marked name out of a less cleared reader's view (CTEM marking parity, G5).
+    const markingsById = new Map(inputs.assets.map((row) => [row.id, row.markingRefs]));
     const sourcesById = Map.groupBy(inputs.sources, (row) => row.supportingAssetId);
     const versioned = new Set(inputs.versions.map((row) => row.supportingAssetId));
     const verdictById = new Map(inputs.verdicts.map((row) => [row.supportingAssetId, row.lastVerdictAt]));
@@ -637,7 +645,7 @@ export const riskScenariosService = defineService(
         lastVerdictAt: verdictById.get(row.supportingAssetId) ?? null,
         versionReported: versioned.has(row.supportingAssetId),
       }, maxAgeDays, now);
-      return [{ ...reading, supportingAssetId: row.supportingAssetId, supportingAssetName: row.supportingAssetName, supportingAssetDerivedName: row.supportingAssetDerivedName, impact: row.impact, sources }];
+      return [{ ...reading, supportingAssetId: row.supportingAssetId, supportingAssetName: row.supportingAssetName, supportingAssetDerivedName: row.supportingAssetDerivedName, markingRefs: markingsById.get(row.supportingAssetId) ?? [], impact: row.impact, sources }];
     });
     const counts: Record<EvidenceHealthState, number> = { no_source: 0, attested_only: 0, never_measured: 0, expired: 0, version_unknown: 0, current: 0 };
     for (const row of read) {
@@ -647,7 +655,7 @@ export const riskScenariosService = defineService(
       .filter((row) => row.state !== 'current')
       .toSorted((a, b) => (rankOf(a.state) - rankOf(b.state)) || (b.impact - a.impact))
       .slice(0, limit);
-    return { assets, counts, sources: readSourceRunHealth(runs), total: read.length };
+    return { assets, counts, markingRefs: scenarioMarkingRefs ?? [], sources: readSourceRunHealth(runs), total: read.length };
   },
 
   /**
