@@ -349,7 +349,9 @@ Subscribes to an OpenCTI Live Stream (Server-Sent Events) to automatically keep 
 | `CONNECTORS__OPENCTI__<tenant-uuid>__URL`   | **Yes**  | -             | Base URL of that tenant's OpenCTI instance (e.g. `https://opencti.example.com`). |
 | `CONNECTORS__OPENCTI__<tenant-uuid>__TOKEN` | **Yes**  | -             | API token used to authenticate against that tenant's OpenCTI Live Stream/GraphQL API. Pass through a secret store. |
 
-OpenCRQ never binds a Live Stream by itself: what a stream carries is shown to every member of the tenant, so an admin picks the stream with **Configure** on the OpenCTI connector. Until then the connector stays idle and reads "Not configured". The variables only make the connection available to that form.
+OpenCRQ drives the Live Stream itself: at every start, for each tenant given these variables, it finds the stream it manages in that OpenCTI (named "OpenCRQ threat feed", recognised by a marker in its description), creates it with the filter of [OpenCTI Connector](opencti-connector.md) when there is none, and brings its filter back to the current version when it carries an older one. A tenant with nothing bound is then bound to it, under the "OpenCTI (deployment)" service account, and the connector starts. A binding an admin made is never replaced, and **Configure** still picks any other stream. Binding at start is safe because every mirrored object keeps its OpenCTI markings and each person reads only what their markings allow.
+
+The token needs read access on every marking definition in scope and the `TAXIIAPI_SETCOLLECTIONS` capability (Manage CTI data sharing > Manage Live Streams), or `BYPASS`. Without that capability nothing is written in OpenCTI, the start goes on, and the connector stays idle with a message naming the missing capability until it is granted (then restart) or an admin picks a stream.
 
 See [OpenCTI Connector](opencti-connector.md) for the setup required on the OpenCTI side: the Live Stream filter this connector needs, and the access its token must have.
 

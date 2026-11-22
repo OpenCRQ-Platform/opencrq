@@ -67,6 +67,26 @@ export const openctiConnectorService = defineService(
     await repo.upsertConfig(tenantId, uuidv7(), serviceAccountId, streamId);
   },
 
+  /**
+   * The deployment's own configuration of the Live Stream OpenCRQ manages, for a tenant nobody
+   * configured: binds `serviceAccountId` and `streamId` and enables the connector. Never overwrites an
+   * admin's choice. System origin only. Answers whether it configured.
+   */
+  configureDeploymentStream: async ({ repo, eventOrigin }, tenantId: string, serviceAccountId: string, streamId: string): Promise<boolean> => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    return repo.configureIfUnconfigured(tenantId, uuidv7(), serviceAccountId, streamId);
+  },
+
+  /** What the boot found missing on the deployment's token, shown on the connector page. System origin only. */
+  recordStreamMissingCapability: async ({ repo, eventOrigin }, tenantId: string, capability: string | null): Promise<void> => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    await repo.setStreamMissingCapability(tenantId, uuidv7(), capability);
+  },
+
   /** `configure` with the service account created in the same transaction. Returns its id. */
   configureWithNewServiceAccount: async ({ atomic }, tenantId: string, serviceAccountName: string, streamId: string): Promise<string> =>
     atomic(async ({ repo, deps }) => {

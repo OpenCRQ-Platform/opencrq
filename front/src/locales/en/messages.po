@@ -8941,6 +8941,12 @@ msgstr "OpenAI-compatible"
 msgid "OpenCRQ"
 msgstr "OpenCRQ"
 
+msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability."
+msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability."
+
+msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
+msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
+
 msgid "OpenCRQ home"
 msgstr "OpenCRQ home"
 

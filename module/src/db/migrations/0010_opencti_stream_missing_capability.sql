@@ -1,0 +1,1 @@
+ALTER TABLE "opencti_connector_settings" ADD COLUMN "stream_missing_capability" text;

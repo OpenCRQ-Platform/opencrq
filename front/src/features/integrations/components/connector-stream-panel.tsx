@@ -158,6 +158,17 @@ export const ConnectorStreamPanel: FunctionComponent<{ source: ConnectorSource }
 
   // Not `connection === 'not_configured'`, which also covers a stream this tenant did bind but whose
   // deployment credentials are missing: there, the state card is what the reader needs.
+  if (stream.streamId === null && stream.missingCapability !== null) {
+    const capability = stream.missingCapability;
+    return (
+      <p role="alert" className="txt-sub-content text-muted-foreground">
+        {hasManageSecurity
+          ? <Trans>OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream.</Trans>
+          : <Trans>OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability.</Trans>}
+      </p>
+    );
+  }
+
   if (stream.streamId === null) {
     return (
       <p className="txt-sub-content text-muted-foreground">
