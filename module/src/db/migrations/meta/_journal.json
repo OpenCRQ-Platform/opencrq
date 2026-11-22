@@ -73,8 +73,8 @@
     {
       "idx": 10,
       "version": "7",
-      "when": 1795361023398,
-      "tag": "0010_opencti_stream_missing_capability",
+      "when": 1795362198255,
+      "tag": "0010_source_marking_refs",
       "breakpoints": true
     }
   ],

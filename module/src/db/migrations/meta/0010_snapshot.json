@@ -1,5 +1,5 @@
 {
-  "id": "80d7905e-6595-4d25-a1f4-c23deebcdbef",
+  "id": "06db44d2-50e7-4c87-af85-e0a351f15ea3",
   "prevId": "7de337cd-8661-4bdd-8325-51def1cc7aaa",
   "version": "7",
   "dialect": "postgresql",
@@ -8523,6 +8523,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "reported_marking_refs": {
+          "name": "reported_marking_refs",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
         "first_seen_at": {
           "name": "first_seen_at",
           "type": "timestamp with time zone",
@@ -16119,12 +16126,6 @@
         "auth_failed_at": {
           "name": "auth_failed_at",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "stream_missing_capability": {
-          "name": "stream_missing_capability",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
