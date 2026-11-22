@@ -66,7 +66,8 @@ const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number, muted
     aria-hidden
     width={size ?? 16}
     height={size ?? 16}
-    className={muted ? 'shrink-0 opacity-40 grayscale' : 'shrink-0'}
+    // Greyed, yet legible on both themes: the OpenAEV emblem is dark, so the dark theme lifts it.
+    className={muted ? 'shrink-0 opacity-60 grayscale dark:brightness-200' : 'shrink-0'}
   />
 );
 
