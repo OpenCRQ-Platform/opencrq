@@ -125,6 +125,13 @@
       "when": 1795467272777,
       "tag": "0017_previous_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795470249051,
+      "tag": "0018_drop_user_pastel_colours",
+      "breakpoints": true
     }
   ],
   "version": "7",
