@@ -101,6 +101,7 @@ export const PlatformRolesDataTable: FunctionComponent = () => {
         columns={columns}
         isLoading={isLoading}
         storageKey="platform-roles"
+        search={{ placeholder: t`Search roles...`, texts: (role) => [role.name] }}
         onCreate={() => setCreateDrawerOpen(true)}
         onClickRow={(row) => openEdit(row.original.id)}
       />

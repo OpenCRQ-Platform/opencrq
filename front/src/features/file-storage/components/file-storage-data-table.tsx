@@ -108,6 +108,7 @@ export const FileStorageDataTable: FunctionComponent = () => {
       columns={columns}
       isLoading={isLoading}
       storageKey="fileStorage"
+      search={{ placeholder: t`Search files...`, texts: (file) => [file.originalName, file.mimeType, file.createdByEmail, file.createdByServiceAccountName] }}
       initialSorting={[{ id: 'createdAt', desc: true }]}
     />
   );

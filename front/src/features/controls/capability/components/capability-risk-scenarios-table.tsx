@@ -47,6 +47,7 @@ export const CapabilityRiskScenariosTable = ({ capabilityId }: { capabilityId: s
       isLoading={isLoading}
       columns={columns}
       storageKey="capability-riskScenarios"
+      search={{ placeholder: t`Search risk scenarios...`, texts: (scenario) => [scenario.name, scenario.organizationName] }}
       onClickRow={(row) => {
         void navigate({
           to: '/$tenantId/{-$organizationId}/risk-scenarios/$riskScenarioId',
