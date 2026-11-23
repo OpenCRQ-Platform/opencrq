@@ -59,6 +59,7 @@ const run = (overrides: Partial<RunDetail> & Pick<RunDetail, 'id' | 'kind'>): Ru
   leaseExpiresAt: null,
   lastError: null,
   errorCount: 0,
+  stepCounts: [],
   triggeredBy: 'user',
   triggeredById: null,
   absorbedAsk: false,

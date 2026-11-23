@@ -45,6 +45,7 @@ const run = (overrides: Partial<RunRow> & Pick<RunRow, 'id' | 'kind'>): RunRow =
   leaseExpiresAt: null,
   lastError: null,
   errorCount: 0,
+  stepCounts: [],
   triggeredBy: 'user',
   triggeredById: null,
   absorbedAsk: false,

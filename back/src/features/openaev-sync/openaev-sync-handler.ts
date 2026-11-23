@@ -78,6 +78,28 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
   // uuid is well within tier 0). Accumulated for the whole run and unioned before every write.
   const tagIdsByAssetIdForRun = new Map<string, Set<string>>();
 
+  // What the run did, recorded on the run as its step counts: the assets the inventory listed,
+  // upserted and unregistered, and the findings the observations read, wrote, skipped and retired.
+  // An inventory the observations ask for (an asset they do not know) counts as the inventory step.
+  const inventoryCounts = { ran: false, read: 0, written: 0, removed: 0 };
+  const findingCounts = { read: 0, written: 0, removed: 0, skipped: 0 };
+  let observationMode: 'full' | 'incremental' = 'incremental';
+  const recordInventoryCounts = () => ctx.updateProgress({
+    stepCounts: {
+      step: 'inventory',
+      entity: 'assets',
+      mode: 'full',
+      read: inventoryCounts.read,
+      written: inventoryCounts.written,
+      created: null,
+      removed: inventoryCounts.removed,
+      skipped: Math.max(0, inventoryCounts.read - inventoryCounts.written),
+    },
+  });
+  const recordFindingCounts = () => ctx.updateProgress({
+    stepCounts: { step: 'observations', entity: 'findings', mode: observationMode, created: null, ...findingCounts },
+  });
+
   // Read once per run, on the first inventory that needs it: an OpenAEV with its MARKING preview
   // feature off enforces no marking and shows every asset to everyone, so neither does OpenCRQ.
   let markingFeature: Promise<boolean> | null = null;
@@ -291,7 +313,10 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
         return { supportingAssetId, tagIds: [...tagIds] };
       });
       await svc.supportingAssets.setAssetTags(connectorId, tagLinkEntries);
+      inventoryCounts.written += upserted.size;
     }
+    inventoryCounts.ran = true;
+    inventoryCounts.read += finalInputs.length;
     logTrace('OpenAEV asset inventory upserted', { openaevTenantId, assets: finalInputs.length });
 
     if (finalInputs.length > 0) {
@@ -324,8 +349,9 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       }, ctx.signal);
       if (!ctx.signal.aborted && gone.length > 0) {
         const pairs = await svc.supportingAssets.findCveScopePairsSince(connectorId, new Date(0), gone);
-        await retireCveEvidence({ svc, connectorId, pairs, enumeratedAt: new Date() });
+        findingCounts.removed += await retireCveEvidence({ svc, connectorId, pairs, enumeratedAt: new Date() });
         await svc.openaevConnector.pruneAssets({ connectorId, openaevTenantId, sourceAssetIds: gone });
+        inventoryCounts.removed += gone.length;
         logTrace('OpenAEV assets no longer listed retired and unregistered', { openaevTenantId, assets: gone.length });
       }
     }
@@ -404,6 +430,7 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       // Checkpointed before the observation phase starts, so a crash during its network calls does
       // not repeat the inventory on retry.
       await ctx.saveStateSnapshot({ inventoryComplete: true });
+      await recordInventoryCounts();
       inventoryRanInThisRun = true;
     } else {
       const rebuiltMap = await svc.supportingAssets.getInventoryAssetIdMap(connectorId);
@@ -443,6 +470,12 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
         },
       });
       observationsBeforeTenant += received.attack + received.vulnerability;
+      findingCounts.read += result.counts.read;
+      findingCounts.written += result.counts.written;
+      findingCounts.skipped += result.counts.skipped;
+      if (result.attack.walked || result.vulnerability.walked) {
+        observationMode = 'full';
+      }
       // A cut-short phase may have run against a partial map, which retirement must not judge.
       if (ctx.signal.aborted) {
         return;
@@ -479,7 +512,7 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
               .map((state) => state.openaevTenantId),
           ]),
         });
-        await retireAttackEvidence({
+        findingCounts.removed += await retireAttackEvidence({
           svc,
           connectorId,
           assetIdMap: registry,
@@ -505,7 +538,7 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       const retireTenantCves = async (reportedSince: Date, enumeratedAt: Date) => {
         const tenantScopes = await svc.openaevConnector.listSourceAssetIds({ connectorId, openaevTenantId });
         const pairs = await svc.supportingAssets.findCveScopePairsSince(connectorId, reportedSince, tenantScopes);
-        await retireCveEvidence({ svc, connectorId, pairs, enumeratedAt });
+        findingCounts.removed += await retireCveEvidence({ svc, connectorId, pairs, enumeratedAt });
       };
       if (vulnerabilityWalk?.ready) {
         await retireTenantCves(new Date(0), vulnerabilityWalk.startedAt);
@@ -528,7 +561,12 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       const descriptions = await syncTenantDescriptions(openaevTenantId, descriptionBudgetShare(descriptionBudgetLeft, openaevTenants.length - index));
       descriptionBudgetLeft -= descriptions.calls;
     }
-    logTrace('OpenAEV sync complete', { observations: observationsBeforeTenant });
+    // An inventory the observations had to run is recorded here; a due one was at its own end.
+    if (inventoryCounts.ran && !inventoryDue) {
+      await recordInventoryCounts();
+    }
+    await recordFindingCounts();
+    logTrace('OpenAEV sync complete', { observations: observationsBeforeTenant, findings: findingCounts, assets: inventoryCounts });
   } catch (err) {
     logFromError(err, 'OpenAEV sync failed', { tenantId: ctx.tenantId, attempt: ctx.attempt });
     throw err;

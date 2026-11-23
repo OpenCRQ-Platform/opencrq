@@ -76,8 +76,8 @@ const {
   const createOpenaevClient = vi.fn();
   const syncObservationStreams = vi.fn();
   const syncDescriptions = vi.fn();
-  const retireAttackEvidence = vi.fn().mockResolvedValue(undefined);
-  const retireCveEvidence = vi.fn().mockResolvedValue(undefined);
+  const retireAttackEvidence = vi.fn().mockResolvedValue(0);
+  const retireCveEvidence = vi.fn().mockResolvedValue(0);
   const createOpenaevLegacyClient = vi.fn();
   const probeSnapshotExport = vi.fn();
   const runLegacySync = vi.fn();
@@ -319,6 +319,7 @@ const reconcileFrom = new Date('2026-10-06T08:00:00.000Z');
 const noFullWalk: ObservationPhaseResult = {
   attack: { fullWalk: null, walked: false, reconcileFrom },
   vulnerability: { fullWalk: null, walked: false, reconcileFrom },
+  counts: { read: 0, written: 0, skipped: 0 },
 };
 
 /** What the phase mock answers unless a test says otherwise: nothing read. */
@@ -378,8 +379,8 @@ describe('openaevSyncHandler', () => {
     mockProbeSnapshotExport.mockResolvedValue('available');
     mockRunLegacySync.mockResolvedValue(undefined);
     mockGetReportedOverviewFields.mockResolvedValue(new Map());
-    mockRetireAttackEvidence.mockResolvedValue(undefined);
-    mockRetireCveEvidence.mockResolvedValue(undefined);
+    mockRetireAttackEvidence.mockResolvedValue(0);
+    mockRetireCveEvidence.mockResolvedValue(0);
     mockPaginateAll.mockImplementation(
       async <T>(fetchPage: (page: number) => Promise<{ content: Array<T>, last: boolean, totalElements: number }>) => {
         const result = await fetchPage(0);
@@ -446,6 +447,28 @@ describe('openaevSyncHandler', () => {
     expect(mockSearchAssets).toHaveBeenCalledWith('oa-tenant-1', expect.any(Number));
     expect(mockSearchAssets).toHaveBeenCalledWith('oa-tenant-2', expect.any(Number));
     expect(mockSyncObservationStreams.mock.calls.map(([deps]) => deps.openaevTenantId)).toEqual(['oa-tenant-1', 'oa-tenant-2']);
+  });
+
+  it('records the step counts on the run: the inventory\'s assets, and the findings the phase read, wrote, skipped and retired', async () => {
+    mockSyncObservationStreams.mockResolvedValueOnce({ ...noFullWalk, counts: { read: 7, written: 4, skipped: 3 } });
+    mockRetireCveEvidence.mockResolvedValue(2);
+
+    await openaevSyncHandler(makeCtx());
+
+    const recorded = mockUpdateProgress.mock.calls
+      .map((call: Array<ProgressUpdate>) => call[0].stepCounts)
+      .filter((counts) => counts !== undefined);
+    expect(recorded).toContainEqual(expect.objectContaining({ step: 'inventory', entity: 'assets', mode: 'full' }));
+    expect(recorded.at(-1)).toEqual({
+      step: 'observations',
+      entity: 'findings',
+      mode: 'incremental',
+      created: null,
+      read: 7,
+      written: 4,
+      skipped: 3,
+      removed: 2,
+    });
   });
 
   describe('snapshot export probe', () => {

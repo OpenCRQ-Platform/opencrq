@@ -37,6 +37,7 @@ const run = (overrides: Partial<JobRunListItem> & Pick<JobRunListItem, 'id' | 'k
   leaseExpiresAt: null,
   lastError: null,
   errorCount: 0,
+  stepCounts: [],
   triggeredBy: 'user',
   triggeredById: null,
   ...overrides,

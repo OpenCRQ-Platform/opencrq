@@ -1,4 +1,4 @@
-import { ACTIVE_JOB_STATUSES, JOB_LEASE_MS, JOB_LOG_LEVELS, JOB_STATUSES, RUN_CLAIMABILITIES, TERMINAL_JOB_STATUSES, TRIGGERED_BY_VALUES } from '@app/module';
+import { ACTIVE_JOB_STATUSES, JOB_LEASE_MS, JOB_LOG_LEVELS, JOB_STATUSES, JOB_STEP_ENTITIES, JOB_STEPS, RUN_CLAIMABILITIES, TERMINAL_JOB_STATUSES, TRIGGERED_BY_VALUES } from '@app/module';
 import type { JobLogLine, JobLogRunGroup, PendingRunListItem, RunDetail, RunListItem, RunSnapshot, TerminalRunStatus } from '@app/module';
 import { z } from 'zod';
 import { config } from '../../../config';
@@ -50,6 +50,18 @@ export const logRetentionRuns = (): number => config().jobs?.log_retention_runs 
 /** The counts beside a section are aggregates, so they hold past this cap. */
 export const RUN_LIST_CAP = 50;
 
+/** What one step of a run counted; `created` is null where the step cannot tell new from updated. */
+export const RunStepCountsSchema = z.object({
+  step: z.enum(JOB_STEPS),
+  entity: z.enum(JOB_STEP_ENTITIES),
+  mode: z.enum(['full', 'incremental']).nullable(),
+  read: z.number().int(),
+  written: z.number().int(),
+  created: z.number().int().nullable(),
+  removed: z.number().int(),
+  skipped: z.number().int(),
+});
+
 export const RunListItemSchema = z.object({
   id: z.string(),
   kind: z.string(),
@@ -69,6 +81,7 @@ export const RunListItemSchema = z.object({
   leaseExpiresAt: z.string().nullable(),
   lastError: z.string().nullable(),
   errorCount: z.number().int(),
+  stepCounts: z.array(RunStepCountsSchema),
   triggeredBy: z.enum(TRIGGERED_BY_VALUES),
   triggeredById: z.string().nullable(),
   absorbedAsk: z.boolean(),
@@ -139,6 +152,7 @@ export const serialiseRunListItem = (run: RunListItem) => ({
   leaseExpiresAt: run.status === 'running' ? run.leasedUntil?.toISOString() ?? null : null,
   lastError: run.errorMessage,
   errorCount: run.errorCount,
+  stepCounts: run.stepCounts,
   triggeredBy: run.triggeredBy,
   triggeredById: run.triggeredById,
   absorbedAsk: run.absorbedAsk,

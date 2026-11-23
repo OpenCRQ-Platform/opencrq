@@ -94,9 +94,20 @@ export interface StreamOutcome {
   reconcileFrom: Date,
 }
 
+/** What the phase read and wrote, for the run's step counts. */
+export interface ObservationPhaseCounts {
+  /** Observations received, both streams. */
+  read: number,
+  /** Finding evidence rows written. */
+  written: number,
+  /** Observations that wrote nothing: an asset unknown after the inventory, a technique or CVE unknown, a superseded document. */
+  skipped: number,
+}
+
 export interface ObservationPhaseResult {
   attack: StreamOutcome,
   vulnerability: StreamOutcome,
+  counts: ObservationPhaseCounts,
 }
 
 const toMirror = (observation: AttackObservation): AttackObservationMirror => {
@@ -135,6 +146,7 @@ const toMirror = (observation: AttackObservation): AttackObservationMirror => {
 export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promise<ObservationPhaseResult> => {
   const { svc, client, connectorId, openaevTenantId, runStartedAt, signal, now, onProgress, inCveFindingsTransaction } = deps;
   const assets = { map: deps.assetIdMap, inventoryRan: false };
+  const counts: ObservationPhaseCounts = { read: 0, written: 0, skipped: 0 };
 
   // The inventory can return a partial map when it aborts, and a page written against it would
   // skip assets and still advance the cursor: the caller must not write once `signal` is aborted.
@@ -200,6 +212,9 @@ export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promis
       await svc.supportingAssets.bulkUpsertEvidence(evidenceRows);
       await svc.openaevConnector.markEvidenceWritten({ connectorId, entries: written, writtenAt: now() });
     }
+    counts.read += observations.length;
+    counts.written += evidenceRows.length;
+    counts.skipped += observations.length - written.length;
     logTrace('Attack observations written', {
       openaevTenantId,
       observations: observations.length,
@@ -219,7 +234,9 @@ export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promis
     }
     const usable = observations.filter((observation) => assetIdMap.has(observation.asset_id));
     const cveIds = [...new Set(usable.flatMap((observation) => cveIdentifierOfObservation(observation) ?? []))];
+    counts.read += observations.length;
     if (cveIds.length === 0) {
+      counts.skipped += observations.length;
       return true;
     }
     const evidenceRows = await inCveFindingsTransaction(async (tx) => {
@@ -232,6 +249,8 @@ export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promis
       }
       return rows;
     });
+    counts.written += evidenceRows.length;
+    counts.skipped += observations.length - usable.filter((observation) => cveIdentifierOfObservation(observation) !== null).length;
     logTrace('Vulnerability observations written', { openaevTenantId, observations: observations.length, evidenceRows: evidenceRows.length });
     return true;
   };
@@ -297,5 +316,5 @@ export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promis
     writeVulnerabilityPage,
   );
 
-  return { attack, vulnerability };
+  return { attack, vulnerability, counts };
 };
