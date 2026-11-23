@@ -1327,12 +1327,6 @@ msgstr "{startLabel} → <0>{endLabel}</0>"
 msgid "{startLabel}, unchanged"
 msgstr "{startLabel}, unchanged"
 
-msgid "{step}, full read"
-msgstr "{step}, full read"
-
-msgid "{step}, incremental read"
-msgstr "{step}, incremental read"
-
 msgid "{stopped, plural, one {Stops the technique # time out of 100 where the control is in place.} other {Stops the technique # times out of 100 where the control is in place.}}"
 msgstr "{stopped, plural, one {Stops the technique # time out of 100 where the control is in place.} other {Stops the technique # times out of 100 where the control is in place.}}"
 
@@ -2783,9 +2777,6 @@ msgstr "Assets added"
 msgid "Assets are mapped on the risk scope"
 msgstr "Assets are mapped on the risk scope"
 
-msgid "Assets created"
-msgstr "Assets created"
-
 msgid "Assets of the scenario's families with no evidence on file, over every asset of those families."
 msgstr "Assets of the scenario's families with no evidence on file, over every asset of those families."
 
@@ -2798,14 +2789,8 @@ msgstr "Assets per category, measured and declared"
 msgid "Assets processed"
 msgstr "Assets processed"
 
-msgid "Assets read"
-msgstr "Assets read"
-
 msgid "Assets removed"
 msgstr "Assets removed"
-
-msgid "Assets skipped"
-msgstr "Assets skipped"
 
 msgid "Assets to sync"
 msgstr "Assets to sync"
@@ -2818,9 +2803,6 @@ msgstr "Assets with no vulnerability data"
 
 msgid "Assets without vulnerability data"
 msgstr "Assets without vulnerability data"
-
-msgid "Assets written"
-msgstr "Assets written"
 
 msgid "Assign"
 msgstr "Assign"
@@ -5712,9 +5694,6 @@ msgstr "Findings could not be loaded"
 msgid "Findings could not be loaded, so this is not a clean scenario."
 msgstr "Findings could not be loaded, so this is not a clean scenario."
 
-msgid "Findings created"
-msgstr "Findings created"
-
 msgid "Findings in cause"
 msgstr "Findings in cause"
 
@@ -5723,18 +5702,6 @@ msgstr "Findings new and closed per month over the last 12 months, against the c
 
 msgid "Findings on the assets this scenario's primary assets depend on."
 msgstr "Findings on the assets this scenario's primary assets depend on."
-
-msgid "Findings read"
-msgstr "Findings read"
-
-msgid "Findings removed"
-msgstr "Findings removed"
-
-msgid "Findings skipped"
-msgstr "Findings skipped"
-
-msgid "Findings written"
-msgstr "Findings written"
 
 msgid "Finds known weaknesses on assets"
 msgstr "Finds known weaknesses on assets"
@@ -6538,9 +6505,6 @@ msgstr "Intrusion sets"
 
 msgid "Intune"
 msgstr "Intune"
-
-msgid "Inventory"
-msgstr "Inventory"
 
 msgid "Inventory requested. The next run reads every asset again."
 msgstr "Inventory requested. The next run reads every asset again."
@@ -8774,9 +8738,6 @@ msgstr "Objective"
 msgid "Objects"
 msgstr "Objects"
 
-msgid "Observations"
-msgstr "Observations"
-
 msgid "Observations processed"
 msgstr "Observations processed"
 
@@ -9358,9 +9319,6 @@ msgstr "Past simulations keep the names of the threats they used. Enabling the c
 
 msgid "Past threats, assets and loss estimates are not kept, only postures are, so every day is priced on the latest simulation's model. The further that model is from the fiscal year's end, the less precise the curve."
 msgstr "Past threats, assets and loss estimates are not kept, only postures are, so every day is priced on the latest simulation's model. The further that model is from the fiscal year's end, the less precise the curve."
-
-msgid "Pastel colours"
-msgstr "Pastel colours"
 
 msgid "Patch leverage"
 msgstr "Patch leverage"
@@ -11494,12 +11452,6 @@ msgstr "SOAP or other HTTP service"
 
 msgid "SOAR"
 msgstr "SOAR"
-
-msgid "Softer tones"
-msgstr "Softer tones"
-
-msgid "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
-msgstr "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
 
 msgid "Software package"
 msgstr "Software package"

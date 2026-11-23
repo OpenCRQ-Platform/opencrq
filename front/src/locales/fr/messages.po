@@ -1327,12 +1327,6 @@ msgstr "{startLabel} → <0>{endLabel}</0>"
 msgid "{startLabel}, unchanged"
 msgstr "{startLabel}, sans changement"
 
-msgid "{step}, full read"
-msgstr "{step}, lecture complète"
-
-msgid "{step}, incremental read"
-msgstr "{step}, lecture incrémentale"
-
 msgid "{stopped, plural, one {Stops the technique # time out of 100 where the control is in place.} other {Stops the technique # times out of 100 where the control is in place.}}"
 msgstr "{stopped, plural, one {Arrête la technique # fois sur 100 là où le contrôle est en place.} other {Arrête la technique # fois sur 100 là où le contrôle est en place.}}"
 
@@ -2783,9 +2777,6 @@ msgstr "Actifs ajoutés"
 msgid "Assets are mapped on the risk scope"
 msgstr "Les actifs se rattachent sur le périmètre de risque"
 
-msgid "Assets created"
-msgstr "Actifs créés"
-
 msgid "Assets of the scenario's families with no evidence on file, over every asset of those families."
 msgstr "Actifs des familles du scénario sans aucune preuve enregistrée, rapportés à tous les actifs de ces familles."
 
@@ -2798,14 +2789,8 @@ msgstr "Actifs par catégorie, mesurés et déclarés"
 msgid "Assets processed"
 msgstr "Actifs traités"
 
-msgid "Assets read"
-msgstr "Actifs lus"
-
 msgid "Assets removed"
 msgstr "Actifs retirés"
-
-msgid "Assets skipped"
-msgstr "Actifs ignorés"
 
 msgid "Assets to sync"
 msgstr "Actifs à synchroniser"
@@ -2818,9 +2803,6 @@ msgstr "Actifs sans donnée de vulnérabilité"
 
 msgid "Assets without vulnerability data"
 msgstr "Actifs sans données de vulnérabilité"
-
-msgid "Assets written"
-msgstr "Actifs écrits"
 
 msgid "Assign"
 msgstr "Affecter"
@@ -5712,9 +5694,6 @@ msgstr "Impossible de charger les findings"
 msgid "Findings could not be loaded, so this is not a clean scenario."
 msgstr "Les findings n'ont pas pu être chargés : ce scénario n'est pas pour autant sans finding."
 
-msgid "Findings created"
-msgstr "Findings créés"
-
 msgid "Findings in cause"
 msgstr "Findings en cause"
 
@@ -5723,18 +5702,6 @@ msgstr "Findings nouveaux et fermés par mois sur les 12 derniers mois, face à 
 
 msgid "Findings on the assets this scenario's primary assets depend on."
 msgstr "Findings des actifs dont dépendent les actifs primaires de ce scénario."
-
-msgid "Findings read"
-msgstr "Findings lus"
-
-msgid "Findings removed"
-msgstr "Findings retirés"
-
-msgid "Findings skipped"
-msgstr "Findings ignorés"
-
-msgid "Findings written"
-msgstr "Findings écrits"
 
 msgid "Finds known weaknesses on assets"
 msgstr "Détecte les faiblesses connues des actifs"
@@ -6538,9 +6505,6 @@ msgstr "Modes opératoires"
 
 msgid "Intune"
 msgstr "Intune"
-
-msgid "Inventory"
-msgstr "Inventaire"
 
 msgid "Inventory requested. The next run reads every asset again."
 msgstr "Inventaire demandé. La prochaine exécution relit tous les actifs."
@@ -8774,9 +8738,6 @@ msgstr "Objectif"
 msgid "Objects"
 msgstr "Objets"
 
-msgid "Observations"
-msgstr "Observations"
-
 msgid "Observations processed"
 msgstr "Observations traitées"
 
@@ -9358,9 +9319,6 @@ msgstr "Les simulations passées gardent le nom des menaces qu'elles ont utilis�
 
 msgid "Past threats, assets and loss estimates are not kept, only postures are, so every day is priced on the latest simulation's model. The further that model is from the fiscal year's end, the less precise the curve."
 msgstr "Les menaces, les actifs et les estimations de pertes passés ne sont pas conservés, seules les postures le sont : chaque jour est donc chiffré sur le modèle de la dernière simulation. Plus ce modèle est éloigné de la fin de l'exercice, moins la courbe est précise."
-
-msgid "Pastel colours"
-msgstr "Couleurs pastel"
 
 msgid "Patch leverage"
 msgstr "Effet de levier des correctifs"
@@ -11494,12 +11452,6 @@ msgstr "Service SOAP ou autre service HTTP"
 
 msgid "SOAR"
 msgstr "SOAR"
-
-msgid "Softer tones"
-msgstr "Tons plus doux"
-
-msgid "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
-msgstr "Tons plus doux pour les couleurs de sévérité, de statut et de marquage. Désactivé : couleurs standard, identiques dans chaque produit."
 
 msgid "Software package"
 msgstr "Paquet logiciel"
