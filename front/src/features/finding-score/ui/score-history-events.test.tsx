@@ -65,8 +65,8 @@ describe('ScoreHistoryEvents', () => {
       { at: daysAgo(10), score: 72, band: 'medium' },
     ]);
 
-    const chip = (await screen.findByText('+11 pts')).closest('[class*="border-feedback-"]');
-    expect(chip?.className).toContain('border-feedback-error-tertiary');
+    const chip = (await screen.findByText('+11 pts')).closest('[class*="inset-ring-feedback-"]');
+    expect(chip?.className).toContain('inset-ring-feedback-error-tertiary/30');
     expect(chip?.className).not.toContain('pastel:');
     expect(chip?.className).not.toContain('bg-current/15');
   });
