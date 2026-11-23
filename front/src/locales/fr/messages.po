@@ -1455,6 +1455,9 @@ msgstr "{totalImpacted} actifs sur {totalAssets} portent des findings"
 msgid "{totalLabel}: {actorsLabel}, {intrusionSetsLabel}, {campaignsLabel}"
 msgstr "{totalLabel} : {actorsLabel}, {intrusionSetsLabel}, {campaignsLabel}"
 
+msgid "{totalLength, plural, one {{dataLength} of # entity} other {{dataLength} of # entities}}"
+msgstr "{totalLength, plural, one {{dataLength} sur # entité} other {{dataLength} sur # entités}}"
+
 #. js-lingui-explicit-id
 msgid "{unansweredCount} of {totalCount} kinds"
 msgstr "{unansweredCount} types sur {totalCount}"
@@ -2388,6 +2391,9 @@ msgstr "Toutes les sources"
 
 msgid "All states"
 msgstr "Tous les états"
+
+msgid "All statuses"
+msgstr "Tous les statuts"
 
 msgid "All tactics"
 msgstr "Toutes les tactiques"
@@ -10949,11 +10955,20 @@ msgstr "Rechercher un actif..."
 msgid "Search assets..."
 msgstr "Rechercher des actifs..."
 
+msgid "Search attack outcomes..."
+msgstr "Rechercher des résultats d'attaque..."
+
+msgid "Search budget reviews..."
+msgstr "Rechercher des revues budgétaires..."
+
 msgid "Search by name..."
 msgstr "Rechercher par nom..."
 
 msgid "Search capabilities..."
 msgstr "Rechercher des capacités..."
+
+msgid "Search categories..."
+msgstr "Rechercher des catégories..."
 
 msgid "Search connectors"
 msgstr "Rechercher un connecteur"
@@ -10961,11 +10976,17 @@ msgstr "Rechercher un connecteur"
 msgid "Search controls..."
 msgstr "Rechercher des contrôles..."
 
+msgid "Search countries..."
+msgstr "Rechercher des pays..."
+
 msgid "Search CVE..."
 msgstr "Rechercher une CVE..."
 
 msgid "Search dashboards..."
 msgstr "Rechercher des tableaux de bord..."
+
+msgid "Search files..."
+msgstr "Rechercher des fichiers..."
 
 msgid "Search findings..."
 msgstr "Rechercher des findings..."
@@ -10978,6 +10999,12 @@ msgstr "Rechercher une menace"
 
 msgid "Search for an attack outcome"
 msgstr "Rechercher une issue d'attaque"
+
+msgid "Search groups..."
+msgstr "Rechercher des groupes..."
+
+msgid "Search job kinds..."
+msgstr "Rechercher des types de tâches..."
 
 msgid "Search jobs"
 msgstr "Rechercher des tâches"
@@ -10997,11 +11024,23 @@ msgstr "Rechercher des actifs primaires..."
 msgid "Search requirements..."
 msgstr "Rechercher des exigences..."
 
+msgid "Search risk scenarios..."
+msgstr "Rechercher des scénarios de risque..."
+
+msgid "Search roles..."
+msgstr "Rechercher des rôles..."
+
+msgid "Search rules..."
+msgstr "Rechercher des règles..."
+
 msgid "Search runs..."
 msgstr "Rechercher des exécutions..."
 
 msgid "Search sectors..."
 msgstr "Rechercher un secteur..."
+
+msgid "Search service accounts..."
+msgstr "Rechercher des comptes de service..."
 
 msgid "Search tactics..."
 msgstr "Rechercher une tactique..."

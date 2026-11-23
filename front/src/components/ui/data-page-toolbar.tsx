@@ -6,6 +6,8 @@ import type { FunctionComponent, ReactNode } from 'react';
 interface DataPageToolbarProps {
   leftHeaderContent?: ReactNode,
   dataLength?: number,
+  /** The whole list's count while a search or a filter narrows it, so the count reads "n of N". */
+  totalLength?: number,
   pagination?: ReactNode,
   viewToggle?: ReactNode,
   headerActions?: ReactNode,
@@ -15,6 +17,7 @@ interface DataPageToolbarProps {
 export const DataPageToolbar: FunctionComponent<DataPageToolbarProps> = ({
   leftHeaderContent,
   dataLength,
+  totalLength,
   pagination,
   viewToggle,
   headerActions,
@@ -25,7 +28,11 @@ export const DataPageToolbar: FunctionComponent<DataPageToolbarProps> = ({
     <div className="ml-auto flex items-center gap-2">
       {dataLength !== undefined && (
         <p className="txt-sub-content text-muted-foreground">
-          <strong>{t({ message: plural(dataLength, { one: '# entity', other: '# entities' }) })}</strong>
+          <strong>
+            {totalLength === undefined
+              ? t({ message: plural(dataLength, { one: '# entity', other: '# entities' }) })
+              : t({ message: plural(totalLength, { one: `${dataLength} of # entity`, other: `${dataLength} of # entities` }) })}
+          </strong>
         </p>
       )}
       {pagination}

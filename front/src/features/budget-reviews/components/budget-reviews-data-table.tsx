@@ -178,6 +178,7 @@ export const BudgetReviewsDataTable: FunctionComponent<BudgetReviewsDataTablePro
           // Inside a scope and across every scope, the column preferences are kept apart, so a column
           // hidden in one list does not vanish from the other.
           storageKey={organizationId === undefined ? 'budgetReviewsGlobal' : 'budgetReviews'}
+          search={{ placeholder: t`Search budget reviews...`, texts: (review) => [review.name, review.owner?.name] }}
           initialSorting={[{ id: 'period', desc: true }]}
           onCreate={() => setCreateOpen(true)}
           onClickRow={(row) => handleNavigate(row.original.id)}

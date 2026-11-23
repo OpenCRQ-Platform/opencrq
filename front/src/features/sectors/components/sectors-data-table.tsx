@@ -42,6 +42,7 @@ export const SectorsDataTable: FunctionComponent = () => {
       columns={columns}
       isLoading={isLoading}
       storageKey="sectors"
+      search={{ placeholder: t`Search sectors...`, texts: (sector) => [sector.name, sector.description] }}
       initialSorting={[{ id: 'name', desc: false }]}
     />
   );

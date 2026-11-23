@@ -153,6 +153,14 @@ export const DependencyRulesDataTable: FunctionComponent = () => {
         columns={columns}
         isLoading={isLoading}
         storageKey="dependency-rules"
+        search={{ placeholder: t`Search rules...`, texts: (rule) => [rule.name, rule.primaryAssetName] }}
+        filters={[{
+          id: 'status',
+          label: t`Status`,
+          allLabel: t`All statuses`,
+          options: [{ value: 'enabled', label: t`Enabled` }, { value: 'disabled', label: t`Disabled` }],
+          valueOf: (rule) => (rule.enabled ? 'enabled' : 'disabled'),
+        }]}
         fixedColumnWidths
         initialSorting={[{ id: 'name', desc: false }]}
         onCreate={() => setEditor({ rule: null })}

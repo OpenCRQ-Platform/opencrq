@@ -209,6 +209,7 @@ export const RiskScenarioRelevantThreats: FunctionComponent<RiskScenarioRelevant
           isLoading={isLoading}
           columns={columns}
           storageKey={RELEVANT_THREATS_TABLE_ID}
+          search={{ placeholder: t`Search threats...`, texts: (threat) => [threat.name] }}
           initialSorting={[{ id: 'score', desc: true }]}
           onClickRow={(row) => setSelectedRow(row.original)}
         />

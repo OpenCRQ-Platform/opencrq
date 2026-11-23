@@ -1455,6 +1455,9 @@ msgstr "{totalImpacted} of {totalAssets} assets carry findings"
 msgid "{totalLabel}: {actorsLabel}, {intrusionSetsLabel}, {campaignsLabel}"
 msgstr "{totalLabel}: {actorsLabel}, {intrusionSetsLabel}, {campaignsLabel}"
 
+msgid "{totalLength, plural, one {{dataLength} of # entity} other {{dataLength} of # entities}}"
+msgstr "{totalLength, plural, one {{dataLength} of # entity} other {{dataLength} of # entities}}"
+
 #. js-lingui-explicit-id
 msgid "{unansweredCount} of {totalCount} kinds"
 msgstr "{unansweredCount} of {totalCount} kinds"
@@ -2388,6 +2391,9 @@ msgstr "All sources"
 
 msgid "All states"
 msgstr "All states"
+
+msgid "All statuses"
+msgstr "All statuses"
 
 msgid "All tactics"
 msgstr "All tactics"
@@ -10949,11 +10955,20 @@ msgstr "Search asset..."
 msgid "Search assets..."
 msgstr "Search assets..."
 
+msgid "Search attack outcomes..."
+msgstr "Search attack outcomes..."
+
+msgid "Search budget reviews..."
+msgstr "Search budget reviews..."
+
 msgid "Search by name..."
 msgstr "Search by name..."
 
 msgid "Search capabilities..."
 msgstr "Search capabilities..."
+
+msgid "Search categories..."
+msgstr "Search categories..."
 
 msgid "Search connectors"
 msgstr "Search connectors"
@@ -10961,11 +10976,17 @@ msgstr "Search connectors"
 msgid "Search controls..."
 msgstr "Search controls..."
 
+msgid "Search countries..."
+msgstr "Search countries..."
+
 msgid "Search CVE..."
 msgstr "Search CVE..."
 
 msgid "Search dashboards..."
 msgstr "Search dashboards..."
+
+msgid "Search files..."
+msgstr "Search files..."
 
 msgid "Search findings..."
 msgstr "Search findings..."
@@ -10978,6 +10999,12 @@ msgstr "Search for a threat"
 
 msgid "Search for an attack outcome"
 msgstr "Search for an attack outcome"
+
+msgid "Search groups..."
+msgstr "Search groups..."
+
+msgid "Search job kinds..."
+msgstr "Search job kinds..."
 
 msgid "Search jobs"
 msgstr "Search jobs"
@@ -10997,11 +11024,23 @@ msgstr "Search primary assets..."
 msgid "Search requirements..."
 msgstr "Search requirements..."
 
+msgid "Search risk scenarios..."
+msgstr "Search risk scenarios..."
+
+msgid "Search roles..."
+msgstr "Search roles..."
+
+msgid "Search rules..."
+msgstr "Search rules..."
+
 msgid "Search runs..."
 msgstr "Search runs..."
 
 msgid "Search sectors..."
 msgstr "Search sectors..."
+
+msgid "Search service accounts..."
+msgstr "Search service accounts..."
 
 msgid "Search tactics..."
 msgstr "Search tactics..."

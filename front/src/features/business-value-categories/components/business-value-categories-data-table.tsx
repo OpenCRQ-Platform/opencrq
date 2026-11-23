@@ -48,6 +48,7 @@ export const BusinessValueCategoriesDataTable: FunctionComponent = () => {
       columns={columns}
       isLoading={isLoading}
       storageKey="businessValueCategories"
+      search={{ placeholder: t`Search categories...`, texts: (category) => [category.name, category.description] }}
       onClickRow={(row) => {
         void navigate({
           from: '/$tenantId/{-$organizationId}',

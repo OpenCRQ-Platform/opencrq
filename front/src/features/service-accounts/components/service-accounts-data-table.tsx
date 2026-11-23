@@ -196,6 +196,14 @@ export const ServiceAccountsDataTable: FunctionComponent = () => {
         columns={columns}
         isLoading={isLoading}
         storageKey="serviceAccounts"
+        search={{ placeholder: t`Search service accounts...`, texts: (account) => [account.name] }}
+        filters={[{
+          id: 'status',
+          label: t`Status`,
+          allLabel: t`All statuses`,
+          options: [{ value: 'active', label: t`Active` }, { value: 'inactive', label: t`Inactive` }],
+          valueOf: (account) => (account.active ? 'active' : 'inactive'),
+        }]}
         onCreate={hasManageSecurity ? () => setCreateDrawerOpen(true) : undefined}
         onClickRow={(row) => void navigate({
           from: '/$tenantId/{-$organizationId}',
