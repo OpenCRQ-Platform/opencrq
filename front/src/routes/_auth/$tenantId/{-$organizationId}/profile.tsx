@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, Input } from '@filigran/design-system';
+import { Button, Chip, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle, Input, Switch } from '@filigran/design-system';
 import { ExternalLink, Pencil, RotateCcw } from 'lucide-react';
 import { Avatar } from '@filigran/ui';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -70,6 +70,12 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/profil
 
     const updateThemeMutation = useMutation(trpc.users.updateUser.mutationOptions({
       meta: { skipSuccessToast: true },
+    }));
+
+    const pastelColoursQuery = useQuery(trpc.users.getUserPastelColours.queryOptions());
+    const updatePastelColoursMutation = useMutation(trpc.users.updateUser.mutationOptions({
+      meta: { skipSuccessToast: true },
+      onSuccess: () => pastelColoursQuery.refetch(),
     }));
 
     const updateTheme = async (newTheme: string) => {
@@ -287,6 +293,16 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/profil
                   ))}
                 </SelectContent>
               </Select>
+            </CardField>
+            <CardField title={t`Pastel colours`}>
+              <Switch
+                checked={pastelColoursQuery.data === true}
+                onCheckedChange={(checked) => {
+                  void updatePastelColoursMutation.mutateAsync({ pastelColours: checked });
+                }}
+                disabled={!pastelColoursQuery.isSuccess || updatePastelColoursMutation.isPending}
+                label={t`Use the softer pastel palette for severity, status and marking colours`}
+              />
             </CardField>
             <CardField title={t`Home dashboard`}>
               <HomeDashboardField />

@@ -32,6 +32,14 @@ const applyTheme = (theme: 'light' | 'dark') => {
   classList.toggle('light', theme === 'light');
 };
 
+/**
+ * The design system draws standard colours by default; its `pastel:` variant fills apply only
+ * under a `pastel` class on the root element, the user's opt-in "Pastel colours" preference.
+ */
+export const applyPastelColours = (enabled: boolean) => {
+  document.documentElement.classList.toggle('pastel', enabled);
+};
+
 export const isValidTheme = (value: string | null): value is Theme =>
   value !== null && (themeValues as ReadonlyArray<string>).includes(value);
 
@@ -47,6 +55,11 @@ export const ThemeProvider: FunctionComponent<{ children: ReactNode }> = ({ chil
     enabled: isEnabled,
   }));
   const dbTheme = themeQuery.data;
+
+  const pastelColoursQuery = useQuery(trpc.users.getUserPastelColours.queryOptions(undefined, {
+    enabled: isEnabled,
+  }));
+  const pastelColours = pastelColoursQuery.data === true;
 
   const { data: userPreference } = useLiveQuery({
     query: (q) =>
@@ -93,6 +106,10 @@ export const ThemeProvider: FunctionComponent<{ children: ReactNode }> = ({ chil
   useEffect(() => {
     applyTheme(effectiveTheme);
   }, [effectiveTheme]);
+
+  useEffect(() => {
+    applyPastelColours(pastelColours);
+  }, [pastelColours]);
 
   return (
     <ThemeContext.Provider value={{ theme, effectiveTheme }}>

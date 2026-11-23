@@ -9284,6 +9284,9 @@ msgstr "Les simulations passées gardent le nom des menaces qu'elles ont utilis�
 msgid "Past threats, assets and loss estimates are not kept, only postures are, so every day is priced on the latest simulation's model. The further that model is from the fiscal year's end, the less precise the curve."
 msgstr "Les menaces, les actifs et les estimations de pertes passés ne sont pas conservés, seules les postures le sont : chaque jour est donc chiffré sur le modèle de la dernière simulation. Plus ce modèle est éloigné de la fin de l'exercice, moins la courbe est précise."
 
+msgid "Pastel colours"
+msgstr "Couleurs pastel"
+
 msgid "Patch leverage"
 msgstr "Effet de levier des correctifs"
 
@@ -13733,6 +13736,9 @@ msgstr "Utilisez-en autant que nécessaire, elles se cumulent."
 
 msgid "Use saved value"
 msgstr "Reprendre cette valeur"
+
+msgid "Use the softer pastel palette for severity, status and marking colours"
+msgstr "Utiliser la palette pastel, plus douce, pour les couleurs de sévérité, de statut et de marquage"
 
 msgid "Used by groups"
 msgstr "Utilisé par les groupes"
