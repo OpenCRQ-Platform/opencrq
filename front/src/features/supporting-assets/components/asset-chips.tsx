@@ -46,8 +46,8 @@ export const AssetExposureChip: FunctionComponent<{ exposure: 'internet_facing' 
  * set — unlike `severity` (a closed set of feedback tones) or `entity` (nine tokens carrying their
  * own product meaning, e.g. `techniques`, `cases`, which an arbitrary tag name would misuse).
  */
-export const AssetTagChip: FunctionComponent<{ name: string, color: string | null }> = ({ name, color }) => (
-  <Chip label={name} color={color ?? tagColorHex(name)} />
+export const AssetTagChip: FunctionComponent<{ name: string, color: string | null, className?: string }> = ({ name, color, className }) => (
+  <Chip label={name} color={color ?? tagColorHex(name)} className={className} />
 );
 
 /** What the Information card's Tags field means: every connector's or person's own assertion, deduped by tag. */
