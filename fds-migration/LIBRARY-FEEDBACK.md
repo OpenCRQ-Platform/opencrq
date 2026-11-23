@@ -50,7 +50,7 @@ teaser that carries a "Connect" link. Stopgap: `keepOpenOnPress` on `TooltipHint
 Ask: a `Popover` (trigger, content, open on hover, focus and press, dismiss on Escape and outside press)
 so the stopgap goes.
 
-## Chip (`@filigran/design-system@1.12.0`)
+## Chip (`@filigran/design-system@1.12.1`)
 
 - **Runtime variable outside the `--fds-` namespace.** A data-coloured `Chip` sets its label colour
   inline as `--chip-data-ink-dark` and `--chip-data-ink-light`, while `Button` publishes
@@ -63,3 +63,12 @@ so the stopgap goes.
   filled and do not change under pastel, which contradicts the 1.12.0 CHANGELOG (standard colours:
   inset edge and text in the label colour; pastel: the wash, default text, no edge). Ask: align the
   contract with the CHANGELOG.
+- **Ink measured against the base surface only (fixed in 1.12.1).** In 1.12.0 `dataColorInk` picked
+  the label ink against the base elevation surface only, so a black label chip on a raised dark card
+  (Asset overview > Tags card) read 4.35:1, under the 4.5:1 text floor (#87, UX blocker B1 of #86).
+  Fixed upstream by XTM-Foundation/filigran-design-system#430 in 1.12.1 (5.06:1 on the same card),
+  consumed by #92. No product-side override.
+- **No visible shape for a white label in light theme with Softer tones (open).** Light theme, Softer
+  tones on: a white label's fill `rgba(255, 255, 255, 0.21)` on a white card gives the chip no visible
+  edge or shape (advisory A1 of #87). Ask: give the pastel chip a visible edge when its fill cannot
+  separate it from the surface it sits on.
