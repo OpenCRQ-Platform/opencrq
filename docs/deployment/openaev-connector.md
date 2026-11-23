@@ -84,7 +84,7 @@ same phases, and each decides on its own whether it is due:
 
 | Phase | When it runs | OpenAEV calls |
 |---|---|---|
-| **Inventory** | On the first run, then when the last completed inventory is older than 24 hours. Also once in a run where an observation names an asset the inventory does not know. | Tags, asset search, endpoint batches, AI target search, linked-person lookup |
+| **Inventory** | On the first run, then when the last completed inventory is older than 24 hours, or at the next run after an administrator chose **Run inventory now**. Also once in a run where an observation names an asset the inventory does not know. | Tags, asset search, endpoint batches, AI target search, linked-person lookup |
 | **Attack observations** | Every run, from the cursor saved by the previous one: only what changed since. | Snapshot attack stream |
 | **CVE observations** | Every run, from its own cursor. | Snapshot vulnerability stream |
 | **Full reconciliation** | Per stream and per OpenAEV tenant, on the first run and then when the last completed one is older than 7 days. It restarts the stream from the beginning. | The same two streams, without a cursor |
@@ -136,6 +136,15 @@ the next full reconciliation.
 
 The inventory is checkpointed as one unit across the OpenAEV tenants: a job that resumes mid-run
 does not repeat it, but a crash partway through it restarts it from the first tenant.
+
+**Run inventory now.** Assets created in OpenAEV just after an inventory would otherwise wait up to
+24 hours. A user with the security management permission can choose **Run inventory now** in the
+connector's actions menu (`connectors.runInventoryNow`): it records the ask on the connector
+(`integration_settings.inventory_requested_at`) and books a run under that user. A run already
+queued or running takes the ask instead of a second run starting beside it; one that had already
+passed its inventory step leaves the ask to the run after it. The run that completes an inventory
+clears every ask made before it started. The connector's details show the last inventory and when
+the next one is due.
 
 ### The observations
 

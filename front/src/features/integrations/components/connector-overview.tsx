@@ -193,6 +193,22 @@ const ScheduleFields: FunctionComponent<{ connector: ConnectorDetail }> = ({ con
   );
 };
 
+/** The full re-read of the source's assets, which runs on its own cadence beside the incremental reads. */
+const InventoryFields: FunctionComponent<{ inventory: NonNullable<ConnectorDetail['inventory']> }> = ({ inventory }) => {
+  const next = inventory.requestedAt !== null || inventory.nextDueAt === null
+    ? t`At the next run`
+    : formatDateTime(inventory.nextDueAt);
+  return (
+    <>
+      <InfoField
+        title={t`Last inventory`}
+        value={inventory.lastCompletedAt === null ? null : formatDateTime(inventory.lastCompletedAt)}
+      />
+      <InfoField title={t`Next inventory`} value={next} />
+    </>
+  );
+};
+
 const DetailsPanel: FunctionComponent<{ connector: ConnectorDetail }> = ({ connector }) => {
   const { lastRun } = connector;
   const lastRunAt = lastRun?.finishedAt ?? connector.lastReportedAt;
@@ -207,6 +223,7 @@ const DetailsPanel: FunctionComponent<{ connector: ConnectorDetail }> = ({ conne
       <InfoField title={t`Status`} value={lastRun === null ? null : runStatusLabel(lastRun.status)} />
       <InfoField title={t`Duration`} value={formatDurationMs(msBetween(lastRun?.startedAt ?? null, lastRun?.finishedAt ?? null))} />
       <InfoField title={t`Processed`} value={lastRun === null ? null : String(lastRun.processedTotal)} />
+      {connector.inventory !== null && <InventoryFields inventory={connector.inventory} />}
     </SectionCard>
   );
 };

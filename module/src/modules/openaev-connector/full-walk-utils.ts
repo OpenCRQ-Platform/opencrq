@@ -1,3 +1,15 @@
+/** An inventory older than this is rebuilt; the observation streams are read on every run regardless. */
+export const OPENAEV_INVENTORY_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Whether the next run reads the whole OpenAEV inventory: never completed one, the last is older than
+ * the interval, or an administrator asked for one.
+ */
+export const isInventoryDue = (lastInventoryAt: Date | null, inventoryRequestedAt: Date | null, now: Date): boolean =>
+  inventoryRequestedAt !== null
+  || lastInventoryAt === null
+  || now.getTime() - lastInventoryAt.getTime() > OPENAEV_INVENTORY_INTERVAL_MS;
+
 export const FULL_WALK_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 export const FULL_WALK_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1000;
 

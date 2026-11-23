@@ -1,5 +1,5 @@
 import type { ConnectorAssetInput, JobHandler } from '@app/module';
-import { allServiceDefinitions, createServices, NonRetryableError } from '@app/module';
+import { allServiceDefinitions, createServices, isInventoryDue, NonRetryableError } from '@app/module';
 import type { OpenaevAgent, OpenaevSyncPayload, OpenaevSyncState } from './openaev-types';
 import type { CveFindingsTransaction } from './cve-findings-transaction';
 import { config } from '../../config';
@@ -42,8 +42,6 @@ const idBatchesOf = (ids: ReadonlyArray<string>): Array<Array<string>> =>
  * batch resolves against what the previous ones committed, so splitting costs no match.
  */
 const UPSERT_BATCH_SIZE = 500;
-/** An inventory older than this is rebuilt; the observation streams are read on every run regardless. */
-const INVENTORY_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState> = async (ctx) => {
   if (ctx.signal.aborted) {
@@ -366,14 +364,16 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
     }
 
     // 1. Inventory, when due. `last_reported_at` is the end of the last inventory, so a connector
-    // that never completed one, or whose last is older than a day, rebuilds it for every OpenAEV
-    // tenant; otherwise the asset map is rebuilt from what is on file. A resumed job whose
-    // inventory was checkpointed does neither: `sourceAssetId` is a connector-wide key
-    // (`supporting_asset_sources`' own uniqueness), so the one rebuilt map serves every tenant.
+    // that never completed one, whose last is older than a day, or whose administrator asked for one
+    // (`inventory_requested_at`), rebuilds it for every OpenAEV tenant; otherwise the asset map is
+    // rebuilt from what is on file. A resumed job whose inventory was checkpointed does neither:
+    // `sourceAssetId` is a connector-wide key (`supporting_asset_sources`' own uniqueness), so the
+    // one rebuilt map serves every tenant.
     const resumedAfterInventory = ctx.state?.inventoryComplete === true;
-    const lastInventoryAt = (await svc.integrationSettings.getIntegrationSettings('openaev'))?.lastReportedAt ?? null;
+    const settings = await svc.integrationSettings.getIntegrationSettings('openaev');
+    const inventoryStartedAt = new Date();
     const inventoryDue = !resumedAfterInventory
-      && (lastInventoryAt === null || Date.now() - lastInventoryAt.getTime() > INVENTORY_INTERVAL_MS);
+      && isInventoryDue(settings?.lastReportedAt ?? null, settings?.inventoryRequestedAt ?? null, inventoryStartedAt);
 
     const assetIdMapByTenant = new Map<string, Map<string, string>>();
     let inventoryRanInThisRun = resumedAfterInventory;
@@ -399,6 +399,8 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       }
       await ctx.updateProgress({ message: 'Recording the completed OpenAEV inventory' });
       await svc.integrationSettings.markSynced('openaev', new Date());
+      // An ask booked once this inventory had started is newer than what it read, and stays.
+      await svc.integrationSettings.clearInventoryRequest('openaev', inventoryStartedAt);
       // Checkpointed before the observation phase starts, so a crash during its network calls does
       // not repeat the inventory on retry.
       await ctx.saveStateSnapshot({ inventoryComplete: true });

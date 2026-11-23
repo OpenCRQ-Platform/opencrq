@@ -155,7 +155,8 @@ export const CONNECTOR_INVENTORY: Readonly<{
     defaultSchedule: { cadence: 'hourly', atMinute: null, weekday: null, timeZone: null },
     minIntervalHours: 1,
     loggerFeature: 'openaev-sync',
-    scopeKinds: ['findings'],
+    // The inventory step writes the supporting assets the findings hang on.
+    scopeKinds: ['supporting_assets', 'findings'],
   },
   drata: {
     source: 'drata',

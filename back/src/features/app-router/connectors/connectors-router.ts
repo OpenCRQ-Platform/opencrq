@@ -11,11 +11,13 @@ import {
   deriveStreamConnection,
   deriveStreamConnectorState,
   INTEGRATION_SOURCES,
+  isInventoryDue,
   isValidTimeZone,
   isWellFormedSchedule,
   JOB_BACKED_CONNECTOR_KINDS,
   jobBackedConnector,
   offeredCadences,
+  OPENAEV_INVENTORY_INTERVAL_MS,
   originTrigger,
   SCHEDULE_CADENCES,
   STREAM_CONNECTIONS,
@@ -45,6 +47,34 @@ import {
 import { computeTimelineProgressPercent } from '../opencti/opencti-backfill-progress-utils';
 import { defaultThreatsRunState, readConnectorSchedule, resolveConnectorConfigurations, resolveRunnableConnectors } from './connector-configuration';
 import { enqueueConnectorRuns } from './enqueue-connector-run';
+
+/**
+ * The full re-read of the source's asset inventory, for a connector that runs one apart from its
+ * incremental reads. Null for every other connector.
+ */
+const InventorySchema = z.object({
+  lastCompletedAt: z.string().nullable(),
+  /** Pending an administrator's ask, until a run that read the whole inventory answers it. */
+  requestedAt: z.string().nullable(),
+  /** When the next run reads the whole inventory by itself; null while one is already owed. */
+  nextDueAt: z.string().nullable(),
+});
+
+const inventoryOf = (own: { lastReportedAt: Date | null, inventoryRequestedAt: Date | null } | null) => {
+  const lastCompletedAt = own?.lastReportedAt ?? null;
+  const requestedAt = own?.inventoryRequestedAt ?? null;
+  const owed = isInventoryDue(lastCompletedAt, requestedAt, new Date());
+  return {
+    lastCompletedAt: lastCompletedAt?.toISOString() ?? null,
+    requestedAt: requestedAt?.toISOString() ?? null,
+    nextDueAt: owed || lastCompletedAt === null ? null : new Date(lastCompletedAt.getTime() + OPENAEV_INVENTORY_INTERVAL_MS).toISOString(),
+  };
+};
+
+/** The connectors whose run reads the whole inventory on its own cadence, and on an ask. */
+const INVENTORY_SOURCES = ['openaev'] as const satisfies ReadonlyArray<IntegrationSource>;
+const hasInventory = (source: ConnectorSource): source is (typeof INVENTORY_SOURCES)[number] =>
+  (INVENTORY_SOURCES as ReadonlyArray<string>).includes(source);
 
 const ConnectorListItemSchema = z.object({
   source: z.enum(CONNECTOR_SOURCES),
@@ -141,6 +171,7 @@ const ConnectorDetailSchema = ConnectorListItemSchema.extend({
   streamLastEventAt: z.string().nullable(),
   streamEnabled: z.boolean().nullable(),
   streamReachedLiveTail: z.boolean().nullable(),
+  inventory: InventorySchema.nullable(),
 });
 
 const ConnectorScheduleSchema = z.object({
@@ -363,6 +394,7 @@ export const connectorsRouter = (
         streamEnabled: input.source === 'opencti' ? openctiSettings?.enabled === true : null,
         streamReachedLiveTail: input.source === 'opencti' ? openctiSettings?.reachedLiveTailAt != null : null,
         enabled: configuration.enabled,
+        inventory: hasInventory(input.source) ? inventoryOf(own) : null,
       };
     }),
 
@@ -498,6 +530,44 @@ export const connectorsRouter = (
         telemetry.onConnectorSyncLaunched?.();
       } catch {
       // Telemetry must never break the business flow.
+      }
+      return { jobId };
+    }),
+
+  /**
+   * Has the connector's next run read the whole asset inventory, whatever its cadence, and starts that
+   * run now. A run already queued or running is the one that answers: the ask folds into it and is
+   * read at its start, or by the run after it when it had already passed its inventory step.
+   */
+  runInventoryNow: procedure
+    .input(SourceInput)
+    .output(z.object({ jobId: z.string() }))
+    .mutation(async ({ input, ctx: { services, origin } }) => {
+      const { tenantId } = origin;
+      if (!tenantId) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
+      const source = input.source;
+      if (!hasInventory(source)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This connector has no inventory to run.' });
+      }
+      const scoped = services.withOrigin(origin);
+      // What the run reads is the connector's own state, gated like the reset that clears it.
+      if (!await scoped.capabilities.hasManageSecurity()) {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
+      const requestedAt = new Date();
+      if (!await scoped.integrationSettings.requestInventory(source, requestedAt)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This connector is not configured for this tenant.' });
+      }
+      // Booked under the asker, so the run list says who asked for it.
+      const booked = await enqueueConnectorRuns(scoped, tenantId, [source], {
+        ...originTrigger(origin),
+        interactive: true,
+      });
+      const jobId = booked.at(0)?.jobId;
+      if (jobId === undefined) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This connector is not configured for this tenant.' });
       }
       return { jobId };
     }),
