@@ -259,6 +259,7 @@ export const FIRST_PARTY = [
       'front/public/img/icon-opencti.png',
       'front/public/img/xtm-mark-openaev.svg',
       'front/public/img/xtm-mark-opencti.svg',
+      'front/public/img/xtm-mark-xtmone.svg',
     ],
   },
   {
