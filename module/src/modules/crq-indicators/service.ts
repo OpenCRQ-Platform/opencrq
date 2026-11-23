@@ -24,6 +24,7 @@ import type { AttackRunReachReport } from './attack-run-inputs';
 import type { EngineRunResult } from './engine/engine-run';
 import type { CveGainSource, CveGainState } from './cve-gain-state';
 import type { CrqRunProfile } from './run-profile';
+import type { EngineRunRows } from './result-fingerprint';
 import type { AnnualLossDistribution } from './engine/annual-loss';
 import type { EstateMode, RevenueBand } from '../organizations/constants';
 import type { PertRange } from './engine/attack-run-worlds';
@@ -64,6 +65,7 @@ import { actorCveRoutes } from './actor-cve-routes';
 import { cveGainState } from './cve-gain-state';
 import { compareCveScenarioGains } from './cve-scenario-gain-order';
 import { fingerprintRunInputs } from './run-fingerprint';
+import { resultFingerprintOf } from './result-fingerprint';
 import { crqIndicatorsRepository } from './repository';
 import { computesSubject, familyRunOwnership, FULL_RUN_PROFILE, PRICE_RUN_PROFILE, runProfileTokens } from './run-profile';
 import { summariseXtmExposure } from './xtm-exposure';
@@ -619,7 +621,7 @@ export interface AttackRunEngineRun {
 
 /** A scenario the engine deliberately did not price, and the answer a surface owes for it. */
 export interface AttackRunEngineSkip {
-  skipped: 'no-mapped-asset' | 'no-scenario' | 'unchanged',
+  skipped: 'no-mapped-asset' | 'no-scenario' | 'unchanged' | 'same-result',
 }
 
 /**
@@ -662,8 +664,8 @@ const withoutInitialAccessOf = (catalogOutcomeId: string | undefined) => {
   return path === undefined ? undefined : { key: path.key, share: path.share, techniqueExternalIds: path.techniqueExternalIds };
 };
 
-/** One engine run, persisted whole. The user-entered TEF inputs are read and never written. */
-const storeEngineRun = async (repo: CrqRepo, params: {
+/** Every row one engine run writes. The user-entered TEF inputs are read and never written. */
+const engineRunRows = (params: {
   runId: string,
   jobId: string | null,
   readAt: Date,
@@ -683,7 +685,7 @@ const storeEngineRun = async (repo: CrqRepo, params: {
   threatEvidence: { evidenceMode: OutcomeEvidenceMode },
   provenance: { estateMode: EstateMode, boostApplied: number },
   noTarget: boolean,
-}): Promise<void> => {
+}): EngineRunRows => {
   const { result, reach } = params;
   /*
    * The techniques this run scored, read from the actors' results rather than from the
@@ -704,7 +706,7 @@ const storeEngineRun = async (repo: CrqRepo, params: {
   const frequency = (value: number): number | null => (hasFrequency ? value : null);
   const euros = (value: number): number | null => (priced ? value : null);
   const priceable = (value: number): number | null => (params.lossDriverCount > 0 ? value : null);
-  await repo.insertRun({
+  const run = {
     id: params.runId,
     jobId: params.jobId,
     readAt: params.readAt,
@@ -754,14 +756,12 @@ const storeEngineRun = async (repo: CrqRepo, params: {
     estateMode: params.provenance.estateMode,
     boostApplied: params.provenance.boostApplied,
     profile: runProfileTokens(params.profile),
-  });
+  };
 
-  if (priced) {
-    await repo.insertAnnualLoss({ id: params.runId, runId: params.runId, ...annualLossColumns(result.annualLoss) });
-  }
+  const annualLoss = priced ? { id: params.runId, runId: params.runId, ...annualLossColumns(result.annualLoss) } : null;
 
   const rowKeyByActor = new Map(result.actors.map((actor) => [actor.key, uuidv7()]));
-  await repo.insertGroupScores(result.actors.map((actor) => ({
+  const groupScores = result.actors.map((actor) => ({
     id: uuidv7(),
     runId: params.runId,
     groupKey: rowKeyByActor.get(actor.key)!,
@@ -776,26 +776,26 @@ const storeEngineRun = async (repo: CrqRepo, params: {
     aleMean: euros(actor.aleMean),
     attackRunDays: actor.attackRunDays,
     reactionTimeExceededShare: actor.reactionTimeExceededShare,
-  })));
+  }));
 
-  await repo.insertUnplayableObstacles(result.actors.flatMap((actor) => actor.unplayableObstacleKeys.map((obstacleKey) => ({
+  const unplayableObstacles = result.actors.flatMap((actor) => actor.unplayableObstacleKeys.map((obstacleKey) => ({
     id: uuidv7(),
     runId: params.runId,
     groupKey: rowKeyByActor.get(actor.key)!,
     obstacleKey,
-  }))));
+  })));
 
   const gapRows = (pairs: ReadonlyArray<{ techniqueExternalId: string, family: AssetCategory }>, gap: CrqReachGapKind) =>
     pairs.flatMap((pair) => {
       const mitreTechniqueId = params.techniqueIdByExternalId.get(pair.techniqueExternalId);
       return mitreTechniqueId === undefined ? [] : [{ id: uuidv7(), runId: params.runId, mitreTechniqueId, family: pair.family, gap }];
     });
-  await repo.insertReachGaps([
+  const reachGaps = [
     ...gapRows(uncontestedByEstate, 'estate'),
     ...gapRows(reach.uncontestableByCatalogue, 'catalogue'),
-  ]);
+  ];
 
-  await repo.insertPlanWhatIfResults(result.planValues.flatMap((plan) => {
+  const planWhatIfs = result.planValues.flatMap((plan) => {
     const planScopeVersion = params.planScopeVersionById.get(plan.planId);
     return planScopeVersion === undefined ? [] : [{
       id: uuidv7(),
@@ -806,7 +806,7 @@ const storeEngineRun = async (repo: CrqRepo, params: {
       aleReductionP10: euros(plan.aleReduction.p10),
       aleReductionP90: euros(plan.aleReduction.p90),
     }];
-  }));
+  });
 
   const differenceByKey = new Map(result.basketDifferenceValues.map((difference) => [difference.key, difference.value]));
   const basketAnnualLossById = new Map(result.basketAnnualLosses.map((entry) => [entry.basketId, entry.annualLoss]));
@@ -827,7 +827,7 @@ const storeEngineRun = async (repo: CrqRepo, params: {
     });
     return [row('reference', reference), row('without-build', withoutBuild)];
   }) : [];
-  await repo.insertBudgetReviewResults(params.reviewFigures.flatMap((figure) => {
+  const budgetReviewResults = params.reviewFigures.flatMap((figure) => {
     const value = differenceByKey.get(figure.key);
     return value === undefined ? [] : [{
       id: uuidv7(),
@@ -841,9 +841,9 @@ const storeEngineRun = async (repo: CrqRepo, params: {
       aleReductionP10: euros(value.p10),
       aleReductionP90: euros(value.p90),
     }];
-  }), reviewAnnualLosses);
+  });
 
-  await repo.insertWhatIfResults(result.controlValues.flatMap((control) => control.levers.map((lever) => ({
+  const controlWhatIfs = result.controlValues.flatMap((control) => control.levers.map((lever) => ({
     id: uuidv7(),
     runId: params.runId,
     controlId: control.controlId,
@@ -857,16 +857,16 @@ const storeEngineRun = async (repo: CrqRepo, params: {
     aleReductionP10: euros(lever.aleReduction.p10),
     aleReductionP90: euros(lever.aleReduction.p90),
     zeroReason: lever.zeroReason,
-  }))));
+  })));
 
-  await repo.insertCveWhatIfResults(result.cveValues.map((value) => ({
+  const cveWhatIfs = result.cveValues.map((value) => ({
     id: uuidv7(),
     runId: params.runId,
     cveId: value.cveId,
     aleReductionMean: euros(value.aleReductionMean),
     aleReductionP10: euros(value.aleReductionP10),
     aleReductionP90: euros(value.aleReductionP90),
-  })));
+  }));
 
   const valueByTechnique = new Map<string, { prevent: number, detect: number }>();
   for (const entry of result.techniqueValues) {
@@ -876,7 +876,7 @@ const storeEngineRun = async (repo: CrqRepo, params: {
       detect: held.detect + entry.detectValue,
     });
   }
-  await repo.insertTechniqueWhatIfResults([...valueByTechnique].flatMap(([externalId, entry]) => {
+  const techniqueWhatIfs = [...valueByTechnique].flatMap(([externalId, entry]) => {
     const mitreTechniqueId = params.techniqueIdByExternalId.get(externalId);
     return mitreTechniqueId === undefined ? [] : [{
       id: uuidv7(),
@@ -885,7 +885,37 @@ const storeEngineRun = async (repo: CrqRepo, params: {
       preventValueMean: euros(entry.prevent),
       detectValueMean: euros(entry.detect),
     }];
-  }));
+  });
+
+  return {
+    priced,
+    run,
+    annualLoss,
+    groupScores,
+    unplayableObstacles,
+    reachGaps,
+    planWhatIfs,
+    budgetReviewResults,
+    budgetReviewAnnualLosses: reviewAnnualLosses,
+    controlWhatIfs,
+    cveWhatIfs,
+    techniqueWhatIfs,
+  };
+};
+
+const storeEngineRun = async (repo: CrqRepo, rows: EngineRunRows, resultFingerprint: string): Promise<void> => {
+  await repo.insertRun({ ...rows.run, resultFingerprint });
+  if (rows.annualLoss !== null) {
+    await repo.insertAnnualLoss(rows.annualLoss);
+  }
+  await repo.insertGroupScores([...rows.groupScores]);
+  await repo.insertUnplayableObstacles([...rows.unplayableObstacles]);
+  await repo.insertReachGaps([...rows.reachGaps]);
+  await repo.insertPlanWhatIfResults([...rows.planWhatIfs]);
+  await repo.insertBudgetReviewResults([...rows.budgetReviewResults], [...rows.budgetReviewAnnualLosses]);
+  await repo.insertWhatIfResults([...rows.controlWhatIfs]);
+  await repo.insertCveWhatIfResults([...rows.cveWhatIfs]);
+  await repo.insertTechniqueWhatIfResults([...rows.techniqueWhatIfs]);
 };
 
 interface EngineDeps {
@@ -904,6 +934,8 @@ export interface ScenarioPricingPass {
   priced: number,
   /** Scenarios whose latest run was computed from the very inputs this pass read. */
   unchanged: number,
+  /** Scenarios whose inputs moved and whose result did not: the latest run stands for this pass too. */
+  sameResult: number,
   skipped: number,
   refused: Array<{ riskScenarioId: string, reason: string }>,
   /** The scenarios this pass wrote a new run for, in the order it walked them: the ones `priced` counts. */
@@ -923,6 +955,23 @@ export interface ScenarioPricingPassProgress {
 
 /** How many scenarios a pass goes through between two progress reports. */
 export const SCENARIO_PRICING_PROGRESS_EVERY = 25;
+
+/**
+ * How long every run of a scenario is kept; past it, a run goes once a later one of its UTC day
+ * stands for it (`deleteExpiredRuns`). It is the longest window a page reads finer than a day: the
+ * scenario's ALE history and ALE change explain, over a year.
+ */
+export const CRQ_RUN_DETAIL_RETENTION_DAYS = 366;
+
+/** Each batch is its own statement, so the doorbells of a run and its cascaded rows are spread out. */
+const RUN_PURGE_BATCH_SIZE = 200;
+// Bounds one purge's own duration: a backlog deeper than this waits for the next day's run.
+const MAX_RUN_PURGE_BATCHES = 50;
+
+export interface RunPurgeLimits {
+  batchSize: number,
+  maxBatches: number,
+}
 
 export interface ScenarioPricingPassOptions {
   priceBudgetReviews?: boolean,
@@ -960,7 +1009,10 @@ export interface ScenarioPricingPassOptions {
  *
  * `appVersion` enters the run's fingerprint, so a release reprices what its code may price
  * differently. `skipUnchanged` answers `unchanged`, writing nothing, when the scenario's latest run
- * carries the fingerprint this one would.
+ * carries the fingerprint this one would. Past the engine, it answers `same-result` and stores no
+ * run when the result equals the latest run's, a price run unless the scenario has no price: that
+ * run takes this one's inputs fingerprint, so the next pass over the same inputs stops before the
+ * engine, and keeps its moments, the result having held since them.
  */
 const runAttackRunEngine = async (
   { repo, deps, atomic }: ServiceContext<CrqRepo, EngineDeps>,
@@ -1164,28 +1216,39 @@ const runAttackRunEngine = async (
   const result = run.result();
 
   const runId = uuidv7();
-  await atomic(async ({ repo: atomicRepo }) => {
-    await storeEngineRun(atomicRepo, {
-      runId,
-      jobId: jobId ?? null,
-      readAt,
-      inputsFingerprint,
-      riskScenarioId,
-      result,
-      reach,
-      profile: computed,
-      tef,
-      lossDriverCount: lossEstimates.length,
-      techniqueIdByExternalId,
-      planScopeVersionById,
-      reviewFigures: reviewPricing.figures,
-      reviewExceedances: reviewPricing.exceedances,
-      threatEvidence: { evidenceMode: outcomeTechniques.evidenceMode },
-      provenance,
-      noTarget,
-    });
+  const rows = engineRunRows({
+    runId,
+    jobId: jobId ?? null,
+    readAt,
+    inputsFingerprint,
+    riskScenarioId,
+    result,
+    reach,
+    profile: computed,
+    tef,
+    lossDriverCount: lossEstimates.length,
+    techniqueIdByExternalId,
+    planScopeVersionById,
+    reviewFigures: reviewPricing.figures,
+    reviewExceedances: reviewPricing.exceedances,
+    threatEvidence: { evidenceMode: outcomeTechniques.evidenceMode },
+    provenance,
+    noTarget,
   });
-  return { runId, result, reach };
+  const resultFingerprint = resultFingerprintOf(rows, appVersion ?? null);
+  const stored = await atomic(async ({ repo: atomicRepo }) => {
+    // Read in the transaction that stores, so a run stored while the engine turned is the one compared.
+    const latest = skipUnchanged ? await atomicRepo.findLatestRunByScenarioId(riskScenarioId) : undefined;
+    // A latest run holding figure families dates them current. A priced run's digest leaves its
+    // families out, so it stands for this pass only once a price run already dates them older.
+    if (latest !== undefined && latest.resultFingerprint === resultFingerprint && (!rows.priced || latest.profile.length === 0)) {
+      await atomicRepo.updateRunInputsFingerprint(latest.id, inputsFingerprint);
+      return false;
+    }
+    await storeEngineRun(atomicRepo, rows, resultFingerprint);
+    return true;
+  });
+  return stored ? { runId, result, reach } : { skipped: 'same-result' };
 };
 
 // ─── Service ─────────────────────────────────────────────────────────────────
@@ -1262,7 +1325,7 @@ export const crqIndicatorsService = defineService(
     const startedAtMs = Date.now();
     const riskScenarioIds = await context.deps.riskScenarios.getAllRiskScenarioIds(after);
     const pass: ScenarioPricingPass = {
-      priced: 0, unchanged: 0, skipped: 0, refused: [], moved: [], walked: 0, total: riskScenarioIds.length, resumeAfter: null,
+      priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [], walked: 0, total: riskScenarioIds.length, resumeAfter: null,
     };
     await onProgress?.({ walked: 0, total: pass.total });
     let previous: string | undefined;
@@ -1290,6 +1353,8 @@ export const crqIndicatorsService = defineService(
         if ('skipped' in outcome) {
           if (outcome.skipped === 'unchanged') {
             pass.unchanged += 1;
+          } else if (outcome.skipped === 'same-result') {
+            pass.sameResult += 1;
           } else {
             pass.skipped += 1;
           }
@@ -1307,6 +1372,24 @@ export const crqIndicatorsService = defineService(
       previous = riskScenarioId;
     }
     return pass;
+  },
+
+  /** Purges the tenant's runs past `CRQ_RUN_DETAIL_RETENTION_DAYS` that no reader needs, and answers how many went. */
+  purgeExpiredRuns: async (
+    { repo },
+    now: Date,
+    { batchSize, maxBatches }: RunPurgeLimits = { batchSize: RUN_PURGE_BATCH_SIZE, maxBatches: MAX_RUN_PURGE_BATCHES },
+  ): Promise<{ runsDeleted: number }> => {
+    const before = new Date(now.getTime() - CRQ_RUN_DETAIL_RETENTION_DAYS * DAY_MS);
+    let runsDeleted = 0;
+    for (let batch = 0; batch < maxBatches; batch += 1) {
+      const deleted = await repo.deleteExpiredRuns(before, batchSize);
+      runsDeleted += deleted;
+      if (deleted < batchSize) {
+        break;
+      }
+    }
+    return { runsDeleted };
   },
 
   getLatestRun: async ({ repo }, riskScenarioId: string) =>

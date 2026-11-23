@@ -9,7 +9,7 @@ const { logTrace } = createLogger({ feature: 'jobs-retention' });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Clocked, not table-driven: it purges by age alone, so it runs unobserved. */
+/** Clocked, not table-driven: it purges job runs and CRQ runs by age, so it runs unobserved. */
 export const jobsRetentionHandler: JobHandler = async (ctx) => {
   if (ctx.signal.aborted) {
     return;
@@ -27,4 +27,10 @@ export const jobsRetentionHandler: JobHandler = async (ctx) => {
   });
 
   logTrace('Job runs purged', { tenantId: ctx.tenantId, ...purged });
+
+  if (ctx.signal.aborted) {
+    return;
+  }
+  const crqRuns = await services.crqIndicators.purgeExpiredRuns(new Date(now));
+  logTrace('CRQ runs purged', { tenantId: ctx.tenantId, ...crqRuns });
 };

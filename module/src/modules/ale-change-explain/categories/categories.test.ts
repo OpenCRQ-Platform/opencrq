@@ -16,6 +16,7 @@ const baseRun: ComparedRunRow = {
   jobId: null,
   readAt: null,
   inputsFingerprint: null,
+  resultFingerprint: null,
   createdAt: new Date('2026-10-01T10:00:00Z'),
   iterations: 10_000,
   vulnerabilityP5: 0.1,

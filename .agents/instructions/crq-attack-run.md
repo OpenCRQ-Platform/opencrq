@@ -1036,7 +1036,20 @@ observed estates, postures and incident outcomes, is still to come.
   app version included, with the latest run's `inputs_fingerprint`. The digest leaves out
   what only some profiles compute (what-ifs, plans, budget review baskets), so the pass that
   follows a full simulation writes nothing; a scenario with no TEF or loss estimate runs in full
-  and keeps its plans in it. The actors' activity decays against the start of the UTC
+  and keeps its plans in it. An input can move without moving the result (an NVD page giving a
+  vector to a CVE the estate carries): past the engine, the pass compares a digest of the result
+  (`resultFingerprintOf`, `crq_indicator_runs.result_fingerprint`: the run's figures and the rows
+  every profile writes, the app version included) with the latest run's, and when they match it
+  stores no run and moves that run's `inputs_fingerprint` to what it read, so the next pass stops
+  before the engine. The run keeps its `created_at` and `read_at`: the result has held since them.
+  A priced latest run holding figure families is never stood in for, since its digest leaves them
+  out and only a price run past it dates them older: the first moved pass after it stores one.
+  A manual simulation always stores its run. The run history is bounded by the daily
+  `jobs-retention` job (`purgeExpiredRuns`): every run of the last `CRQ_RUN_DETAIL_RETENTION_DAYS`
+  (366, the longest window a page reads finer than a day), and past it the last run of each UTC
+  day (and the last with an ALE and with a LEF), the two latest runs of each scenario, the newest
+  run carrying each profile token (for `techniques`, every one a kept run reads its technique
+  values from) and every run holding a budget review figure at the review's current version. The actors' activity decays against the start of the UTC
   day, in the stored attacker mixture (section 1), so the digest holds until the mixture job
   rewrites it, and the pass, which reads that table, reprices the scenarios of a moved pair. A
   moved finding, exposure, identity state, unknown exposure setting or stored threat reaches the
