@@ -7,6 +7,7 @@ import type { CoverageBucket, StrengthRung } from '../controls/capability/consta
 import { controlCapabilityService } from '../controls/capability/service';
 import { defineService } from '../../registry';
 import { riskScenariosService } from '../risk-scenarios/service';
+import { usersService } from '../users/service';
 import { buildPlanCandidates } from './plan-candidates';
 import { buildPlanProjection, scenariosToReprice, summarisePlanTotals } from './plan-projection';
 import { summarisePlanReturn } from './plan-return';
@@ -53,13 +54,14 @@ const toProjectionScenario = (scenario: { id: string, name: string, readiness: {
   ({ id: scenario.id, name: scenario.name, readinessStatus: scenario.readiness.status });
 
 export const treatmentPlansService = defineService('treatmentPlans', treatmentPlansRepository)
-  .dependsOn(() => [riskScenariosService, controlCapabilityService])
+  .dependsOn(() => [riskScenariosService, controlCapabilityService, usersService])
   .implement({
     /** The moves land in the plan's own transaction, so a failed save leaves no plan behind to be created twice. */
     createTreatmentPlan: async ({ atomic }, { moves, ...values }: TreatmentPlanCreateValues) => {
       refuseInvalidMoves(moves ?? []);
       const id = uuidv7();
-      await atomic(async ({ repo }) => {
+      await atomic(async ({ repo, deps }) => {
+        await deps.users.refuseOwnerOutsideTenant(values.ownerId);
         await repo.insertTreatmentPlan({ ...values, id });
         for (const move of moves ?? []) {
           await repo.upsertTreatmentPlanMove({ ...move, id: uuidv7(), planId: id });
@@ -209,7 +211,8 @@ export const treatmentPlansService = defineService('treatmentPlans', treatmentPl
       if (!await repo.findTreatmentPlanById(id)) {
         throw newError('Treatment plan not found');
       }
-      await atomic(async ({ repo: atomicRepo }) => {
+      await atomic(async ({ repo: atomicRepo, deps }) => {
+        await deps.users.refuseOwnerOutsideTenant(values.ownerId);
         await atomicRepo.updateTreatmentPlan(id, values);
       });
     },

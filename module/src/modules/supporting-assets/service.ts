@@ -37,6 +37,7 @@ import { originUserId, requireTenantId } from '../../security';
 import { cveService } from '../cve/service';
 import { organizationsService } from '../organizations/service';
 import { techniqueMappingService } from '../technique-mapping/service';
+import { usersService } from '../users/service';
 import { identityFamilyOf } from './identity-families';
 import { DISMISSAL_REASON_CODES_BY_TYPE, EVIDENCE_ACTIVITY_DAYS, SUBCATEGORY_TO_CATEGORY } from './constants';
 import { calendarDayIn, countSpansByDay, daysEndingOn } from './evidence-activity';
@@ -1102,7 +1103,7 @@ const writeManualAssetTags = async (repo: SupportingAssetsRepo, eventOrigin: Eve
 export const supportingAssetsService = defineService(
   'supportingAssets',
   supportingAssetsRepository,
-).dependsOn(() => [cveService, organizationsService, techniqueMappingService]).implement({
+).dependsOn(() => [cveService, organizationsService, techniqueMappingService, usersService]).implement({
   /**
    * `mapIntoOrganizationId` is the closed risk scope the asset is created inside, resolved by the
    * caller: an asset created by hand there is mapped into it, or it would not appear in the very
@@ -1142,6 +1143,7 @@ export const supportingAssetsService = defineService(
     const linkedPerson = values.linkedPerson?.trim() ? values.linkedPerson.trim() : ownerName;
     const criticality = values.criticality ?? 'unknown';
     return atomic(async ({ repo, deps }) => {
+      await deps.users.refuseOwnerOutsideTenant(values.ownerId);
       const owner = await decideAssetOwner(repo, tenantId, values.ownerId, ownerName, null);
       // A hand-created asset has no observation and no connector: it is the canonical row from
       // the start, and never enters the identity matcher.
@@ -1234,13 +1236,14 @@ export const supportingAssetsService = defineService(
     const linkedPerson = values.linkedPerson !== undefined
       ? (values.linkedPerson?.trim() || null)
       : (ownerName ?? undefined);
-    return atomic(async ({ repo: atomicRepo }) => {
+    return atomic(async ({ repo: atomicRepo, deps }) => {
       // The only guard against a foreign asset: the source and property tables' policies check the
       // row's own tenant, not the asset's, so everything below relies on this read through `views`.
       const current = await atomicRepo.findSupportingAssetById(id);
       if (!current) {
         throw new SupportingAssetNotFoundError();
       }
+      await deps.users.refuseOwnerOutsideTenant(values.ownerId);
       const owner = await decideAssetOwner(atomicRepo, tenantId, values.ownerId, ownerName, current);
       const categoryId = values.categoryId ?? current.categoryId;
       assertSubcategoryWithin(values.subcategoryId, categoryId);

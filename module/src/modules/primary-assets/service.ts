@@ -4,6 +4,7 @@ import { isUniqueViolationOf } from '../../db/pg-errors';
 import { defineService } from '../../registry';
 import { requireTenantId } from '../../security';
 import { businessValueCategoriesService } from '../business-value-categories';
+import { usersService } from '../users/service';
 import { DuplicatePrimaryAssetReferenceError, DuplicatePrimaryAssetTemplateError } from './errors';
 import { primaryAssetsRepository } from './repository';
 
@@ -61,7 +62,7 @@ const normalizeTexts = <T extends Partial<Pick<PrimaryAssetNativeFields, 'refere
 export const primaryAssetsService = defineService(
   'primaryAssets',
   primaryAssetsRepository,
-).dependsOn(() => [businessValueCategoriesService]).implement({
+).dependsOn(() => [businessValueCategoriesService, usersService]).implement({
   createPrimaryAsset: async ({ atomic, eventOrigin }, values: {
     id: string,
     organizationId: string,
@@ -73,7 +74,8 @@ export const primaryAssetsService = defineService(
   } & Partial<PrimaryAssetNativeFields>) => {
     const tenantId = requireTenantId(eventOrigin);
     const { businessValueCategoryIds, ...fields } = normalizeTexts(values);
-    await refusingDuplicateTemplate(fields.onboardingTemplate, async () => refusingDuplicateReference(fields.reference, async () => atomic(async ({ repo: atomicRepo }) => {
+    await refusingDuplicateTemplate(fields.onboardingTemplate, async () => refusingDuplicateReference(fields.reference, async () => atomic(async ({ repo: atomicRepo, deps }) => {
+      await deps.users.refuseOwnerOutsideTenant(fields.ownerId);
       if (businessValueCategoryIds.length > 0) {
         await atomicRepo.validateBusinessValueCategoryIds(businessValueCategoryIds);
       }
@@ -96,7 +98,8 @@ export const primaryAssetsService = defineService(
     businessValueCategoryIds?: Array<string>,
   } & Partial<PrimaryAssetNativeFields>) => {
     const { businessValueCategoryIds, ...fields } = normalizeTexts(values);
-    await refusingDuplicateReference(fields.reference, async () => atomic(async ({ repo: atomicRepo }) => {
+    await refusingDuplicateReference(fields.reference, async () => atomic(async ({ repo: atomicRepo, deps }) => {
+      await deps.users.refuseOwnerOutsideTenant(fields.ownerId);
       if (fields.reference != null) {
         const current = await atomicRepo.findPrimaryAssetById(id);
         if (!current) {
