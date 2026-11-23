@@ -1,3 +1,5 @@
+import type { ChipSeverity } from '@filigran/design-system';
+import { Chip } from '@filigran/design-system';
 import { plural, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import { CircleDot, MoveRight, TrendingDown, TrendingUp } from 'lucide-react';
@@ -20,6 +22,14 @@ const KIND_TONE: Record<ScoreEventKind, string> = {
   fall: 'text-feedback-success-primary',
   first: 'text-feedback-info-primary',
   held: 'text-muted-foreground',
+};
+
+/** The same reading as KIND_TONE, on the design-system chip: outlined in standard colours, plain in pastel. */
+const KIND_SEVERITY: Record<ScoreEventKind, ChipSeverity> = {
+  rise: 'critical',
+  fall: 'low',
+  first: 'info',
+  held: 'neutral',
 };
 
 const KindIcon: FunctionComponent<{ kind: ScoreEventKind }> = ({ kind }) => {
@@ -63,11 +73,7 @@ const PointsChip: FunctionComponent<{ event: ScoreEvent }> = ({ event }) => {
   if (points === null) {
     return null;
   }
-  return (
-    <span className={cn('rounded-sm bg-current/15 px-2 py-px txt-sub-content font-medium', KIND_TONE[event.kind])}>
-      {changePointsLabel(points)}
-    </span>
-  );
+  return <Chip severity={KIND_SEVERITY[event.kind]} label={changePointsLabel(points)} />;
 };
 
 const EventRow: FunctionComponent<{ event: ScoreEvent }> = ({ event }) => {

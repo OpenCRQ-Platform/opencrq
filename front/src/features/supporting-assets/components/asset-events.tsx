@@ -1,3 +1,5 @@
+import type { ChipSeverity } from '@filigran/design-system';
+import { Chip } from '@filigran/design-system';
 import { plural, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import { explainAssetPosture, postureBandForScore, postureSeverityBand } from '@app/module/client';
@@ -31,6 +33,15 @@ const KIND_TONE: Record<PostureEventKind, string> = {
   lost: 'text-muted-foreground',
   first: 'text-feedback-info-primary',
   regained: 'text-feedback-info-primary',
+};
+
+/** The same reading as KIND_TONE, on the design-system chip: outlined in standard colours, plain in pastel. */
+const KIND_SEVERITY: Record<PostureEventKind, ChipSeverity> = {
+  rise: 'low',
+  fall: 'critical',
+  lost: 'neutral',
+  first: 'info',
+  regained: 'info',
 };
 
 const KindIcon: FunctionComponent<{ kind: PostureEventKind }> = ({ kind }) => {
@@ -77,11 +88,7 @@ const PointsChip: FunctionComponent<{ event: PostureEvent }> = ({ event }) => {
   if (points === null) {
     return null;
   }
-  return (
-    <span className={cn('rounded-sm bg-current/15 px-2 py-px txt-sub-content font-medium', KIND_TONE[event.kind])}>
-      {changePointsLabel(points)}
-    </span>
-  );
+  return <Chip severity={KIND_SEVERITY[event.kind]} label={changePointsLabel(points)} />;
 };
 
 const EventRow: FunctionComponent<{ event: AssetEvent }> = ({ event }) => {
@@ -136,10 +143,11 @@ const PostureSide: FunctionComponent<PostureSideProps> = ({ label, score, cause 
   );
 };
 
-const ROLE_TONE: Record<FindingInCauseRole, string> = {
-  resolved: 'text-feedback-success-primary',
-  newWorst: 'text-feedback-warning-primary',
-  worst: 'text-muted-foreground',
+/** On the design-system chip: outlined in standard colours, plain in pastel. */
+const ROLE_SEVERITY: Record<FindingInCauseRole, ChipSeverity> = {
+  resolved: 'low',
+  newWorst: 'high',
+  worst: 'neutral',
 };
 
 const roleLabel = (role: FindingInCauseRole): string => {
@@ -153,9 +161,7 @@ const roleLabel = (role: FindingInCauseRole): string => {
 
 const FindingInCauseRow: FunctionComponent<{ tenantId: string, finding: FindingInCause }> = ({ tenantId, finding }) => (
   <div className="flex items-center gap-3 py-2.5 not-first:border-t not-first:border-[var(--fds-border-elevation-subtle)]">
-    <span className={cn('whitespace-nowrap rounded-sm bg-current/15 px-2 py-px txt-sub-content', ROLE_TONE[finding.role])}>
-      {roleLabel(finding.role)}
-    </span>
+    <Chip severity={ROLE_SEVERITY[finding.role]} label={roleLabel(finding.role)} />
     <Link
       to="/$tenantId/{-$organizationId}/findings/$evidenceId"
       params={{ tenantId, evidenceId: finding.evidenceId }}
