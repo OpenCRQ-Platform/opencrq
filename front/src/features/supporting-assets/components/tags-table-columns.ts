@@ -1,10 +1,10 @@
 /** The settings pane at a 1080 px screen, where the tags table must not scroll sideways. */
 export const TAGS_TABLE_PANE_WIDTH_AT_1080 = 652;
 
-/** Horizontal padding of a header cell of the DS table (16 px left, 8 px right). */
-export const TABLE_HEADER_CELL_PADDING = 24;
-
-/** Horizontal padding of a body cell of the DS table (16 px left, 16 px right), measured in the lab. */
+/**
+ * Horizontal padding of a body cell of the DS table (16 px left, 16 px right), measured in the lab.
+ * A header cell is padded 16/8 (24): the chip is sized from the body padding, which is the larger.
+ */
 export const TABLE_BODY_CELL_PADDING = 32;
 
 /** The Name column of the tags table. */
