@@ -70,9 +70,9 @@ export interface RetireAttackEvidenceDeps {
  * `recomputeEvidenceStateForAssets` then dismisses it with the reason `No longer reported by
  * OpenAEV`. Nothing depends on when evidence was written, so the pairs may be judged in any run.
  *
- * Calls no service when there is no pair to enumerate.
+ * Calls no service when there is no pair to enumerate. Returns the number of findings dismissed.
  */
-export const retireAttackEvidence = async (deps: RetireAttackEvidenceDeps): Promise<void> => {
+export const retireAttackEvidence = async (deps: RetireAttackEvidenceDeps): Promise<number> => {
   const { svc, connectorId, assetIdMap, now } = deps;
 
   const enumerated = new Map<string, ScopePair>();
@@ -86,7 +86,7 @@ export const retireAttackEvidence = async (deps: RetireAttackEvidenceDeps): Prom
     enumerated.set(`${pair.supportingAssetId}\u0000${pair.scope}`, pair);
   }
   if (enumerated.size === 0) {
-    return;
+    return 0;
   }
 
   const retiredAt = now();
@@ -134,7 +134,7 @@ export const retireAttackEvidence = async (deps: RetireAttackEvidenceDeps): Prom
     }
   }
 
-  await svc.supportingAssets.recomputeEvidenceStateForAssets({
+  return svc.supportingAssets.recomputeEvidenceStateForAssets({
     supportingAssetIds: [...new Set([...enumerated.values()].map((pair) => pair.supportingAssetId))],
     reason: RETIREMENT_REASON,
   });
@@ -154,15 +154,15 @@ export interface RetireCveEvidenceDeps {
  * `enumeratedAt` under its own scope, so the CVEs OpenAEV stopped reporting for that asset alone are
  * dismissed by the recompute with the reason `No longer reported by OpenAEV`, and what another
  * OpenAEV asset folded onto the same OpenCRQ asset still reports stands. Calls no service when
- * there is no pair.
+ * there is no pair. Returns the number of findings dismissed.
  */
-export const retireCveEvidence = async (deps: RetireCveEvidenceDeps): Promise<void> => {
+export const retireCveEvidence = async (deps: RetireCveEvidenceDeps): Promise<number> => {
   const { svc, connectorId, pairs, enumeratedAt } = deps;
   if (pairs.length === 0) {
-    return;
+    return 0;
   }
   await svc.supportingAssets.markScopesEnumerated({ connectorId, pairs: [...pairs], enumeratedAt });
-  await svc.supportingAssets.recomputeEvidenceStateForAssets({
+  return svc.supportingAssets.recomputeEvidenceStateForAssets({
     supportingAssetIds: [...new Set(pairs.map((pair) => pair.supportingAssetId))],
     reason: RETIREMENT_REASON,
   });

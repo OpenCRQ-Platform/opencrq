@@ -1,4 +1,4 @@
-import type { JobStatus, TriggeredBy } from './schema';
+import type { JobStatus, JobStep, JobStepEntity, TriggeredBy } from './schema';
 import { StructuredError } from '@app/utils';
 import type { DrizzleDB } from '../../db';
 import type { StatementRecorder } from '../../db/statement-observation';
@@ -123,6 +123,8 @@ export interface RunListItem {
   leasedUntil: Date | null,
   errorMessage: string | null,
   errorCount: number,
+  /** What each step of the run counted, in `JOB_STEPS` order; empty for a kind that reports none. */
+  stepCounts: Array<StepCounts>,
   triggeredBy: TriggeredBy,
   triggeredById: string | null,
   payload: Record<string, unknown>,
@@ -262,11 +264,30 @@ export type DeferOutcome =
 /** `cancelled` when a cancel reached the run before it could be released. */
 export type ReleaseOutcome = { outcome: 'released' } | { outcome: 'cancelled' } | { outcome: 'lost-race' };
 
+/** What one step of a run counted for one kind of object; see `jobStepCounts`. */
+export interface StepCounts {
+  step: JobStep,
+  entity: JobStepEntity,
+  mode: 'full' | 'incremental' | null,
+  read: number,
+  written: number,
+  created: number | null,
+  removed: number,
+  skipped: number,
+}
+
+export interface StepCountRecord extends StepCounts {
+  jobId: string,
+  recordedAt: Date,
+}
+
 export interface ProgressUpdate {
   processedTotal?: number,
   expectedTotal?: number | null,
   /** Null clears it, undefined leaves it. */
   message?: string | null,
+  /** Replaces what the run recorded for the same step and entity, an earlier attempt's included. */
+  stepCounts?: StepCounts,
 }
 
 /** A (kind, tenant) pair a worker still holds for a serialized kind, past the job row's own status. */

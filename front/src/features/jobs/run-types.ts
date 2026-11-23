@@ -1,5 +1,17 @@
 import type { JobLogLevel, JobStatus, TriggeredBy } from '@app/module/client';
 
+/** What one step of a run counted; `created` is null where the step cannot tell new from updated. */
+export interface RunStepCounts {
+  step: 'inventory' | 'observations',
+  entity: 'assets' | 'findings',
+  mode: 'full' | 'incremental' | null,
+  read: number,
+  written: number,
+  created: number | null,
+  removed: number,
+  skipped: number,
+}
+
 /**
  * Declared locally rather than inferred from a router: `connectors.listRuns` and `jobs.listRuns`
  * both render `RunListItemSchema` from `back/src/features/app-router/jobs/run-contract.ts`, so
@@ -25,6 +37,7 @@ export interface JobRunListItem {
   leaseExpiresAt: string | null,
   lastError: string | null,
   errorCount: number,
+  stepCounts: Array<RunStepCounts>,
   triggeredBy: TriggeredBy,
   triggeredById: string | null,
   /** Absent for `connectors.listRuns`, whose `RunListItemSchema` output carries no payload at all. */

@@ -13,6 +13,7 @@ import { runDisplayName, runProgressPercent, runPulse, runRetryWait } from '../r
 import { runTimings } from '../run-timings';
 import { RunErrorsDrawer } from './run-errors-drawer';
 import { RunReferenceList } from './run-reference-list';
+import { RunStepCounts } from './run-step-counts';
 
 const PULSE_TICK_MS = 1_000;
 
@@ -124,6 +125,7 @@ export const RunRow: FunctionComponent<{ run: JobRunListItem, unit: RunUnit | nu
           </CardField>
         )}
       </div>
+      <RunStepCounts stepCounts={run.stepCounts} />
       {references.length > 0 && (
         <CardField title={t`Related to`}>
           <RunReferenceList references={references} />

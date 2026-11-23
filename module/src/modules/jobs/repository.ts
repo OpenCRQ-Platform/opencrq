@@ -1,4 +1,5 @@
 import { newError } from '@app/utils';
+import { uuidv7 } from 'uuidv7';
 import { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNull, lt, lte, not, notInArray, or, sql } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import type { EventOrigin, SecuredSchema } from '../../security';
@@ -19,12 +20,14 @@ import type {
   ScheduledBooking,
   SerializedSlot,
   SettledJob,
+  StepCountRecord,
+  StepCounts,
 } from './types';
 import { foldedLike } from '../../db/fold-text';
 import { escapeLikePattern } from '../../db/like-pattern';
 import { orderNullsLast } from '../../db/order-nulls-last';
 import { defineRepository } from '../../registry';
-import { ACTIVE_JOB_STATUSES, jobErrors, jobs, TERMINAL_JOB_STATUSES } from './schema';
+import { ACTIVE_JOB_STATUSES, jobErrors, jobs, jobStepCounts, TERMINAL_JOB_STATUSES } from './schema';
 
 const DEFAULT_LIST_LIMIT = 100;
 
@@ -628,6 +631,29 @@ export const jobsRepository = defineRepository({
     return rows.map((row) => ({ jobId: row.jobId, count: Number(row.count) }));
   },
 
+  findStepCountsByJobIds: async ({ db, views }, jobIds: ReadonlyArray<string>): Promise<Array<StepCountRecord>> => {
+    if (jobIds.length === 0) {
+      return [];
+    }
+    const rows = await db
+      .select({
+        jobId: views.jobStepCounts.jobId,
+        step: views.jobStepCounts.step,
+        entity: views.jobStepCounts.entity,
+        mode: views.jobStepCounts.mode,
+        read: views.jobStepCounts.read,
+        written: views.jobStepCounts.written,
+        created: views.jobStepCounts.created,
+        removed: views.jobStepCounts.removed,
+        skipped: views.jobStepCounts.skipped,
+        recordedAt: views.jobStepCounts.recordedAt,
+      })
+      .from(views.jobStepCounts)
+      .where(inArray(views.jobStepCounts.jobId, [...jobIds]))
+      .orderBy(asc(views.jobStepCounts.recordedAt));
+    return rows.map((row) => ({ ...row, mode: row.mode === 'full' || row.mode === 'incremental' ? row.mode : null }));
+  },
+
   /** `stack` is a server trace and stays here: the reader that calls this serves a browser. */
   findJobErrors: ({ db, views }, jobId: string): Promise<Array<JobErrorRecord>> => db
     .select({
@@ -1007,6 +1033,36 @@ export const jobsRepository = defineRepository({
       .where(and(eq(jobs.id, jobId), eq(jobs.status, 'running'), eq(jobs.claimedBy, workerId)))
       .returning();
     return rows.map((r) => ({ id: r.id }));
+  },
+
+  /**
+   * Writes one step's counts on a run its worker still holds, replacing the row an earlier attempt
+   * left for the same step and entity. The tenant is taken from the run row itself.
+   */
+  upsertStepCounts: async ({ db }, jobId: string, workerId: string, counts: StepCounts): Promise<ReadonlyArray<{ id: string }>> => {
+    // The run row's own tenant, read with the lease check: a raw read, as the claim, since only its
+    // worker (a system origin) writes progress.
+    const [run] = await db.select({ tenantId: jobs.tenantId })
+      // eslint-disable-next-line app/no-raw-table-in-reads -- the lease check reads the job row itself; system origin only, as updateProgress
+      .from(jobs)
+      .where(and(eq(jobs.id, jobId), eq(jobs.status, 'running'), eq(jobs.claimedBy, workerId)));
+    if (!run) {
+      return [];
+    }
+    const values = {
+      mode: counts.mode,
+      read: counts.read,
+      written: counts.written,
+      created: counts.created,
+      removed: counts.removed,
+      skipped: counts.skipped,
+      recordedAt: sqlAsDate(sql`now()`),
+    };
+    const rows = await db.insert(jobStepCounts)
+      .values([{ id: uuidv7(), tenantId: run.tenantId, jobId, step: counts.step, entity: counts.entity, ...values }])
+      .onConflictDoUpdate({ target: [jobStepCounts.jobId, jobStepCounts.step, jobStepCounts.entity], set: values })
+      .returning();
+    return rows.map((row) => ({ id: row.id }));
   },
 
   insertJobError: ({ db }, values: typeof jobErrors.$inferInsert) =>

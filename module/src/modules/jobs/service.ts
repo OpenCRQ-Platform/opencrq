@@ -29,6 +29,7 @@ import type {
   ScenarioComputation,
   ScheduledBooking,
   SerializedSlot,
+  StepCounts,
   TriggeredBy,
 } from './types';
 import type { InferRepository } from '../../registry';
@@ -41,7 +42,7 @@ import { deriveJobHealth, platformJobHealths } from './health';
 import { payloadFoldOf } from './payload-folds';
 import { jobsRepository } from './repository';
 import { deferralDelayMs } from './retry-policy';
-import { ACTIVE_JOB_STATUSES, TERMINAL_JOB_STATUSES } from './schema';
+import { ACTIVE_JOB_STATUSES, JOB_STEPS, TERMINAL_JOB_STATUSES } from './schema';
 import { LeaseLostError } from './types';
 
 const DEFAULT_MAX_RUNTIME_MS = 15 * 60 * 1000;
@@ -254,13 +255,25 @@ export interface FailureInfo {
 
 export type ComputeRetryDelayMs = (attempt: number) => number;
 
-type ErrorCountRepo = Pick<InferRepository<typeof jobsRepository>, 'countErrorsByJobIds'>;
+type ErrorCountRepo = Pick<InferRepository<typeof jobsRepository>, 'countErrorsByJobIds' | 'findStepCountsByJobIds'>;
 
-/** Joins each run to its own error count, the one field no run-list projection carries by itself. */
-const withErrorCounts = async <T extends { id: string }>(repo: ErrorCountRepo, runs: ReadonlyArray<T>): Promise<Array<T & { errorCount: number }>> => {
-  const counts = await repo.countErrorsByJobIds(runs.map((run) => run.id));
+/** Joins each run to its own error count and step counts, the fields no run-list projection carries by itself. */
+const withErrorCounts = async <T extends { id: string }>(
+  repo: ErrorCountRepo,
+  runs: ReadonlyArray<T>,
+): Promise<Array<T & { errorCount: number, stepCounts: Array<StepCounts> }>> => {
+  const ids = runs.map((run) => run.id);
+  const [counts, steps] = await Promise.all([repo.countErrorsByJobIds(ids), repo.findStepCountsByJobIds(ids)]);
   const countByJobId = new Map(counts.map((row) => [row.jobId, row.count]));
-  return runs.map((run) => ({ ...run, errorCount: countByJobId.get(run.id) ?? 0 }));
+  const stepsByJobId = new Map<string, Array<StepCounts>>();
+  for (const { jobId, recordedAt: _recordedAt, ...step } of steps) {
+    stepsByJobId.set(jobId, [...(stepsByJobId.get(jobId) ?? []), step]);
+  }
+  return runs.map((run) => ({
+    ...run,
+    errorCount: countByJobId.get(run.id) ?? 0,
+    stepCounts: (stepsByJobId.get(run.id) ?? []).sort((a, b) => JOB_STEPS.indexOf(a.step) - JOB_STEPS.indexOf(b.step)),
+  }));
 };
 
 /** A `RunQuery` scoped to one status, for a queue section that has no filter or sort of its own. */
@@ -524,9 +537,7 @@ export const jobsService = defineService(
     limit: number,
   ): Promise<Array<RunListItem>> => {
     const runs = await repo.findRunsByKind(tenantId, kind, statuses, order, limit);
-    const counts = await repo.countErrorsByJobIds(runs.map((run) => run.id));
-    const countByJobId = new Map(counts.map((row) => [row.jobId, row.count]));
-    return runs.map((run) => ({ ...run, errorCount: countByJobId.get(run.id) ?? 0 }));
+    return withErrorCounts(repo, runs);
   },
 
   countRunsForKind: async ({ repo }, tenantId: string, kind: string): Promise<RunCounts> =>
@@ -779,9 +790,19 @@ export const jobsService = defineService(
 
   updateProgress: async ({ eventOrigin, repo }, jobId: string, workerId: string, progress: ProgressUpdate): Promise<void> => {
     requireSystemOrigin(eventOrigin, 'updateProgress');
-    const rows = await repo.updateProgress(jobId, workerId, progress);
-    if (rows.length === 0) {
-      throw new LeaseLostError('Lease lost during updateProgress', { jobId, workerId });
+    const { stepCounts, ...fields } = progress;
+    const onlyCounts = stepCounts !== undefined && Object.values(fields).every((value) => value === undefined);
+    if (!onlyCounts) {
+      const rows = await repo.updateProgress(jobId, workerId, fields);
+      if (rows.length === 0) {
+        throw new LeaseLostError('Lease lost during updateProgress', { jobId, workerId });
+      }
+    }
+    if (stepCounts !== undefined) {
+      const rows = await repo.upsertStepCounts(jobId, workerId, stepCounts);
+      if (rows.length === 0) {
+        throw new LeaseLostError('Lease lost during updateProgress', { jobId, workerId });
+      }
     }
   },
 

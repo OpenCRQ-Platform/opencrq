@@ -83,6 +83,7 @@ const PLAIN_TENANT_REFERENCES: Record<string, string> = {
   'finding_scores.asset_evidence_id -> asset_evidence': RECOMPUTED,
   'integration_settings.service_account_id -> service_accounts': 'Checked through views.serviceAccounts by the integrations router before the write.',
   'job_logs.job_id -> jobs': 'Taken with tenant_id from the same job row.',
+  'job_step_counts.job_id -> jobs': 'Taken with tenant_id from the same job row.',
   'loss_drivers.loss_category_id -> loss_categories': 'Derived from the row\'s own tenant id, and written by no product path.',
   'openaev_assets.connector_id -> integration_settings': CONNECTOR_CHECKED,
   'openaev_attack_observations.connector_id -> integration_settings': CONNECTOR_CHECKED,

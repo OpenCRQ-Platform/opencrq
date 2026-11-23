@@ -113,3 +113,36 @@ export const jobErrors = pgTable('job_errors', {
 ]);
 
 defineSecurityPolicies(jobErrors, jobChildTenantIsolationPolicy);
+
+/** The steps a run reports counts for, in the order a run takes them. */
+export const JOB_STEPS = ['inventory', 'observations'] as const;
+export type JobStep = (typeof JOB_STEPS)[number];
+
+/** What a step counted: the assets an inventory went over, the findings the observations wrote. */
+export const JOB_STEP_ENTITIES = ['assets', 'findings'] as const;
+export type JobStepEntity = (typeof JOB_STEP_ENTITIES)[number];
+
+/**
+ * What one step of a run read and did to one kind of object, so a run that succeeded with nothing
+ * new reads as such. One row per (run, step, entity): a retried attempt replaces its row. `created`
+ * is null where the write does not tell a new object from an updated one; `mode` says how the step
+ * read its source (`full` or `incremental`), null where it has no such choice.
+ */
+export const jobStepCounts = pgTable('job_step_counts', {
+  id: uuid('id').primaryKey(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  jobId: uuid('job_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  step: text('step').notNull().$type<JobStep>(),
+  entity: text('entity').notNull().$type<JobStepEntity>(),
+  mode: text('mode'),
+  read: integer('read').notNull().default(0),
+  written: integer('written').notNull().default(0),
+  created: integer('created'),
+  removed: integer('removed').notNull().default(0),
+  skipped: integer('skipped').notNull().default(0),
+  recordedAt: timestamp('recorded_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('job_step_counts_job_step_entity_uq').on(table.jobId, table.step, table.entity),
+]);
+
+defineSecurityPolicies(jobStepCounts, tenantIsolationPolicy);
