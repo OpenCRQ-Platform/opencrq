@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobContext } from '@app/module';
 
 const mockPurgeExpiredRuns = vi.fn().mockResolvedValue({ runsDeleted: 0 });
+const mockPurgeExpiredCrqRuns = vi.fn().mockResolvedValue({ runsDeleted: 0 });
 
 const mockWithOrigin = vi.fn().mockReturnValue({
   jobs: { purgeExpiredRuns: mockPurgeExpiredRuns },
+  crqIndicators: { purgeExpiredRuns: mockPurgeExpiredCrqRuns },
 });
 
 vi.mock('@app/module', () => ({
@@ -50,6 +52,7 @@ describe('jobsRetentionHandler', () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
     mockPurgeExpiredRuns.mockClear();
+    mockPurgeExpiredCrqRuns.mockClear();
     mockWithOrigin.mockClear();
   });
 
@@ -64,6 +67,15 @@ describe('jobsRetentionHandler', () => {
     await jobsRetentionHandler(makeCtx({ signal: ctrl.signal }));
 
     expect(mockPurgeExpiredRuns).not.toHaveBeenCalled();
+    expect(mockPurgeExpiredCrqRuns).not.toHaveBeenCalled();
+  });
+
+  it('purges the CRQ runs of the run tenant as of now', async () => {
+    mockConfig.mockReturnValue({ jobs: { enabled: true, run_retention_days: 30 } });
+
+    await jobsRetentionHandler(makeCtx());
+
+    expect(mockPurgeExpiredCrqRuns).toHaveBeenCalledWith(new Date(NOW));
   });
 
   it('computes the bound from the configured retention days', async () => {

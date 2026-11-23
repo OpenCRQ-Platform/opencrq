@@ -32,7 +32,7 @@ const feed = (hash: Hash, value: unknown): void => {
       break;
     case 'function':
     case 'symbol':
-      throw newError('A run input cannot be fingerprinted', { type: typeof value });
+      throw newError('A value cannot be fingerprinted', { type: typeof value });
   }
   if (value instanceof Date) {
     hash.update(`D${value.toISOString()};`);
@@ -63,10 +63,10 @@ const feed = (hash: Hash, value: unknown): void => {
 };
 
 const unordered = (items: ReadonlyArray<unknown>): string =>
-  items.map((item) => fingerprintRunInputs(item)).sort().join(',');
+  items.map((item) => fingerprintOf(item)).sort().join(',');
 
-/** A digest of the run inputs it is handed, the caller choosing which: equal digests mean equal inputs. */
-export const fingerprintRunInputs = (value: unknown): string => {
+/** A digest of the value it is handed, the run inputs or the result: equal digests mean equal values. */
+export const fingerprintOf = (value: unknown): string => {
   const hash = createHash('sha256');
   feed(hash, value);
   return hash.digest('hex');

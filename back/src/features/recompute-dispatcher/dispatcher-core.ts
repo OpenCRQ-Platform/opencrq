@@ -53,6 +53,12 @@ export interface DispatcherDeps {
  */
 export const RUNTIME_TABLES = new Set(['jobs', 'job_errors', 'job_dependencies', 'job_logs']);
 
+/**
+ * Writers whose changes no recompute reads: the retention purge deletes only rows past every reader's
+ * window, so routing its deletes would wake a full pass over inputs that did not move.
+ */
+export const UNROUTED_ORIGINS = new Set(['jobs-retention']);
+
 const key = (kind: string, tenantId: string): string => `${kind}::${tenantId}`;
 
 /**
@@ -451,7 +457,7 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
   };
 
   const routeEvent = (event: DataChangedEvent): void => {
-    if (event.tenantId != null && !knownTenants.has(event.tenantId)) {
+    if ((event.tenantId != null && !knownTenants.has(event.tenantId)) || (event.origin != null && UNROUTED_ORIGINS.has(event.origin))) {
       return;
     }
     const tables = topology.tablesChangedBy(event.table, event.op);

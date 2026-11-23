@@ -39,7 +39,7 @@ const makeCtx = (state: State | null = null) => {
 };
 
 const passOf = (overrides: Partial<ScenarioPricingPass>): ScenarioPricingPass => ({
-  priced: 0, unchanged: 0, skipped: 0, refused: [], moved: [], walked: 0, total: 0, resumeAfter: null, ...overrides,
+  priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [], walked: 0, total: 0, resumeAfter: null, ...overrides,
 });
 
 /** Answers `pass`, calling the handler's progress hook first as the service does. */
@@ -81,7 +81,7 @@ describe('crqPriceRecomputeHandler', () => {
     expect(progress[0]).toEqual({ processedTotal: 0, expectedTotal: 3 });
     expect(progress.at(-1)).toMatchObject({ processedTotal: 3, expectedTotal: 3 });
     expect(summaryOf(progress)).toEqual({
-      walked: 3, priced: 1, unchanged: 2, skipped: 0, refused: 0, moved: ['scenario-b'], movedCount: 1, complete: true,
+      walked: 3, priced: 1, unchanged: 2, sameResult: 0, skipped: 0, refused: 0, moved: ['scenario-b'], movedCount: 1, complete: true,
     });
   });
 
@@ -113,7 +113,7 @@ describe('crqPriceRecomputeHandler', () => {
     expect(second.progress[0]).toEqual({ processedTotal: 2, expectedTotal: 5 });
     expect(second.progress.at(-1)).toMatchObject({ processedTotal: 5, expectedTotal: 5 });
     expect(summaryOf(second.progress)).toEqual({
-      walked: 5, priced: 2, unchanged: 1, skipped: 0, refused: 1, moved: ['scenario-a', 'scenario-c'], movedCount: 2, complete: true,
+      walked: 5, priced: 2, unchanged: 1, sameResult: 0, skipped: 0, refused: 1, moved: ['scenario-a', 'scenario-c'], movedCount: 2, complete: true,
     });
   });
 

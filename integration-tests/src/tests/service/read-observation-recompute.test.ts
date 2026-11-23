@@ -694,7 +694,7 @@ describe('statement observation of the CRQ price recompute', () => {
 
     const { pass, reads, writes, unattributed } = await runPass();
     expect(pass).toEqual({
-      priced: 2, unchanged: 0, skipped: 0, refused: [], moved: scenarioIds, walked: 2, total: 2, resumeAfter: null,
+      priced: 2, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: scenarioIds, walked: 2, total: 2, resumeAfter: null,
     });
     expect(unattributed).toEqual([]);
 
@@ -763,12 +763,12 @@ describe('statement observation of the CRQ price recompute', () => {
 
     const { pass: head } = await runPass({ budgetMs: 0 });
     expect(head).toEqual({
-      priced: 1, unchanged: 0, skipped: 0, refused: [], moved: [first], walked: 1, total: 2, resumeAfter: first,
+      priced: 1, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [first], walked: 1, total: 2, resumeAfter: first,
     });
 
     const { pass: tail } = await runPass({ budgetMs: 0, after: first });
     expect(tail).toEqual({
-      priced: 1, unchanged: 0, skipped: 0, refused: [], moved: [second], walked: 1, total: 1, resumeAfter: null,
+      priced: 1, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [second], walked: 1, total: 1, resumeAfter: null,
     });
 
     const runs = await db.select({ riskScenarioId: crqIndicatorRuns.riskScenarioId }).from(crqIndicatorRuns);
@@ -782,7 +782,7 @@ describe('statement observation of the CRQ price recompute', () => {
     const second = await runPass();
 
     expect(second.pass).toEqual({
-      priced: 0, unchanged: 2, skipped: 0, refused: [], moved: [], walked: 2, total: 2, resumeAfter: null,
+      priced: 0, unchanged: 2, sameResult: 0, skipped: 0, refused: [], moved: [], walked: 2, total: 2, resumeAfter: null,
     });
     expect(second.reads).toEqual(first.reads);
     expect(second.writes).toEqual([]);
@@ -819,7 +819,7 @@ describe('statement observation of the CRQ price recompute', () => {
   it('should still subscribe a tenant with no scenario to the table its first one will land in', async () => {
     const { pass, reads, unattributed } = await runPass();
     expect(pass).toEqual({
-      priced: 0, unchanged: 0, skipped: 0, refused: [], moved: [], walked: 0, total: 0, resumeAfter: null,
+      priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [], walked: 0, total: 0, resumeAfter: null,
     });
     expect(unattributed).toEqual([]);
     expect(reads).toContain('risk_scenarios');

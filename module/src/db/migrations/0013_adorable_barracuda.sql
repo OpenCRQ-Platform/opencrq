@@ -1,0 +1,1 @@
+ALTER TABLE "crq_indicator_runs" ADD COLUMN "result_fingerprint" text;

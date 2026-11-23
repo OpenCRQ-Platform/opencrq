@@ -45,10 +45,16 @@ export const crqIndicatorRuns = pgTable('crq_indicator_runs', {
   readAt: timestamp('read_at', { withTimezone: true }),
   /**
    * A digest of the inputs every profile computes alike, the app version included: the price pass
-   * writes no run when it matches the latest one's. What-ifs and budget review baskets stay out, and
+   * computes nothing when it matches the latest one's. What-ifs and budget review baskets stay out, and
    * the plans too but for a scenario with no TEF or no loss estimate, which every profile runs in full.
    */
   inputsFingerprint: text('inputs_fingerprint'),
+  /**
+   * A digest of what the run answered (`resultFingerprintOf`). A price pass whose result matches the
+   * latest run's stores no run and moves that run's `inputs_fingerprint` to what it read instead.
+   * Null on a run older than this column.
+   */
+  resultFingerprint: text('result_fingerprint'),
   /** Worlds drawn. */
   iterations: integer('iterations').notNull(),
   /** The probability an attack lands an impact, mixture-weighted: the FAIR vulnerability node. */

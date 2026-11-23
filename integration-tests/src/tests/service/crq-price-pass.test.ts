@@ -1,6 +1,6 @@
 import type { EventOrigin, ScenarioPricingPassOptions } from '@app/module';
 import { assetEvidence, attackOutcomeMixtures, controlCapabilities, crqBudgetReviewResults, crqIndicatorRuns, deriveSeedId, InputsNotReadyError, LossDriver_LostMarginFromDowntime, organizations, supportingAssetRelations, supportingAssets, threatAnalyses } from '@app/module';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recomputeAttackOutcomeMixtures } from '../../helpers/attack-outcome-mixtures';
@@ -341,11 +341,76 @@ describe('CRQ price pass over unchanged inputs', () => {
     expect(await runCount()).toBe(0);
   });
 
+  const latestRun = async () => (await db.select().from(crqIndicatorRuns)
+    .where(eq(crqIndicatorRuns.riskScenarioId, riskScenarioId))
+    .orderBy(desc(crqIndicatorRuns.createdAt), desc(crqIndicatorRuns.id)))[0];
+
+  /** What an input the result does not depend on leaves behind: the latest run's inputs fingerprint no longer matches. */
+  const moveAnInputTheResultIgnores = async () => db.update(crqIndicatorRuns)
+    .set({ inputsFingerprint: 'an older read' })
+    .where(eq(crqIndicatorRuns.id, (await latestRun()).id));
+
   it('should write a run on the pass after a release, whose code may price the same inputs differently', async () => {
     await seed();
     await pass({ appVersion: 'main-aaaaaaaa' });
 
-    expect(await pass({ appVersion: 'main-bbbbbbbb' })).toMatchObject({ priced: 1, unchanged: 0 });
+    expect(await pass({ appVersion: 'main-bbbbbbbb' })).toMatchObject({ priced: 1, unchanged: 0, sameResult: 0 });
+  });
+
+  describe('a pass whose result equals the latest run\'s', () => {
+    it('should store no run', async () => {
+      await seed();
+      await pass();
+      await moveAnInputTheResultIgnores();
+
+      expect(await pass()).toMatchObject({ priced: 0, unchanged: 0, sameResult: 1 });
+      expect(await runCount()).toBe(1);
+    });
+
+    it('should skip the next pass over the same inputs before the engine', async () => {
+      await seed();
+      await pass();
+      await moveAnInputTheResultIgnores();
+      await pass();
+
+      expect(await pass()).toMatchObject({ priced: 0, unchanged: 1, sameResult: 0 });
+    });
+
+    it('should keep the moments of the latest run, which the result has held since', async () => {
+      await seed();
+      await pass();
+      const before = await latestRun();
+      await moveAnInputTheResultIgnores();
+
+      await pass();
+
+      expect(await latestRun()).toEqual(before);
+    });
+
+    it('should store one price run after a full simulation, which dates its figure families older, then none', async () => {
+      await seed();
+      const planId = await planOnThisScenario();
+      await simulate();
+      await moveAnInputTheResultIgnores();
+
+      expect(await pass()).toMatchObject({ priced: 1, sameResult: 0 });
+      expect((await scoped().treatmentPlans.getTreatmentPlanProjection(planId))!.scenarios[0])
+        .toMatchObject({ state: 'priced', olderThanHeadline: true });
+
+      await moveAnInputTheResultIgnores();
+      expect(await pass()).toMatchObject({ priced: 0, sameResult: 1 });
+      expect(await runCount()).toBe(2);
+    });
+
+    it('should store no run for a scenario the pass runs in full', async () => {
+      await seed({ losses: false });
+      await planOnThisScenario();
+      await pass();
+      await moveAnInputTheResultIgnores();
+
+      expect(await pass()).toMatchObject({ priced: 0, sameResult: 1 });
+      expect(await runCount()).toBe(1);
+    });
   });
 
   it('should write a run on the first pass of a new day, which the actors\' activity has decayed into', async () => {

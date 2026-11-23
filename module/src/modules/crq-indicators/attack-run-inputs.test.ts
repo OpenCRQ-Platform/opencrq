@@ -7,7 +7,7 @@ import { ASSET_CATEGORY_VALUES, DECLARED_CRITICALITY_VALUES } from '../supportin
 import { APPLICABLE_TECHNIQUES } from '../attack-surfaces/data';
 import { SILENT_FLAW_THREAT } from '../cve/silent-flaw-threat';
 import { fingerprintedBaseline, resolveAttackRunInputs } from './attack-run-inputs';
-import { fingerprintRunInputs } from './run-fingerprint';
+import { fingerprintOf } from './run-fingerprint';
 import { compileAttackRunLaw } from './engine/attack-run-law';
 
 /**
@@ -399,7 +399,7 @@ describe('resolveAttackRunInputs', () => {
       const priced = await resolveAttackRunInputs(SOURCE);
       const unpriced = await resolveAttackRunInputs({ ...SOURCE, computesCveWhatIfs: false });
 
-      expect(fingerprintRunInputs(fingerprintedBaseline(unpriced.inputs))).toBe(fingerprintRunInputs(fingerprintedBaseline(priced.inputs)));
+      expect(fingerprintOf(fingerprintedBaseline(unpriced.inputs))).toBe(fingerprintOf(fingerprintedBaseline(priced.inputs)));
     });
 
     it('should leave a result on a technique the control does not cover out of the inputs and the fingerprint', async () => {
@@ -413,7 +413,7 @@ describe('resolveAttackRunInputs', () => {
       const withUncovered = await resolveAttackRunInputs(withTested([covered, uncovered]));
 
       expect(withUncovered.inputs.controls.find((control) => control.controlId === 'a-edr')?.tested).toEqual([covered]);
-      expect(fingerprintRunInputs(fingerprintedBaseline(withUncovered.inputs))).toBe(fingerprintRunInputs(fingerprintedBaseline(without.inputs)));
+      expect(fingerprintOf(fingerprintedBaseline(withUncovered.inputs))).toBe(fingerprintOf(fingerprintedBaseline(without.inputs)));
     });
 
     it('should fingerprint a moved reference group', async () => {
@@ -423,7 +423,7 @@ describe('resolveAttackRunInputs', () => {
         estate: { ...SOURCE.estate, counts: SOURCE.estate.counts.map((row) => ({ ...row, count: row.count + 1 })) },
       });
 
-      expect(fingerprintRunInputs(fingerprintedBaseline(moved.inputs))).not.toBe(fingerprintRunInputs(fingerprintedBaseline(straight.inputs)));
+      expect(fingerprintOf(fingerprintedBaseline(moved.inputs))).not.toBe(fingerprintOf(fingerprintedBaseline(straight.inputs)));
     });
 
     it('should resolve the same groups whatever order the reads returned', async () => {
@@ -499,7 +499,7 @@ describe('resolveAttackRunInputs', () => {
       const unpriced = await resolveAttackRunInputs({ ...CITED, computesCveWhatIfs: false });
 
       expect(priced.inputs.floorCves!.length).toBeGreaterThan(0);
-      expect(fingerprintRunInputs(fingerprintedBaseline(unpriced.inputs))).toBe(fingerprintRunInputs(fingerprintedBaseline(priced.inputs)));
+      expect(fingerprintOf(fingerprintedBaseline(unpriced.inputs))).toBe(fingerprintOf(fingerprintedBaseline(priced.inputs)));
     });
   });
 
@@ -942,7 +942,7 @@ describe('the path around initial access', () => {
     }
     const low = await resolveAttackRunInputs({ ...WITH_FLOOD, unknownCriticalityCountsAs: 'low' });
     const veryHigh = await resolveAttackRunInputs({ ...WITH_FLOOD, unknownCriticalityCountsAs: 'very_high' });
-    expect(fingerprintRunInputs(fingerprintedBaseline(veryHigh.inputs))).not.toBe(fingerprintRunInputs(fingerprintedBaseline(low.inputs)));
+    expect(fingerprintOf(fingerprintedBaseline(veryHigh.inputs))).not.toBe(fingerprintOf(fingerprintedBaseline(low.inputs)));
   });
 
   it('should hand the path on with its key, its techniques sorted', async () => {

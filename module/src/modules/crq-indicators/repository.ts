@@ -1,4 +1,5 @@
-import { and, asc, count, countDistinct, desc, eq, exists, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import type { SQL, SQLWrapper } from 'drizzle-orm';
+import { and, asc, count, countDistinct, desc, eq, exists, inArray, isNotNull, isNull, lt, not, notExists, or, sql } from 'drizzle-orm';
 import type { AssetCategory } from '../supporting-assets/schema';
 import type { ResolvedEstate } from '../organizations/estate-filter';
 import type { PrimaryUserRow } from './attack-run-door-estate';
@@ -71,6 +72,87 @@ const timelineColumns = (runs: RepositoryContext['views']['crqIndicatorRuns']) =
 export const crqIndicatorsRepository = defineRepository({
   insertRun: ({ db }, values: typeof crqIndicatorRuns.$inferInsert) =>
     db.insert(crqIndicatorRuns).values(values),
+
+  updateRunInputsFingerprint: ({ db }, runId: string, inputsFingerprint: string) =>
+    db.update(crqIndicatorRuns).set({ inputsFingerprint }).where(eq(crqIndicatorRuns.id, runId)),
+
+  /**
+   * Deletes up to `limit` runs created before `before` that no reader needs, their rows going by
+   * cascade, and answers how many went. Only a later run of its scenario's UTC day, itself before
+   * `before`, stands for a run, so a read at `before` or later finds the run it found before the
+   * purge. A run stays while it is:
+   * - the last of its day, and the last of its day with an ALE and with a LEF, which the daily
+   *   series read apart;
+   * - one of the two latest of its scenario, the headline and the delta beside it;
+   * - the newest of its scenario to carry one of its profile tokens, since a figure family is read
+   *   from the newest run that computed it, and, for `techniques`, the one a kept run reads its
+   *   technique values from, the newest at or before it;
+   * - holding a budget review figure at the review's current version, which the review reads
+   *   whatever its age, closed or not.
+   */
+  deleteExpiredRuns: async ({ db, views }, before: Date, limit: number): Promise<number> => {
+    const runs = views.crqIndicatorRuns;
+    // The secured view is already a subquery named after the table, so each further read of it goes
+    // through a subquery of its own rather than alias(), which only takes a table.
+    const runColumns = { riskScenarioId: runs.riskScenarioId, createdAt: runs.createdAt, id: runs.id, profile: runs.profile, aleMean: runs.aleMean, lefMean: runs.lefMean };
+    type RunRef = Record<keyof typeof runColumns, SQLWrapper>;
+    const runsAs = (name: string) => db.select(runColumns).from(runs).as(name);
+    const one = { one: sql`1` };
+    const after = (run: RunRef, other: RunRef) => and(
+      eq(other.riskScenarioId, run.riskScenarioId),
+      sql`(${other.createdAt}, ${other.id}) > (${run.createdAt}, ${run.id})`,
+    );
+    const sameDayBeforeBound = (run: RunRef, other: RunRef) => and(
+      after(run, other),
+      lt(other.createdAt, before),
+      sql`${other.createdAt} < (date_trunc('day', ${run.createdAt} at time zone 'UTC') + interval '1 day') at time zone 'UTC'`,
+    );
+    const reviewFigureOf = (runId: SQLWrapper) => or(...[views.crqBudgetReviewResults, views.crqBudgetReviewAnnualLosses].map((table) => exists(db
+      .select(one)
+      .from(table)
+      .innerJoin(views.budgetReviews, and(eq(views.budgetReviews.id, table.reviewId), eq(views.budgetReviews.version, table.reviewVersion)))
+      .where(sql`${table.runId} = ${runId}`))));
+    /** Every keep rule but the `techniques` source, which reads the runs this one finds kept. */
+    const keptOtherwise = (run: RunRef, name: string) => {
+      const later = runsAs(`${name}_later`);
+      const laterSameDay = (also?: SQL) => exists(db.select(one).from(later).where(and(sameDayBeforeBound(run, later), also)));
+      return or(
+        sql`${run.createdAt} >= ${before}`,
+        not(laterSameDay()),
+        and(isNotNull(run.aleMean), not(laterSameDay(isNotNull(later.aleMean)))),
+        and(isNotNull(run.lefMean), not(laterSameDay(isNotNull(later.lefMean)))),
+        notExists(db.select(one).from(later).where(after(run, later)).offset(1)),
+        sql`exists (select 1 from unnest(${run.profile}) as token where not exists (${db
+          .select(one)
+          .from(later)
+          .where(and(after(run, later), sql`token = any(${later.profile})`))}))`,
+        reviewFigureOf(run.id),
+      )!;
+    };
+    // A later `techniques` run of the same day stands for this one when no run kept between them
+    // would lose it as the newest `techniques` run at or before it.
+    const successor = runsAs('successor_run');
+    const between = runsAs('between_run');
+    const techniquesSuperseded = exists(db.select(one).from(successor).where(and(
+      sameDayBeforeBound(runs, successor),
+      sql`'techniques' = any(${successor.profile})`,
+      notExists(db.select(one).from(between).where(and(
+        after(runs, between),
+        sql`(${between.createdAt}, ${between.id}) < (${successor.createdAt}, ${successor.id})`,
+        keptOtherwise(between, 'between_run'),
+      ))),
+    )));
+    const expired = db
+      .select({ id: runs.id })
+      .from(runs)
+      .where(and(
+        not(keptOtherwise(runs, 'run')),
+        or(sql`not ('techniques' = any(${runs.profile}))`, techniquesSuperseded),
+      ))
+      .limit(limit);
+    const deleted = await db.delete(crqIndicatorRuns).where(inArray(crqIndicatorRuns.id, expired)).returning();
+    return deleted.length;
+  },
 
   findLatestRunByScenarioId: async ({ db, views }, riskScenarioId: string) => {
     const runs = await db

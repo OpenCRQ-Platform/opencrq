@@ -25,6 +25,7 @@ interface CrqPriceTotals {
   walked: number,
   priced: number,
   unchanged: number,
+  sameResult: number,
   skipped: number,
   refused: number,
   moved: Array<string>,
@@ -46,12 +47,13 @@ interface CrqPriceRunSummary extends CrqPriceTotals {
   complete: boolean,
 }
 
-const NO_TOTALS: CrqPriceTotals = { walked: 0, priced: 0, unchanged: 0, skipped: 0, refused: 0, moved: [], movedCount: 0 };
+const NO_TOTALS: CrqPriceTotals = { walked: 0, priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: 0, moved: [], movedCount: 0 };
 
 const addPassToTotals = (totals: CrqPriceTotals, pass: ScenarioPricingPass): CrqPriceTotals => ({
   walked: totals.walked + pass.walked,
   priced: totals.priced + pass.priced,
   unchanged: totals.unchanged + pass.unchanged,
+  sameResult: totals.sameResult + pass.sameResult,
   skipped: totals.skipped + pass.skipped,
   refused: totals.refused + pass.refused.length,
   moved: [...totals.moved, ...pass.moved].slice(0, CRQ_PRICE_MOVED_IDS_CAP),
@@ -92,6 +94,7 @@ export const crqPriceRecomputeHandler: JobHandler<Record<string, unknown>, CrqPr
     tenantId: ctx.tenantId,
     priced: pass.priced,
     unchanged: pass.unchanged,
+    sameResult: pass.sameResult,
     skipped: pass.skipped,
     refused: pass.refused.length,
     resumeAfter: pass.resumeAfter,
