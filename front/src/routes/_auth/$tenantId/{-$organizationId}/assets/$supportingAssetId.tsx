@@ -13,6 +13,7 @@ import { sourceExternalUrl } from '../../../../../features/supporting-assets/sou
 import { trpcClient, useTRPC } from '../../../../../lib';
 import { assetNameText } from '../../../../../utils/asset-name-utils';
 import { XTM_PRODUCTS, XtmPivotEmblems } from '../../../../../features/xtm/xtm-counterparts';
+import { assetCounterpartKeys } from '../../../../../features/xtm/asset-counterpart-keys';
 
 const assetHostname = (properties: unknown): string | null => {
   const hostname = typeof properties === 'object' && properties !== null && 'hostname' in properties ? properties.hostname : null;
@@ -53,6 +54,8 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
     const ttpCount = (techniqueCounts ?? []).find((r) => r.categoryId === supportingAsset.categoryId)?.techniqueCount ?? 0;
     const sources = supportingAsset.sources.flatMap((s) => (s.source ? [s.source] : []));
     const hostname = assetHostname(supportingAsset.properties);
+    // Every key another product may hold: a web application has no hostname, its name and source reference find it.
+    const counterpartKeys = assetCounterpartKeys(supportingAsset);
     // A product the asset came from is found from its source link first; the hostname lookup is the fallback.
     const sourced: Partial<Record<XtmProduct, XtmCounterpart>> = {};
     for (const product of XTM_PRODUCTS) {
@@ -132,8 +135,8 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
             crqPosture={crqPosture}
             actions={
               <>
-                {/* First in the row: the same machine in the XTM One inventory, OpenCTI (System, Hostname) and OpenAEV (asset): source link first, hostname second. */}
-                <XtmPivotEmblems kind="ASSET" objectKey={hostname} sourced={sourced} />
+                {/* First in the row: the same asset in the XTM One inventory, OpenCTI (System, Hostname) and OpenAEV (asset): source link first, then every key the asset has. */}
+                <XtmPivotEmblems kind="ASSET" objectKey={hostname} objectKeys={counterpartKeys} sourced={sourced} />
                 <AssetResyncAction
                   supportingAssetId={supportingAsset.id}
                   canResync={canResyncWithConnectors(manualFields.length, supportingAsset.sources)}

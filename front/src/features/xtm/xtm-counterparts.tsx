@@ -345,15 +345,17 @@ interface XtmPivotEmblemsProps {
   kind: CounterpartKind,
   /** The key the products share (hostname, CVE id, STIX id); `null` when the object has none. */
   objectKey: string | null | undefined,
+  /** More keys of the same object, looked up with `objectKey` in one call: an asset's source references, name, addresses. */
+  objectKeys?: ReadonlyArray<string>,
   /** The object as its source opens it in a product it came from: that emblem is found, never looked up. */
   sourced?: Partial<Record<XtmProduct, XtmCounterpart>>,
 }
 
 /** Hero slot, first in the action row: one emblem per counterpart product, XTM One (assets), OpenCTI, OpenAEV, always drawn. */
-export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind, objectKey, sourced }) => {
+export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind, objectKey, objectKeys, sourced }) => {
   const trpc = useTRPC();
   const connections = useXtmConnections();
-  const { present, options } = lookupOptions([objectKey]);
+  const { present, options } = lookupOptions([objectKey, ...(objectKeys ?? [])]);
   const lookup = useQuery(trpc.xtm.counterparts.queryOptions({ kind, keys: present }, options));
   return (
     <TooltipHintProvider>
