@@ -58,15 +58,6 @@ export const usersRouter = (authProcedure: PlatformProcedure, securityProcedure:
       }
       return await services.withOrigin(ownRowReader(userId)).users.getUserTheme(userId) ?? null;
     }),
-  getUserPastelColours: authProcedure
-    .output(z.boolean())
-    .query(async ({ ctx: { services, origin } }) => {
-      const userId = originUserId(origin);
-      if (!userId) {
-        throw new TRPCError({ code: 'UNAUTHORIZED' });
-      }
-      return await services.withOrigin(ownRowReader(userId)).users.getUserPastelColours(userId);
-    }),
   getUserLocale: authProcedure
     .output(z.string().nullable())
     .query(async ({ ctx: { services, origin } }) => {
@@ -87,13 +78,13 @@ export const usersRouter = (authProcedure: PlatformProcedure, securityProcedure:
     }),
   // Full name, title and email come from XTM One at each sign-in: only the preferences are written here.
   updateUser: authProcedure
-    .input(z.object({ locale: supportedLocaleSchema.nullable().optional(), theme: z.enum(['light', 'dark', 'system']).optional(), pastelColours: z.boolean().optional(), homeDashboardId: dashboardIdSchema.nullable().optional() }))
+    .input(z.object({ locale: supportedLocaleSchema.nullable().optional(), theme: z.enum(['light', 'dark', 'system']).optional(), homeDashboardId: dashboardIdSchema.nullable().optional() }))
     .mutation(async ({ input, ctx: { services, origin } }) => {
       const userId = originUserId(origin);
       if (!userId) {
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
       return services.withOrigin(origin)
-        .users.updateUser(userId, { locale: input.locale, theme: input.theme, pastelColours: input.pastelColours, homeDashboardId: input.homeDashboardId });
+        .users.updateUser(userId, { locale: input.locale, theme: input.theme, homeDashboardId: input.homeDashboardId });
     }),
 });

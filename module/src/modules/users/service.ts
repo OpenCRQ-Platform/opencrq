@@ -11,7 +11,6 @@ export const usersService = defineService(
   listPlatformUsers: async ({ repo }) => await repo.findPlatformUserListRows(),
   getUser: async ({ repo }, id: string) => await repo.findUserById(id),
   getUserTheme: async ({ repo }, id: string) => await repo.getUserTheme(id),
-  getUserPastelColours: async ({ repo }, id: string) => await repo.getUserPastelColours(id),
   getUserLocale: async ({ repo }, id: string) => await repo.getUserLocale(id),
   getUserHomeDashboard: async ({ repo }, id: string) => await repo.getUserHomeDashboard(id),
   /**
@@ -23,6 +22,6 @@ export const usersService = defineService(
   // eslint-disable-next-line app/no-unused-service-method -- exercised by integration-tests/src/tests/service/{platform-admin,cascade-deletes}.test.ts, unreachable from a router until one exposes it
   deleteUser: async ({ atomic }, id: string) => await atomic(async ({ repo, deps }) =>
     await deps.platformCapabilities.keepingPlatformReachable(() => repo.guardedDeleteUser(id))),
-  updateUser: async ({ repo }, id: string, data: { locale?: SupportedLocale | null, theme?: string, pastelColours?: boolean, homeDashboardId?: string | null }) =>
+  updateUser: async ({ repo }, id: string, data: { locale?: SupportedLocale | null, theme?: string, homeDashboardId?: string | null }) =>
     await repo.updateUser(id, data),
 });

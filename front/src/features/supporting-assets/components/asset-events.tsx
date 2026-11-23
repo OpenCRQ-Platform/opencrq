@@ -35,7 +35,7 @@ const KIND_TONE: Record<PostureEventKind, string> = {
   regained: 'text-feedback-info-primary',
 };
 
-/** The same reading as KIND_TONE, on the design-system chip: outlined in standard colours, plain in pastel. */
+/** The same reading as KIND_TONE, on the design-system chip: its fill and hairline in the tone's own colour. */
 const KIND_SEVERITY: Record<PostureEventKind, ChipSeverity> = {
   rise: 'low',
   fall: 'critical',
@@ -143,7 +143,7 @@ const PostureSide: FunctionComponent<PostureSideProps> = ({ label, score, cause 
   );
 };
 
-/** On the design-system chip: outlined in standard colours, plain in pastel. */
+/** On the design-system chip: its fill and hairline in the tone's own colour. */
 const ROLE_SEVERITY: Record<FindingInCauseRole, ChipSeverity> = {
   resolved: 'low',
   newWorst: 'high',

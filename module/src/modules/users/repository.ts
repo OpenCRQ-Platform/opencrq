@@ -53,10 +53,6 @@ export const usersRepository = defineRepository({
     const result = await db.select({ theme: views.users.theme }).from(views.users).where(eq(views.users.id, id)).limit(1);
     return toTheme(result?.[0]?.theme);
   },
-  getUserPastelColours: async ({ db, views }, id: string) => {
-    const result = await db.select({ pastelColours: views.users.pastelColours }).from(views.users).where(eq(views.users.id, id)).limit(1);
-    return result[0]?.pastelColours ?? false;
-  },
   getUserLocale: async ({ db, views }, id: string) => {
     if (!id) {
       return undefined;
@@ -69,6 +65,6 @@ export const usersRepository = defineRepository({
     return result[0]?.homeDashboardId ?? undefined;
   },
   guardedDeleteUser: ({ db }, id: string) => db.delete(users).where(eq(users.id, id)),
-  updateUser: ({ db }, id: string, data: { locale?: SupportedLocale | null, theme?: string, pastelColours?: boolean, homeDashboardId?: string | null }) =>
+  updateUser: ({ db }, id: string, data: { locale?: SupportedLocale | null, theme?: string, homeDashboardId?: string | null }) =>
     db.update(users).set(data).where(eq(users.id, id)),
 });
