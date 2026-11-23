@@ -11417,6 +11417,9 @@ msgstr "SOAP or other HTTP service"
 msgid "SOAR"
 msgstr "SOAR"
 
+msgid "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
+msgstr "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
+
 msgid "Software package"
 msgstr "Software package"
 
@@ -13736,9 +13739,6 @@ msgstr "Use as many as you need, they add up."
 
 msgid "Use saved value"
 msgstr "Use saved value"
-
-msgid "Use the softer pastel palette for severity, status and marking colours"
-msgstr "Use the softer pastel palette for severity, status and marking colours"
 
 msgid "Used by groups"
 msgstr "Used by groups"
