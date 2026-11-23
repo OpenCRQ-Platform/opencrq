@@ -151,10 +151,10 @@ const actionIn = (product: CounterpartProduct) => {
 };
 
 /** How an object of `kind` gets into `product`: the key the two products share. */
-const howItGetsThere = (kind: CounterpartKind, product: CounterpartProduct) => {
+export const howItGetsThere = (kind: CounterpartKind, product: CounterpartProduct) => {
   const name = productName(product);
   if (product === 'xtmone') {
-    return t`It appears here once a source of the XTM One inventory reports a machine with the same hostname.`;
+    return t`It appears here once a source of the XTM One inventory reports the same OpenAEV asset, name, hostname, URL or address.`;
   }
   switch (kind) {
     case 'ASSET':

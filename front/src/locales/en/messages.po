@@ -6554,8 +6554,8 @@ msgstr "It appears here once {name} holds the same technique, by its MITRE id."
 msgid "It appears here once {name} holds the same threat, by its STIX id."
 msgstr "It appears here once {name} holds the same threat, by its STIX id."
 
-msgid "It appears here once a source of the XTM One inventory reports a machine with the same hostname."
-msgstr "It appears here once a source of the XTM One inventory reports a machine with the same hostname."
+msgid "It appears here once a source of the XTM One inventory reports the same OpenAEV asset, name, hostname, URL or address."
+msgstr "It appears here once a source of the XTM One inventory reports the same OpenAEV asset, name, hostname, URL or address."
 
 msgid "It goes back to draft and can be edited again. Its publication date is cleared and its answers stop feeding the linked controls until it is published again."
 msgstr "It goes back to draft and can be edited again. Its publication date is cleared and its answers stop feeding the linked controls until it is published again."

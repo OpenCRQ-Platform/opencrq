@@ -6554,8 +6554,8 @@ msgstr "Il apparaît ici dès que {name} contient la même technique, par son id
 msgid "It appears here once {name} holds the same threat, by its STIX id."
 msgstr "Il apparaît ici dès que {name} contient la même menace, par son identifiant STIX."
 
-msgid "It appears here once a source of the XTM One inventory reports a machine with the same hostname."
-msgstr "Il apparaît ici dès qu'une source de l'inventaire XTM One signale une machine avec le même nom d'hôte."
+msgid "It appears here once a source of the XTM One inventory reports the same OpenAEV asset, name, hostname, URL or address."
+msgstr "Il apparaît ici dès qu'une source de l'inventaire XTM One signale le même actif OpenAEV, nom, nom d'hôte, URL ou adresse."
 
 msgid "It goes back to draft and can be edited again. Its publication date is cleared and its answers stop feeding the linked controls until it is published again."
 msgstr "Elle repasse en brouillon et redevient modifiable. Sa date de publication est effacée et ses réponses cessent d'alimenter les contrôles liés jusqu'à sa prochaine publication."
