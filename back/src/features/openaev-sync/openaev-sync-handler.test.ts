@@ -26,6 +26,7 @@ const {
   mockGetConnectorId,
   mockGetIntegrationSettings,
   mockMarkSynced,
+  mockClearInventoryRequest,
   mockUpsertOpenaevAssets,
   mockDeleteObservationsNotReportedSince,
   mockListObservationPairs,
@@ -60,6 +61,7 @@ const {
   const getConnectorId = vi.fn().mockResolvedValue('connector-id-abc');
   const getIntegrationSettings = vi.fn().mockResolvedValue({ lastReportedAt: null });
   const markSynced = vi.fn().mockResolvedValue(undefined);
+  const clearInventoryRequest = vi.fn().mockResolvedValue(undefined);
   const upsertOpenaevAssets = vi.fn().mockResolvedValue(undefined);
   const deleteObservationsNotReportedSince = vi.fn().mockResolvedValue([]);
   const listObservationPairs = vi.fn().mockResolvedValue([]);
@@ -91,6 +93,7 @@ const {
       getConnectorId,
       getIntegrationSettings,
       markSynced,
+      clearInventoryRequest,
     },
     supportingAssets: {
       bulkUpsertAssets,
@@ -129,6 +132,7 @@ const {
     mockGetConnectorId: getConnectorId,
     mockGetIntegrationSettings: getIntegrationSettings,
     mockMarkSynced: markSynced,
+    mockClearInventoryRequest: clearInventoryRequest,
     mockUpsertOpenaevAssets: upsertOpenaevAssets,
     mockDeleteObservationsNotReportedSince: deleteObservationsNotReportedSince,
     mockListObservationPairs: listObservationPairs,
@@ -598,6 +602,28 @@ describe('openaevSyncHandler', () => {
 
       expect(mockSearchAssets).toHaveBeenCalledOnce();
       expect(mapsRebuiltBeforePhase).toBe(0);
+    });
+
+    it('runs the inventory an administrator asked for, though the last one is 2 hours old, and clears the ask it answered', async () => {
+      mockGetIntegrationSettings.mockResolvedValue({
+        lastReportedAt: new Date(Date.now() - 2 * HOUR_MS),
+        inventoryRequestedAt: new Date(Date.now() - 60 * 1000),
+      });
+
+      await openaevSyncHandler(makeCtx());
+
+      expect(mockSearchAssets).toHaveBeenCalledOnce();
+      expect(mockMarkSynced).toHaveBeenCalledOnce();
+      expect(mockClearInventoryRequest).toHaveBeenCalledOnce();
+      expect(mockClearInventoryRequest).toHaveBeenCalledWith('openaev', expect.any(Date));
+    });
+
+    it('clears no ask when no inventory ran', async () => {
+      inventorySyncedHoursAgo(2);
+
+      await openaevSyncHandler(makeCtx());
+
+      expect(mockClearInventoryRequest).not.toHaveBeenCalled();
     });
 
     it('runs the inventory when the last one is 25 hours old', async () => {

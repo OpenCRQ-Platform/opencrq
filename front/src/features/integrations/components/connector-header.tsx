@@ -74,6 +74,12 @@ export const ConnectorHeader: FunctionComponent<{ connector: ConnectorDetail }> 
   const resetState = useMutation(trpc.connectors.resetState.mutationOptions({
     meta: { successMessage: msg`Connector state reset.` },
   }));
+  const runInventoryNow = useMutation(trpc.connectors.runInventoryNow.mutationOptions({
+    meta: { successMessage: msg`Inventory requested. The next run reads every asset again.` },
+  }));
+  // The inventory is read by the connector's own run, so it needs what Sync now needs, and the
+  // permission that resets the connector's state.
+  const showRunInventory = connector.inventory !== null && controls.showReset && connector.jobKind !== null && connector.enabled;
 
   return (
     <>
@@ -138,6 +144,11 @@ export const ConnectorHeader: FunctionComponent<{ connector: ConnectorDetail }> 
           )}
           {controls.showReset && (
             <IconActions size="md" icon={<MoreVertical className="size-4" />}>
+              {showRunInventory && (
+                <IconActionsItem onSelect={() => runInventoryNow.mutate({ source: connector.source })}>
+                  <Trans>Run inventory now</Trans>
+                </IconActionsItem>
+              )}
               <IconActionsItem onSelect={() => resetConfirmation.requestConfirmation(connector.source)}>
                 <Trans>Reset state</Trans>
               </IconActionsItem>

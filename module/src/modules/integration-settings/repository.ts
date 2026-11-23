@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, lte, sql } from 'drizzle-orm';
 import type { IntegrationSource } from './schema';
 import { defineRepository } from '../../registry';
 import { integrationSettings } from './schema';
@@ -56,6 +56,28 @@ export const integrationSettingsRepository = defineRepository({
       .set({ lastReportedAt: null, updatedAt })
       .where(and(eq(integrationSettings.tenantId, tenantId), eq(integrationSettings.source, source)));
   },
+
+  /** Books an inventory outside the cadence. Answers whether the connector is configured for the tenant. */
+  requestInventory: async ({ db }, tenantId: string, source: IntegrationSource, requestedAt: Date) => {
+    const rows = await db.update(integrationSettings)
+      .set({ inventoryRequestedAt: requestedAt })
+      .where(and(eq(integrationSettings.tenantId, tenantId), eq(integrationSettings.source, source)))
+      .returning();
+    return rows.length > 0;
+  },
+
+  /**
+   * Clears the ask an inventory answered. An ask booked after `answeredUpTo` is newer than what the
+   * inventory read, so it stays for the next run.
+   */
+  clearInventoryRequest: async ({ db }, tenantId: string, source: IntegrationSource, answeredUpTo: Date) =>
+    db.update(integrationSettings)
+      .set({ inventoryRequestedAt: null })
+      .where(and(
+        eq(integrationSettings.tenantId, tenantId),
+        eq(integrationSettings.source, source),
+        lte(integrationSettings.inventoryRequestedAt, answeredUpTo),
+      )),
 
   findIdBySource: async ({ db, views }, tenantId: string, source: IntegrationSource) =>
     db.select({ id: views.integrationSettings.id })

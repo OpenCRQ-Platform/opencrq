@@ -111,6 +111,13 @@
       "when": 1795453137878,
       "tag": "0015_tenant_threat_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795464475616,
+      "tag": "0016_rapid_sue_storm",
+      "breakpoints": true
     }
   ],
   "version": "7",

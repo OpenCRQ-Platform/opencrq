@@ -1,0 +1,1 @@
+ALTER TABLE "integration_settings" ADD COLUMN "inventory_requested_at" timestamp with time zone;

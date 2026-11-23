@@ -1629,6 +1629,31 @@
       }
     },
     {
+      "path": "connectors.runInventoryNow",
+      "type": "mutation",
+      "input": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "first",
+              "nist",
+              "cisa",
+              "microsoft_graph",
+              "openaev",
+              "drata",
+              "opencti",
+              "default_threats"
+            ]
+          }
+        },
+        "required": [
+          "source"
+        ]
+      }
+    },
+    {
       "path": "connectors.setSchedule",
       "type": "mutation",
       "input": {

@@ -2877,6 +2877,9 @@ msgstr "Dix ans au plus"
 msgid "At the fiscal year end"
 msgstr "Fin d'exercice"
 
+msgid "At the next run"
+msgstr "À la prochaine exécution"
+
 msgid "ATT&CK release of the dataset"
 msgstr "Version ATT&CK du jeu de données"
 
@@ -6503,6 +6506,9 @@ msgstr "Modes opératoires"
 msgid "Intune"
 msgstr "Intune"
 
+msgid "Inventory requested. The next run reads every asset again."
+msgstr "Inventaire demandé. La prochaine exécution relit tous les actifs."
+
 msgid "Invitation link"
 msgstr "Lien d'invitation"
 
@@ -6741,6 +6747,9 @@ msgstr "Dernier événement"
 
 msgid "Last ingested"
 msgstr "Dernière ingestion"
+
+msgid "Last inventory"
+msgstr "Dernier inventaire"
 
 msgid "Last observation"
 msgstr "Dernière observation"
@@ -7710,6 +7719,9 @@ msgstr "Suivant"
 
 msgid "Next claims"
 msgstr "Allégations suivantes"
+
+msgid "Next inventory"
+msgstr "Prochain inventaire"
 
 msgid "Next month"
 msgstr "Mois suivant"
@@ -10594,6 +10606,9 @@ msgstr "L'historique des simulations n'a pas pu être chargé, cette courbe est 
 
 msgid "Run history could not be loaded."
 msgstr "L'historique des simulations n'a pas pu être chargé."
+
+msgid "Run inventory now"
+msgstr "Lancer l'inventaire maintenant"
 
 #. js-lingui-explicit-id
 msgid "Run of {date}"
