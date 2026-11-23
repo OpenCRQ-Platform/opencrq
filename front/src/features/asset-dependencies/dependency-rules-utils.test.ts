@@ -18,7 +18,7 @@ const rule = (overrides: Partial<DependencyRule> = {}): DependencyRule => ({
   source: null,
   linkCount: 0,
   ...overrides,
-} as DependencyRule);
+});
 
 const labels: DependencyRuleConditionLabels = {
   category: (category) => `category ${category}`,

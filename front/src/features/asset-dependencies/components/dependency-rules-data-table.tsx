@@ -15,7 +15,7 @@ import { useConfirmationDialog } from '../../../hooks';
 import { useTRPC } from '../../../lib';
 import { getAssetCategoryLabel, getAssetSubcategoryLabel } from '../../../utils';
 import { getConnectorNameBySource } from '../../integrations';
-import { conditionSummaries, conditionsDraftOf, toConditionsInput } from '../dependency-rules-utils';
+import { conditionsDraftOf, conditionSummaries, toConditionsInput } from '../dependency-rules-utils';
 import { DependencyRuleDrawer } from './dependency-rule-drawer';
 import { LinkRoleChips } from './link-role-display';
 
@@ -55,7 +55,10 @@ export const DependencyRulesDataTable: FunctionComponent = () => {
   const labels = {
     category: getAssetCategoryLabel,
     subcategory: getAssetSubcategoryLabel,
-    source: (source: string) => t`Reported by ${getConnectorNameBySource(source) ?? source}`,
+    source: (source: string) => {
+      const connector = getConnectorNameBySource(source) ?? source;
+      return t`Reported by ${connector}`;
+    },
     glob: (pattern: string) => t`Name ${pattern}`,
     regex: (pattern: string) => t`Name matches /${pattern}/`,
     tag: (name: string) => t`Tag ${name}`,

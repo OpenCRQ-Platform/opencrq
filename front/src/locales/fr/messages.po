@@ -265,6 +265,10 @@ msgstr "{0, plural, one {L'actif au niveau du pire pèse presque tout.} other {L
 msgid "{0, plural, one {The asset at the worst level counts for {worstEquivalent}.} other {The # assets at the worst level count for {worstEquivalent}.}}"
 msgstr "{0, plural, one {L'actif au niveau du pire compte pour {worstEquivalent}.} other {Les # actifs au niveau du pire comptent pour {worstEquivalent}.}}"
 
+#. placeholder {0}: assets.length
+msgid "{0, plural, one {The first # is shown.} other {The first # are shown.}}"
+msgstr "{0, plural, one {Le premier est affiché.} other {Les # premiers sont affichés.}}"
+
 #. placeholder {0}: split.otherAssetCount
 msgid "{0, plural, one {The other one counts for {otherEquivalent}.} other {The # others count together for {otherEquivalent}.}}"
 msgstr "{0, plural, one {L'autre compte pour {otherEquivalent}.} other {Les # autres comptent ensemble pour {otherEquivalent}.}}"
@@ -313,6 +317,9 @@ msgstr "{affectedAssetCount, plural, one {Actif affecté} other {Actifs affecté
 
 msgid "{affectedAssetCount, plural, one {Worst finding: {worstScore}, on # asset.} other {Worst finding: {worstScore}, on # assets.}}"
 msgstr "{affectedAssetCount, plural, one {Pire finding : {worstScore}, sur # actif.} other {Pire finding : {worstScore}, sur # actifs.}}"
+
+msgid "{alreadyManual, plural, one {# more already linked by hand is left as it is.} other {# more already linked by hand are left as they are.}}"
+msgstr "{alreadyManual, plural, one {# autre, déjà lié à la main, reste tel quel.} other {# autres, déjà liés à la main, restent tels quels.}}"
 
 msgid "{amount, plural, one {About once every # month} other {About once every # months}}"
 msgstr "{amount, plural, one {Environ une fois tous les # mois} other {Environ une fois tous les # mois}}"
@@ -1342,6 +1349,9 @@ msgstr "{supporting} supporte {supported}"
 msgid "{supportingAssetName} is not part of the risk scope {scopeName}."
 msgstr "{supportingAssetName} ne fait pas partie du périmètre de risque {scopeName}."
 
+msgid "{suppressed, plural, one {# more a person unlinked is never linked again.} other {# more a person unlinked are never linked again.}}"
+msgstr "{suppressed, plural, one {# autre, délié par une personne, n'est plus jamais lié.} other {# autres, déliés par une personne, ne sont plus jamais liés.}}"
+
 msgid "{technique} on {family} assets can now be contested by a capability of the catalogue"
 msgstr "{technique} sur les actifs de type {family} peut désormais être contestée par une capacité du catalogue"
 
@@ -1417,6 +1427,9 @@ msgstr "{total, plural, one {# notification} other {# notifications}}"
 
 msgid "{total, plural, one {# pending change} other {# pending changes}}"
 msgstr "{total, plural, one {# changement en attente} other {# changements en attente}}"
+
+msgid "{total, plural, one {Links # supporting asset.} other {Links # supporting assets.}}"
+msgstr "{total, plural, one {Lie # actif support.} other {Lie # actifs supports.}}"
 
 msgid "{total, plural, one {Save # change} other {Save # changes}}"
 msgstr "{total, plural, one {Enregistrer # changement} other {Enregistrer # changements}}"
@@ -1889,6 +1902,12 @@ msgstr "Un périmètre de risque sans scénario simulé est écarté."
 msgid "A row groups every applicable finding of one CVE, or of one technique in prevention or in detection, over the scope's assets. Its score is that of its worst finding, which the row opens."
 msgstr "Une ligne regroupe tous les findings applicables d'une même CVE, ou d'une même technique en prévention ou en détection, sur les actifs du périmètre. Son score est celui de son pire finding, que la ligne ouvre."
 
+msgid "A rule links the supporting assets that match its conditions to a primary asset, now and at every sync. A link made or removed by hand always wins."
+msgstr "Une règle lie à un actif primaire les actifs supports qui remplissent ses conditions, maintenant et à chaque synchronisation. Un lien créé ou supprimé à la main l'emporte toujours."
+
+msgid "A rule needs at least one condition"
+msgstr "Une règle a besoin d'au moins une condition"
+
 msgid "A run is booked and waiting for a worker to take it."
 msgstr "Une exécution est réservée et attend qu'un worker la prenne en charge."
 
@@ -1927,6 +1946,9 @@ msgstr "Un contrôle seul est déclaré à {ceiling} au plus : robustesse {topSt
 
 msgid "A supporting asset is what a scenario is measured over: its exposure and its criticality are what turn an attack into an amount. Add one by hand, or connect an integration and let it bring the estate in."
 msgstr "Un actif support est ce sur quoi un scénario est mesuré : son exposition et sa criticité sont ce qui transforme une attaque en montant. Ajoutez-en un à la main, ou connectez une intégration qui remontera votre parc."
+
+msgid "A supporting asset matches when it meets every condition set here."
+msgstr "Un actif support correspond lorsqu'il remplit toutes les conditions définies ici."
 
 msgid "A tag “{targetName}” already exists. Merge “{name}” into “{targetName}”?"
 msgstr "Un tag « {targetName} » existe déjà. Fusionner « {name} » dans « {targetName} » ?"
@@ -2151,6 +2173,9 @@ msgstr "Ajouter une technique"
 
 msgid "Add at least one budget line before closing."
 msgstr "Ajoutez au moins une ligne budgétaire avant de clôturer."
+
+msgid "Add at least one condition: a rule without one would link every supporting asset."
+msgstr "Ajoutez au moins une condition : une règle sans condition lierait tous les actifs supports."
 
 msgid "Add members"
 msgstr "Ajouter des membres"
@@ -2551,11 +2576,23 @@ msgstr "Répond à une demande absorbée par cette exécution."
 msgid "Anthropic"
 msgstr "Anthropic"
 
+msgid "Any category"
+msgstr "Toute catégorie"
+
+msgid "Any connector"
+msgstr "Tout connecteur"
+
 msgid "Any data identifying people: customers, employees, patients, users, including special categories such as health or biometrics and non-card financial identifiers."
 msgstr "Toute donnée identifiant des personnes : clients, employés, patients, utilisateurs, y compris les catégories particulières comme la santé ou la biométrie et les identifiants financiers hors carte."
 
 msgid "Any of"
 msgstr "Au moins une condition"
+
+msgid "Any subcategory"
+msgstr "Toute sous-catégorie"
+
+msgid "Any tag"
+msgstr "Tout tag"
 
 msgid "Anything that does not fit another category yet"
 msgstr "Tout ce qui ne rentre dans aucune autre catégorie"
@@ -3380,6 +3417,9 @@ msgstr "Les données de porteur et de paiement qu'un attaquant peut utiliser pou
 msgid "Cards view"
 msgstr "Vue cartes"
 
+msgid "Case-insensitive. A wildcard pattern matches the whole name."
+msgstr "Insensible à la casse. Un motif avec jokers doit correspondre au nom entier."
+
 msgid "catalog"
 msgstr "catalogue"
 
@@ -3461,8 +3501,14 @@ msgstr "Vérification en cours"
 msgid "Choose a plan, or create a new one."
 msgstr "Choisissez un plan, ou créez-en un nouveau."
 
+msgid "Choose a primary asset to see the assets this rule links."
+msgstr "Choisissez un actif primaire pour voir les actifs que cette règle lie."
+
 msgid "Choose the controls"
 msgstr "Choisir les contrôles"
+
+msgid "Choose the primary asset the rule links to"
+msgstr "Choisissez l'actif primaire auquel la règle lie"
 
 msgid "Chronology"
 msgstr "Chronologie"
@@ -3710,6 +3756,9 @@ msgstr "Calcul en cours…"
 
 msgid "Concerning you"
 msgstr "Ce qui vous concerne"
+
+msgid "Conditions"
+msgstr "Conditions"
 
 msgid "Confidence"
 msgstr "Confiance"
@@ -4111,6 +4160,9 @@ msgstr "Créer « {input} »"
 
 msgid "Create a budget review"
 msgstr "Créer un bilan budgétaire"
+
+msgid "Create a dependency rule"
+msgstr "Créer une règle de dépendance"
 
 msgid "Create a new group"
 msgstr "Créer un nouveau groupe"
@@ -4556,6 +4608,9 @@ msgstr "Supprimer l'évaluation ?"
 msgid "Delete the link: {from} supports {to}"
 msgstr "Supprimer le lien : {from} supporte {to}"
 
+msgid "Delete the rule “{pendingName}”"
+msgstr "Supprimer la règle « {pendingName} »"
+
 msgid "Delete the tag “{name}”"
 msgstr "Supprimer le tag « {name} »"
 
@@ -4567,6 +4622,9 @@ msgstr "Supprimer le plan de traitement"
 
 msgid "Deleted country"
 msgstr "Pays supprimé"
+
+msgid "deleted rule"
+msgstr "règle supprimée"
 
 msgid "Deleted sector"
 msgstr "Secteur supprimé"
@@ -4585,6 +4643,9 @@ msgstr "Dépendance supprimée avec succès."
 
 msgid "Dependency graph"
 msgstr "Graphe de dépendances"
+
+msgid "Dependency Rules"
+msgstr "Règles de dépendance"
 
 msgid "Dependency updated successfully."
 msgstr "Dépendance mise à jour avec succès."
@@ -4969,6 +5030,9 @@ msgstr "Modifier les contrôles"
 msgid "Edit the cost"
 msgstr "Modifier le coût"
 
+msgid "Edit the dependency rule"
+msgstr "Modifier la règle de dépendance"
+
 msgid "Edit the link with {name}"
 msgstr "Modifier le lien avec {name}"
 
@@ -5058,6 +5122,9 @@ msgstr "Activer"
 
 msgid "Enabled"
 msgstr "Activé"
+
+msgid "Enabled: links matching assets now and at every sync"
+msgstr "Activée : lie les actifs correspondants maintenant et à chaque synchronisation"
 
 msgid "End of life"
 msgstr "Fin de vie"
@@ -5753,6 +5820,9 @@ msgstr "Début de l'exercice"
 
 msgid "Fix gain"
 msgstr "Gain de la correction"
+
+msgid "Fix the name pattern to see the matching assets."
+msgstr "Corrigez le motif de nom pour voir les actifs correspondants."
 
 msgid "Fixed when the scenario was created: the timing assumptions and the threat intelligence attached to this scenario are derived from it."
 msgstr "Figé à la création du scénario : les hypothèses de délai et le renseignement sur la menace rattachés à ce scénario en découlent."
@@ -6888,6 +6958,9 @@ msgstr "Lier tous les actifs de cette page"
 msgid "Linked"
 msgstr "Liée"
 
+msgid "Linked by"
+msgstr "Lié par"
+
 msgid "Links"
 msgstr "Liens"
 
@@ -7272,6 +7345,9 @@ msgstr "Correspondance :"
 msgid "matches"
 msgstr "correspond à"
 
+msgid "Matching assets"
+msgstr "Actifs correspondants"
+
 msgid "Matching threats could not be loaded."
 msgstr "Les menaces correspondantes n'ont pas pu être chargées."
 
@@ -7582,6 +7658,9 @@ msgstr "Nom (A-Z)"
 msgid "Name (Z-A)"
 msgstr "Nom (Z-A)"
 
+msgid "Name {pattern}"
+msgstr "Nom {pattern}"
+
 msgid "Name in {connector}"
 msgstr "Nom chez {connector}"
 
@@ -7591,8 +7670,14 @@ msgstr "Nom chez les connecteurs"
 msgid "Name it and pick its category"
 msgstr "Nommez-le et choisissez sa catégorie"
 
+msgid "Name matches /{pattern}/"
+msgstr "Nom correspond à /{pattern}/"
+
 msgid "Name or email"
 msgstr "Nom ou e-mail"
+
+msgid "Name or hostname"
+msgstr "Nom ou nom d'hôte"
 
 msgid "Named here because a reader who cannot tell a default from a decision has no way to ask the right question about the figure."
 msgstr "Nommées ici parce qu'un lecteur qui ne distingue pas une valeur par défaut d'une décision n'a aucun moyen de poser la bonne question sur le chiffre."
@@ -7947,6 +8032,9 @@ msgstr "Aucune dépendance déclarée pour {supportingAssetName}."
 
 msgid "No dependency is declared for the primary assets of this scenario."
 msgstr "Aucune dépendance déclarée pour les actifs primaires de ce scénario."
+
+msgid "No dependency rules yet"
+msgstr "Aucune règle de dépendance pour l'instant"
 
 msgid "No description has been ingested for this CVE."
 msgstr "Aucune description n'a été ingérée pour cette CVE."
@@ -9332,6 +9420,9 @@ msgstr "Correctif indisponible"
 msgid "Path"
 msgstr "Chemin"
 
+msgid "Pattern kind"
+msgstr "Type de motif"
+
 msgid "Payload"
 msgstr "Charge utile"
 
@@ -9620,6 +9711,9 @@ msgstr "Préventif"
 
 msgid "Preventive and detective"
 msgstr "Préventif et détectif"
+
+msgid "Preview"
+msgstr "Aperçu"
 
 msgid "Previous claims"
 msgstr "Allégations précédentes"
@@ -9995,6 +10089,9 @@ msgstr "Lecture"
 msgid "Reading the claims behind this threat's relevance…"
 msgstr "Lecture des allégations derrière la pertinence de cette menace…"
 
+msgid "Reading the matching assets"
+msgstr "Lecture des actifs correspondants"
+
 msgctxt "a supporting asset ... a primary asset"
 msgid "reads"
 msgstr "consulte"
@@ -10108,6 +10205,9 @@ msgstr "Enregistrement refusé depuis le {since} ({ago})."
 
 msgid "Registry your teams publish packages to"
 msgstr "Registre où vos équipes publient leurs paquets"
+
+msgid "Regular expression"
+msgstr "Expression régulière"
 
 msgid "Regulated function or data"
 msgstr "Fonction ou donnée réglementée"
@@ -10253,6 +10353,9 @@ msgstr "De nouveau signalé par {name}."
 
 msgid "Reported by"
 msgstr "Signalé par"
+
+msgid "Reported by {connector}"
+msgstr "Remonté par {connector}"
 
 msgid "Reported: {reported}"
 msgstr "Rapporté : {reported}"
@@ -10571,6 +10674,21 @@ msgstr "RTO"
 
 msgid "RTU"
 msgstr "RTU"
+
+msgid "Rule created. Its links are written in the background."
+msgstr "Règle créée. Ses liens sont écrits en arrière-plan."
+
+msgid "Rule deleted. Its links are removed; links made by hand stay."
+msgstr "Règle supprimée. Ses liens sont retirés ; les liens créés à la main restent."
+
+msgid "Rule saved. Its links are rewritten in the background."
+msgstr "Règle enregistrée. Ses liens sont réécrits en arrière-plan."
+
+msgid "Rule updated. Its links are rewritten in the background."
+msgstr "Règle mise à jour. Ses liens sont réécrits en arrière-plan."
+
+msgid "Rule: {ruleName}"
+msgstr "Règle : {ruleName}"
 
 msgid "Run"
 msgstr "Exécution"
@@ -11025,6 +11143,9 @@ msgstr "Sélectionner un flux en direct"
 
 msgid "Select a month"
 msgstr "Choisir un mois"
+
+msgid "Select a primary asset"
+msgstr "Sélectionnez un actif primaire"
 
 msgid "Select a revenue band"
 msgstr "Sélectionner une tranche de chiffre d'affaires"
@@ -11915,6 +12036,12 @@ msgstr "Tablette sous iOS ou Android"
 msgid "Tactics"
 msgstr "Tactiques"
 
+msgid "Tag"
+msgstr "Tag"
+
+msgid "Tag {name}"
+msgstr "Tag {name}"
+
 msgid "Tag deleted successfully."
 msgstr "Tag supprimé avec succès."
 
@@ -12451,6 +12578,9 @@ msgstr "La dernière simulation n'a conservé aucune distribution des pertes ann
 msgid "The line is the expected value on each sampled date: every scenario's most recent simulation as of that date, its mean, added up. It is flat between runs rather than interpolated. The shaded right-hand region is reserved for projections."
 msgstr "La ligne est la valeur attendue à chaque date échantillonnée : la moyenne de la simulation la plus récente de chaque scénario à cette date, additionnée. Elle est plate entre deux simulations plutôt qu'interpolée. La zone grisée à droite est réservée aux projections."
 
+msgid "The links this rule wrote are removed. Links a person made stay."
+msgstr "Les liens écrits par cette règle sont retirés. Les liens créés par une personne restent."
+
 msgid "The loss exceedance curve could not be read."
 msgstr "La courbe de dépassement des pertes n'a pas pu être lue."
 
@@ -12673,6 +12803,9 @@ msgstr "Les périmètres de risque classés par perte annuelle attendue, la plus
 
 msgid "The RTO is longer than the MTPD."
 msgstr "Le RTO dépasse la DMIA."
+
+msgid "The rule “{pendingRuleName}” wrote this dependency. Once you delete it, the rule never links these two assets again."
+msgstr "La règle « {pendingRuleName} » a écrit cette dépendance. Une fois supprimée, la règle ne lie plus jamais ces deux actifs."
 
 msgid "The run it answers"
 msgstr "L'exécution à laquelle elle répond"
@@ -13108,6 +13241,9 @@ msgstr "L'enregistrement de cette plateforme auprès de XTM One est refusé."
 
 msgid "This recovery time objective is more than four times the stated maximum tolerable downtime, so the plan targets a restore long after the business says it can no longer cope."
 msgstr "Ce délai de restauration cible dépasse quatre fois la durée maximale d'interruption admissible déclarée, si bien que le plan vise un rétablissement bien après le moment où l'entreprise déclare ne plus pouvoir l'absorber."
+
+msgid "This regular expression cannot be read"
+msgstr "Cette expression régulière est illisible"
 
 msgid "This requirement feeds no OpenCRQ control."
 msgstr "Cette exigence n'alimente aucun contrôle OpenCRQ."
@@ -14336,6 +14472,9 @@ msgstr "Pourquoi ce levier ne vaut rien"
 
 msgid "Why this step?"
 msgstr "Pourquoi cette étape ?"
+
+msgid "Wildcard (* and ?)"
+msgstr "Jokers (* et ?)"
 
 msgid "Windows"
 msgstr "Windows"

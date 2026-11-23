@@ -265,6 +265,10 @@ msgstr "{0, plural, one {The asset at the worst level carries almost all of it.}
 msgid "{0, plural, one {The asset at the worst level counts for {worstEquivalent}.} other {The # assets at the worst level count for {worstEquivalent}.}}"
 msgstr "{0, plural, one {The asset at the worst level counts for {worstEquivalent}.} other {The # assets at the worst level count for {worstEquivalent}.}}"
 
+#. placeholder {0}: assets.length
+msgid "{0, plural, one {The first # is shown.} other {The first # are shown.}}"
+msgstr "{0, plural, one {The first # is shown.} other {The first # are shown.}}"
+
 #. placeholder {0}: split.otherAssetCount
 msgid "{0, plural, one {The other one counts for {otherEquivalent}.} other {The # others count together for {otherEquivalent}.}}"
 msgstr "{0, plural, one {The other one counts for {otherEquivalent}.} other {The # others count together for {otherEquivalent}.}}"
@@ -313,6 +317,9 @@ msgstr "{affectedAssetCount, plural, one {Affected asset} other {Affected assets
 
 msgid "{affectedAssetCount, plural, one {Worst finding: {worstScore}, on # asset.} other {Worst finding: {worstScore}, on # assets.}}"
 msgstr "{affectedAssetCount, plural, one {Worst finding: {worstScore}, on # asset.} other {Worst finding: {worstScore}, on # assets.}}"
+
+msgid "{alreadyManual, plural, one {# more already linked by hand is left as it is.} other {# more already linked by hand are left as they are.}}"
+msgstr "{alreadyManual, plural, one {# more already linked by hand is left as it is.} other {# more already linked by hand are left as they are.}}"
 
 msgid "{amount, plural, one {About once every # month} other {About once every # months}}"
 msgstr "{amount, plural, one {About once every # month} other {About once every # months}}"
@@ -1342,6 +1349,9 @@ msgstr "{supporting} supports {supported}"
 msgid "{supportingAssetName} is not part of the risk scope {scopeName}."
 msgstr "{supportingAssetName} is not part of the risk scope {scopeName}."
 
+msgid "{suppressed, plural, one {# more a person unlinked is never linked again.} other {# more a person unlinked are never linked again.}}"
+msgstr "{suppressed, plural, one {# more a person unlinked is never linked again.} other {# more a person unlinked are never linked again.}}"
+
 msgid "{technique} on {family} assets can now be contested by a capability of the catalogue"
 msgstr "{technique} on {family} assets can now be contested by a capability of the catalogue"
 
@@ -1417,6 +1427,9 @@ msgstr "{total, plural, one {# notification} other {# notifications}}"
 
 msgid "{total, plural, one {# pending change} other {# pending changes}}"
 msgstr "{total, plural, one {# pending change} other {# pending changes}}"
+
+msgid "{total, plural, one {Links # supporting asset.} other {Links # supporting assets.}}"
+msgstr "{total, plural, one {Links # supporting asset.} other {Links # supporting assets.}}"
 
 msgid "{total, plural, one {Save # change} other {Save # changes}}"
 msgstr "{total, plural, one {Save # change} other {Save # changes}}"
@@ -1889,6 +1902,12 @@ msgstr "A risk scope with no simulated scenario is left out."
 msgid "A row groups every applicable finding of one CVE, or of one technique in prevention or in detection, over the scope's assets. Its score is that of its worst finding, which the row opens."
 msgstr "A row groups every applicable finding of one CVE, or of one technique in prevention or in detection, over the scope's assets. Its score is that of its worst finding, which the row opens."
 
+msgid "A rule links the supporting assets that match its conditions to a primary asset, now and at every sync. A link made or removed by hand always wins."
+msgstr "A rule links the supporting assets that match its conditions to a primary asset, now and at every sync. A link made or removed by hand always wins."
+
+msgid "A rule needs at least one condition"
+msgstr "A rule needs at least one condition"
+
 msgid "A run is booked and waiting for a worker to take it."
 msgstr "A run is booked and waiting for a worker to take it."
 
@@ -1927,6 +1946,9 @@ msgstr "A single control is declared at {ceiling} at most: strength {topStrength
 
 msgid "A supporting asset is what a scenario is measured over: its exposure and its criticality are what turn an attack into an amount. Add one by hand, or connect an integration and let it bring the estate in."
 msgstr "A supporting asset is what a scenario is measured over: its exposure and its criticality are what turn an attack into an amount. Add one by hand, or connect an integration and let it bring the estate in."
+
+msgid "A supporting asset matches when it meets every condition set here."
+msgstr "A supporting asset matches when it meets every condition set here."
 
 msgid "A tag “{targetName}” already exists. Merge “{name}” into “{targetName}”?"
 msgstr "A tag “{targetName}” already exists. Merge “{name}” into “{targetName}”?"
@@ -2151,6 +2173,9 @@ msgstr "Add a technique"
 
 msgid "Add at least one budget line before closing."
 msgstr "Add at least one budget line before closing."
+
+msgid "Add at least one condition: a rule without one would link every supporting asset."
+msgstr "Add at least one condition: a rule without one would link every supporting asset."
 
 msgid "Add members"
 msgstr "Add members"
@@ -2551,11 +2576,23 @@ msgstr "Answers an ask absorbed by this run."
 msgid "Anthropic"
 msgstr "Anthropic"
 
+msgid "Any category"
+msgstr "Any category"
+
+msgid "Any connector"
+msgstr "Any connector"
+
 msgid "Any data identifying people: customers, employees, patients, users, including special categories such as health or biometrics and non-card financial identifiers."
 msgstr "Any data identifying people: customers, employees, patients, users, including special categories such as health or biometrics and non-card financial identifiers."
 
 msgid "Any of"
 msgstr "Any of"
+
+msgid "Any subcategory"
+msgstr "Any subcategory"
+
+msgid "Any tag"
+msgstr "Any tag"
 
 msgid "Anything that does not fit another category yet"
 msgstr "Anything that does not fit another category yet"
@@ -3380,6 +3417,9 @@ msgstr "Cardholder and payment data an attacker can use to carry out fraud: PANs
 msgid "Cards view"
 msgstr "Cards view"
 
+msgid "Case-insensitive. A wildcard pattern matches the whole name."
+msgstr "Case-insensitive. A wildcard pattern matches the whole name."
+
 msgid "catalog"
 msgstr "catalog"
 
@@ -3461,8 +3501,14 @@ msgstr "Checking"
 msgid "Choose a plan, or create a new one."
 msgstr "Choose a plan, or create a new one."
 
+msgid "Choose a primary asset to see the assets this rule links."
+msgstr "Choose a primary asset to see the assets this rule links."
+
 msgid "Choose the controls"
 msgstr "Choose the controls"
+
+msgid "Choose the primary asset the rule links to"
+msgstr "Choose the primary asset the rule links to"
 
 msgid "Chronology"
 msgstr "Chronology"
@@ -3710,6 +3756,9 @@ msgstr "Computing…"
 
 msgid "Concerning you"
 msgstr "Concerning you"
+
+msgid "Conditions"
+msgstr "Conditions"
 
 msgid "Confidence"
 msgstr "Confidence"
@@ -4111,6 +4160,9 @@ msgstr "Create “{input}”"
 
 msgid "Create a budget review"
 msgstr "Create a budget review"
+
+msgid "Create a dependency rule"
+msgstr "Create a dependency rule"
 
 msgid "Create a new group"
 msgstr "Create a new group"
@@ -4556,6 +4608,9 @@ msgstr "Delete the assessment?"
 msgid "Delete the link: {from} supports {to}"
 msgstr "Delete the link: {from} supports {to}"
 
+msgid "Delete the rule “{pendingName}”"
+msgstr "Delete the rule “{pendingName}”"
+
 msgid "Delete the tag “{name}”"
 msgstr "Delete the tag “{name}”"
 
@@ -4567,6 +4622,9 @@ msgstr "Delete treatment plan"
 
 msgid "Deleted country"
 msgstr "Deleted country"
+
+msgid "deleted rule"
+msgstr "deleted rule"
 
 msgid "Deleted sector"
 msgstr "Deleted sector"
@@ -4585,6 +4643,9 @@ msgstr "Dependency deleted successfully."
 
 msgid "Dependency graph"
 msgstr "Dependency graph"
+
+msgid "Dependency Rules"
+msgstr "Dependency Rules"
 
 msgid "Dependency updated successfully."
 msgstr "Dependency updated successfully."
@@ -4969,6 +5030,9 @@ msgstr "Edit the controls"
 msgid "Edit the cost"
 msgstr "Edit the cost"
 
+msgid "Edit the dependency rule"
+msgstr "Edit the dependency rule"
+
 msgid "Edit the link with {name}"
 msgstr "Edit the link with {name}"
 
@@ -5058,6 +5122,9 @@ msgstr "Enable"
 
 msgid "Enabled"
 msgstr "Enabled"
+
+msgid "Enabled: links matching assets now and at every sync"
+msgstr "Enabled: links matching assets now and at every sync"
 
 msgid "End of life"
 msgstr "End of life"
@@ -5753,6 +5820,9 @@ msgstr "Fiscal year start"
 
 msgid "Fix gain"
 msgstr "Fix gain"
+
+msgid "Fix the name pattern to see the matching assets."
+msgstr "Fix the name pattern to see the matching assets."
 
 msgid "Fixed when the scenario was created: the timing assumptions and the threat intelligence attached to this scenario are derived from it."
 msgstr "Fixed when the scenario was created: the timing assumptions and the threat intelligence attached to this scenario are derived from it."
@@ -6888,6 +6958,9 @@ msgstr "Link every asset on this page"
 msgid "Linked"
 msgstr "Linked"
 
+msgid "Linked by"
+msgstr "Linked by"
+
 msgid "Links"
 msgstr "Links"
 
@@ -7272,6 +7345,9 @@ msgstr "Matched:"
 msgid "matches"
 msgstr "matches"
 
+msgid "Matching assets"
+msgstr "Matching assets"
+
 msgid "Matching threats could not be loaded."
 msgstr "Matching threats could not be loaded."
 
@@ -7582,6 +7658,9 @@ msgstr "Name (A-Z)"
 msgid "Name (Z-A)"
 msgstr "Name (Z-A)"
 
+msgid "Name {pattern}"
+msgstr "Name {pattern}"
+
 msgid "Name in {connector}"
 msgstr "Name in {connector}"
 
@@ -7591,8 +7670,14 @@ msgstr "Name in connectors"
 msgid "Name it and pick its category"
 msgstr "Name it and pick its category"
 
+msgid "Name matches /{pattern}/"
+msgstr "Name matches /{pattern}/"
+
 msgid "Name or email"
 msgstr "Name or email"
+
+msgid "Name or hostname"
+msgstr "Name or hostname"
 
 msgid "Named here because a reader who cannot tell a default from a decision has no way to ask the right question about the figure."
 msgstr "Named here because a reader who cannot tell a default from a decision has no way to ask the right question about the figure."
@@ -7947,6 +8032,9 @@ msgstr "No dependency is declared for {supportingAssetName}."
 
 msgid "No dependency is declared for the primary assets of this scenario."
 msgstr "No dependency is declared for the primary assets of this scenario."
+
+msgid "No dependency rules yet"
+msgstr "No dependency rules yet"
 
 msgid "No description has been ingested for this CVE."
 msgstr "No description has been ingested for this CVE."
@@ -9332,6 +9420,9 @@ msgstr "Patch unavailable"
 msgid "Path"
 msgstr "Path"
 
+msgid "Pattern kind"
+msgstr "Pattern kind"
+
 msgid "Payload"
 msgstr "Payload"
 
@@ -9620,6 +9711,9 @@ msgstr "Preventive"
 
 msgid "Preventive and detective"
 msgstr "Preventive and detective"
+
+msgid "Preview"
+msgstr "Preview"
 
 msgid "Previous claims"
 msgstr "Previous claims"
@@ -9995,6 +10089,9 @@ msgstr "Reading"
 msgid "Reading the claims behind this threat's relevance…"
 msgstr "Reading the claims behind this threat's relevance…"
 
+msgid "Reading the matching assets"
+msgstr "Reading the matching assets"
+
 msgctxt "a supporting asset ... a primary asset"
 msgid "reads"
 msgstr "reads"
@@ -10108,6 +10205,9 @@ msgstr "Registration refused since {since} ({ago})."
 
 msgid "Registry your teams publish packages to"
 msgstr "Registry your teams publish packages to"
+
+msgid "Regular expression"
+msgstr "Regular expression"
 
 msgid "Regulated function or data"
 msgstr "Regulated function or data"
@@ -10253,6 +10353,9 @@ msgstr "Reported again by {name}."
 
 msgid "Reported by"
 msgstr "Reported by"
+
+msgid "Reported by {connector}"
+msgstr "Reported by {connector}"
 
 msgid "Reported: {reported}"
 msgstr "Reported: {reported}"
@@ -10571,6 +10674,21 @@ msgstr "RTO"
 
 msgid "RTU"
 msgstr "RTU"
+
+msgid "Rule created. Its links are written in the background."
+msgstr "Rule created. Its links are written in the background."
+
+msgid "Rule deleted. Its links are removed; links made by hand stay."
+msgstr "Rule deleted. Its links are removed; links made by hand stay."
+
+msgid "Rule saved. Its links are rewritten in the background."
+msgstr "Rule saved. Its links are rewritten in the background."
+
+msgid "Rule updated. Its links are rewritten in the background."
+msgstr "Rule updated. Its links are rewritten in the background."
+
+msgid "Rule: {ruleName}"
+msgstr "Rule: {ruleName}"
 
 msgid "Run"
 msgstr "Run"
@@ -11025,6 +11143,9 @@ msgstr "Select a Live Stream"
 
 msgid "Select a month"
 msgstr "Select a month"
+
+msgid "Select a primary asset"
+msgstr "Select a primary asset"
 
 msgid "Select a revenue band"
 msgstr "Select a revenue band"
@@ -11915,6 +12036,12 @@ msgstr "Tablet running iOS or Android"
 msgid "Tactics"
 msgstr "Tactics"
 
+msgid "Tag"
+msgstr "Tag"
+
+msgid "Tag {name}"
+msgstr "Tag {name}"
+
 msgid "Tag deleted successfully."
 msgstr "Tag deleted successfully."
 
@@ -12451,6 +12578,9 @@ msgstr "The latest simulation kept no annual loss distribution, so there is no c
 msgid "The line is the expected value on each sampled date: every scenario's most recent simulation as of that date, its mean, added up. It is flat between runs rather than interpolated. The shaded right-hand region is reserved for projections."
 msgstr "The line is the expected value on each sampled date: every scenario's most recent simulation as of that date, its mean, added up. It is flat between runs rather than interpolated. The shaded right-hand region is reserved for projections."
 
+msgid "The links this rule wrote are removed. Links a person made stay."
+msgstr "The links this rule wrote are removed. Links a person made stay."
+
 msgid "The loss exceedance curve could not be read."
 msgstr "The loss exceedance curve could not be read."
 
@@ -12673,6 +12803,9 @@ msgstr "The risk scopes ranked by annual loss exposure, highest first."
 
 msgid "The RTO is longer than the MTPD."
 msgstr "The RTO is longer than the MTPD."
+
+msgid "The rule “{pendingRuleName}” wrote this dependency. Once you delete it, the rule never links these two assets again."
+msgstr "The rule “{pendingRuleName}” wrote this dependency. Once you delete it, the rule never links these two assets again."
 
 msgid "The run it answers"
 msgstr "The run it answers"
@@ -13108,6 +13241,9 @@ msgstr "This platform's registration with XTM One is refused."
 
 msgid "This recovery time objective is more than four times the stated maximum tolerable downtime, so the plan targets a restore long after the business says it can no longer cope."
 msgstr "This recovery time objective is more than four times the stated maximum tolerable downtime, so the plan targets a restore long after the business says it can no longer cope."
+
+msgid "This regular expression cannot be read"
+msgstr "This regular expression cannot be read"
 
 msgid "This requirement feeds no OpenCRQ control."
 msgstr "This requirement feeds no OpenCRQ control."
@@ -14336,6 +14472,9 @@ msgstr "Why this lever is worth nothing"
 
 msgid "Why this step?"
 msgstr "Why this step?"
+
+msgid "Wildcard (* and ?)"
+msgstr "Wildcard (* and ?)"
 
 msgid "Windows"
 msgstr "Windows"

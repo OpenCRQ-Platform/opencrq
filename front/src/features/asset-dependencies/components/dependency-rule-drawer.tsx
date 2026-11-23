@@ -1,4 +1,4 @@
-import type { AssetCategory, AssetSubcategory, DependencyRuleNamePatternKind, IntegrationSource, SupportToPrimaryLinkRole } from '@app/module/client';
+import type { DependencyRuleNamePatternKind } from '@app/module/client';
 import {
   ASSET_CATEGORY_VALUES,
   ASSET_SUBCATEGORY_VALUES,
@@ -24,7 +24,7 @@ import { conditionsDraftOf, isReadableRegex, toConditionsInput } from '../depend
 import { DependencyRulePreview } from './dependency-rule-preview';
 import { LinkRolesField } from './link-roles-field';
 
-const formSchema = z.object({
+const buildFormSchema = () => z.object({
   name: z.string().trim().min(1).max(DEPENDENCY_RULE_NAME_MAX_LENGTH),
   primaryAssetId: z.uuid().nullable(),
   roles: z.array(z.enum(SUPPORT_TO_PRIMARY_LINK_ROLES)).min(1),
@@ -35,19 +35,23 @@ const formSchema = z.object({
   namePatternKind: z.enum(['glob', 'regex']),
   tagId: z.uuid().nullable(),
   source: z.enum(INTEGRATION_SOURCES).nullable(),
-}).refine((values) => values.primaryAssetId !== null, { path: ['primaryAssetId'], message: 'Choose the primary asset the rule links to' })
+}).refine((values) => values.primaryAssetId !== null, { path: ['primaryAssetId'], message: t`Choose the primary asset the rule links to` })
   .refine((values) => values.namePatternKind !== 'regex' || values.namePattern.trim() === '' || isReadableRegex(values.namePattern.trim()), {
     path: ['namePattern'],
-    message: 'This regular expression cannot be read',
+    message: t`This regular expression cannot be read`,
   })
   .refine((values) => [values.categoryId, values.subcategoryId, values.namePattern.trim() === '' ? null : values.namePattern, values.tagId, values.source].some((value) => value !== null), {
     path: ['categoryId'],
-    message: 'A rule needs at least one condition',
+    message: t`A rule needs at least one condition`,
   });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<ReturnType<typeof buildFormSchema>>;
 
 const PATTERN_KIND_OPTIONS: ReadonlyArray<DependencyRuleNamePatternKind> = ['glob', 'regex'];
+
+/** The member of `values` a select answered, or null: a select hands back a plain string. */
+const oneOf = <T extends string>(values: ReadonlyArray<T>, next: string | null): T | null =>
+  values.find((value) => value === next) ?? null;
 
 const RuleForm: FunctionComponent<{ rule: DependencyRule | null }> = ({ rule }) => {
   const trpc = useTRPC();
@@ -56,7 +60,7 @@ const RuleForm: FunctionComponent<{ rule: DependencyRule | null }> = ({ rule }) 
   const { data: tags } = useQuery(trpc.supportingAssets.listManagedTags.queryOptions());
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(buildFormSchema()),
     defaultValues: {
       name: rule?.name ?? '',
       primaryAssetId: rule?.primaryAssetId ?? null,
@@ -140,7 +144,7 @@ const RuleForm: FunctionComponent<{ rule: DependencyRule | null }> = ({ rule }) 
       <Controller
         control={form.control}
         name="roles"
-        render={({ field }) => <LinkRolesField value={field.value as Array<SupportToPrimaryLinkRole>} onChange={field.onChange} />}
+        render={({ field }) => <LinkRolesField value={field.value} onChange={field.onChange} />}
       />
 
       <section className="flex flex-col gap-4" aria-labelledby="dependency-rule-conditions">
@@ -157,8 +161,9 @@ const RuleForm: FunctionComponent<{ rule: DependencyRule | null }> = ({ rule }) 
                 options={categoryOptions}
                 value={field.value}
                 onChange={(next) => {
-                  field.onChange(next as AssetCategory | null);
-                  if (next !== null && subcategoryId !== null && SUBCATEGORY_TO_CATEGORY[subcategoryId] !== next) {
+                  const category = oneOf(ASSET_CATEGORY_VALUES, next);
+                  field.onChange(category);
+                  if (category !== null && subcategoryId !== null && SUBCATEGORY_TO_CATEGORY[subcategoryId] !== category) {
                     form.setValue('subcategoryId', null);
                   }
                 }}
@@ -175,7 +180,7 @@ const RuleForm: FunctionComponent<{ rule: DependencyRule | null }> = ({ rule }) 
               <SingleSelectField
                 options={subcategoryOptions}
                 value={field.value}
-                onChange={(next) => field.onChange(next as AssetSubcategory | null)}
+                onChange={(next) => field.onChange(oneOf(ASSET_SUBCATEGORY_VALUES, next))}
                 label={t`Subcategory`}
                 placeholder={t`Any subcategory`}
               />
@@ -202,7 +207,7 @@ const RuleForm: FunctionComponent<{ rule: DependencyRule | null }> = ({ rule }) 
               <SingleSelectField
                 options={kindOptions}
                 value={field.value}
-                onChange={(next) => field.onChange((next ?? 'glob') as DependencyRuleNamePatternKind)}
+                onChange={(next) => field.onChange(oneOf(PATTERN_KIND_OPTIONS, next) ?? 'glob')}
                 label={t`Pattern kind`}
                 clearable={false}
               />
@@ -229,7 +234,7 @@ const RuleForm: FunctionComponent<{ rule: DependencyRule | null }> = ({ rule }) 
               <SingleSelectField
                 options={sourceOptions}
                 value={field.value}
-                onChange={(next) => field.onChange(next as IntegrationSource | null)}
+                onChange={(next) => field.onChange(oneOf(INTEGRATION_SOURCES, next))}
                 label={t`Reported by`}
                 placeholder={t`Any connector`}
               />

@@ -130,9 +130,13 @@ export const SupportToPrimaryLinksCard: FunctionComponent<SupportToPrimaryLinksC
       header: t`Linked by`,
       accessorFn: (row) => (row.source === 'rule' ? row.ruleName ?? '' : ''),
       size: 170,
-      cell: ({ row }): ReactElement => (row.original.source === 'rule'
-        ? <Chip label={t`Rule: ${row.original.ruleName ?? t`deleted rule`}`} severity="info" />
-        : <span className="text-muted-foreground">{t`Hand`}</span>),
+      cell: ({ row }): ReactElement => {
+        if (row.original.source !== 'rule') {
+          return <span className="text-muted-foreground">{t`Manual`}</span>;
+        }
+        const ruleName = row.original.ruleName ?? t`deleted rule`;
+        return <Chip label={t`Rule: ${ruleName}`} severity="info" />;
+      },
     },
     {
       id: 'inheritedCriteria',
