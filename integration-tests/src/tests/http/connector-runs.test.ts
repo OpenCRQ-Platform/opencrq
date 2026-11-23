@@ -65,6 +65,7 @@ describe('connector runs (HTTP/tRPC)', () => {
       'runAfter',
       'startedAt',
       'status',
+      'stepCounts',
       'triggeredBy',
       'triggeredById',
     ]);

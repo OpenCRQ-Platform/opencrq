@@ -158,6 +158,7 @@ describe('jobs overview (HTTP/tRPC)', () => {
       'runAfter',
       'startedAt',
       'status',
+      'stepCounts',
       'triggeredBy',
       'triggeredById',
     ]);
@@ -246,6 +247,7 @@ describe('jobs overview (HTTP/tRPC)', () => {
       'runAfter',
       'startedAt',
       'status',
+      'stepCounts',
       'triggeredBy',
       'triggeredById',
     ]);
