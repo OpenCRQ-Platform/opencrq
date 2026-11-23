@@ -71,7 +71,8 @@ export const JOB_CATALOGUE: Readonly<Record<JobCatalogueKind, JobCatalogueEntry>
   'asset-criticality-lift-recompute': { kind: 'asset-criticality-lift-recompute', observed: true, daily: false, serialized: false },
   'primary-asset-reach-recompute': { kind: 'primary-asset-reach-recompute', observed: true, daily: false, serialized: false },
   'attack-outcome-mixture-recompute': { kind: 'attack-outcome-mixture-recompute', observed: true, daily: true, serialized: false },
-  // Works on the clock alone: nothing it reads should wake it, so it is not observed.
+  // Works on the clock alone: nothing it reads should wake it, so it is not observed, and what it
+  // deletes no reader reads, so the dispatcher routes none of its writes (`UNROUTED_ORIGINS`).
   'jobs-retention': { kind: 'jobs-retention', observed: false, daily: true, serialized: false },
 };
 

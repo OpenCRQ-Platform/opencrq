@@ -95,52 +95,59 @@ export const crqIndicatorsRepository = defineRepository({
     // The secured view is already a subquery named after the table, so each further read of it goes
     // through a subquery of its own rather than alias(), which only takes a table.
     const runColumns = { riskScenarioId: runs.riskScenarioId, createdAt: runs.createdAt, id: runs.id, profile: runs.profile, aleMean: runs.aleMean, lefMean: runs.lefMean };
-    const later = db.select(runColumns).from(runs).as('later_run');
-    const between = db.select(runColumns).from(runs).as('between_run');
+    type RunRef = Record<keyof typeof runColumns, SQLWrapper>;
+    const runsAs = (name: string) => db.select(runColumns).from(runs).as(name);
     const one = { one: sql`1` };
-    const laterOfScenario = and(
-      eq(later.riskScenarioId, runs.riskScenarioId),
-      sql`(${later.createdAt}, ${later.id}) > (${runs.createdAt}, ${runs.id})`,
+    const after = (run: RunRef, other: RunRef) => and(
+      eq(other.riskScenarioId, run.riskScenarioId),
+      sql`(${other.createdAt}, ${other.id}) > (${run.createdAt}, ${run.id})`,
     );
-    const sameDayBeforeBound = and(
-      laterOfScenario,
-      lt(later.createdAt, before),
-      sql`${later.createdAt} < (date_trunc('day', ${runs.createdAt} at time zone 'UTC') + interval '1 day') at time zone 'UTC'`,
+    const sameDayBeforeBound = (run: RunRef, other: RunRef) => and(
+      after(run, other),
+      lt(other.createdAt, before),
+      sql`${other.createdAt} < (date_trunc('day', ${run.createdAt} at time zone 'UTC') + interval '1 day') at time zone 'UTC'`,
     );
-    const laterSameDay = (also?: SQL) => exists(db.select(one).from(later).where(and(sameDayBeforeBound, also)));
-    const twoLaterRuns = exists(db.select(one).from(later).where(laterOfScenario).offset(1));
-    const newestOfAToken = sql`exists (select 1 from unnest(${runs.profile}) as token where token <> 'techniques' and not exists (${db
-      .select(one)
-      .from(later)
-      .where(and(laterOfScenario, sql`token = any(${later.profile})`))}))`;
     const reviewFigureOf = (runId: SQLWrapper) => or(...[views.crqBudgetReviewResults, views.crqBudgetReviewAnnualLosses].map((table) => exists(db
       .select(one)
       .from(table)
       .innerJoin(views.budgetReviews, and(eq(views.budgetReviews.id, table.reviewId), eq(views.budgetReviews.version, table.reviewVersion)))
       .where(sql`${table.runId} = ${runId}`))));
-    // A later `techniques` run of the same day stands for this one when no run that could stay lies
-    // between them: past the bound, only a run carrying a token or a review figure can.
-    const techniquesSuperseded = laterSameDay(and(
-      sql`'techniques' = any(${later.profile})`,
+    /** Every keep rule but the `techniques` source, which reads the runs this one finds kept. */
+    const keptOtherwise = (run: RunRef, name: string) => {
+      const later = runsAs(`${name}_later`);
+      const laterSameDay = (also?: SQL) => exists(db.select(one).from(later).where(and(sameDayBeforeBound(run, later), also)));
+      return or(
+        sql`${run.createdAt} >= ${before}`,
+        not(laterSameDay()),
+        and(isNotNull(run.aleMean), not(laterSameDay(isNotNull(later.aleMean)))),
+        and(isNotNull(run.lefMean), not(laterSameDay(isNotNull(later.lefMean)))),
+        notExists(db.select(one).from(later).where(after(run, later)).offset(1)),
+        sql`exists (select 1 from unnest(${run.profile}) as token where not exists (${db
+          .select(one)
+          .from(later)
+          .where(and(after(run, later), sql`token = any(${later.profile})`))}))`,
+        reviewFigureOf(run.id),
+      )!;
+    };
+    // A later `techniques` run of the same day stands for this one when no run kept between them
+    // would lose it as the newest `techniques` run at or before it.
+    const successor = runsAs('successor_run');
+    const between = runsAs('between_run');
+    const techniquesSuperseded = exists(db.select(one).from(successor).where(and(
+      sameDayBeforeBound(runs, successor),
+      sql`'techniques' = any(${successor.profile})`,
       notExists(db.select(one).from(between).where(and(
-        eq(between.riskScenarioId, runs.riskScenarioId),
-        sql`(${between.createdAt}, ${between.id}) > (${runs.createdAt}, ${runs.id})`,
-        sql`(${between.createdAt}, ${between.id}) < (${later.createdAt}, ${later.id})`,
-        or(sql`cardinality(${between.profile}) > 0`, reviewFigureOf(between.id)),
+        after(runs, between),
+        sql`(${between.createdAt}, ${between.id}) < (${successor.createdAt}, ${successor.id})`,
+        keptOtherwise(between, 'between_run'),
       ))),
-    ));
+    )));
     const expired = db
       .select({ id: runs.id })
       .from(runs)
       .where(and(
-        lt(runs.createdAt, before),
-        laterSameDay(),
-        or(isNull(runs.aleMean), laterSameDay(isNotNull(later.aleMean))),
-        or(isNull(runs.lefMean), laterSameDay(isNotNull(later.lefMean))),
-        twoLaterRuns,
-        not(newestOfAToken),
+        not(keptOtherwise(runs, 'run')),
         or(sql`not ('techniques' = any(${runs.profile}))`, techniquesSuperseded),
-        not(reviewFigureOf(runs.id)!),
       ))
       .limit(limit);
     const deleted = await db.delete(crqIndicatorRuns).where(inArray(crqIndicatorRuns.id, expired)).returning();

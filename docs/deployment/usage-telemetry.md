@@ -47,7 +47,7 @@ Attached to every export:
 | `control_capability_assessments_count` | Total number of capability assessments. |
 | `findings_count` | Total number of findings. |
 | `risk_scenarios_count` | Total number of risk scenarios. |
-| `crq_indicator_runs_count` | Total number of CRQ indicator runs. |
+| `crq_indicator_runs_count` | Number of CRQ indicator runs stored. A pass whose result equals the latest run stores none, and the daily retention thins the history past a year, so the series drops after the first purge. |
 | `loss_drivers_count` | Total number of loss drivers. |
 | `attack_outcomes_count` | Total number of attack outcomes. |
 | `scenario_loss_estimates_count` | Total number of scenario loss estimates. |

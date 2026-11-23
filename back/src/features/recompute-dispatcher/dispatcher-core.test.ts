@@ -311,6 +311,14 @@ describe('dispatcher echo filter', () => {
     expect(h.enqueues).toHaveLength(1);
   });
 
+  it('should drop a change the retention purge caused, on a table the job reads', async () => {
+    const h = createHarness([FS], { observations: reads(FS.kind, 'tenant-1', 'crq_indicator_runs') });
+    await h.dispatcher.start();
+    h.dispatcher.handleEvent({ table: 'crq_indicator_runs', tenantId: 'tenant-1', op: 'DELETE', origin: 'jobs-retention', interactive: false });
+    await h.advance(120_000);
+    expect(h.enqueues).toHaveLength(0);
+  });
+
   it('should drop a global-table echo for every tenant, not only the one that ran', async () => {
     const h = createHarness([FS], { tenants: ['tenant-1', 'tenant-2'] });
     await h.dispatcher.start();

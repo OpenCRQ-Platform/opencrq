@@ -42,7 +42,7 @@ export const COUNT_GAUGES: Array<CountGaugeDefinition> = [
   { name: 'findings_count', description: 'Total number of findings', table: schema.assetEvidence },
   // Risk / CRQ
   { name: 'risk_scenarios_count', description: 'Total number of risk scenarios', table: schema.riskScenarios },
-  { name: 'crq_indicator_runs_count', description: 'Total number of CRQ indicator runs', table: schema.crqIndicatorRuns },
+  { name: 'crq_indicator_runs_count', description: 'Number of CRQ indicator runs stored; a result equal to the latest stores none, and retention thins the history past a year', table: schema.crqIndicatorRuns },
   { name: 'loss_drivers_count', description: 'Total number of loss drivers', table: schema.lossDrivers },
   { name: 'attack_outcomes_count', description: 'Total number of attack outcomes', table: schema.attackOutcomes },
   { name: 'scenario_loss_estimates_count', description: 'Total number of scenario loss estimates', table: schema.scenarioLossEstimates },

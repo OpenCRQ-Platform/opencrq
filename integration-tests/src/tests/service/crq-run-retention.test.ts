@@ -1,5 +1,5 @@
 import type { EventOrigin } from '@app/module';
-import { budgetReviews, CRQ_RUN_DETAIL_RETENTION_DAYS, crqBudgetReviewResults, crqIndicatorRuns } from '@app/module';
+import { budgetReviews, CRQ_RUN_DETAIL_RETENTION_DAYS, crqBudgetReviewAnnualLosses, crqBudgetReviewResults, crqIndicatorRuns } from '@app/module';
 import { asc, eq } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -92,9 +92,10 @@ describe('CRQ run retention', () => {
   it('should keep a run that a later run of its day stands for while that one is still within the retention', async () => {
     const beforeBound = await run(new Date(BOUND.getTime() - 60 * 60 * 1000).toISOString());
     const afterBound = await run(new Date(BOUND.getTime() + 60 * 60 * 1000).toISOString());
+    const latestTwo = [await run('2026-11-20T08:00:00Z'), await run('2026-11-21T08:00:00Z')];
 
     expect(await purge()).toEqual({ runsDeleted: 0 });
-    expect(await runsLeft()).toEqual([beforeBound, afterBound]);
+    expect(await runsLeft()).toEqual([beforeBound, afterBound, ...latestTwo]);
   });
 
   it('should keep the newest run to compute a figure family, until a later run computes it', async () => {
@@ -133,6 +134,41 @@ describe('CRQ run retention', () => {
       expect(await runsLeft()).toEqual([techniques, leversOfOneControl, laterTechniques, lastOfDay, ...nextDay]);
     });
 
+    it('should keep a techniques run the last run of its day with an ALE reads its values from', async () => {
+      const techniques = await run(`${OLD_DAY}T08:00:00Z`, { profile: ['techniques'] });
+      const lastWithAle = await run(`${OLD_DAY}T09:00:00Z`);
+      const laterTechniques = await run(`${OLD_DAY}T10:00:00Z`, { profile: ['techniques', 'cves', 'levers', 'plans'], aleMean: null, lefMean: null });
+      const nextDay = await twoLaterDays();
+
+      expect(await purge()).toEqual({ runsDeleted: 0 });
+      expect(await runsLeft()).toEqual([techniques, lastWithAle, laterTechniques, ...nextDay]);
+    });
+
+    it('should keep a techniques run the second latest run of the scenario reads its values from', async () => {
+      const ids = [
+        await run(`${OLD_DAY}T08:00:00Z`, { profile: ['techniques'] }),
+        await run(`${OLD_DAY}T09:00:00Z`),
+        await run(`${OLD_DAY}T10:00:00Z`, { profile: ['techniques'] }),
+      ];
+
+      expect(await purge()).toEqual({ runsDeleted: 0 });
+      expect(await runsLeft()).toEqual(ids);
+    });
+
+    it('should keep a techniques run a run holding a budget review figure reads its values from', async () => {
+      const reviewId = await services.withOrigin(adminOrigin).budgetReviews.createBudgetReview({ organizationId, name: 'Exercice', periodStart: '2025-01-01' });
+      const [{ version }] = await db.select({ version: budgetReviews.version }).from(budgetReviews).where(eq(budgetReviews.id, reviewId));
+      const techniques = await run(`${OLD_DAY}T08:00:00Z`, { profile: ['techniques'] });
+      const reviewed = await run(`${OLD_DAY}T09:00:00Z`);
+      const laterTechniques = await run(`${OLD_DAY}T10:00:00Z`, { profile: ['techniques'] });
+      const lastOfDay = await run(`${OLD_DAY}T12:00:00Z`);
+      const nextDay = await twoLaterDays();
+      await db.insert(crqBudgetReviewResults).values({ id: uuidv7(), runId: reviewed, reviewId, reviewVersion: version, basket: 'build', aleReductionMean: 100 });
+
+      expect(await purge()).toEqual({ runsDeleted: 0 });
+      expect(await runsLeft()).toEqual([techniques, reviewed, laterTechniques, lastOfDay, ...nextDay]);
+    });
+
     it('should keep a techniques run the next one stands for only within the retention', async () => {
       const techniques = await run(`${OLD_DAY}T08:00:00Z`, { profile: ['techniques'] });
       const laterTechniques = await run('2026-11-20T08:00:00Z', { profile: ['techniques'] });
@@ -164,23 +200,62 @@ describe('CRQ run retention', () => {
     expect(await runsLeft()).toEqual([current, lastOfDay, ...nextDay]);
   });
 
-  it('should leave the scenario\'s ALE history over the longest window it offers as it was', async () => {
-    const daysAgo = (days: number, hours: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000 + hours * 60 * 60 * 1000).toISOString();
-    let aleMean = 1_000;
-    for (const days of [400, 367, CRQ_RUN_DETAIL_RETENTION_DAYS, 365, 200, 30, 1]) {
-      for (const hours of [-3, -2, -1, 1, 2]) {
-        aleMean += 10;
-        await run(daysAgo(days, hours), { aleMean });
-      }
-    }
-    const history = async () => {
-      const timeline = await services.withOrigin(adminOrigin).crqIndicators.getRunTimeline(riskScenarioId, CRQ_RUN_DETAIL_RETENTION_DAYS);
-      return [...timeline.latest, ...timeline.points].map((point) => [point.id, point.aleMean]);
-    };
-    const before = await history();
+  it('should keep a run holding only a budget review distribution at the review\'s current version', async () => {
+    const reviewId = await services.withOrigin(adminOrigin).budgetReviews.createBudgetReview({ organizationId, name: 'Exercice', periodStart: '2025-01-01' });
+    const [{ version }] = await db.select({ version: budgetReviews.version }).from(budgetReviews).where(eq(budgetReviews.id, reviewId));
+    const reviewed = await run(`${OLD_DAY}T08:00:00Z`);
+    const lastOfDay = await run(`${OLD_DAY}T12:00:00Z`);
+    const nextDay = await twoLaterDays();
+    await db.insert(crqBudgetReviewAnnualLosses).values({
+      id: uuidv7(),
+      runId: reviewed,
+      reviewId,
+      reviewVersion: version,
+      posture: 'reference',
+      years: 1,
+      mean: 1_000,
+      lossYearShare: 0.4,
+      lossEventYearShare: 0.5,
+      probabilities: [0.5, 0.9],
+      losses: [10, 900],
+    });
 
-    expect((await purge(undefined, new Date())).runsDeleted).toBeGreaterThan(0);
-    expect(await history()).toEqual(before);
+    expect(await purge()).toEqual({ runsDeleted: 0 });
+    expect(await runsLeft()).toEqual([reviewed, lastOfDay, ...nextDay]);
+  });
+
+  describe('the ALE history over the longest window each reader offers', () => {
+    beforeEach(async () => {
+      const daysAgo = (days: number, hours: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000 + hours * 60 * 60 * 1000).toISOString();
+      let aleMean = 1_000;
+      for (const days of [800, 731, 730, 400, 367, CRQ_RUN_DETAIL_RETENTION_DAYS, 365, 200, 30, 1]) {
+        for (const hours of [-3, -2, -1, 1, 2]) {
+          aleMean += 10;
+          await run(daysAgo(days, hours), { aleMean, lefMean: aleMean / 1_000 });
+        }
+      }
+    });
+
+    const expectUnchangedByPurge = async (history: () => Promise<unknown>) => {
+      const before = await history();
+      expect((await purge(undefined, new Date())).runsDeleted).toBeGreaterThan(0);
+      expect(await history()).toEqual(before);
+    };
+
+    it('should leave the scenario\'s timeline over a year as it was', async () => {
+      await expectUnchangedByPurge(async () => {
+        const timeline = await services.withOrigin(adminOrigin).crqIndicators.getRunTimeline(riskScenarioId, CRQ_RUN_DETAIL_RETENTION_DAYS);
+        return [...timeline.latest, ...timeline.points].map((point) => [point.id, point.aleMean]);
+      });
+    });
+
+    it('should leave the scenario\'s risk treatment series over two years as it was', async () => {
+      await expectUnchangedByPurge(() => services.withOrigin(adminOrigin).dashboard.getRiskTreatmentSeries({ riskScenarioId, windowDays: 731 }));
+    });
+
+    it('should leave the scope\'s ALE series over two years as it was', async () => {
+      await expectUnchangedByPurge(() => services.withOrigin(adminOrigin).dashboard.getScenarioAleSeries({ organizationId, windowDays: 731 }));
+    });
   });
 
   it('should purge in batches, up to the batch cap', async () => {

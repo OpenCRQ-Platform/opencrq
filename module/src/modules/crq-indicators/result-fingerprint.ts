@@ -11,7 +11,7 @@ import type {
   crqPlanWhatIfResults,
   crqTechniqueWhatIfResults,
 } from './schema';
-import { fingerprintRunInputs } from './run-fingerprint';
+import { fingerprintOf } from './run-fingerprint';
 
 /** Every row one engine run writes, before its result fingerprint is stamped on the run. */
 export interface EngineRunRows {
@@ -55,7 +55,7 @@ const without = (row: object, keys: ReadonlyArray<string>) => {
 export const resultFingerprintOf = (rows: EngineRunRows, appVersion: string | null): string => {
   const attackerOf = new Map(rows.groupScores.map((row, index) => [row.groupKey, index]));
   const plain = (row: object) => without(row, ROW_IDENTITY);
-  return fingerprintRunInputs({
+  return fingerprintOf({
     appVersion,
     run: without(rows.run, RUN_IDENTITY),
     annualLoss: rows.annualLoss === null ? null : plain(rows.annualLoss),

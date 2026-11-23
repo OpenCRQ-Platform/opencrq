@@ -1055,16 +1055,17 @@ observed estates, postures and incident outcomes, is still to come.
   out and only a price run past it dates them older: the first moved pass after it stores one.
   A manual simulation always stores its run. The run history is bounded by the daily
   `jobs-retention` job (`purgeExpiredRuns`): every run of the last `CRQ_RUN_DETAIL_RETENTION_DAYS`
-  (366, the longest window a page reads finer than a day), and past it the last run of each UTC
-  day (and the last with an ALE and with a LEF), the two latest runs of each scenario, the newest
-  run carrying each profile token (for `techniques`, every one a kept run reads its technique
-  values from) and every run holding a budget review figure at the review's current version. The actors' activity decays against the start of the UTC
-  day, in the stored attacker mixture (section 1), so the digest holds until the mixture job
-  rewrites it, and the pass, which reads that table, reprices the scenarios of a moved pair. A
-  moved finding, exposure, identity state, unknown exposure setting or stored threat reaches the
-  ALE once the recompute has rewritten `entry_openings`. The what-ifs, the CVE's among them, still
-  quote the last full run until one is asked, and EPSS drifts daily, so a threshold on it is part
-  of the design.
+  (366, the longest window a page reads finer than a day), and past it the last run of each UTC day
+  (and the last with an ALE and with a LEF), the two latest runs of each scenario, the newest run
+  carrying each profile token (for `techniques`, every one a kept run reads its technique values
+  from) and every run holding a budget review figure at the review's current version. The recompute
+  dispatcher routes none of the job's deletes (`UNROUTED_ORIGINS`), so a purge wakes no price pass.
+  The actors' activity decays against the start of the UTC day, in the stored attacker mixture
+  (section 1), so the digest holds until the mixture job rewrites it, and the pass, which reads that
+  table, reprices the scenarios of a moved pair. A moved finding, exposure, identity state, unknown
+  exposure setting or stored threat reaches the ALE once the recompute has rewritten
+  `entry_openings`. The what-ifs, the CVE's among them, still quote the last full run until one is
+  asked, and EPSS drifts daily, so a threshold on it is part of the design.
 - **The connector's exploit-available flag is read nowhere.** Its findings fall to the base threat
   until the flag moves to its own column and its floor is decided; only `isCisaListed` and
   `cisaListedSql` change then.

@@ -64,7 +64,7 @@ import { aggregateTopControls } from './control-aggregation';
 import { actorCveRoutes } from './actor-cve-routes';
 import { cveGainState } from './cve-gain-state';
 import { compareCveScenarioGains } from './cve-scenario-gain-order';
-import { fingerprintRunInputs } from './run-fingerprint';
+import { fingerprintOf } from './run-fingerprint';
 import { resultFingerprintOf } from './result-fingerprint';
 import { crqIndicatorsRepository } from './repository';
 import { computesSubject, familyRunOwnership, FULL_RUN_PROFILE, PRICE_RUN_PROFILE, runProfileTokens } from './run-profile';
@@ -1189,7 +1189,7 @@ const runAttackRunEngine = async (
    * runs in full, so its plans enter it: a moved plan is a row the next run writes.
    */
   const { plans: planInputs, baseline } = fingerprintedBaseline(inputs);
-  const inputsFingerprint = fingerprintRunInputs({
+  const inputsFingerprint = fingerprintOf({
     appVersion: appVersion ?? null,
     baseline,
     reach,
