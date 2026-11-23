@@ -1,9 +1,21 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createReaderMarkingsResolver, parseAllowedMarkings, parseReaderScope, READER_MARKINGS_QUERY } from './reader-markings';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReaderAuthorization } from './xtm-providers';
+
+const { logWarn } = vi.hoisted(() => ({ logWarn: vi.fn() }));
+// The logger parses the process config at import time.
+vi.mock('../../../utils/logger', () => ({
+  createLogger: vi.fn().mockReturnValue({ logWarn }),
+}));
+
+const { createReaderMarkingsResolver, parseAllowedMarkings, parseReaderScope, READER_MARKINGS_QUERY } = await import('./reader-markings');
+
+beforeEach(() => {
+  logWarn.mockClear();
+});
 
 const CONNECTION = { url: 'https://opencti.example/', token: 'connector-token' };
 const SIGN = () => Promise.resolve('reader-jwt');
-const NO_SIGN = () => Promise.resolve(null);
+const NO_SIGN = Object.assign(() => Promise.resolve(null), { unsigned: 'no xtm_one.platform_url configured' });
 
 const body = (markings: Array<string>) => ({
   data: {
@@ -94,6 +106,85 @@ describe('createReaderMarkingsResolver', () => {
     expect(unused).not.toHaveBeenCalled();
     expect(await refused.resolve('t-1', 'u-1', CONNECTION, SIGN)).toBeNull();
     expect(await broken.resolve('t-1', 'u-1', CONNECTION, SIGN)).toBeNull();
+  });
+
+  it('should say why a reader has no scope, with the tenant and the user and never the token', async () => {
+    const unresolved = (fetchImpl: () => Promise<Response>, sign: ReaderAuthorization = SIGN) =>
+      createReaderMarkingsResolver(vi.fn(fetchImpl)).resolve('t-1', 'u-1', CONNECTION, sign);
+    const refusal = (error: Record<string, unknown>) => new Response(JSON.stringify({ errors: [error], data: null }), { status: 200 });
+    const networkError = new Error('connect failed for reader@example.com with Bearer leaked-token', { cause: { code: 'ECONNREFUSED' } });
+
+    await unresolved(() => Promise.resolve(new Response('no', { status: 401 })));
+    await unresolved(() => Promise.resolve(refusal({ message: 'No user reader@example.com', extensions: { code: 'AUTH_REQUIRED' } })));
+    await unresolved(() => Promise.resolve(refusal({ message: 'reader@example.com', extensions: { code: 'reader@example.com' } })));
+    await unresolved(() => Promise.resolve(new Response(JSON.stringify({ data: { me: null } }), { status: 200 })));
+    await unresolved(() => Promise.resolve(new Response('<html>Sign in</html>', { status: 200 })));
+    await unresolved(() => Promise.reject(networkError));
+    await unresolved(() => Promise.reject(new DOMException('The operation timed out for reader@example.com', 'TimeoutError')));
+    await unresolved(() => Promise.resolve(answer([])), NO_SIGN);
+    await unresolved(() => Promise.resolve(answer([])), () => Promise.resolve(null));
+    await unresolved(() => Promise.resolve(answer([])), () => Promise.reject(new Error('XTM One signing key is missing for reader@example.com')));
+
+    expect(logWarn.mock.calls.map(([, data]) => data.reason)).toEqual([
+      'OpenCTI answered HTTP 401',
+      'OpenCTI refused the query: AUTH_REQUIRED',
+      'OpenCTI refused the query: no error code',
+      'the answer lacks the reader scope fields',
+      'OpenCTI answered something other than JSON',
+      'the request failed: Error, ECONNREFUSED',
+      'the request failed: TimeoutError',
+      'no token could be signed for the reader: no xtm_one.platform_url configured',
+      'no token could be signed for the reader: no reason given',
+      'signing the reader\'s token failed: Error',
+    ]);
+    expect(logWarn.mock.calls.every(([message, data]) => message === 'OpenCTI reader scope unresolved'
+      && data.tenantId === 't-1' && data.userId === 'u-1')).toBe(true);
+    const logged = JSON.stringify(logWarn.mock.calls);
+    expect(logged).not.toContain('reader-jwt');
+    expect(logged).not.toContain('leaked-token');
+    expect(logged).not.toContain('reader@example.com');
+  });
+
+  it('should ask OpenCTI once and log once for reads arriving together', async () => {
+    const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(new Response('no', { status: 500 })));
+    const resolver = createReaderMarkingsResolver(fetchImpl);
+
+    const scopes = await Promise.all([1, 2, 3].map(() => resolver.resolve('t-1', 'u-1', CONNECTION, SIGN)));
+
+    expect(scopes).toEqual([null, null, null]);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(logWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it('should log nothing for a reader whose scope was read or a tenant with no OpenCTI', async () => {
+    await createReaderMarkingsResolver(vi.fn().mockResolvedValue(answer(['m-1']))).resolve('t-1', 'u-1', CONNECTION, SIGN);
+    await createReaderMarkingsResolver(vi.fn()).resolve('t-1', 'u-1', undefined, SIGN);
+
+    expect(logWarn).not.toHaveBeenCalled();
+  });
+
+  it('should log a failure once per cache window, not on every read of the page', async () => {
+    const resolver = createReaderMarkingsResolver(vi.fn().mockImplementation(() => Promise.resolve(new Response('no', { status: 500 }))));
+
+    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+
+    expect(logWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it('should count the cache window from the answer, not from the request', async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn().mockImplementation(() => {
+      clock += 500;
+      return Promise.resolve(answer(['m-1']));
+    });
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, 1_000);
+
+    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+    clock = 1_400;
+    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('should keep an answer per tenant and user until it expires', async () => {

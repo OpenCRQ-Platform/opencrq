@@ -20,6 +20,7 @@ const wrapper = ({ children }: { children: ReactNode }) => <I18nProvider i18n={i
 const renderPage = (props: Partial<ComponentProps<typeof ThreatListPage>> = {}) => render(
   <ThreatListPage
     pending={0}
+    readerScopeUnresolved={false}
     catalogEmpty={false}
     emptyState={<p>empty card</p>}
     kpiBand={<p>kpi band</p>}
@@ -81,6 +82,26 @@ describe('ThreatListPage', () => {
     expect(screen.queryByText('threat table')).toBeNull();
     expect(screen.queryByText(/being processed/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Analyze new bundle' })).toBeNull();
+  });
+
+  it('says some threats may be hidden when OpenCTI did not answer for the reader', () => {
+    renderPage({ readerScopeUnresolved: true });
+
+    expect(screen.getByText('Some threats may be hidden from you.')).toBeTruthy();
+    expect(screen.getByText('threat table')).toBeTruthy();
+  });
+
+  it('says nothing about hidden threats when the reader scope is known', () => {
+    renderPage({ readerScopeUnresolved: false });
+
+    expect(screen.queryByText('Some threats may be hidden from you.')).toBeNull();
+  });
+
+  it('warns on an empty catalogue too, instead of leaving "start with the threats" alone', () => {
+    renderPage({ catalogEmpty: true, readerScopeUnresolved: true });
+
+    expect(screen.getByText('Some threats may be hidden from you.')).toBeTruthy();
+    expect(screen.getByText('empty card')).toBeTruthy();
   });
 
   it('keeps the processing status in the header of an empty catalogue', () => {

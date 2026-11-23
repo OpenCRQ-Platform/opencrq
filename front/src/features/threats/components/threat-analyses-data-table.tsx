@@ -216,6 +216,7 @@ export const ThreatAnalysesDataTable: FunctionComponent = () => {
   return (
     <ThreatListPage
       pending={pending}
+      readerScopeUnresolved={data?.readerScopeUnresolved ?? false}
       catalogEmpty={isThreatCatalogEmpty({ total: data?.total, filtered, isPlaceholderData })}
       emptyState={emptyCard}
       kpiBand={<ThreatCatalogKpiBand />}

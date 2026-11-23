@@ -8980,6 +8980,9 @@ msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du 
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du déploiement n'a pas la capacité {capability}. Accordez-la à l'utilisateur de ce jeton et redémarrez OpenCRQ, ou utilisez Configurer pour choisir un flux en direct."
 
+msgid "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that your OpenCTI account exists and that OpenCTI accepts sign-in from this platform."
+msgstr "OpenCRQ n'a pas pu lire ce que vous avez le droit de voir dans OpenCTI : il n'affiche donc les menaces issues d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur de vérifier qu'OpenCTI est joignable, que votre compte OpenCTI existe et qu'OpenCTI accepte la connexion depuis cette plateforme."
+
 msgid "OpenCRQ home"
 msgstr "Accueil OpenCRQ"
 
@@ -11440,6 +11443,9 @@ msgstr "Application Software-as-a-Service"
 
 msgid "Solid"
 msgstr "Solide"
+
+msgid "Some threats may be hidden from you."
+msgstr "Certaines menaces peuvent vous être masquées."
 
 msgid "Someone is waiting on this run"
 msgstr "Quelqu'un attend cette exécution"
