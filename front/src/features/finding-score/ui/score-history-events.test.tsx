@@ -59,6 +59,19 @@ describe('ScoreHistoryEvents', () => {
     expect(screen.getByText('Band Medium → High.')).toBeTruthy();
   });
 
+  it('should draw the points on the design-system chip, outlined in standard colours and plain in pastel', async () => {
+    renderWith([
+      { at: daysAgo(30), score: 61, band: 'medium' },
+      { at: daysAgo(10), score: 72, band: 'medium' },
+    ]);
+
+    const chip = (await screen.findByText('+11 pts')).closest('[class*="border-feedback-"]');
+    expect(chip?.className).toContain('border-feedback-error-tertiary');
+    expect(chip?.className).toContain('pastel:border-transparent');
+    expect(chip?.className).toContain('pastel:bg-feedback-error-secondary-transparency-30');
+    expect(chip?.className).not.toContain('bg-current/15');
+  });
+
   it('should say a finding with no journal line has no history yet', async () => {
     renderWith([]);
 
