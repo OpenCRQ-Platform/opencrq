@@ -7,7 +7,7 @@ This document describes the technical architecture, network flows, and configura
 The architecture consists of:
 * Node.js application
 * PostgreSQL database
-* RustFS (S3-compatible object store) for file storage
+* An S3-compatible object store for file storage, optional (RustFS in the development stack, Silo in the XTM Docker bundle)
 * Pyroscope profiling service
 * OpenTelemetry Collector (optional — see the note under the diagram)
 * External connectors (CISA, FIRST, NIST, Microsoft Graph, OpenAEV, OpenCTI, Drata, OpenCRQ Default Threats) reached over outbound HTTPS
@@ -31,7 +31,7 @@ graph LR
 
     subgraph OpenCRQ
         Postgres[(Postgres DB: 5432)]:::db
-        RustFS[(RustFS<br>S3 API: 9000 / Console: 9001)]:::db
+        RustFS[(S3 store<br>S3 API: 9000)]:::db
 
         subgraph NodeAPP[Node.js APP]
 
@@ -69,15 +69,14 @@ The push path (OTLP, through the collector) and the pull path (Prometheus scrape
 | Source       | Destination           | Port / Protocol       | Associated Env Var                                                                                        | Description                                               |
 |:-------------|:-----------------------|:----------------------|:----------------------------------------------------------------------------------------------------------|:----------------------------------------------------------|
 | **App**      | **Postgres**          | TCP:5432 (PostgreSQL) | `POSTGRES__HOST`, `POSTGRES__PORT`                                                                        | Main database connection for persistence.                 |
-| **App**      | **RustFS**            | TCP:9000 (S3 API)     | `FILE_STORAGE__ENDPOINT`, `FILE_STORAGE__ACCESS_KEY`, `FILE_STORAGE__SECRET_KEY`, `FILE_STORAGE__BUCKET`, `FILE_STORAGE__REGION` | Optional S3-compatible object store for uploaded files (e.g. imported STIX bundles). |
+| **App**      | **S3 store**          | TCP:9000 (S3 API)     | `FILE_STORAGE__ENDPOINT`, `FILE_STORAGE__ACCESS_KEY`, `FILE_STORAGE__SECRET_KEY`, `FILE_STORAGE__BUCKET`, `FILE_STORAGE__REGION` | Optional S3-compatible object store for uploaded files (e.g. imported STIX bundles). |
 | **App**      | **Pyroscope**         | TCP:4040 (HTTP)       | `TELEMETRY__OBSERVABILITY__PYROSCOPE__SERVER_ADDRESS`                                                                    | Continuous profiling data stream (CPU, Heap).             |
 | **App**      | **Otel Collector**    | TCP:4317 (gRPC)       | `TELEMETRY__OBSERVABILITY__OTLP__TRACES__EXPORTER`, `TELEMETRY__OBSERVABILITY__OTLP__METRICS__EXPORTER`, `TELEMETRY__OBSERVABILITY__OTLP__LOGS__EXPORTER` | OpenTelemetry data export (Traces, Metrics, Logs).        |
 | **App**      | **External Connectors** | TCP:443 (HTTPS)    | `CONNECTORS__NIST__<tenant-uuid>__*`, `CONNECTORS__MICROSOFT_GRAPH__<tenant-uuid>__*`, `CONNECTORS__OPENAEV__<tenant-uuid>__*`, `CONNECTORS__OPENCTI__<tenant-uuid>__*`, `CONNECTORS__DRATA__<tenant-uuid>__*`, `CONNECTORS__DEFAULT_THREATS__DATASET_URL`                   | Outbound periodic sync jobs enriching assets/vulnerabilities, plus an OpenCTI Live Stream (SSE) subscription for threat intelligence. CISA, FIRST and OpenCRQ Default Threats (a daily read of a public dataset file) require no configuration; NIST, Microsoft Graph, OpenAEV, OpenCTI and Drata are optional, configured per tenant. See [Connectors](configuration.md#connectors). |
-| **External** | **App**               | TCP:3002 (HTTP)       | `HTTP_SERVER__PUBLIC_PORT`                                                                                | Main access to the API and Frontend.                      |
-| **External** | **App**               | TCP:8444 (HTTP)       | `HEALTHCHECK_HTTP_SERVER__PUBLIC_PORT`                                                                    | Dedicated endpoint for health check (Liveness/Readiness). |
+| **External** | **App**               | TCP:3002 (HTTP)       | `HTTP_SERVER__PORT`                                                                                       | Main access to the API and Frontend.                      |
+| **External** | **App**               | TCP:8444 (HTTP)       | `HEALTHCHECK_HTTP_SERVER__PORT`                                                                           | Dedicated endpoint for health check (Liveness/Readiness). |
 | **External** | **App**               | TCP:14269 (HTTP)      | `TELEMETRY__OBSERVABILITY__PROMETHEUS__PORT`                                                                     | Optional Prometheus scrape endpoint (see [Metrics](metrics.md)). Unauthenticated by design — expose it only on a network reachable by your monitoring system, never publicly; the bind address is controlled by `TELEMETRY__OBSERVABILITY__PROMETHEUS__HOST`. |
 | **External** | **Pyroscope**         | TCP:4040 (HTTP)       | -                                                                                                          | Access to the Pyroscope web client, exposed by the operator's own Pyroscope deployment. |
-| **External** | **RustFS**            | TCP:9001 (HTTP)       | -                                                                                                          | RustFS web console, for administration purposes only (not required at runtime). |
 
 ## 3. Configuration
 
@@ -88,7 +87,7 @@ For detailed configuration options and environment variables, please refer to th
 ### Healthchecks
 The application exposes a dedicated HTTP server for health checks, distinct from the main API server.
 - **Internal Port**: 8444
-- **Mapping Variable**: `HEALTHCHECK_HTTP_SERVER__PUBLIC_PORT`
+- **Variable**: `HEALTHCHECK_HTTP_SERVER__PORT`
 
 ### Profiling
 The App can stream continuous profiling data (CPU, Heap) to an operator-managed Pyroscope instance; OpenCRQ does not run or manage the Pyroscope service itself.
@@ -103,9 +102,8 @@ The application supports OpenTelemetry for Traces, Metrics, and Logs.
 
 ## 5. File Storage
 
-RustFS provides an S3-compatible object store used by the App to persist uploaded files (e.g. imported STIX bundles), scoped per tenant. It is optional: the app boots with the feature disabled when `FILE_STORAGE__*` variables are unset. See [File Storage configuration](configuration.md#file-storage-rustfs--s3-compatible) for details, boot behavior and bucket provisioning.
+An S3-compatible object store holds the files the App persists (e.g. imported STIX bundles), scoped per tenant. It is optional: the app boots with the feature disabled when `FILE_STORAGE__*` variables are unset. See [File Storage configuration](configuration.md#file-storage-rustfs--s3-compatible) for details, boot behavior and bucket provisioning.
 - **S3 API Port**: 9000 (`FILE_STORAGE__ENDPOINT`)
-- **Web Console Port**: 9001 (administration only)
 
 ## 6. External Connectors
 
@@ -129,6 +127,6 @@ Below is a basic estimation of the resources required to start the internal inst
 | Service         | CPU (vCPU)     | RAM (Minimum) | RAM (Recommended) |
 |:----------------|:---------------|:--------------|:------------------|
 | **PostgreSQL**  | 0.5 - 1        | 256 MB        | 1 GB              |
-| **RustFS**      | 0.2 - 0.5      | 128 MB        | 256 MB            |
+| **S3 store**    | 0.2 - 0.5      | 128 MB        | 256 MB            |
 | **Node.js App** | 0.5 - 1        | 512 MB        | 1 GB              |
 | **Total**       | **~1.2 - 2.5** | **~0.9 GB**   | **~2.3 GB**       |

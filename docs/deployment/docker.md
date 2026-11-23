@@ -8,8 +8,15 @@ for a first sign-in.
 
 ## Attach OpenCRQ to an XTM One that already runs
 
+A bundle deployed before OpenCRQ joined it gets OpenCRQ from the bundle itself: pull its latest
+version, add the `OPENCRQ_*` values its `.env.sample` now holds to your `.env` (`OPENCRQ_ADMIN_TOKEN`
+and `OPENCRQ_POSTGRES_PASSWORD` among them), and run `docker compose up -d` again. Its
+`opencrq-db-init` and `opencrq-bucket-init` services create OpenCRQ's role, database and bucket
+beside the existing volumes, and leave them as they are when they already exist. That also moves the
+other products to the versions the bundle pins.
+
 The rest of this page is for an OpenCRQ run next to an XTM One the bundle does not start with it: one
-on another host, or a bundle deployed before OpenCRQ joined it.
+on another host, or beside a bundle whose other products should stay on their versions.
 
 ### Image
 
@@ -19,15 +26,16 @@ The image is [`filigran/opencrq`](https://hub.docker.com/r/filigran/opencrq) on 
 | Tag         | What it holds                                         |
 |:------------|:------------------------------------------------------|
 | `latest`    | The highest release.                                  |
-| `<version>` | That release, e.g. `0.261123.0`. Pin one in production. |
+| `<version>` | That release. Pin one in production.                  |
 | `rolling`   | The tip of `main`, unreleased.                        |
 
 ### What it needs
 
 - **A PostgreSQL 17 database** it owns. A role that owns the database is enough, no superuser: the
   application applies its migrations itself at every boot. See [Database](configuration.md#database-postgresql).
-- **An S3-compatible bucket**, created beforehand: in production the application does not create it
-  and stops at boot while it is missing. See [File Storage](configuration.md#file-storage-rustfs--s3-compatible).
+- **An S3-compatible bucket**, optional: without the `FILE_STORAGE__*` variables, uploads are off.
+  With them, create the bucket beforehand: in production the application does not create it and
+  stops at boot while it is missing. See [File Storage](configuration.md#file-storage-rustfs--s3-compatible).
 - **XTM One**, reachable from the container, with the same `PLATFORM_REGISTRATION_TOKEN`, a token of
   your own rather than XTM One's published default. When XTM One's containers cannot reach OpenCRQ on
   `XTM_ONE__PLATFORM_URL`, set `OPENCRQ_API_URL` on the XTM One side to an address they can. See
@@ -44,7 +52,7 @@ The image is [`filigran/opencrq`](https://hub.docker.com/r/filigran/opencrq) on 
 | `HTTP_SERVER__PORT`               | `3002`                                                                |
 | `HEALTHCHECK_HTTP_SERVER__PORT`   | `8444`                                                                |
 | `POSTGRES__HOST`, `POSTGRES__PORT`, `POSTGRES__USER`, `POSTGRES__PASSWORD`, `POSTGRES__DATABASE` | The database above. |
-| `FILE_STORAGE__ENDPOINT`, `FILE_STORAGE__ACCESS_KEY`, `FILE_STORAGE__SECRET_KEY`, `FILE_STORAGE__BUCKET` | The bucket above; `FILE_STORAGE__REGION` too when the store checks it. |
+| `FILE_STORAGE__ENDPOINT`, `FILE_STORAGE__ACCESS_KEY`, `FILE_STORAGE__SECRET_KEY`, `FILE_STORAGE__BUCKET` | The bucket above, if any; `FILE_STORAGE__REGION` too when the store checks it. |
 | `XTM_ONE__URL`                    | The address OpenCRQ reaches XTM One on, internal or public.            |
 | `XTM_ONE__TOKEN`                  | XTM One's `PLATFORM_REGISTRATION_TOKEN`.                               |
 | `XTM_ONE__PLATFORM_URL`           | OpenCRQ's public base URL.                                            |
@@ -61,6 +69,17 @@ its connectors (OpenCTI, OpenAEV, Microsoft Graph, Drata, an NVD API key) can be
 start. Choose `INITIAL_TENANT__NAME` before that start too: in Community Edition this tenant is the
 only one. A tenant created later in Platform › Tenants gets its connector variables afterwards, and
 the container restarted to read them.
+
+### On the other products
+
+The bundle also wires the products that call OpenCRQ. Attached by hand, set them yourself:
+
+| Product  | Variable                    | Value                                                     |
+|:---------|:----------------------------|:----------------------------------------------------------|
+| XTM One  | `OPENCRQ_API_URL`           | Only when its containers cannot reach `XTM_ONE__PLATFORM_URL`: an address of OpenCRQ they can. |
+| OpenCTI  | `XTM__OPENCRQ_URL`          | OpenCRQ's public base URL, for its product switcher.      |
+| OpenAEV  | `OPENAEV_XTM_OPENCRQ_URL`   | OpenCRQ's public base URL, for its pivots and product switcher. |
+| OpenAEV  | `OPENAEV_XTM_OPENCRQ_TOKEN` | OpenCRQ's `APP__ADMIN__TOKEN`, which it calls OpenCRQ's API with. |
 
 ### Ports
 
