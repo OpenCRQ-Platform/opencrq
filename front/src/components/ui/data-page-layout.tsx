@@ -246,6 +246,13 @@ interface BaseDataPageLayoutProps<T extends { id: string }, G extends string> {
    */
   fillHeight?: boolean,
   /**
+   * Makes each column's `size` binding: the table is laid out fixed, so a header or a cell wider than
+   * its column is clipped instead of growing the column. With the sizes adding up to the pane, the
+   * table then never scrolls sideways (Design standards s.3); without it the browser grows a column
+   * to its header's min-content and the sizes are only a floor.
+   */
+  fixedColumnWidths?: boolean,
+  /**
    * Draws no pager at all and shows every row on one page, for a short table set in a card. It also
    * drops the toolbar: `hideToolbar` alone brings the pager back once the rows outgrow a page.
    */
@@ -306,6 +313,7 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
   emptyState,
   hideToolbar,
   fillHeight,
+  fixedColumnWidths,
   hidePagination,
   expandableRows,
   rowGroups,
@@ -565,6 +573,7 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
       className={cn(
         'data-table-pending-host',
         showPending && 'data-table-pending',
+        fixedColumnWidths === true && 'data-table-fixed-columns [&_table]:table-fixed',
         // The flex chain down to the table's own scroller, which `sticky` sizes to its parent.
         fillHeight === true && 'flex min-h-0 flex-1 flex-col [&_.twp]:flex [&_.twp]:min-h-0 [&_.twp]:flex-1 [&_.twp]:flex-col [&_.twp>div:last-child]:min-h-0 [&_.twp>div:last-child]:flex-1',
       )}

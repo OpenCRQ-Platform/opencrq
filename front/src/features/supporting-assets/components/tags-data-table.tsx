@@ -20,6 +20,7 @@ import { formatList, resolveOptionFilter } from '../../../utils';
 import { tagsListSearchSchema } from '../tags-list-search';
 import { AssetTagChip } from './asset-chips';
 import { TagMergeDialog } from './tag-merge-dialog';
+import { TAG_COLUMN_SIZES, TAG_NAME_CHIP_CLASS } from './tags-table-columns';
 import { buildTagRows, tagFamily, tagSourceOptions } from './tag-management-utils';
 import { TagRenameDrawer } from './tag-rename-drawer';
 import { connectorNamesHeader, sourceLabel, sourceLabelsOf } from './tag-source-labels';
@@ -74,11 +75,10 @@ export const TagsDataTable: FunctionComponent = () => {
       id: 'name',
       accessorKey: 'name',
       header: t`Name`,
-      // The six columns add up to 648 px, the settings pane at a 1080 screen, so the table never scrolls
-      // sideways there; a tag longer than the cell truncates inside its chip, whose DS tooltip shows it whole.
-      size: 164,
+      // A tag longer than the cell truncates inside its chip, whose DS tooltip shows it whole.
+      size: TAG_COLUMN_SIZES.name,
       cell: ({ row }): ReactElement => (
-        <AssetTagChip name={row.original.name} color={row.original.color} className="max-w-32" />
+        <AssetTagChip name={row.original.name} color={row.original.color} className={TAG_NAME_CHIP_CLASS} />
       ),
     },
     {
@@ -86,7 +86,7 @@ export const TagsDataTable: FunctionComponent = () => {
       accessorFn: (row) => row.connectorNames.map((entry) => entry.reportedName).join(', '),
       enableSorting: false,
       header: connectorNamesHeader(sourceOptions ?? []),
-      size: 132,
+      size: TAG_COLUMN_SIZES.connectorNames,
       cell: ({ row }): ReactElement => {
         const names = row.original.connectorNames.map((entry) => entry.reportedName).join(', ');
         return names === '' ? <EmptyValue /> : <span title={names} className="text-muted-foreground">{names}</span>;
@@ -97,7 +97,7 @@ export const TagsDataTable: FunctionComponent = () => {
       accessorFn: (row) => sourceLabelsOf(row).join(','),
       enableSorting: false,
       header: t`Source`,
-      size: 112,
+      size: TAG_COLUMN_SIZES.sources,
       cell: ({ row }): ReactElement => (
         <div className="flex flex-wrap gap-1">
           {sourceLabelsOf(row.original).map((label) => <Chip key={label} label={label} />)}
@@ -109,7 +109,7 @@ export const TagsDataTable: FunctionComponent = () => {
       accessorFn: (row) => row.mergedTags.map((merged) => merged.name).join(', '),
       enableSorting: false,
       header: t`Merged tags`,
-      size: 112,
+      size: TAG_COLUMN_SIZES.mergedTags,
       cell: ({ row }): ReactElement => {
         const names = row.original.mergedTags.map((merged) => merged.name).join(', ');
         return names === '' ? <EmptyValue /> : <span title={names} className="text-muted-foreground">{names}</span>;
@@ -119,13 +119,13 @@ export const TagsDataTable: FunctionComponent = () => {
       id: 'assetCount',
       accessorKey: 'assetCount',
       header: t`Assets`,
-      size: 72,
+      size: TAG_COLUMN_SIZES.assetCount,
       cell: ({ row }): ReactElement => <span>{row.original.assetCount}</span>,
     },
     {
       id: 'actions',
       header: '',
-      size: 56,
+      size: TAG_COLUMN_SIZES.actions,
       enableHiding: false,
       enableResizing: false,
       cell: ({ row }): ReactElement => (
@@ -162,6 +162,7 @@ export const TagsDataTable: FunctionComponent = () => {
         columns={columns}
         isLoading={isLoading}
         storageKey="tags"
+        fixedColumnWidths
         emptyState={tags?.length === 0
           ? (
             <ListEmptyCard
