@@ -74,15 +74,19 @@ export const TagsDataTable: FunctionComponent = () => {
       id: 'name',
       accessorKey: 'name',
       header: t`Name`,
-      size: 200,
-      cell: ({ row }): ReactElement => <AssetTagChip name={row.original.name} color={row.original.color} />,
+      // The six columns add up to 648 px, the settings pane at a 1080 screen, so the table never scrolls
+      // sideways there; a tag longer than the cell truncates inside its chip, whose DS tooltip shows it whole.
+      size: 164,
+      cell: ({ row }): ReactElement => (
+        <AssetTagChip name={row.original.name} color={row.original.color} className="max-w-32" />
+      ),
     },
     {
       id: 'connectorNames',
       accessorFn: (row) => row.connectorNames.map((entry) => entry.reportedName).join(', '),
       enableSorting: false,
       header: connectorNamesHeader(sourceOptions ?? []),
-      size: 150,
+      size: 132,
       cell: ({ row }): ReactElement => {
         const names = row.original.connectorNames.map((entry) => entry.reportedName).join(', ');
         return names === '' ? <EmptyValue /> : <span title={names} className="text-muted-foreground">{names}</span>;
@@ -93,7 +97,7 @@ export const TagsDataTable: FunctionComponent = () => {
       accessorFn: (row) => sourceLabelsOf(row).join(','),
       enableSorting: false,
       header: t`Source`,
-      size: 140,
+      size: 112,
       cell: ({ row }): ReactElement => (
         <div className="flex flex-wrap gap-1">
           {sourceLabelsOf(row.original).map((label) => <Chip key={label} label={label} />)}
@@ -105,7 +109,7 @@ export const TagsDataTable: FunctionComponent = () => {
       accessorFn: (row) => row.mergedTags.map((merged) => merged.name).join(', '),
       enableSorting: false,
       header: t`Merged tags`,
-      size: 180,
+      size: 112,
       cell: ({ row }): ReactElement => {
         const names = row.original.mergedTags.map((merged) => merged.name).join(', ');
         return names === '' ? <EmptyValue /> : <span title={names} className="text-muted-foreground">{names}</span>;
@@ -115,7 +119,7 @@ export const TagsDataTable: FunctionComponent = () => {
       id: 'assetCount',
       accessorKey: 'assetCount',
       header: t`Assets`,
-      size: 80,
+      size: 72,
       cell: ({ row }): ReactElement => <span>{row.original.assetCount}</span>,
     },
     {
