@@ -67,4 +67,12 @@ describe('FilterClearAll', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
     expect(onClearAll).toHaveBeenCalledOnce();
   });
+
+  it('should draw the count in the foreground token, muted-foreground failing WCAG AA on the light surface', () => {
+    render(<FilterClearAll count={1} onClearAll={vi.fn()} />, { wrapper });
+
+    const count = screen.getByTestId('filter-clear-all-count');
+    expect(count.className).toContain('text-foreground');
+    expect(count.className).not.toContain('text-muted-foreground');
+  });
 });
