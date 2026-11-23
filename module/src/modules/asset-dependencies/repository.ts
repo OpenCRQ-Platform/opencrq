@@ -1,11 +1,58 @@
-import { and, count, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+import { and, asc, count, eq, exists, gte, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import type { RepositoryContext } from '../../registry';
 import type { SeverityBand } from '../finding-score/bands';
 import type { SupportToPrimaryLinkRole } from './link-roles';
+import type { DependencyRuleConditions } from './rule-matching';
 import type { PrimaryToPrimaryLinkStrength } from './link-strengths';
 import type { ReachRow } from './reach';
 import { inUuids, notInUuids } from '../../db/uuid-array';
 import { defineRepository } from '../../registry';
-import { primaryAssetReach, primaryToPrimaryLinks, supportToPrimaryLinks, supportToSupportLinks } from './schema';
+import { namePatternRegex } from './rule-matching';
+import { dependencyRules, dependencyRuleSuppressions, primaryAssetReach, primaryToPrimaryLinks, supportToPrimaryLinks, supportToSupportLinks } from './schema';
+
+/**
+ * What a supporting asset has to hold for a rule to match it: every condition the rule sets. The
+ * pattern reads the display name and each hostname a source reports; a tag reads its merges too.
+ */
+const ruleMatchConditions = ({ db, views }: Pick<RepositoryContext, 'db' | 'views'>, conditions: DependencyRuleConditions): Array<SQL> => {
+  const where: Array<SQL> = [];
+  if (conditions.categoryId !== null) {
+    where.push(sql`${views.supportingAssets.categoryId} = ${conditions.categoryId}`);
+  }
+  if (conditions.subcategoryId !== null) {
+    where.push(sql`${views.supportingAssets.subcategoryId} = ${conditions.subcategoryId}`);
+  }
+  const regex = namePatternRegex(conditions.namePattern, conditions.namePatternKind);
+  if (regex !== null) {
+    where.push(or(
+      sql`${views.supportingAssets.displayName} ~* ${regex}`,
+      exists(db.select({ matched: sql`1` }).from(views.supportingAssetSources)
+        .innerJoin(views.supportingAssetMachineProperties, eq(views.supportingAssetMachineProperties.supportingAssetSourceId, views.supportingAssetSources.id))
+        .where(and(
+          eq(views.supportingAssetSources.supportingAssetId, views.supportingAssets.id),
+          sql`${views.supportingAssetMachineProperties.hostname} ~* ${regex}`,
+        ))),
+    )!);
+  }
+  if (conditions.tagId !== null) {
+    where.push(exists(db.select({ matched: sql`1` }).from(views.supportingAssetTags)
+      .innerJoin(views.tags, eq(views.tags.id, views.supportingAssetTags.tagId))
+      .where(and(
+        eq(views.supportingAssetTags.supportingAssetId, views.supportingAssets.id),
+        or(eq(views.tags.id, conditions.tagId), eq(views.tags.mergedIntoTagId, conditions.tagId)),
+      ))));
+  }
+  if (conditions.source !== null) {
+    where.push(exists(db.select({ matched: sql`1` }).from(views.supportingAssetSources)
+      .innerJoin(views.integrationSettings, eq(views.integrationSettings.id, views.supportingAssetSources.connectorId))
+      .where(and(
+        eq(views.supportingAssetSources.supportingAssetId, views.supportingAssets.id),
+        sql`${views.integrationSettings.source} = ${conditions.source}`,
+      ))));
+  }
+  return where;
+};
 
 export const assetDependenciesRepository = defineRepository({
   /** The ids among `ids` of the primary assets the caller can see. */
@@ -35,9 +82,12 @@ export const assetDependenciesRepository = defineRepository({
     (await db.insert(supportToPrimaryLinks).values(values)
       .onConflictDoNothing({ target: [supportToPrimaryLinks.supportingAssetId, supportToPrimaryLinks.primaryAssetId] })
       .returning()).map((row) => row.id),
-  /** The ids of the links updated, which leaves out one gone or out of the caller's reach. */
+  /**
+   * The ids of the links updated, which leaves out one gone or out of the caller's reach. A person's
+   * edit of a rule link makes it theirs: no rule rewrites or removes it afterwards.
+   */
   updateSupportToPrimaryLinkRoles: async ({ db }, ids: Array<string>, roles: Array<SupportToPrimaryLinkRole>) =>
-    (await db.update(supportToPrimaryLinks).set({ roles }).where(inArray(supportToPrimaryLinks.id, ids)).returning())
+    (await db.update(supportToPrimaryLinks).set({ roles, ruleId: null }).where(inArray(supportToPrimaryLinks.id, ids)).returning())
       .map((row) => row.id),
   deleteSupportToPrimaryLinks: ({ db }, ids: Array<string>) =>
     db.delete(supportToPrimaryLinks).where(inArray(supportToPrimaryLinks.id, ids)),
@@ -47,11 +97,14 @@ export const assetDependenciesRepository = defineRepository({
       supportingAssetId: views.supportToPrimaryLinks.supportingAssetId,
       primaryAssetId: views.supportToPrimaryLinks.primaryAssetId,
       roles: views.supportToPrimaryLinks.roles,
+      ruleId: views.supportToPrimaryLinks.ruleId,
+      ruleName: views.dependencyRules.name,
       primaryAssetName: views.primaryAssets.name,
       organizationName: views.organizations.name,
     }).from(views.supportToPrimaryLinks)
       .leftJoin(views.primaryAssets, eq(views.supportToPrimaryLinks.primaryAssetId, views.primaryAssets.id))
       .leftJoin(views.organizations, eq(views.primaryAssets.organizationId, views.organizations.id))
+      .leftJoin(views.dependencyRules, eq(views.supportToPrimaryLinks.ruleId, views.dependencyRules.id))
       .where(eq(views.supportToPrimaryLinks.supportingAssetId, supportingAssetId)),
   findSupportToPrimaryLinksByPrimaryAssetId: async ({ db, views }, primaryAssetId: string) =>
     db.select({
@@ -59,12 +112,188 @@ export const assetDependenciesRepository = defineRepository({
       supportingAssetId: views.supportToPrimaryLinks.supportingAssetId,
       primaryAssetId: views.supportToPrimaryLinks.primaryAssetId,
       roles: views.supportToPrimaryLinks.roles,
+      ruleId: views.supportToPrimaryLinks.ruleId,
+      ruleName: views.dependencyRules.name,
       supportingAssetName: views.supportingAssets.name,
       supportingAssetDerivedName: views.supportingAssets.derivedName,
       supportingAssetCategoryId: views.supportingAssets.categoryId,
     }).from(views.supportToPrimaryLinks)
       .leftJoin(views.supportingAssets, eq(views.supportToPrimaryLinks.supportingAssetId, views.supportingAssets.id))
+      .leftJoin(views.dependencyRules, eq(views.supportToPrimaryLinks.ruleId, views.dependencyRules.id))
       .where(eq(views.supportToPrimaryLinks.primaryAssetId, primaryAssetId)),
+
+  /** The pairs of the links among `ids` the caller can see, so a person's removal can be kept. */
+  findLinkPairsAmong: async ({ db, views }, ids: ReadonlyArray<string>) => {
+    if (ids.length === 0) {
+      return [];
+    }
+    return db.select({
+      tenantId: views.supportToPrimaryLinks.tenantId,
+      supportingAssetId: views.supportToPrimaryLinks.supportingAssetId,
+      primaryAssetId: views.supportToPrimaryLinks.primaryAssetId,
+    }).from(views.supportToPrimaryLinks)
+      .where(inUuids(views.supportToPrimaryLinks.id, ids));
+  },
+  /** A person linking a pair a rule holds takes the link over, its roles kept. */
+  claimRuleLinksOfPairs: async ({ db }, pairs: ReadonlyArray<{ supportingAssetId: string, primaryAssetId: string }>) => {
+    if (pairs.length === 0) {
+      return;
+    }
+    await db.update(supportToPrimaryLinks).set({ ruleId: null }).where(and(
+      isNotNull(supportToPrimaryLinks.ruleId),
+      or(...pairs.map((pair) => and(
+        eq(supportToPrimaryLinks.supportingAssetId, pair.supportingAssetId),
+        eq(supportToPrimaryLinks.primaryAssetId, pair.primaryAssetId),
+      ))),
+    ));
+  },
+  insertRuleSuppressions: async ({ db }, rows: Array<typeof dependencyRuleSuppressions.$inferInsert>) => {
+    if (rows.length === 0) {
+      return;
+    }
+    await db.insert(dependencyRuleSuppressions).values(rows).onConflictDoNothing();
+  },
+
+  listDependencyRules: ({ db, views }) =>
+    db.select({
+      id: views.dependencyRules.id,
+      name: views.dependencyRules.name,
+      primaryAssetId: views.dependencyRules.primaryAssetId,
+      primaryAssetName: views.primaryAssets.name,
+      roles: views.dependencyRules.roles,
+      enabled: views.dependencyRules.enabled,
+      categoryId: views.dependencyRules.categoryId,
+      subcategoryId: views.dependencyRules.subcategoryId,
+      namePattern: views.dependencyRules.namePattern,
+      namePatternKind: views.dependencyRules.namePatternKind,
+      tagId: views.dependencyRules.tagId,
+      tagName: views.tags.name,
+      source: views.dependencyRules.source,
+    }).from(views.dependencyRules)
+      .innerJoin(views.primaryAssets, eq(views.dependencyRules.primaryAssetId, views.primaryAssets.id))
+      .leftJoin(views.tags, eq(views.dependencyRules.tagId, views.tags.id))
+      .orderBy(asc(views.dependencyRules.name), asc(views.dependencyRules.id)),
+  countRuleLinks: async ({ db, views }) => {
+    const rows = await db.select({ ruleId: views.supportToPrimaryLinks.ruleId, linkCount: count() })
+      .from(views.supportToPrimaryLinks)
+      .where(isNotNull(views.supportToPrimaryLinks.ruleId))
+      .groupBy(views.supportToPrimaryLinks.ruleId);
+    return new Map(rows.map((row) => [row.ruleId!, row.linkCount]));
+  },
+  findDependencyRule: async ({ db, views }, id: string) => {
+    const [row] = await db.select({
+      id: views.dependencyRules.id,
+      name: views.dependencyRules.name,
+      primaryAssetId: views.dependencyRules.primaryAssetId,
+      roles: views.dependencyRules.roles,
+      enabled: views.dependencyRules.enabled,
+      categoryId: views.dependencyRules.categoryId,
+      subcategoryId: views.dependencyRules.subcategoryId,
+      namePattern: views.dependencyRules.namePattern,
+      namePatternKind: views.dependencyRules.namePatternKind,
+      tagId: views.dependencyRules.tagId,
+      source: views.dependencyRules.source,
+    }).from(views.dependencyRules).where(eq(views.dependencyRules.id, id));
+    return row ?? null;
+  },
+  insertDependencyRule: async ({ db }, value: typeof dependencyRules.$inferInsert) => {
+    await db.insert(dependencyRules).values(value);
+  },
+  /** False when the rule is gone or out of the caller's reach. */
+  updateDependencyRule: async ({ db }, id: string, value: Omit<Partial<typeof dependencyRules.$inferInsert>, 'id' | 'tenantId'>) =>
+    (await db.update(dependencyRules).set({ ...value, updatedAt: new Date() }).where(eq(dependencyRules.id, id)).returning({ id: dependencyRules.id })).length > 0,
+  /** Its links cascade with it; the links a person took over are theirs and stay. */
+  deleteDependencyRules: async ({ db }, ids: ReadonlyArray<string>) => {
+    if (ids.length === 0) {
+      return;
+    }
+    await db.delete(dependencyRules).where(inUuids(dependencyRules.id, ids));
+  },
+
+  /** The supporting assets among `ids`, by display name, for a preview's list. */
+  findPreviewAssets: async ({ db, views }, ids: ReadonlyArray<string>, limit: number) => {
+    if (ids.length === 0) {
+      return [];
+    }
+    return db.select({
+      id: views.supportingAssets.id,
+      name: views.supportingAssets.name,
+      derivedName: views.supportingAssets.derivedName,
+      categoryId: views.supportingAssets.categoryId,
+      subcategoryId: views.supportingAssets.subcategoryId,
+    }).from(views.supportingAssets).where(inUuids(views.supportingAssets.id, ids))
+      .orderBy(asc(views.supportingAssets.displayNameFolded), asc(views.supportingAssets.id))
+      .limit(limit);
+  },
+  /** The supporting assets no rule may link to `primaryAssetId`: a person linked or unlinked the pair. */
+  findRuleBlockedSupportingAssetIdsOf: async ({ db, views }, primaryAssetId: string) => {
+    const [manual, suppressed] = await Promise.all([
+      db.select({ id: views.supportToPrimaryLinks.supportingAssetId }).from(views.supportToPrimaryLinks)
+        .where(and(eq(views.supportToPrimaryLinks.primaryAssetId, primaryAssetId), isNull(views.supportToPrimaryLinks.ruleId))),
+      db.select({ id: views.dependencyRuleSuppressions.supportingAssetId }).from(views.dependencyRuleSuppressions)
+        .where(eq(views.dependencyRuleSuppressions.primaryAssetId, primaryAssetId)),
+    ]);
+    return {
+      manual: new Set(manual.map((row) => row.id)),
+      suppressed: new Set(suppressed.map((row) => row.id)),
+    };
+  },
+  /** Every supporting asset a rule's conditions match, for the apply pass. */
+  findDependencyRuleMatchIds: async (ctx, conditions: DependencyRuleConditions) => {
+    const { db, views } = ctx;
+    const rows = await db.select({ id: views.supportingAssets.id }).from(views.supportingAssets)
+      .where(and(...ruleMatchConditions(ctx, conditions)));
+    return rows.map((row) => row.id);
+  },
+  findEnabledDependencyRules: ({ db, views }) =>
+    db.select({
+      id: views.dependencyRules.id,
+      name: views.dependencyRules.name,
+      primaryAssetId: views.dependencyRules.primaryAssetId,
+      roles: views.dependencyRules.roles,
+      categoryId: views.dependencyRules.categoryId,
+      subcategoryId: views.dependencyRules.subcategoryId,
+      namePattern: views.dependencyRules.namePattern,
+      namePatternKind: views.dependencyRules.namePatternKind,
+      tagId: views.dependencyRules.tagId,
+      source: views.dependencyRules.source,
+    }).from(views.dependencyRules).where(eq(views.dependencyRules.enabled, true)),
+  /** Every support-to-primary link of the tenant, with the rule that wrote it, for the apply pass. */
+  findAllSupportToPrimaryLinksForRules: ({ db, views }) =>
+    db.select({
+      id: views.supportToPrimaryLinks.id,
+      supportingAssetId: views.supportToPrimaryLinks.supportingAssetId,
+      primaryAssetId: views.supportToPrimaryLinks.primaryAssetId,
+      roles: views.supportToPrimaryLinks.roles,
+      ruleId: views.supportToPrimaryLinks.ruleId,
+    }).from(views.supportToPrimaryLinks),
+  findRuleSuppressions: ({ db, views }) =>
+    db.select({
+      supportingAssetId: views.dependencyRuleSuppressions.supportingAssetId,
+      primaryAssetId: views.dependencyRuleSuppressions.primaryAssetId,
+    }).from(views.dependencyRuleSuppressions),
+  insertRuleLinks: async ({ db }, values: Array<typeof supportToPrimaryLinks.$inferInsert>) => {
+    if (values.length === 0) {
+      return;
+    }
+    await db.insert(supportToPrimaryLinks).values(values)
+      .onConflictDoNothing({ target: [supportToPrimaryLinks.supportingAssetId, supportToPrimaryLinks.primaryAssetId] });
+  },
+  /** Only a rule link moves: one a person took over meanwhile is left as it is. */
+  updateRuleLinks: async ({ db }, ids: ReadonlyArray<string>, ruleId: string, roles: Array<SupportToPrimaryLinkRole>) => {
+    if (ids.length === 0) {
+      return;
+    }
+    await db.update(supportToPrimaryLinks).set({ ruleId, roles })
+      .where(and(inUuids(supportToPrimaryLinks.id, ids), isNotNull(supportToPrimaryLinks.ruleId)));
+  },
+  deleteRuleLinks: async ({ db }, ids: ReadonlyArray<string>) => {
+    if (ids.length === 0) {
+      return;
+    }
+    await db.delete(supportToPrimaryLinks)
+      .where(and(inUuids(supportToPrimaryLinks.id, ids), isNotNull(supportToPrimaryLinks.ruleId)));
+  },
 
   /**
    * The first level of the dependency walk below a set of primary assets, carrying everything a node
