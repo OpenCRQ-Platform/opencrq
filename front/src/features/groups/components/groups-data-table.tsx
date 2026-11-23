@@ -120,6 +120,7 @@ export const GroupsDataTable: FunctionComponent = () => {
         columns={columns}
         isLoading={isLoading}
         storageKey="groups"
+        search={{ placeholder: t`Search groups...`, texts: (group) => [group.name] }}
         onCreate={() => setCreateDrawerOpen(true)}
         onClickRow={(row) => openEdit(row.original.id)}
       />

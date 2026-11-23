@@ -58,6 +58,7 @@ export const CountriesDataTable: FunctionComponent = () => {
       columns={columns}
       isLoading={isLoading}
       storageKey="countries"
+      search={{ placeholder: t`Search countries...`, texts: (country) => [country.name, country.isoAlpha2, country.isoAlpha3] }}
       initialSorting={[{ id: 'name', desc: false }]}
     />
   );

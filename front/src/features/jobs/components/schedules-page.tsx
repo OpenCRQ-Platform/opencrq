@@ -103,6 +103,7 @@ export const SchedulesPage: FunctionComponent = () => {
       columns={columns}
       isLoading={isLoading}
       storageKey={STORAGE_KEY}
+      search={{ placeholder: t`Search job kinds...`, texts: (schedule) => [schedule.kind] }}
       enableSorting={false}
       onClickRow={(row) => {
         const { source } = row.original;

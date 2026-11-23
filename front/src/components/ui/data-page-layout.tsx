@@ -9,6 +9,7 @@ import { ChevronDown, ChevronRight, Columns3, LayoutGrid, List, Trash2 } from 'l
 import type { ReactNode } from 'react';
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { DataPageFilter, DataPageSearch } from './data-page-filters';
 import type { IconButtonGroupItem } from './icon-button-group';
 import type { SegmentedCount } from './segmented-counts';
 import type { HighlightColor, HighlightedTechnique } from '../shared/ttp-matrix-cell';
@@ -18,6 +19,7 @@ import { TtpMatrixView } from '../shared/ttp-matrix-view';
 import { withTextAwareSorting } from '../../utils/table-sorting-utils';
 import { cn } from '../../utils';
 import { DataPageToolbar } from './data-page-toolbar';
+import { useDataPageFilters } from './data-page-filters';
 import { HighlightFilterToggle } from './highlight-filter-toggle';
 import { SegmentedCounts } from './segmented-counts';
 import { IconButtonGroup } from './icon-button-group';
@@ -264,6 +266,13 @@ interface BaseDataPageLayoutProps<T extends { id: string }, G extends string> {
   expandableRows?: ExpandableRows<T>,
   /** Keeps the rows of a group together, under a heading, whatever the sort; for a client-sorted table. */
   rowGroups?: RowGroups<T, G>,
+  /**
+   * A search box leading the toolbar, matching the texts it names on each row (Design standards s.3).
+   * For a list held whole: a server-paginated table (`total` set) searches on the server instead.
+   */
+  search?: DataPageSearch<T>,
+  /** Typed filters drawn as filter pills after the search, with the active-filter count and Clear all; same scope as `search`. */
+  filters?: ReadonlyArray<DataPageFilter<T>>,
 }
 
 /**
@@ -288,7 +297,7 @@ export type DataPageLayoutPaging = {
 type DataPageLayoutProps<T extends { id: string }, G extends string> = BaseDataPageLayoutProps<T, G> & DataPageLayoutPaging;
 
 export const DataPageLayout = <T extends { id: string }, G extends string = string>({
-  data,
+  data: allData,
   total,
   isFetching,
   columns,
@@ -317,12 +326,30 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
   hidePagination,
   expandableRows,
   rowGroups,
+  search,
+  filters,
 }: DataPageLayoutProps<T, G>): ReactNode => {
   const defaultPageSize = initialPageSize ?? 50;
   const isSortingEnabled = enableSorting ?? true;
   const { pageSize, setPageSize } = usePersistedPageSize(storageKey, defaultPageSize);
   const [ownPageIndex, setOwnPageIndex] = useState(0);
   const pageIndex = controlledPageIndex ?? ownPageIndex;
+  // A server-paginated list holds one page, so narrowing it here would hide rows of the others.
+  const clientSide = total === undefined;
+  const { rows: data, controls: filterControls, narrowed } = useDataPageFilters(
+    allData,
+    clientSide ? search : undefined,
+    clientSide ? filters : undefined,
+    () => setOwnPageIndex(0),
+  );
+  const toolbarLeft = filterControls === null
+    ? leftHeaderContent
+    : (
+      <>
+        {filterControls}
+        {leftHeaderContent}
+      </>
+    );
   const pagination: PaginationState = hidePagination === true ? { pageIndex: 0, pageSize: Math.max(data.length, 1) } : { pageIndex, pageSize };
   const showPending = useDelayedFlag(isPlaceholderData === true, { delay: PENDING_DELAY_MS, minDuration: PENDING_MIN_DURATION_MS });
   const pendingHostRef = useRef<HTMLDivElement>(null);
@@ -530,7 +557,8 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
   const toolbar = showToolbar ? (
     <DataPageToolbar
       dataLength={total ?? data.length}
-      leftHeaderContent={leftHeaderContent}
+      totalLength={narrowed ? allData.length : undefined}
+      leftHeaderContent={toolbarLeft}
       pagination={isPlaceholderData === undefined
         ? <DataTableHeadBarOptions />
         : (
@@ -550,12 +578,13 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
 
   // Only a list with no row at all is empty: a page can come back empty while `total` still counts rows
   // (past the last page, or read in another statement than its count).
-  if (emptyState && !isLoading && data.length === 0 && (total ?? 0) === 0) {
+  // A search or a filter that matches nothing leaves the table up, with its controls to undo it.
+  if (emptyState && !isLoading && allData.length === 0 && (total ?? 0) === 0) {
     return (
       <div className="flex flex-col gap-4">
         {showToolbar && (
           <DataPageToolbar
-            dataLength={data.length}
+            dataLength={allData.length}
             leftHeaderContent={leftHeaderContent}
             viewToggle={viewToggle}
             headerActions={headerActions}

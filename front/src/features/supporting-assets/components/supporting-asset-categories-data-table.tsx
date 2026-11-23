@@ -65,6 +65,7 @@ export const SupportingAssetCategoriesDataTable = () => {
       data={rows}
       isLoading={isLoading}
       storageKey="supportingAssetCategories"
+      search={{ placeholder: t`Search categories...`, texts: (category) => [category.name, category.description] }}
       onClickRow={(row) => {
         void navigate({
           from: '/$tenantId/{-$organizationId}',

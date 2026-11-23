@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import type { ColumnDefWithOptionsHeader } from '@filigran/ui';
 import { i18n } from '@lingui/core';
+import { I18nProvider } from '@lingui/react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -505,5 +506,106 @@ describe('DataPageLayout pagination', () => {
       expect(onServerPageChange).not.toHaveBeenCalled();
       expect(screen.getByText('No scope yet.')).toBeTruthy();
     });
+  });
+});
+
+interface RuleRow {
+  id: string,
+  name: string,
+  enabled: boolean,
+}
+
+const RULES: Array<RuleRow> = [
+  { id: '1', name: 'Core banking', enabled: true },
+  { id: '2', name: 'Payment gateway', enabled: false },
+  { id: '3', name: 'École network', enabled: true },
+];
+
+const RULE_COLUMNS: Array<ColumnDefWithOptionsHeader<RuleRow, unknown>> = [
+  { id: 'name', accessorKey: 'name', header: 'Name' },
+];
+
+const renderSearchable = () => render(
+  <DataPageLayout
+    data={RULES}
+    columns={RULE_COLUMNS}
+    storageKey="data-page-layout-search"
+    emptyState={<p>No rules yet.</p>}
+    search={{ placeholder: 'Search rules', texts: (rule) => [rule.name] }}
+    filters={[{
+      id: 'status',
+      label: 'Status',
+      allLabel: 'All statuses',
+      options: [{ value: 'enabled', label: 'Enabled' }, { value: 'disabled', label: 'Disabled' }],
+      valueOf: (rule) => (rule.enabled ? 'enabled' : 'disabled'),
+    }]}
+  />,
+  { wrapper: ({ children }) => <I18nProvider i18n={i18n}>{children}</I18nProvider> },
+);
+
+const typeSearch = (text: string) => {
+  fireEvent.change(screen.getByPlaceholderText('Search rules'), { target: { value: text } });
+  advance(500);
+};
+
+const rowNames = () => Array.from(document.querySelectorAll('tbody tr')).map((row) => row.textContent);
+
+describe('DataPageLayout search and filters', () => {
+  it('should draw the search box and the filter pill in the toolbar, with the whole count', () => {
+    renderSearchable();
+
+    expect(screen.getByPlaceholderText('Search rules')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Status' })).toBeTruthy();
+    expect(screen.getByText('3 entities')).toBeTruthy();
+  });
+
+  it('should keep the rows whose text holds the search, accents and case folded, and count them out of the whole list', () => {
+    renderSearchable();
+
+    typeSearch('ecole');
+
+    expect(rowNames()).toEqual(['École network']);
+    expect(screen.getByText('1 of 3 entities')).toBeTruthy();
+    expect(screen.getByText('1 active filter')).toBeTruthy();
+  });
+
+  it('should keep the table and its search up when nothing matches, instead of the empty state', () => {
+    renderSearchable();
+
+    typeSearch('nothing like it');
+
+    expect(screen.queryByText('No rules yet.')).toBeNull();
+    expect(screen.getByPlaceholderText('Search rules')).toBeTruthy();
+    expect(screen.getByText('0 of 3 entities')).toBeTruthy();
+  });
+
+  it('should lift the search with Clear all', () => {
+    renderSearchable();
+    typeSearch('payment');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    advance(500);
+
+    expect(rowNames()).toHaveLength(3);
+    expect(screen.getByText('3 entities')).toBeTruthy();
+  });
+
+  it('should leave a server-paginated table, which searches on the server, unnarrowed and without the controls', () => {
+    render(
+      <DataPageLayout
+        data={RULES}
+        total={3}
+        pageIndex={0}
+        isFetching={false}
+        columns={RULE_COLUMNS}
+        storageKey="data-page-layout-search-server"
+        search={{ placeholder: 'Search rules', texts: (rule) => [rule.name] }}
+        filters={[{ id: 'status', label: 'Status', allLabel: 'All statuses', options: [], valueOf: () => 'enabled' }]}
+      />,
+      { wrapper: ({ children }) => <I18nProvider i18n={i18n}>{children}</I18nProvider> },
+    );
+
+    expect(screen.queryByPlaceholderText('Search rules')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Status' })).toBeNull();
   });
 });

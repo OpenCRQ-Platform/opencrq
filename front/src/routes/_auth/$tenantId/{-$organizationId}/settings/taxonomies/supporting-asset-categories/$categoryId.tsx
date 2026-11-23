@@ -76,6 +76,7 @@ const CategoryDetailPage = () => {
           data={techniques ?? []}
           isLoading={isLoading}
           storageKey="supportingAssetCategoryTechniques"
+          search={{ placeholder: t`Search techniques...`, texts: (technique) => [technique.externalId, technique.name] }}
           onClickRow={(row) => {
             void navigate({
               from: '/$tenantId/{-$organizationId}',

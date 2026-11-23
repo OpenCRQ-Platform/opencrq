@@ -284,6 +284,7 @@ const OutcomesSection: FunctionComponent<OutcomesSectionProps> = ({ reading, sco
               data={rows}
               columns={columns}
               storageKey="threat-event-frequency-outcomes"
+              search={{ placeholder: t`Search attack outcomes...`, texts: (outcome) => [outcome.name] }}
               initialSorting={[{ id: 'attempts', desc: true }]}
             />
             <p className="txt-sub-content text-muted-foreground">
