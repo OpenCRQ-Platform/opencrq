@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, doublePrecision, index, pgTable, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, doublePrecision, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import type { CveSource } from './sources';
 import { defineSecurityPolicies, tenantIsolationPolicy } from '../../security';
 import { tenants } from '../tenants';
@@ -45,7 +45,6 @@ export const cve = pgTable('cve', {
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex('cve_tenantid_cveid_idx').on(table.tenantId, table.cveId),
-  index('cve_updated_at_idx').on(table.updatedAt.desc().nullsFirst()),
   // Redundant with the primary key, and what a composite foreign key naming the tenant can point at.
   unique('cve_id_tenant_id_uq').on(table.id, table.tenantId),
 ]);
@@ -61,7 +60,6 @@ defineSecurityPolicies(cve, tenantIsolationPolicy);
  * read together with the vector of the same source.
  */
 export const cveSourceObservations = pgTable('cve_source_observations', {
-  id: uuid('id').primaryKey(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   cveId: uuid('cve_id').notNull().references(() => cve.id, { onDelete: 'cascade' }),
   source: text('source').$type<CveSource>().notNull(),
@@ -86,7 +84,7 @@ export const cveSourceObservations = pgTable('cve_source_observations', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => [
-  unique('cve_source_observations_cve_source_uq').on(table.cveId, table.source),
+  primaryKey({ columns: [table.cveId, table.source] }),
   check('cve_source_observations_source_ck', sql`${table.source} IN (${sql.raw(CVE_SOURCE_VALUES.map((value) => `'${value}'`).join(', '))})`),
 ]);
 

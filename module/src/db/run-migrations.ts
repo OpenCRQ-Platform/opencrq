@@ -1,8 +1,11 @@
-import { sql } from 'drizzle-orm';
+import { getTableName, sql } from 'drizzle-orm';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import path from 'node:path';
 import type { DrizzleDB } from './index';
+import { cve, cveSourceObservations } from '../modules/cve/schema';
+import { findingScores, uniqueFindingScores } from '../modules/finding-score/schema';
+import { assetEvidence, assetEvidenceSources } from '../modules/supporting-assets/schema';
 
 const migrationPath = path.join(__dirname, 'migrations');
 
@@ -14,6 +17,48 @@ export const runMigration = async (db: DrizzleDB) => {
   await migrate(db, { migrationsFolder: migrationPath });
   await db.execute(sql`DELETE FROM drizzle.__drizzle_migrations WHERE created_at < ${squashedBefore}`);
   await lowerAnalyzeThresholds(db);
+  await reserveRoomForInPlaceUpdates(db);
+};
+
+/**
+ * The tables the syncs and the score recompute rewrite far more often than they insert into. An
+ * update stays on its page with no new index entry (HOT) only when the page has room, and a sync
+ * rewrites a page's rows in one transaction, before any old version can be reclaimed: on a replay of
+ * the syncs, 70 kept nearly all of them in place, where 90 still sent most to other pages.
+ */
+export const IN_PLACE_UPDATE_TABLES = [assetEvidence, assetEvidenceSources, cve, cveSourceObservations, findingScores, uniqueFindingScores]
+  .map((table) => getTableName(table));
+export const IN_PLACE_UPDATE_FILLFACTOR = 70;
+
+/**
+ * A storage parameter applies to the pages written after it, so the rows already stored move into
+ * the room as they are rewritten. Applied here rather than in a migration because the squash
+ * rebuilds the schema from `drizzle-kit`, which does not model it. The lock it takes conflicts with
+ * vacuum only, never with a read or a write, and a wait past `deadlock_timeout` cancels an
+ * autovacuum holding it.
+ */
+const reserveRoomForInPlaceUpdates = async (db: DrizzleDB) => {
+  // A DO block takes no bound parameter: the names and the figure are this file's constants.
+  const tables = sql.raw(IN_PLACE_UPDATE_TABLES.map((name) => `'${name}'`).join(', '));
+  const fillfactor = sql.raw(String(IN_PLACE_UPDATE_FILLFACTOR));
+  await db.execute(sql`
+    DO $$
+    DECLARE t regclass;
+    BEGIN
+      SET LOCAL lock_timeout = '2s';
+      FOR t IN
+        SELECT c.oid::regclass FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname IN (${tables}) AND pg_has_role(c.relowner, 'USAGE')
+          AND NOT coalesce(c.reloptions, '{}') @> ARRAY['fillfactor=${fillfactor}']
+      LOOP
+        BEGIN
+          EXECUTE format('ALTER TABLE %s SET (fillfactor = ${fillfactor})', t);
+        EXCEPTION WHEN lock_not_available THEN
+          RAISE WARNING 'fillfactor left unset on %, locked by another session', t;
+        END;
+      END LOOP;
+    END $$
+  `);
 };
 
 /**

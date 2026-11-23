@@ -768,10 +768,7 @@ export const findingScoreRepository = defineRepository({
     return rows.at(0)?.value ?? 0;
   },
 
-  /**
-   * A row is rewritten only when something in it changed, or an untouched estate would be rewritten
-   * hourly, none of it HOT since the score sits in the ordering index.
-   */
+  /** A row is rewritten only when something in it changed, or an untouched estate would be rewritten hourly. */
   upsertFindingScoreBatch: async ({ db }, rows: Array<typeof findingScores.$inferInsert>) => {
     if (rows.length === 0) {
       return;

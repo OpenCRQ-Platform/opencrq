@@ -1,7 +1,7 @@
 import { is, sql } from 'drizzle-orm';
 import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
-import { schema, TABLES_WITHOUT_DATA_CHANGED_TRIGGER } from '@app/module';
+import { IN_PLACE_UPDATE_FILLFACTOR, IN_PLACE_UPDATE_TABLES, schema, TABLES_WITHOUT_DATA_CHANGED_TRIGGER } from '@app/module';
 import { db } from '../../setup/db';
 
 /** PostgreSQL truncates identifiers to 63 bytes, and an unnamed primary key truncates its table name to leave room for "_pkey". */
@@ -72,6 +72,17 @@ describe('DB schema conventions', () => {
     `);
 
     expect(result.rows.map((row) => row.table_name)).toEqual([]);
+  });
+
+  it('every table the syncs rewrite keeps room on its pages for an update in place', async () => {
+    const result = await db.execute<{ table_name: string }>(sql`
+      SELECT c.relname AS table_name
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relkind = 'r'
+        AND coalesce(c.reloptions, '{}') @> ARRAY[${`fillfactor=${IN_PLACE_UPDATE_FILLFACTOR}`}]
+    `);
+
+    expect(result.rows.map((row) => row.table_name).toSorted()).toEqual(IN_PLACE_UPDATE_TABLES.toSorted());
   });
 
   // A table rename keeps its primary key's old name, which drizzle neither tracks nor renames: a
