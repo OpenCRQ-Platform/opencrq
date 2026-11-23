@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { i18n } from '@lingui/core';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
   defaultServiceAccountChoice,
@@ -7,6 +8,11 @@ import {
   serviceAccountChoiceFields,
   toServiceAccountChoice,
 } from './service-account-choice-utils';
+
+beforeAll(() => {
+  i18n.load('en', {});
+  i18n.activate('en');
+});
 
 const ACTIVE = { id: 'active', name: 'Active bot', active: true };
 const INACTIVE = { id: 'inactive', name: 'Old bot', active: false };

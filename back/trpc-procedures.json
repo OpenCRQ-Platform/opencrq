@@ -6492,7 +6492,17 @@
       "input": null
     },
     {
+      "path": "opencti.getReaderLink",
+      "type": "query",
+      "input": null
+    },
+    {
       "path": "opencti.getSettings",
+      "type": "query",
+      "input": null
+    },
+    {
+      "path": "opencti.getThreatVisibility",
       "type": "query",
       "input": null
     },
@@ -6513,6 +6523,25 @@
         },
         "required": [
           "enabled"
+        ]
+      }
+    },
+    {
+      "path": "opencti.setThreatVisibility",
+      "type": "mutation",
+      "input": {
+        "type": "object",
+        "properties": {
+          "threatVisibility": {
+            "type": "string",
+            "enum": [
+              "per_member",
+              "service_account"
+            ]
+          }
+        },
+        "required": [
+          "threatVisibility"
         ]
       }
     },

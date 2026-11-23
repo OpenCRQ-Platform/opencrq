@@ -50,6 +50,7 @@ const ISOLATED_TESTS = [
   'src/features/onboarding/components/scenarios-step.test.tsx',
   'src/features/onboarding/components/self-assessment-drawer.test.tsx',
   'src/features/onboarding/components/threat-source-tiles.test.tsx',
+  'src/features/onboarding/components/threats-step.test.tsx',
   'src/features/onboarding/components/tolerance-step.test.tsx',
   'src/features/risk-scenarios/components/crq-run-history.test.tsx',
   'src/features/risk-scenarios/components/crq-simulation-results.test.tsx',

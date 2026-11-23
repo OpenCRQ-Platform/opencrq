@@ -13,6 +13,7 @@ import { middleTabKey } from '../connector-route-utils';
 import { ConnectorBanner } from './connector-banner';
 import { ConnectorHeader } from './connector-header';
 import { OpenctiStreamWarningBanner } from './opencti-stream-warning-banner';
+import { OpenctiThreatVisibilityBanner } from './opencti-threat-visibility';
 
 const CONNECTOR_ROUTE = '/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug';
 
@@ -55,6 +56,7 @@ export const ConnectorDetailShell: FunctionComponent<{
         <ConnectorHeader connector={connector} />
         {!connector.platformConfigured && <NotInDeploymentBanner />}
         {connector.source === 'opencti' && connector.platformConfigured && <OpenctiStreamWarningBanner />}
+        {connector.source === 'opencti' && connector.platformConfigured && <OpenctiThreatVisibilityBanner />}
         <RouteTabs tabs={tabs} />
         {children}
       </div>

@@ -21,6 +21,7 @@ import {
 } from '../connector-vocabulary';
 import { NvdNotice } from './nvd-notice';
 import { getConnectors } from './connectors-list';
+import { OpenctiThreatVisibilityField } from './opencti-threat-visibility';
 
 /** The state blob is a handler's own shape: it is shown truncated and never parsed. */
 const STATE_PREVIEW_LIMIT = 200;
@@ -176,6 +177,7 @@ const BasicInformationPanel: FunctionComponent<{ connector: ConnectorDetail }> =
           />
         </>
       )}
+      {connector.source === 'opencti' && connector.platformConfigured && <OpenctiThreatVisibilityField />}
     </SectionCard>
   );
 };

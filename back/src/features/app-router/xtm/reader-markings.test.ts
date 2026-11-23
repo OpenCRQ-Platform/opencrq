@@ -8,6 +8,7 @@ vi.mock('../../../utils/logger', () => ({
 }));
 
 const { createReaderMarkingsResolver, parseAllowedMarkings, parseReaderScope, READER_MARKINGS_QUERY } = await import('./reader-markings');
+const { ReaderTokenUnavailable } = await import('../../xtm-one/xtm-one-token-exchange');
 
 beforeEach(() => {
   logWarn.mockClear();
@@ -15,7 +16,7 @@ beforeEach(() => {
 
 const CONNECTION = { url: 'https://opencti.example/', token: 'connector-token' };
 const SIGN = () => Promise.resolve('reader-jwt');
-const NO_SIGN = Object.assign(() => Promise.resolve(null), { unsigned: 'no xtm_one.platform_url configured' });
+const NO_SIGN = Object.assign(() => Promise.resolve(null), { unsigned: 'XTM One is not configured' });
 
 const body = (markings: Array<string>) => ({
   data: {
@@ -82,8 +83,10 @@ describe('createReaderMarkingsResolver', () => {
   it('should ask OpenCTI as the reader, never with the connector token', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(answer(['m-1']));
     const resolver = createReaderMarkingsResolver(fetchImpl);
+    const sign = vi.fn(SIGN);
 
-    expect((await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN))?.markings).toEqual(['m-1']);
+    expect((await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', sign))?.markings).toEqual(['m-1']);
+    expect(sign).toHaveBeenCalledWith('opencti', CONNECTION);
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe('https://opencti.example/graphql');
     expect(init.headers.Authorization).toBe('Bearer reader-jwt');
@@ -93,7 +96,7 @@ describe('createReaderMarkingsResolver', () => {
   it('should not narrow a tenant with no OpenCTI connection', async () => {
     const unused = vi.fn();
 
-    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', undefined, SIGN)).toBeUndefined();
+    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', undefined, 'per_member', SIGN)).toBeUndefined();
     expect(unused).not.toHaveBeenCalled();
   });
 
@@ -102,15 +105,15 @@ describe('createReaderMarkingsResolver', () => {
     const broken = createReaderMarkingsResolver(vi.fn().mockRejectedValue(new Error('timeout')));
     const unused = vi.fn();
 
-    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', CONNECTION, NO_SIGN)).toBeNull();
+    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', CONNECTION, 'per_member', NO_SIGN)).toBeNull();
     expect(unused).not.toHaveBeenCalled();
-    expect(await refused.resolve('t-1', 'u-1', CONNECTION, SIGN)).toBeNull();
-    expect(await broken.resolve('t-1', 'u-1', CONNECTION, SIGN)).toBeNull();
+    expect(await refused.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)).toBeNull();
+    expect(await broken.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)).toBeNull();
   });
 
   it('should say why a reader has no scope, with the tenant and the user and never the token', async () => {
     const unresolved = (fetchImpl: () => Promise<Response>, sign: ReaderAuthorization = SIGN) =>
-      createReaderMarkingsResolver(vi.fn(fetchImpl)).resolve('t-1', 'u-1', CONNECTION, sign);
+      createReaderMarkingsResolver(vi.fn(fetchImpl)).resolve('t-1', 'u-1', CONNECTION, 'per_member', sign);
     const refusal = (error: Record<string, unknown>) => new Response(JSON.stringify({ errors: [error], data: null }), { status: 200 });
     const networkError = new Error('connect failed for reader@example.com with Bearer leaked-token', { cause: { code: 'ECONNREFUSED' } });
 
@@ -123,6 +126,8 @@ describe('createReaderMarkingsResolver', () => {
     await unresolved(() => Promise.reject(new DOMException('The operation timed out for reader@example.com', 'TimeoutError')));
     await unresolved(() => Promise.resolve(answer([])), NO_SIGN);
     await unresolved(() => Promise.resolve(answer([])), () => Promise.resolve(null));
+    await unresolved(() => Promise.resolve(answer([])), () => Promise.reject(new ReaderTokenUnavailable('XTM One refused the token exchange: HTTP 403')));
+    await unresolved(() => Promise.resolve(answer([])), () => Promise.reject(new ReaderTokenUnavailable('reading OpenCTI\'s public URL failed: HTTP 401')));
     await unresolved(() => Promise.resolve(answer([])), () => Promise.reject(new Error('XTM One signing key is missing for reader@example.com')));
 
     expect(logWarn.mock.calls.map(([, data]) => data.reason)).toEqual([
@@ -133,9 +138,11 @@ describe('createReaderMarkingsResolver', () => {
       'OpenCTI answered something other than JSON',
       'the request failed: Error, ECONNREFUSED',
       'the request failed: TimeoutError',
-      'no token could be signed for the reader: no xtm_one.platform_url configured',
+      'no token could be signed for the reader: XTM One is not configured',
       'no token could be signed for the reader: no reason given',
-      'signing the reader\'s token failed: Error',
+      'XTM One refused the token exchange: HTTP 403',
+      'reading OpenCTI\'s public URL failed: HTTP 401',
+      'obtaining the reader\'s token failed: Error',
     ]);
     expect(logWarn.mock.calls.every(([message, data]) => message === 'OpenCTI reader scope unresolved'
       && data.tenantId === 't-1' && data.userId === 'u-1')).toBe(true);
@@ -149,7 +156,7 @@ describe('createReaderMarkingsResolver', () => {
     const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(new Response('no', { status: 500 })));
     const resolver = createReaderMarkingsResolver(fetchImpl);
 
-    const scopes = await Promise.all([1, 2, 3].map(() => resolver.resolve('t-1', 'u-1', CONNECTION, SIGN)));
+    const scopes = await Promise.all([1, 2, 3].map(() => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)));
 
     expect(scopes).toEqual([null, null, null]);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
@@ -157,8 +164,8 @@ describe('createReaderMarkingsResolver', () => {
   });
 
   it('should log nothing for a reader whose scope was read or a tenant with no OpenCTI', async () => {
-    await createReaderMarkingsResolver(vi.fn().mockResolvedValue(answer(['m-1']))).resolve('t-1', 'u-1', CONNECTION, SIGN);
-    await createReaderMarkingsResolver(vi.fn()).resolve('t-1', 'u-1', undefined, SIGN);
+    await createReaderMarkingsResolver(vi.fn().mockResolvedValue(answer(['m-1']))).resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+    await createReaderMarkingsResolver(vi.fn()).resolve('t-1', 'u-1', undefined, 'per_member', SIGN);
 
     expect(logWarn).not.toHaveBeenCalled();
   });
@@ -166,8 +173,8 @@ describe('createReaderMarkingsResolver', () => {
   it('should log a failure once per cache window, not on every read of the page', async () => {
     const resolver = createReaderMarkingsResolver(vi.fn().mockImplementation(() => Promise.resolve(new Response('no', { status: 500 }))));
 
-    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
-    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
 
     expect(logWarn).toHaveBeenCalledTimes(1);
   });
@@ -180,9 +187,9 @@ describe('createReaderMarkingsResolver', () => {
     });
     const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, 1_000);
 
-    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
     clock = 1_400;
-    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
@@ -192,15 +199,27 @@ describe('createReaderMarkingsResolver', () => {
     const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(answer(['m-1'])));
     const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, 1_000);
 
-    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
-    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
 
-    await resolver.resolve('t-1', 'u-2', CONNECTION, SIGN);
+    await resolver.resolve('t-1', 'u-2', CONNECTION, 'per_member', SIGN);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
 
     clock = 1_001;
-    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('should ask again once the tenant changed its threat visibility, with the bearer that choice names', async () => {
+    const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(answer(['m-1'])));
+    const resolver = createReaderMarkingsResolver(fetchImpl);
+    const connectorToken = vi.fn().mockResolvedValue('connector-token');
+
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'service_account', connectorToken);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(connectorToken).toHaveBeenCalledTimes(1);
   });
 });

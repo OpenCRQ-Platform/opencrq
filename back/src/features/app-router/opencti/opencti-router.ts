@@ -1,4 +1,5 @@
-import { openctiConnectorSettings } from '@app/module';
+import type { DrizzleDB } from '@app/module';
+import { OPENCTI_THREAT_VISIBILITIES, openctiConnectorSettings } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import { createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -9,6 +10,8 @@ import { config } from '../../../config';
 import { router } from '../../../trpc';
 import { createLogger } from '../../../utils/logger';
 import { assertOneServiceAccountChoice, NewServiceAccountSchema } from '../integrations/new-service-account-input';
+import { userSessionOnly } from '../user-session-only';
+import { probeReaderLink, READER_LINKS, readerAuthorization } from '../xtm/xtm-router';
 import { computeTimelineProgressPercent } from './opencti-backfill-progress-utils';
 import { describeStreams, STREAM_RELATIONSHIPS, STREAM_VERDICTS, streamFilterGroupSchema } from './opencti-stream-filter-utils';
 
@@ -84,7 +87,7 @@ export const fetchOpenCtiStreams = async (url: string, token: string): Promise<A
   return describeStreams(parsed.data.data.streamCollections.edges.map(({ node }) => node));
 };
 
-export const openctiRouter = (procedure: TenantProcedure) => router({
+export const openctiRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
   getSettings: procedure
     .output(OpenctiConnectorSettingsSchema.nullable())
     .query(async ({ ctx: { services, origin } }) => {
@@ -172,6 +175,41 @@ export const openctiRouter = (procedure: TenantProcedure) => router({
       }
       await scoped.openctiConnector.configure(origin.tenantId, serviceAccountId, input.streamId);
       return { serviceAccountId };
+    }),
+
+  getReaderLink: procedure
+    // XTM One's registrations decide it, which no table write here moves.
+    .meta({ reads: [] })
+    .output(z.object({ link: z.enum(READER_LINKS) }))
+    .query(async ({ ctx: { services, origin, user } }) => {
+      if (!origin.tenantId) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
+      if (!(await isOriginAuthorizedForItsTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t)))) {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
+      const connection = config().connectors?.opencti?.[origin.tenantId];
+      return { link: connection ? await probeReaderLink(readerAuthorization(db, user), connection) : 'unknown' };
+    }),
+
+  getThreatVisibility: procedure
+    .output(z.object({ threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES) }))
+    .query(async ({ ctx: { services, origin } }) => {
+      if (!origin.tenantId) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
+      return { threatVisibility: await services.withOrigin(origin).tenants.getThreatVisibility(origin.tenantId) };
+    }),
+
+  setThreatVisibility: procedure
+    .use(userSessionOnly)
+    .input(z.object({ threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES) }))
+    .mutation(async ({ input, ctx: { services, origin } }) => {
+      const scoped = services.withOrigin(origin);
+      if (!await scoped.capabilities.hasManageSecurity()) {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
+      await scoped.tenants.setThreatVisibility(input.threatVisibility);
     }),
 
   setEnabled: procedure

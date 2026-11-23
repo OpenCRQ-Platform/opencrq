@@ -25,26 +25,14 @@ export const issueXtmOneJwt = async (
   material: XtmOneKeyMaterial,
   settings: XtmOneSettings,
   user: XtmOneUserIdentity,
-): Promise<string> => issueUserJwt(material, settings.platformUrl, await resolveXtmOneIdentity(settings), user);
-
-/**
- * Mint a short-lived EdDSA JWT for one OpenCRQ user, addressed to `audience`: the token another
- * XTM product verifies against this platform's JWKS (`GET /xtm/auth/jwks`) to apply that user's
- * own rights there. Used for XTM One and for the sibling products' reverse lookups alike.
- */
-export const issueUserJwt = async (
-  material: XtmOneKeyMaterial,
-  issuer: string,
-  audience: string,
-  user: XtmOneUserIdentity,
 ): Promise<string> => new SignJWT({
   email: user.email,
   ...(user.name ? { name: user.name } : {}),
 })
   .setProtectedHeader({ alg: 'EdDSA', kid: material.kid })
-  .setIssuer(issuer)
+  .setIssuer(settings.platformUrl)
   .setSubject(user.id)
-  .setAudience(audience)
+  .setAudience(await resolveXtmOneIdentity(settings))
   .setIssuedAt()
   .setExpirationTime(Math.floor(Date.now() / 1000) + JWT_TTL_SECONDS)
   .setJti(uuidv7())

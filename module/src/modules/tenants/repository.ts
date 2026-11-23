@@ -1,8 +1,9 @@
 import { newError, withTransactionLock } from '@app/utils';
-import { and, count, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, inArray, ne } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import type { Transaction } from '../../db';
 import type { SupportedLocale } from '../users/validation';
+import type { OpenctiThreatVisibility } from './threat-visibility';
 import { defineRepository } from '../../registry';
 import { businessValueCategories } from '../business-value-categories/schema';
 import {
@@ -127,6 +128,8 @@ export const tenantsRepository = defineRepository({
   },
   updateDefaultLocale: ({ db }, tenantId: string, defaultLocale: SupportedLocale | null) =>
     db.update(tenants).set({ defaultLocale }).where(eq(tenants.id, tenantId)),
+  updateThreatVisibility: ({ db }, tenantId: string, threatVisibility: OpenctiThreatVisibility) =>
+    db.update(tenants).set({ threatVisibility }).where(and(eq(tenants.id, tenantId), ne(tenants.threatVisibility, threatVisibility))),
   renameTenant: async ({ db }, id: string, name: string): Promise<boolean> => {
     const renamed = await db.update(tenants).set({ name }).where(eq(tenants.id, id)).returning();
     return renamed.length > 0;

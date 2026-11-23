@@ -100,3 +100,20 @@ Connecting a tenant is automatic: set `CONNECTORS__OPENCTI__<tenant-uuid>__URL` 
 - **Grant the token the stream capability** — the user behind the token needs `TAXIIAPI_SETCOLLECTIONS` (Manage CTI data sharing > Manage Live Streams), or `BYPASS`. Without it OpenCRQ writes nothing in OpenCTI and the connector page names the missing capability; grant it and restart, or create a stream by hand and pick it with **Configure**.
 - **Check the token's marking access** — the user behind that tenant's `CONNECTORS__OPENCTI__<tenant-uuid>__TOKEN` must be able to read every marking definition applied to the threats, relationships and producer identities in scope. OpenCTI drops a relation from the stream entirely when its source or target cannot be loaded for the stream user — a marking access gap silently narrows the feed the same way a wrong filter does, and the platform cannot tell the two apart. Every object mirrored keeps its markings, and each OpenCRQ user reads only what their own OpenCTI markings allow.
 - **Pick another stream if you want** — **Configure** on the OpenCTI connector binds any stream; an admin's binding is never replaced at start, and the verdict above still judges it.
+
+## What each reader sees
+
+A mirrored object is shown to an OpenCRQ user only when OpenCTI would show it to them: its markings are among theirs, and its organization sharing admits them. OpenCRQ asks OpenCTI, as that user, with a short-lived token XTM One signs for them (`POST /xtm/auth/exchange`): OpenCTI trusts XTM One's tokens, never OpenCRQ's own. That needs:
+
+- **OpenCTI registered with the same XTM One as OpenCRQ** — OpenCTI's `XTM__XTM_ONE_URL` and `XTM__XTM_ONE_TOKEN` set, so it trusts XTM One's tokens and XTM One knows it.
+- **OpenCTI's `APP__BASE_URL` set to its public URL** — XTM One addresses a token only to the URL OpenCTI registered, its `platform_url`. OpenCRQ reads that URL from OpenCTI's settings with the connector token, through `CONNECTORS__OPENCTI__<tenant-uuid>__URL`, which may stay an internal address, and keeps it an hour. Without a base URL, OpenCTI derives `platform_url` from each request's host, so the URL OpenCRQ reads can differ from the one OpenCTI registered.
+- **The user known by the same email in XTM One and in OpenCTI** — XTM One signs only for its own accounts, and OpenCTI finds its account by that email.
+
+When OpenCTI does not answer for a user, the Threats page tells them some threats may be hidden, they see only the mirrored objects that carry no marking and no sharing restriction, and the backend logs `OpenCTI reader scope unresolved` with the reason: `reading OpenCTI's public URL failed: …` when OpenCTI did not give its URL, `XTM One refused the token exchange: HTTP 403, the product is not registered with it under that URL` when XTM One knows no active platform at that URL, `…, the reader has no active account there` when it knows no account with the user's email.
+
+**An OpenCTI that is not linked.** When XTM One answers that OpenCTI's URL is no platform registered with it, no member can be asked about, and the connector page says so above its tabs: *Marked threats are hidden from members*. Its **Threat visibility** row then reads *Unavailable*. An administrator either registers OpenCTI with the same XTM One, or picks the other choice in **Configure**:
+
+- **By each member's rights in OpenCTI**, the default: each member reads what OpenCTI lets them read, as above. Greyed out while OpenCTI is not linked.
+- **As the service account**: every member of the tenant reads what the user behind `CONNECTORS__OPENCTI__<tenant-uuid>__TOKEN` reads in OpenCTI, whatever their own rights there. OpenCRQ asks OpenCTI the same question, with the connector token instead of the member's. The banner then goes away.
+
+Changing only this choice does not bind the stream again, so nothing is replayed.

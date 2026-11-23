@@ -47,7 +47,7 @@ import { cweRouter } from './cwe';
 import { fileStorageRouter } from './file-storage';
 import { serviceAccountsRouter } from './service-accounts';
 import { integrationsRouter } from './integrations/integrations-router';
-import { readerAuthorization, xtmRouter } from './xtm/xtm-router';
+import { readerScopeAuthorization, xtmRouter } from './xtm/xtm-router';
 import { connectorsRouter } from './connectors/connectors-router';
 import { openctiRouter } from './opencti/opencti-router';
 import { defaultThreatsRouter } from './default-threats/default-threats-router';
@@ -88,11 +88,16 @@ export const createTenantProcedure = (services: ReturnType<typeof instantiateSer
       // The objects mirrored from OpenCTI a person reads are the ones OpenCTI lets them read
       // (opencrq #31, #35): their markings and identity there, asked as them, ride on the origin
       // every view reads.
+      // The visibility is read on every call, cached scope or not, so that its change refreshes
+      // every query of the tenant through the doorbell of `tenants`.
+      const connection = config().connectors?.opencti?.[tenantId];
+      const threatVisibility = connection?.url ? await services.withOrigin(origin).tenants.getThreatVisibility(tenantId) : 'per_member';
       const scope = await readerMarkings.resolve(
         tenantId,
         origin.userId,
-        config().connectors?.opencti?.[tenantId],
-        readerAuthorization(db, ctx.user),
+        connection,
+        threatVisibility,
+        readerScopeAuthorization(db, ctx.user, threatVisibility),
       );
       const markedOrigin: UserOrigin | ConnectorOrigin = scope === undefined
         ? origin
@@ -238,7 +243,7 @@ export const appRouter = (
     serviceAccounts: serviceAccountsRouter(tenantSecurityProcedure),
     integrations: integrationsRouter(authProcedure),
     connectors: connectorsRouter(authProcedure, telemetry),
-    opencti: openctiRouter(authProcedure),
+    opencti: openctiRouter(authProcedure, db),
     xtm: xtmRouter(authProcedure, db),
     defaultThreats: defaultThreatsRouter(authProcedure),
     drata: drataRouter(authProcedure),

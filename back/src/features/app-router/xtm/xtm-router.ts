@@ -1,45 +1,86 @@
-import type { DrizzleDB } from '@app/module';
+import type { DrizzleDB, OpenctiThreatVisibility } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { AuthUser } from '../../../trpc';
 import type { TenantProcedure } from '../app-router-router';
 import type { CounterpartProvider } from './xtm-counterpart-utils';
-import type { ReaderAuthorization, XtmOneReaderHeaders } from './xtm-providers';
+import type { ProductConnection, ReaderAuthorization, XtmOneReaderHeaders } from './xtm-providers';
 import { isOriginAuthorizedForItsTenant } from '../tenant-access-utils';
 import { config } from '../../../config';
 import { router } from '../../../trpc';
 import { authenticateXtmOneJwt } from '../../xtm-one/xtm-one-auth';
 import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
 import { buildXtmOneHeaders } from '../../xtm-one/xtm-one-headers';
-import { issueUserJwt } from '../../xtm-one/xtm-one-jwt';
-import { ensureSigningKey } from '../../xtm-one/xtm-one-keys';
+import { readerTokenExchange, ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
 import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
-import { lookupXtmObjects, resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
+import { openctiPublicUrl } from './opencti-public-url';
+import { lookupXtmObjects,resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
 
 /** An authorization with no reader identity to sign, and why: a lookup made with it reaches nothing. */
 const signsNothing = (unsigned: string): ReaderAuthorization => Object.assign(() => Promise.resolve(null), { unsigned });
 const NO_READER = signsNothing('no user to sign for');
-const NO_ISSUER = signsNothing('no xtm_one.platform_url configured');
+const NO_XTM_ONE = signsNothing('XTM One is not configured');
 
 /**
- * The bearer a sibling product reads with on behalf of one OpenCRQ user: a short-lived JWT this
- * platform signs for that user (issuer: this platform's public URL, audience: the product's URL),
- * which the product verifies against `GET /xtm/auth/jwks` and resolves to its own user by email.
- * `null` without a user (a service account or a connector never pivots) or without a public URL.
+ * The bearer a sibling product reads with on behalf of one OpenCRQ user: a short-lived JWT XTM One
+ * signs for that user, addressed to the product (`readerTokenExchange`), which the product verifies
+ * against XTM One's `GET /xtm/auth/jwks` and resolves to its own user by email. `null` without a user
+ * (a service account or a connector never pivots) or without XTM One.
+ *
+ * XTM One addresses a token only to the URL a product registered: OpenCTI's is the one its settings
+ * name (`openctiPublicUrl`); OpenAEV's is taken to be the connector URL.
  */
 export const readerAuthorization = (db: DrizzleDB, user: AuthUser | null | undefined): ReaderAuthorization => {
-  const issuer = getXtmOneSettings()?.platformUrl;
+  const settings = getXtmOneSettings();
   if (!user) {
     return NO_READER;
   }
-  if (!issuer) {
-    return NO_ISSUER;
+  if (!settings) {
+    return NO_XTM_ONE;
   }
-  return async (productUrl) => {
-    const material = await ensureSigningKey(db);
-    return issueUserJwt(material, issuer, productUrl, { id: user.id, email: user.email, name: user.name });
+  const identity = { id: user.id, email: user.email, name: user.name };
+  return async (product, connection) => {
+    const audience = product === 'opencti' ? await openctiPublicUrl.resolve(connection) : connection.url;
+    return readerTokenExchange.exchange(settings, () => buildXtmOneHeaders(settings, db, identity), user.id, audience);
   };
+};
+
+/**
+ * The bearer OpenCTI is asked a member's scope with: the member's own (`readerAuthorization`), or
+ * the connector token once the tenant chose `service_account`, so every member reads what the
+ * connector reads.
+ */
+export const readerScopeAuthorization = (
+  db: DrizzleDB,
+  user: AuthUser | null | undefined,
+  threatVisibility: OpenctiThreatVisibility,
+): ReaderAuthorization => {
+  if (threatVisibility === 'service_account') {
+    return (_product, connection) => Promise.resolve(connection.token);
+  }
+  return readerAuthorization(db, user);
+};
+
+export const READER_LINKS = ['linked', 'not_linked', 'unknown'] as const;
+
+/**
+ * Whether OpenCTI can be asked as one of this platform's members: `not_linked` only when XTM One
+ * names OpenCTI's URL as no platform registered with it, so no member token can ever reach it;
+ * `unknown` for any other failure, which says nothing about how OpenCTI is wired.
+ */
+export const probeReaderLink = async (
+  authorization: ReaderAuthorization,
+  connection: ProductConnection,
+): Promise<typeof READER_LINKS[number]> => {
+  if (authorization.unsigned !== undefined) {
+    return 'unknown';
+  }
+  try {
+    return (await authorization('opencti', connection)) ? 'linked' : 'unknown';
+  } catch (err) {
+    return err instanceof ReaderTokenUnavailable && err.refusal === 'audience' ? 'not_linked' : 'unknown';
+  }
 };
 
 /** No reader to sign for XTM One: its lookup reaches nothing. */
