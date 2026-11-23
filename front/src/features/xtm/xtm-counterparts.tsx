@@ -1,9 +1,11 @@
 import type { TRPCRouter } from '@app/back/src/types/trpc-router';
-import { IconButton, Skeleton } from '@filigran/design-system';
+import { Button, Chip, IconButton, Skeleton } from '@filigran/design-system';
+import { Popover, PopoverContent, PopoverTrigger } from '@filigran/ui';
 import { t } from '@lingui/core/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
 import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import type { FunctionComponent, ReactElement, ReactNode } from 'react';
 import { TooltipHint, TooltipHintProvider } from '../../components/shared/tooltip-hint';
 import { useHasManageSecurity } from '../../hooks/utils/use-has-manage-security';
@@ -351,31 +353,175 @@ interface XtmPivotEmblemsProps {
   sourced?: Partial<Record<XtmProduct, XtmCounterpart>>,
 }
 
-/** Hero slot, first in the action row: one emblem per counterpart product, XTM One (assets), OpenCTI, OpenAEV, always drawn. */
+/** One section of the cross-product surface: a product and its state. */
+export interface XtmSurfaceSection {
+  product: CounterpartProduct,
+  state: XtmEmblemState,
+}
+
+/**
+ * The sections the surface shows, in the emblem order: found, not found and unavailable always; not
+ * connected only to a user who can connect the product (XTM One, deployment configuration, never);
+ * checking never (the slot fills once the answer is known).
+ */
+export const visibleSurfaceSections = (
+  sections: ReadonlyArray<XtmSurfaceSection>,
+  canConfigure: boolean,
+): Array<XtmSurfaceSection> => sections.filter(({ product, state }) => {
+  if (state.kind === 'checking') {
+    return false;
+  }
+  if (state.kind === 'not-connected') {
+    return canConfigure && product !== 'xtmone';
+  }
+  return true;
+});
+
+const SurfaceSection: FunctionComponent<XtmSurfaceSection & { kind: CounterpartKind }> = ({ product, state, kind }) => {
+  const name = productName(product);
+  const labels = FACT_LABELS();
+  let chip: ReactElement;
+  switch (state.kind) {
+    case 'found': chip = <Chip severity="info" label={t`Found`} />; break;
+    case 'not-found': chip = <Chip label={t`Not found`} />; break;
+    case 'unavailable': chip = <Chip severity="medium" label={t`Unavailable`} />; break;
+    default: chip = <Chip label={t`Not connected`} />;
+  }
+  return (
+    <section aria-label={name} data-testid={`xtm-section-${product}`} data-status={state.kind} className="flex flex-col gap-2">
+      <span className="flex items-center gap-2">
+        <ProductMark product={product} muted={state.kind !== 'found'} />
+        <span className="flex-1 font-semibold">{name}</span>
+        {chip}
+      </span>
+      {state.kind === 'found' && (
+        <>
+          {(state.counterpart.objectType || state.counterpart.objectName) && (
+            <span className="flex min-w-0 items-center gap-2">
+              {state.counterpart.objectType && <Chip label={state.counterpart.objectType} />}
+              {state.counterpart.objectName && <span className="truncate">{state.counterpart.objectName}</span>}
+            </span>
+          )}
+          {state.counterpart.facts.length > 0 && (
+            <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5">
+              {state.counterpart.facts.map((f) => (
+                <div key={f.key} className="contents">
+                  <dt className="text-default-secondary">{labels[f.key] ?? f.key}</dt>
+                  <dd className="m-0 font-semibold">{factValueLabel(f.key, f.value)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {safeCounterpartUrl(state.counterpart.objectUrl) && (
+            <span>
+              <Button asChild priority="secondary" size="sm">
+                <a href={safeCounterpartUrl(state.counterpart.objectUrl)} target="_blank" rel="noreferrer noopener">{openIn(product)}</a>
+              </Button>
+            </span>
+          )}
+        </>
+      )}
+      {state.kind === 'not-found' && <span className="text-default-secondary">{howItGetsThere(kind, product)}</span>}
+      {state.kind === 'unavailable' && <span className="text-default-secondary">{t`${name} could not be reached. Try again later.`}</span>}
+      {state.kind === 'not-connected' && (
+        <span>
+          <Button asChild priority="secondary" size="sm">
+            <Link
+              from="/$tenantId/{-$organizationId}"
+              to="/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug"
+              params={{ connectorSlug: product }}
+            >
+              {t`Connect ${name}`}
+            </Link>
+          </Button>
+        </span>
+      )}
+    </section>
+  );
+};
+
+/** A counterpart link is followed only when it is an http(s) address. */
+export const safeCounterpartUrl = (url: string | null | undefined): string | undefined => {
+  if (!url) {
+    return undefined;
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * The single XTM One emblem and its anchored surface, from the sections; tests drive every state
+ * through it. Purple when at least one product holds the object, grey otherwise; nothing to show
+ * draws no emblem.
+ */
+export const XtmSurface: FunctionComponent<{ kind: CounterpartKind, sections: ReadonlyArray<XtmSurfaceSection> }> = ({ kind, sections }) => {
+  const [open, setOpen] = useState(false);
+  if (sections.length === 0) {
+    return null;
+  }
+  const found = sections.filter((s) => s.state.kind === 'found').length;
+  const label = found > 0 ? t`Across the XTM Platform` : t`Not found across the XTM Platform`;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <TooltipHintProvider>
+        <TooltipHint hint={label}>
+          <PopoverTrigger asChild>
+            <IconButton
+              priority="secondary"
+              size="md"
+              aria-label={label}
+              data-testid="xtm-emblem"
+              data-found={found}
+              icon={<ProductMark product="xtmone" size={20} muted={found === 0} />}
+            />
+          </PopoverTrigger>
+        </TooltipHint>
+      </TooltipHintProvider>
+      <PopoverContent align="end" className="w-80 p-4" aria-label={t`Across the XTM Platform`} data-testid="xtm-surface">
+        <div className="flex flex-col gap-4">
+          <span className="flex items-center gap-2">
+            <ProductMark product="xtmone" muted={found === 0} />
+            <span className="font-semibold">{t`Across the XTM Platform`}</span>
+          </span>
+          {sections.map((section, index) => (
+            <div key={section.product} className={index > 0 ? 'flex flex-col gap-4 border-t pt-4' : 'flex flex-col gap-4'} data-testid={index > 0 ? 'xtm-surface-separated' : undefined}>
+              <SurfaceSection {...section} kind={kind} />
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+/**
+ * Hero slot, first in the action row: the single XTM One emblem (Sam, 23 Nov 2026; parity with
+ * OpenCTI-Platform/opencti#20153), its surface listing XTM One (assets), OpenCTI and OpenAEV. No
+ * feature flag in OpenCRQ: its authentication mechanism differs, and a sibling that does not answer
+ * (a 404 included) is shown unavailable or left out, never an error.
+ */
 export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind, objectKey, objectKeys, sourced }) => {
   const trpc = useTRPC();
   const connections = useXtmConnections();
+  const canManageSecurity = useHasManageSecurity();
   const { present, options } = lookupOptions([objectKey, ...(objectKeys ?? [])]);
   const lookup = useQuery(trpc.xtm.counterparts.queryOptions({ kind, keys: present }, options));
-  return (
-    <TooltipHintProvider>
-      {emblemProducts(kind).map((product) => (
-        <XtmEmblem
-          key={product}
-          product={product}
-          kind={kind}
-          state={xtmEmblemState(product, {
-            connected: connections.data?.find((c) => c.product === product)?.connected ?? (connections.data ? false : undefined),
-            connectionsFailed: connections.isError,
-            sourced: product === 'xtmone' ? undefined : sourced?.[product],
-            counterparts: lookup.data,
-            lookupFailed: lookup.isError,
-            hasKey: present.length > 0,
-          })}
-        />
-      ))}
-    </TooltipHintProvider>
-  );
+  const sections = emblemProducts(kind).map((product) => ({
+    product,
+    state: xtmEmblemState(product, {
+      connected: connections.data?.find((c) => c.product === product)?.connected ?? (connections.data ? false : undefined),
+      connectionsFailed: connections.isError,
+      sourced: product === 'xtmone' ? undefined : sourced?.[product],
+      counterparts: lookup.data,
+      lookupFailed: lookup.isError,
+      hasKey: present.length > 0,
+    }),
+  }));
+  return <XtmSurface kind={kind} sections={visibleSurfaceSections(sections, canManageSecurity)} />;
 };
 
 /** List row: a 16 px product mark per counterpart found, a link to it; nothing otherwise. */
