@@ -168,6 +168,11 @@ describe('project-sync workflow', () => {
     assert.equal(checkout.with.ref, '${{ github.event.repository.default_branch }}');
   });
 
+  it('reads only the code, with the workflow token', () => {
+    assert.deepEqual(workflow.permissions, {});
+    assert.deepEqual(job.permissions, { contents: 'read' });
+  });
+
   it('skips while the App is not configured', () => {
     assert.match(job.if, /vars\.PROJECT_SYNC_CLIENT_ID != ''/);
   });
