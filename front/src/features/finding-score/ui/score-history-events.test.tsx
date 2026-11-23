@@ -59,7 +59,7 @@ describe('ScoreHistoryEvents', () => {
     expect(screen.getByText('Band Medium → High.')).toBeTruthy();
   });
 
-  it('should draw the points on the design-system chip, outlined in standard colours and plain in pastel', async () => {
+  it('should draw the points on the design-system chip, in its own tone, one style', async () => {
     renderWith([
       { at: daysAgo(30), score: 61, band: 'medium' },
       { at: daysAgo(10), score: 72, band: 'medium' },
@@ -67,8 +67,7 @@ describe('ScoreHistoryEvents', () => {
 
     const chip = (await screen.findByText('+11 pts')).closest('[class*="border-feedback-"]');
     expect(chip?.className).toContain('border-feedback-error-tertiary');
-    expect(chip?.className).toContain('pastel:border-transparent');
-    expect(chip?.className).toContain('pastel:bg-feedback-error-secondary-transparency-30');
+    expect(chip?.className).not.toContain('pastel:');
     expect(chip?.className).not.toContain('bg-current/15');
   });
 

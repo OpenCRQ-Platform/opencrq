@@ -12068,11 +12068,6 @@
       "input": null
     },
     {
-      "path": "users.getUserPastelColours",
-      "type": "query",
-      "input": null
-    },
-    {
       "path": "users.getUserTheme",
       "type": "query",
       "input": null
@@ -12114,9 +12109,6 @@
               "dark",
               "system"
             ]
-          },
-          "pastelColours": {
-            "type": "boolean"
           },
           "homeDashboardId": {
             "anyOf": [

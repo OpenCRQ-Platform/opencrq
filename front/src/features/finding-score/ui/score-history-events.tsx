@@ -24,7 +24,7 @@ const KIND_TONE: Record<ScoreEventKind, string> = {
   held: 'text-muted-foreground',
 };
 
-/** The same reading as KIND_TONE, on the design-system chip: outlined in standard colours, plain in pastel. */
+/** The same reading as KIND_TONE, on the design-system chip: its fill and hairline in the tone's own colour. */
 const KIND_SEVERITY: Record<ScoreEventKind, ChipSeverity> = {
   rise: 'critical',
   fall: 'low',

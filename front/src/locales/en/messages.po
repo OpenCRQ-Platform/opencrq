@@ -9320,9 +9320,6 @@ msgstr "Past simulations keep the names of the threats they used. Enabling the c
 msgid "Past threats, assets and loss estimates are not kept, only postures are, so every day is priced on the latest simulation's model. The further that model is from the fiscal year's end, the less precise the curve."
 msgstr "Past threats, assets and loss estimates are not kept, only postures are, so every day is priced on the latest simulation's model. The further that model is from the fiscal year's end, the less precise the curve."
 
-msgid "Pastel colours"
-msgstr "Pastel colours"
-
 msgid "Patch leverage"
 msgstr "Patch leverage"
 
@@ -11455,12 +11452,6 @@ msgstr "SOAP or other HTTP service"
 
 msgid "SOAR"
 msgstr "SOAR"
-
-msgid "Softer tones"
-msgstr "Softer tones"
-
-msgid "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
-msgstr "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
 
 msgid "Software package"
 msgstr "Software package"
