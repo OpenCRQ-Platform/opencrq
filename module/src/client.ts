@@ -20,6 +20,13 @@ export {
   isStorableLinkRoleSet,
 } from './modules/asset-dependencies/link-roles';
 export type { CriterionInheritance, InheritedCriteria, SecurityCriterion, SupportToPrimaryLinkRole } from './modules/asset-dependencies/link-roles';
+export {
+  DEPENDENCY_RULE_NAME_MAX_LENGTH,
+  DEPENDENCY_RULE_NAME_PATTERN_KINDS,
+  DEPENDENCY_RULE_PATTERN_MAX_LENGTH,
+  DEPENDENCY_RULE_PREVIEW_LIMIT,
+} from './modules/asset-dependencies/rule-matching';
+export type { DependencyRuleNamePatternKind, SupportToPrimaryLinkSource } from './modules/asset-dependencies/rule-matching';
 export { CRITERION_GRADE_VALUES, IMPACT_HOP_FACTOR, wholePercent } from './modules/risk-scenarios/impact';
 export { SCENARIO_FINDING_SEVERITY_FILTERS, SCENARIO_FINDING_SORT_KEYS, SCENARIO_FINDING_STATE_FILTERS, SCENARIO_SUPPORTING_ASSET_SORT_KEYS } from './modules/risk-scenarios/scenario-lists';
 export type { ScenarioFindingSortKey, ScenarioSupportingAssetSortKey } from './modules/risk-scenarios/scenario-lists';

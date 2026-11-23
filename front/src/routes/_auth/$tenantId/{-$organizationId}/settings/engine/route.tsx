@@ -15,6 +15,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/settin
     const entries = [
       { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}/settings/engine', to: 'threat-relevance' }), label: t`Threat Relevance`, icon: <Icon name="radar" size={16} /> },
       { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}/settings/engine', to: 'crq-indicators' }), label: t`CRQ Indicators`, icon: <Icon name="chart-column" size={16} /> },
+      { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}/settings/engine', to: 'dependency-rules' }), label: t`Dependency Rules`, icon: <Icon name="link-2" size={16} /> },
     ];
     return (
       <div className="mr-[200px]">
