@@ -49,3 +49,17 @@ teaser that carries a "Connect" link. Stopgap: `keepOpenOnPress` on `TooltipHint
 (`front/src/components/shared/tooltip-hint.tsx`), used by `front/src/features/xtm/xtm-counterparts.tsx`.
 Ask: a `Popover` (trigger, content, open on hover, focus and press, dismiss on Escape and outside press)
 so the stopgap goes.
+
+## Chip (`@filigran/design-system@1.12.0`)
+
+- **Runtime variable outside the `--fds-` namespace.** A data-coloured `Chip` sets its label colour
+  inline as `--chip-data-ink-dark` and `--chip-data-ink-light`, while `Button` publishes
+  `--fds-button-color-ink`. A host that namespaces the design system tokens (OpenCRQ prefixes every
+  reference with `--fds-` in `front/scripts/generate-fds-css.ts`) reads an unset variable, and label
+  chips lose their edge and ink in standard colours. Stopgap: `--chip-data-ink-` in
+  `PRESERVED_NAMESPACES` of that script, guarded by `front/src/styles/fds.test.ts`. Ask: publish the
+  Chip variable under the `--fds-` namespace, like Button, so the stopgap goes.
+- **Usage contract out of date.** `usage-contracts/Chip.md` at 1.12.0 still says data colours are
+  filled and do not change under pastel, which contradicts the 1.12.0 CHANGELOG (standard colours:
+  inset edge and text in the label colour; pastel: the wash, default text, no edge). Ask: align the
+  contract with the CHANGELOG.
