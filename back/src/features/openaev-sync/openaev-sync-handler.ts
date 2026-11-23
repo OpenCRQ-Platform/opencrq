@@ -77,6 +77,20 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
   // uuid is well within tier 0). Accumulated for the whole run and unioned before every write.
   const tagIdsByAssetIdForRun = new Map<string, Set<string>>();
 
+  // Read once per run, on the first inventory that needs it: an OpenAEV with its MARKING preview
+  // feature off enforces no marking and shows every asset to everyone, so neither does OpenCRQ.
+  let markingFeature: Promise<boolean> | null = null;
+  const markingsActive = (): Promise<boolean> => {
+    markingFeature ??= client.readMarkingFeature().then((feature) => {
+      if (feature.active) {
+        return true;
+      }
+      logTrace('OpenAEV markings are off on this instance: assets are synced unmarked', { reason: feature.reason });
+      return false;
+    });
+    return markingFeature;
+  };
+
   /**
    * The whole-inventory pass for one OpenAEV tenant: its tag vocabulary, then every asset's generic
    * attributes, then its machine or AI target properties (with the description each detail call
@@ -113,15 +127,19 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
     logTrace('OpenAEV tag vocabulary upserted', { openaevTenantId, tags: sourceTags.length });
 
     // Before the inventory, so every asset's `asset_markings` reads as the STIX ids the tenant's
-    // clearance names (CTEM marking parity, G4).
-    await ctx.updateProgress({ message: `Syncing OpenAEV marking definitions for tenant ${openaevTenantId}` });
-    const markingStixIdByOpenaevId = await syncOpenaevMarkings({
-      listAssignableMarkingDefinitions: client.listAssignableMarkingDefinitions,
-      syncMarkingDefinitions: (markings) => systemServices.markingDefinitions.syncMarkingDefinitions(ctx.tenantId, markings),
-      warn: logWarn,
-      signal: ctx.signal,
-    }, openaevTenantId);
-    logTrace('OpenAEV marking definitions mirrored', { openaevTenantId, markings: markingStixIdByOpenaevId.size });
+    // clearance names (CTEM marking parity, G4). With OpenAEV's markings off, no marking is read
+    // and `null` maps every asset unmarked, which also clears the refs an earlier run wrote.
+    let markingStixIdByOpenaevId: Map<string, string> | null = null;
+    if (await markingsActive()) {
+      await ctx.updateProgress({ message: `Syncing OpenAEV marking definitions for tenant ${openaevTenantId}` });
+      markingStixIdByOpenaevId = await syncOpenaevMarkings({
+        listAssignableMarkingDefinitions: client.listAssignableMarkingDefinitions,
+        syncMarkingDefinitions: (markings) => systemServices.markingDefinitions.syncMarkingDefinitions(ctx.tenantId, markings),
+        warn: logWarn,
+        signal: ctx.signal,
+      }, openaevTenantId);
+      logTrace('OpenAEV marking definitions mirrored', { openaevTenantId, markings: markingStixIdByOpenaevId.size });
+    }
 
     if (ctx.signal.aborted) {
       return sourceAssetIdToSupportingAssetId;

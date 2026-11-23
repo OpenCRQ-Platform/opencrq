@@ -199,6 +199,17 @@ describe('assetToConnectorInput', () => {
   it('leaves lastSeenAt null for an asset reporting no agent at all', () => {
     expect(assetToConnectorInput(row(), 'connector-1', new Map()).input.lastSeenAt).toBeNull();
   });
+
+  it('carries no marking when OpenAEV\'s markings are off, whatever asset_markings holds', () => {
+    const { input } = assetToConnectorInput(row({ asset_markings: ['oa-marking-1'] }), 'connector-1', new Map(), null);
+    expect(input.markingRefs).toBeUndefined();
+  });
+
+  it('carries the asset\'s markings as STIX ids when OpenAEV\'s markings are on', () => {
+    const tlpRed = 'marking-definition--5e57c739-391a-4eb3-b6be-7d15ca92d5ed';
+    const { input } = assetToConnectorInput(row({ asset_markings: ['oa-marking-1'] }), 'connector-1', new Map(), new Map([['oa-marking-1', tlpRed]]));
+    expect(input.markingRefs).toEqual([tlpRed]);
+  });
 });
 
 describe('descriptionOf', () => {

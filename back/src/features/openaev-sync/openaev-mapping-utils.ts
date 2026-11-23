@@ -224,16 +224,18 @@ export const enrichmentRouteOf = (row: { asset_type?: string | null, asset_categ
  * → our tag id). Carries no `properties` block: the machine and AI-target property rows come from
  * their own detail calls (`endpointToMachineProperties`, `aiTargetToProperties`) and are merged in
  * by the caller. A tag OpenAEV reports that has no entry in the map yet (not seen by the tag sync
- * pass) is silently dropped rather than blocking the asset.
+ * pass) is silently dropped rather than blocking the asset. `markingStixIdByOpenaevId` is `null`
+ * when OpenAEV's markings are off: OpenAEV enforces none, so the asset carries none either, whatever
+ * `asset_markings` holds (a marking write is not feature-gated in OpenAEV).
  */
 export const assetToConnectorInput = (
   row: AssetInventoryRow,
   connectorId: string,
   tagIdBySourceTagId: ReadonlyMap<string, string>,
-  markingStixIdByOpenaevId: ReadonlyMap<string, string> = new Map(),
+  markingStixIdByOpenaevId: ReadonlyMap<string, string> | null = new Map(),
 ): { input: ConnectorAssetInput, tagIds: Array<string> } => {
   const { categoryId, subcategoryId } = resolveOpenaevCategory(row);
-  const markingRefs = openaevMarkingRefs(row.asset_markings, markingStixIdByOpenaevId);
+  const markingRefs = markingStixIdByOpenaevId === null ? [] : openaevMarkingRefs(row.asset_markings, markingStixIdByOpenaevId);
   return {
     input: {
       sourceAssetId: row.asset_id,

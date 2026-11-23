@@ -227,6 +227,7 @@ const {
   mockFindUsers,
   mockListTags,
   mockListAssignableMarkingDefinitions,
+  mockReadMarkingFeature,
   mockPaginateAll,
 } = vi.hoisted(() => {
   const listTenants = vi.fn().mockResolvedValue([{ tenant_id: 'oa-tenant-1', tenant_name: 'Tenant A' }]);
@@ -246,6 +247,7 @@ const {
   const findUsers = vi.fn().mockResolvedValue([]);
   const listTags = vi.fn().mockResolvedValue([]);
   const listAssignableMarkingDefinitions = vi.fn().mockResolvedValue({ available: true, markings: [] });
+  const readMarkingFeature = vi.fn().mockResolvedValue({ active: true });
 
   const paginateAll = vi.fn().mockImplementation(
     async <T>(fetchPage: (page: number) => Promise<{ content: Array<T>, last: boolean, totalElements: number }>) => {
@@ -264,6 +266,7 @@ const {
     mockFindUsers: findUsers,
     mockListTags: listTags,
     mockListAssignableMarkingDefinitions: listAssignableMarkingDefinitions,
+    mockReadMarkingFeature: readMarkingFeature,
     mockPaginateAll: paginateAll,
   };
 });
@@ -280,6 +283,7 @@ vi.mock('./openaev-api-client', async (importOriginal) => {
     findUsers: mockFindUsers,
     listTags: mockListTags,
     listAssignableMarkingDefinitions: mockListAssignableMarkingDefinitions,
+    readMarkingFeature: mockReadMarkingFeature,
   });
   return {
     OpenaevNotFoundError: actual.OpenaevNotFoundError,
@@ -342,6 +346,7 @@ describe('openaevSyncHandler', () => {
     mockFindUsers.mockResolvedValue([]);
     mockListTags.mockResolvedValue([]);
     mockListAssignableMarkingDefinitions.mockResolvedValue({ available: true, markings: [] });
+    mockReadMarkingFeature.mockResolvedValue({ active: true });
     mockSyncMarkingDefinitions.mockResolvedValue({ synced: 0, skipped: 0 });
     mockGetConnectorId.mockResolvedValue('connector-id-abc');
     inventorySyncedHoursAgo(null);
@@ -1068,6 +1073,38 @@ describe('openaevSyncHandler', () => {
       const inputs: Array<{ sourceAssetId: string, markingRefs?: Array<string> }> = mockBulkUpsertAssets.mock.calls[0][0];
       // Unresolved, the OpenAEV id stays as it is: no clearance names it, so the asset fails closed.
       expect(inputs.find((input) => input.sourceAssetId === 'asset-openaev-1')?.markingRefs).toEqual(['oa-marking-1']);
+    });
+
+    it('syncs every asset unmarked, reading no marking, when OpenAEV has its MARKING preview feature off', async () => {
+      mockReadMarkingFeature.mockResolvedValueOnce({ active: false, reason: 'the MARKING preview feature is off' });
+      mockSearchAssets.mockResolvedValueOnce({
+        content: [{ asset_id: 'asset-openaev-1', asset_name: 'srv-01', asset_category: 'host', asset_markings: ['oa-marking-1'] }],
+        last: true,
+        totalElements: 1,
+        number: 0,
+        size: 100,
+      });
+
+      await openaevSyncHandler(makeCtx());
+
+      expect(mockListAssignableMarkingDefinitions).not.toHaveBeenCalled();
+      expect(mockSyncMarkingDefinitions).not.toHaveBeenCalled();
+      const inputs: Array<{ sourceAssetId: string, markingRefs?: Array<string> }> = mockBulkUpsertAssets.mock.calls[0][0];
+      // No refs on the input: the source row is written with an empty `reported_marking_refs`, which
+      // clears the OpenAEV ids an earlier run on this instance wrote.
+      expect(inputs.find((input) => input.sourceAssetId === 'asset-openaev-1')?.markingRefs).toBeUndefined();
+    });
+
+    it('reads OpenAEV\'s marking feature once per run, whatever the number of OpenAEV tenants', async () => {
+      mockListTenants.mockResolvedValueOnce([
+        { tenant_id: 'oa-tenant-1', tenant_name: 'Tenant A' },
+        { tenant_id: 'oa-tenant-2', tenant_name: 'Tenant B' },
+      ]);
+
+      await openaevSyncHandler(makeCtx());
+
+      expect(mockReadMarkingFeature).toHaveBeenCalledTimes(1);
+      expect(mockListAssignableMarkingDefinitions).toHaveBeenCalledTimes(2);
     });
 
     // The tag links are keyed on the connector, and one connector spans every OpenAEV tenant of an
