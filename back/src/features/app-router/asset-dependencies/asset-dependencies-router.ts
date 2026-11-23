@@ -1,9 +1,16 @@
 import {
   ASSET_CATEGORY_VALUES,
   ASSET_CRITICALITY_VALUES,
+  ASSET_SUBCATEGORY_VALUES,
   DEPENDENCY_CANDIDATE_RELATIONS,
   DEPENDENCY_GRAPH_DEFAULT_DEPTH,
   DEPENDENCY_GRAPH_MAX_DEPTH,
+  DEPENDENCY_RULE_NAME_MAX_LENGTH,
+  DEPENDENCY_RULE_NAME_PATTERN_KINDS,
+  DEPENDENCY_RULE_PATTERN_MAX_LENGTH,
+  DEPENDENCY_RULE_PREVIEW_LIMIT,
+  DependencyRuleNotFoundError,
+  DependencyRuleRefusedError,
   INTEGRATION_SOURCES,
   isStorableLinkRoleSet,
   MAX_DEPENDENCY_LINKS_PER_WRITE,
@@ -11,6 +18,7 @@ import {
   PrimaryAssetNotFoundError,
   PrimaryToPrimaryLinkRefusedError,
   SUPPORT_TO_PRIMARY_LINK_ROLES,
+  SUPPORT_TO_PRIMARY_LINK_SOURCES,
 } from '@app/module';
 import { z } from 'zod';
 import type { TenantProcedure } from '../app-router-router';
@@ -38,10 +46,35 @@ const DEPENDENCY_CANDIDATE_ROW_SCHEMA = z.object({
 
 const LINK_ROLES_OUTPUT = z.array(z.enum(SUPPORT_TO_PRIMARY_LINK_ROLES));
 
+/** Where a link comes from: `rule` names the rule that wrote it, `manual` a person's link. */
+const LINK_PROVENANCE_OUTPUT = {
+  source: z.enum(SUPPORT_TO_PRIMARY_LINK_SOURCES),
+  ruleId: z.uuid().nullable(),
+  ruleName: z.string().nullable(),
+};
+
+const DEPENDENCY_RULE_CONDITIONS_INPUT = z.object({
+  categoryId: z.enum(ASSET_CATEGORY_VALUES).nullable(),
+  subcategoryId: z.enum(ASSET_SUBCATEGORY_VALUES).nullable(),
+  namePattern: z.string().trim().min(1).max(DEPENDENCY_RULE_PATTERN_MAX_LENGTH).nullable(),
+  namePatternKind: z.enum(DEPENDENCY_RULE_NAME_PATTERN_KINDS).nullable(),
+  tagId: z.uuid().nullable(),
+  source: z.enum(INTEGRATION_SOURCES).nullable(),
+}).refine((rule) => (rule.namePattern === null) === (rule.namePatternKind === null), 'A name pattern needs its kind, and a kind its pattern')
+  .refine((rule) => [rule.categoryId, rule.subcategoryId, rule.namePattern, rule.tagId, rule.source].some((value) => value !== null), 'A rule needs at least one condition');
+
+const DEPENDENCY_RULE_INPUT = z.object({
+  name: z.string().trim().min(1).max(DEPENDENCY_RULE_NAME_MAX_LENGTH),
+  primaryAssetId: z.uuid(),
+  roles: linkRolesSchema,
+  enabled: z.boolean(),
+});
+
 const SUPPORT_TO_PRIMARY_LINK_BY_SUPPORTING_ROW_SCHEMA = z.object({
   id: z.uuid(),
   primaryAssetId: z.uuid(),
   roles: LINK_ROLES_OUTPUT,
+  ...LINK_PROVENANCE_OUTPUT,
   primaryAssetName: z.string().nullable(),
   organizationName: z.string().nullable(),
 });
@@ -50,6 +83,7 @@ const SUPPORT_TO_PRIMARY_LINK_BY_PRIMARY_ROW_SCHEMA = z.object({
   id: z.uuid(),
   supportingAssetId: z.uuid(),
   roles: LINK_ROLES_OUTPUT,
+  ...LINK_PROVENANCE_OUTPUT,
   supportingAssetName: z.string().nullable(),
   supportingAssetDerivedName: z.string().nullable(),
   supportingAssetCategoryId: z.enum(ASSET_CATEGORY_VALUES).nullable(),
@@ -135,6 +169,29 @@ export const assetDependenciesRouter = (procedure: TenantProcedure) => router({
     .input(z.array(z.uuid()).max(MAX_DEPENDENCY_LINKS_PER_WRITE))
     .mutation(async ({ input, ctx: { services, origin } }) => services.withOrigin(origin)
       .assetDependencies.deleteSupportToPrimaryLinks(input)),
+
+  // eslint-disable-next-line app/no-unbounded-list-query -- grows with the rules an administrator writes by hand, a few dozen
+  listDependencyRules: procedure
+    .query(({ ctx: { services, origin } }) => services.withOrigin(origin).assetDependencies.listDependencyRules()),
+  previewDependencyRule: procedure
+    .input(DEPENDENCY_RULE_CONDITIONS_INPUT.and(z.object({
+      primaryAssetId: z.uuid(),
+      limit: z.number().int().min(1).max(DEPENDENCY_RULE_PREVIEW_LIMIT).default(DEPENDENCY_RULE_PREVIEW_LIMIT),
+    })))
+    .query(({ input: { limit, ...rule }, ctx: { services, origin } }) => withNotFoundOn(PrimaryAssetNotFoundError, () =>
+      withBadRequestOn(DependencyRuleRefusedError, () => services.withOrigin(origin).assetDependencies.previewDependencyRule(rule, limit)))),
+  createDependencyRule: procedure
+    .input(DEPENDENCY_RULE_CONDITIONS_INPUT.and(DEPENDENCY_RULE_INPUT).and(z.object({ id: z.uuid().optional() })))
+    .mutation(({ input, ctx: { services, origin } }) => withNotFoundOn(PrimaryAssetNotFoundError, () =>
+      withBadRequestOn(DependencyRuleRefusedError, () => services.withOrigin(origin).assetDependencies.createDependencyRule(input)))),
+  updateDependencyRule: procedure
+    .input(DEPENDENCY_RULE_CONDITIONS_INPUT.and(DEPENDENCY_RULE_INPUT).and(z.object({ id: z.uuid() })))
+    .mutation(({ input: { id, ...rule }, ctx: { services, origin } }) => withNotFoundOn(PrimaryAssetNotFoundError, () =>
+      withNotFoundOn(DependencyRuleNotFoundError, () =>
+        withBadRequestOn(DependencyRuleRefusedError, () => services.withOrigin(origin).assetDependencies.updateDependencyRule(id, rule))))),
+  deleteDependencyRules: procedure
+    .input(z.array(z.uuid()).max(MAX_DEPENDENCY_LINKS_PER_WRITE))
+    .mutation(({ input, ctx: { services, origin } }) => services.withOrigin(origin).assetDependencies.deleteDependencyRules(input)),
   // eslint-disable-next-line app/no-unbounded-list-query -- grows with the primary assets one supporting asset supports, created by hand
   getSupportToPrimaryLinksBySupportingAssetId: procedure
     .input(z.object({ supportingAssetId: z.uuid() }))

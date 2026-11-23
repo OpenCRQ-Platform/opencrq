@@ -16,6 +16,7 @@ import './features/cve-nist';
 import './features/drata-sync';
 import './features/filigran-telemetry';
 import './features/asset-criticality-lift';
+import './features/dependency-rules';
 import './features/primary-asset-reach';
 import './features/financial-estimates-recompute';
 import './features/finding-score';

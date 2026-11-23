@@ -201,7 +201,7 @@ export const assetDependenciesRepository = defineRepository({
   },
   /** False when the rule is gone or out of the caller's reach. */
   updateDependencyRule: async ({ db }, id: string, value: Omit<Partial<typeof dependencyRules.$inferInsert>, 'id' | 'tenantId'>) =>
-    (await db.update(dependencyRules).set({ ...value, updatedAt: new Date() }).where(eq(dependencyRules.id, id)).returning({ id: dependencyRules.id })).length > 0,
+    (await db.update(dependencyRules).set({ ...value, updatedAt: new Date() }).where(eq(dependencyRules.id, id)).returning()).length > 0,
   /** Its links cascade with it; the links a person took over are theirs and stay. */
   deleteDependencyRules: async ({ db }, ids: ReadonlyArray<string>) => {
     if (ids.length === 0) {

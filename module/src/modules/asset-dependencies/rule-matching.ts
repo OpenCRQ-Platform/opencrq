@@ -1,3 +1,6 @@
+import type { IntegrationSource } from '../integration-settings/constants';
+import type { AssetCategory, AssetSubcategory } from '../supporting-assets/constants';
+
 /**
  * How a dependency rule's name pattern reads: a glob (`*` any run of characters, `?` one) or a
  * POSIX regular expression as PostgreSQL evaluates it. Both match case-insensitively and the glob is
@@ -41,12 +44,12 @@ export const namePatternRegex = (pattern: string | null, kind: DependencyRuleNam
 };
 
 export interface DependencyRuleConditions {
-  categoryId: string | null,
-  subcategoryId: string | null,
+  categoryId: AssetCategory | null,
+  subcategoryId: AssetSubcategory | null,
   namePattern: string | null,
   namePatternKind: DependencyRuleNamePatternKind | null,
   tagId: string | null,
-  source: string | null,
+  source: IntegrationSource | null,
 }
 
 /** A rule matching every asset would link the whole estate: at least one condition is set. */
