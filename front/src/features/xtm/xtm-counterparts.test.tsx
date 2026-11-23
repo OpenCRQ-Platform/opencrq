@@ -1,11 +1,11 @@
 /** @vitest-environment jsdom */
 import { i18n } from '@lingui/core';
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { XtmCounterpart, XtmEmblemInput } from './xtm-counterparts';
-import { FAILED, NEVER, renderWithTrpc } from '../../providers/trpc-test-harness';
-import { emblemProducts, factValueLabel, howItGetsThere, XtmConnectTeaser, xtmEmblemState, XtmPivotEmblems, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
+import { FAILED, renderWithTrpc } from '../../providers/trpc-test-harness';
+import { emblemProducts, factValueLabel, howItGetsThere, safeCounterpartUrl, visibleSurfaceSections, XtmConnectTeaser, xtmEmblemState, XtmPivotEmblems, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
 
 const canConfigure = vi.fn<() => boolean>();
 vi.mock('../../hooks/utils/use-has-manage-security', () => ({ useHasManageSecurity: () => canConfigure() }));
@@ -45,45 +45,64 @@ const renderEmblems = (counterparts: unknown, connections: unknown = CONNECTED, 
   { answers: { 'xtm.connections': connections, 'xtm.counterparts': counterparts } },
 );
 
-describe('XtmPivotEmblems', () => {
-  it('draws one icon-only emblem per product, OpenCTI then OpenAEV, with no text', async () => {
+const openSurface = async () => {
+  const emblem = await screen.findByTestId('xtm-emblem');
+  fireEvent.click(emblem);
+  return { emblem, surface: await screen.findByTestId('xtm-surface') };
+};
+
+describe('XtmPivotEmblems (single XTM One emblem, parity with opencti #20153)', () => {
+  it('draws one icon-only emblem, purple when a product holds the object, with no text', async () => {
     const { container } = renderEmblems([MATCH]);
-    const found = await screen.findByRole('link', { name: 'Open in OpenCTI' });
-    expect(found.getAttribute('href')).toBe('https://opencti.example/dashboard/id/v1');
-    expect(found.getAttribute('target')).toBe('_blank');
-    const connect = screen.getByRole('link', { name: 'Connect OpenAEV' });
+    const emblem = await screen.findByRole('button', { name: 'Across the XTM Platform' });
     expect(container.textContent).toBe('');
-    expect(found.compareDocumentPosition(connect) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByTestId('xtm-emblem')).toHaveLength(1);
+    expect(emblem.querySelector('[data-testid="xtm-mark"]')?.className).toContain('text-filigran-ia-primary');
   });
 
-  it('greys a connected product that does not hold the object, still focusable and named', async () => {
+  it('opens an anchored surface: the found product with its open button, a Connect entry for a configurer', async () => {
+    renderEmblems([MATCH]);
+    const { surface } = await openSurface();
+    const opencti = within(surface).getByTestId('xtm-section-opencti');
+    expect(opencti.getAttribute('data-status')).toBe('found');
+    const open = within(opencti).getByRole('link', { name: 'Open in OpenCTI' });
+    expect(open.getAttribute('href')).toBe('https://opencti.example/dashboard/id/v1');
+    expect(open.getAttribute('target')).toBe('_blank');
+    const openaev = within(surface).getByTestId('xtm-section-openaev');
+    expect(openaev.getAttribute('data-status')).toBe('not-connected');
+    expect(within(openaev).getByRole('link', { name: 'Connect OpenAEV' })).toBeTruthy();
+    expect(opencti.compareDocumentPosition(openaev) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('greys the emblem when no product holds the object, and says how it gets there', async () => {
     renderEmblems([], BOTH);
-    const notFound = await screen.findByRole('button', { name: 'Not found in OpenCTI' });
-    expect(notFound.getAttribute('aria-disabled')).toBe('true');
-    expect(notFound.hasAttribute('disabled')).toBe(false);
-    expect(screen.getByRole('button', { name: 'Not found in OpenAEV' })).toBeTruthy();
+    const emblem = await screen.findByRole('button', { name: 'Not found across the XTM Platform' });
+    expect(emblem.querySelector('[data-testid="xtm-mark"]')?.className).toContain('text-icon-disabled');
+    const { surface } = await openSurface();
+    expect(within(surface).getByTestId('xtm-section-opencti').getAttribute('data-status')).toBe('not-found');
   });
 
-  it('gives a reader who cannot configure a disabled emblem for a product not connected', async () => {
+  it('leaves a product not connected out for a reader who cannot configure', async () => {
     canConfigure.mockReturnValue(false);
     renderEmblems([MATCH]);
-    const emblem = await screen.findByRole('button', { name: 'OpenAEV is not connected' });
-    expect(emblem.getAttribute('aria-disabled')).toBe('true');
-    expect(screen.queryByRole('link', { name: 'Connect OpenAEV' })).toBeNull();
+    const { surface } = await openSurface();
+    expect(within(surface).queryByTestId('xtm-section-openaev')).toBeNull();
+    expect(within(surface).queryByRole('link', { name: 'Connect OpenAEV' })).toBeNull();
+  });
+
+  it('draws nothing when there is nothing to show', async () => {
+    canConfigure.mockReturnValue(false);
+    const { container } = renderEmblems([], [{ product: 'opencti', connected: false, url: null }, { product: 'openaev', connected: false, url: null }]);
+    await waitFor(() => expect(container.querySelector('[data-testid="xtm-emblem"]')).toBeNull());
   });
 
   it('says a lookup that failed could not reach the product, never "not found"', async () => {
     renderEmblems(FAILED, BOTH);
-    expect(await screen.findByRole('button', { name: 'OpenCTI could not be reached' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Not found/ })).toBeNull();
+    const { surface } = await openSurface();
+    expect(within(surface).getByTestId('xtm-section-opencti').getAttribute('data-status')).toBe('unavailable');
   });
 
-  it('shows the emblems as checking while the lookup loads', async () => {
-    renderEmblems(NEVER, BOTH);
-    expect(await screen.findByRole('button', { name: 'Looking in OpenCTI…' })).toBeTruthy();
-  });
-
-  it('puts XTM One first on an asset, in the XTM One purple when its inventory holds it', async () => {
+  it('puts XTM One first on an asset, and never a connector link for XTM One', async () => {
     const xtmOne: XtmCounterpart = {
       key: 'web-01', product: 'xtmone', objectId: 'x1', objectType: 'asset', objectName: 'web-01', objectUrl: 'https://xtm-one.example/ctem/inventory/assets/x1',
       facts: [{ key: 'criticality', value: 'very_high' }, { key: 'category', value: 'generic_asset' }],
@@ -92,31 +111,41 @@ describe('XtmPivotEmblems', () => {
       <XtmPivotEmblems kind="ASSET" objectKey="web-01" />,
       { answers: { 'xtm.connections': [{ product: 'xtmone', connected: true, url: 'https://xtm-one.example' }, ...BOTH], 'xtm.counterparts': [xtmOne] } },
     );
-    const found = await screen.findByRole('link', { name: 'Open in XTM One' });
-    expect(found.getAttribute('href')).toBe(xtmOne.objectUrl);
-    expect(found.querySelector('[data-testid="xtm-mark"]')?.className).toContain('text-filigran-ia-primary');
-    const opencti = screen.getByRole('button', { name: 'Not found in OpenCTI' });
-    expect(found.compareDocumentPosition(opencti) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(opencti.querySelector('[data-testid="xtm-mark"]')?.className).toContain('text-icon-disabled');
+    const { surface } = await openSurface();
+    const sections = within(surface).getAllByRole('region');
+    expect(sections[0]?.getAttribute('data-testid')).toBe('xtm-section-xtmone');
+    expect(within(sections[0]).getByRole('link', { name: 'Open in XTM One' }).getAttribute('href')).toBe(xtmOne.objectUrl);
   });
 
-  it('draws no XTM One emblem outside assets, and never a connector link for XTM One', async () => {
-    renderEmblems([], [{ product: 'xtmone', connected: false, url: null }, ...BOTH]);
-    await screen.findByRole('button', { name: 'Not found in OpenCTI' });
-    expect(screen.queryByRole('button', { name: /XTM One/ })).toBeNull();
-    renderWithTrpc(
-      <XtmPivotEmblems kind="ASSET" objectKey="web-01" />,
-      { answers: { 'xtm.connections': [{ product: 'xtmone', connected: false, url: null }, ...BOTH], 'xtm.counterparts': [] } },
-    );
-    expect(await screen.findByRole('button', { name: 'XTM One is not connected' })).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Connect XTM One' })).toBeNull();
+  it('draws no XTM One section outside assets', async () => {
+    renderEmblems([], [{ product: 'xtmone', connected: true, url: 'https://xtm-one.example' }, ...BOTH]);
+    const { surface } = await openSurface();
+    expect(within(surface).queryByTestId('xtm-section-xtmone')).toBeNull();
   });
 
   it('finds a product the object came from by its source link, with no lookup hit needed', async () => {
     renderEmblems([], BOTH, 'ww-onedev-worker-001', { openaev: SOURCED });
-    const found = await screen.findByRole('link', { name: 'Open in OpenAEV' });
-    expect(found.getAttribute('href')).toBe(SOURCED.objectUrl);
-    expect(screen.queryByRole('button', { name: 'Not found in OpenAEV' })).toBeNull();
+    const { surface } = await openSurface();
+    expect(within(surface).getByRole('link', { name: 'Open in OpenAEV' }).getAttribute('href')).toBe(SOURCED.objectUrl);
+  });
+});
+
+describe('visibleSurfaceSections', () => {
+  it('hides checking, and not connected unless the user can connect it (never XTM One)', () => {
+    const sections = [
+      { product: 'xtmone' as const, state: { kind: 'not-connected' as const } },
+      { product: 'opencti' as const, state: { kind: 'checking' as const } },
+      { product: 'openaev' as const, state: { kind: 'not-connected' as const } },
+    ];
+    expect(visibleSurfaceSections(sections, true).map((s) => s.product)).toEqual(['openaev']);
+    expect(visibleSurfaceSections(sections, false)).toEqual([]);
+  });
+});
+
+describe('safeCounterpartUrl', () => {
+  it('never follows a non-http link', () => {
+    expect(safeCounterpartUrl('javascript:alert(1)')).toBeUndefined();
+    expect(safeCounterpartUrl('https://a.example/b')).toBe('https://a.example/b');
   });
 });
 

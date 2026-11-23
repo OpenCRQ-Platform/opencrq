@@ -1010,8 +1010,8 @@ msgstr "{name} (inactive)"
 msgid "{name} (this concerns you)"
 msgstr "{name} (this concerns you)"
 
-msgid "{name} could not be reached"
-msgstr "{name} could not be reached"
+msgid "{name} could not be reached. Try again later."
+msgstr "{name} could not be reached. Try again later."
 
 msgid "{name} depends on…"
 msgstr "{name} depends on…"
@@ -2088,6 +2088,9 @@ msgstr "Account enabled"
 
 msgid "Account name"
 msgstr "Account name"
+
+msgid "Across the XTM Platform"
+msgstr "Across the XTM Platform"
 
 msgid "Acting without identifiable reason or purpose."
 msgstr "Acting without identifiable reason or purpose."
@@ -5881,6 +5884,9 @@ msgstr "Follows the category's own winning source, dropped if a hand-set categor
 msgid "Forwards traffic between networks"
 msgstr "Forwards traffic between networks"
 
+msgid "Found"
+msgstr "Found"
+
 msgid "Four columns, each a split of the same total, so the ribbon widths add up at every stage. Select any node to open it. Beside each value sits one extra figure: an actor's V is the vulnerability conditional on that actor, an outcome shows how many scenarios feed it, and a technique shows the open technique findings recorded against it. The bar on a technique is its resistance: the share of attempts the current control set is expected to stop."
 msgstr "Four columns, each a split of the same total, so the ribbon widths add up at every stage. Select any node to open it. Beside each value sits one extra figure: an actor's V is the vulnerability conditional on that actor, an outcome shows how many scenarios feed it, and a technique shows the open technique findings recorded against it. The bar on a technique is its resistance: the share of attempts the current control set is expected to stop."
 
@@ -7092,9 +7098,6 @@ msgstr "Logs"
 
 msgid "Logs / monitors"
 msgstr "Logs / monitors"
-
-msgid "Looking in {name}…"
-msgstr "Looking in {name}…"
 
 msgid "Loss avoided"
 msgstr "Loss avoided"
@@ -8639,6 +8642,9 @@ msgstr "Not configured"
 msgid "Not configured in this deployment"
 msgstr "Not configured in this deployment"
 
+msgid "Not connected"
+msgstr "Not connected"
+
 msgid "Not contestable by the catalogue"
 msgstr "Not contestable by the catalogue"
 
@@ -8704,8 +8710,11 @@ msgstr "Not exposed"
 msgid "Not externally exposed"
 msgstr "Not externally exposed"
 
-msgid "Not found in {name}"
-msgstr "Not found in {name}"
+msgid "Not found"
+msgstr "Not found"
+
+msgid "Not found across the XTM Platform"
+msgstr "Not found across the XTM Platform"
 
 msgid "not inherited"
 msgstr "not inherited"
@@ -12488,9 +12497,6 @@ msgstr "The distance between the two figures is what the chosen gain is worth. A
 msgid "The effectiveness history could not be loaded."
 msgstr "The effectiveness history could not be loaded."
 
-msgid "The emblem turns active if {name} holds this object."
-msgstr "The emblem turns active if {name} holds this object."
-
 msgid "The engine prices {control} only on the techniques it covers."
 msgstr "The engine prices {control} only on the techniques it covers."
 
@@ -13728,9 +13734,6 @@ msgstr "Try again"
 
 msgid "Try again in a few minutes. If the problem persists, contact your administrator."
 msgstr "Try again in a few minutes. If the problem persists, contact your administrator."
-
-msgid "Try again later."
-msgstr "Try again later."
 
 msgid "TTP"
 msgstr "TTP"
