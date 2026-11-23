@@ -116,8 +116,9 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
     // clearance names (CTEM marking parity, G4).
     await ctx.updateProgress({ message: `Syncing OpenAEV marking definitions for tenant ${openaevTenantId}` });
     const markingStixIdByOpenaevId = await syncOpenaevMarkings({
-      searchMarkingDefinitions: client.searchMarkingDefinitions,
+      listAssignableMarkingDefinitions: client.listAssignableMarkingDefinitions,
       syncMarkingDefinitions: (markings) => systemServices.markingDefinitions.syncMarkingDefinitions(ctx.tenantId, markings),
+      warn: logWarn,
       signal: ctx.signal,
     }, openaevTenantId);
     logTrace('OpenAEV marking definitions mirrored', { openaevTenantId, markings: markingStixIdByOpenaevId.size });

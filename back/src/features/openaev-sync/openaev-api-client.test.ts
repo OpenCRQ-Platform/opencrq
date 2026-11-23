@@ -103,6 +103,55 @@ describe('createOpenaevClient — inventory calls', () => {
     expect(url).toBe('https://openaev.example.com/api/tenants/tenant-1/tags');
     expect(options?.method).toBe('GET');
   });
+
+  describe('listAssignableMarkingDefinitions', () => {
+    const tlpRed = {
+      marking_definition_id: 'oaev-1',
+      marking_definition_type: 'TLP',
+      marking_definition_definition: 'TLP:RED',
+      marking_definition_color: '#c62828',
+      marking_definition_order: 4,
+      marking_definition_stix_id: 'marking-definition--5e57c739-391a-4eb3-b6be-7d15ca92d5ed',
+    };
+
+    it('gets the unpaged /marking_definitions/assignable list, which needs no capability', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse([tlpRed]));
+
+      const vocabulary = await client().listAssignableMarkingDefinitions('tenant-1');
+
+      expect(vocabulary).toEqual({ available: true, markings: [tlpRed] });
+      const [url, options] = vi.mocked(fetch).mock.calls[0];
+      expect(url).toBe('https://openaev.example.com/api/tenants/tenant-1/marking_definitions/assignable');
+      expect(options?.method).toBe('GET');
+    });
+
+    it.each([
+      [403, 'Forbidden'],
+      [404, 'Not Found'],
+    ])('serves no vocabulary, without failing the sync, on a %i', async (status, body) => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response(body, { status }));
+
+      const vocabulary = await client().listAssignableMarkingDefinitions('tenant-1');
+
+      expect(vocabulary).toEqual({ available: false, reason: expect.stringContaining(`(${status})`) });
+    });
+
+    it('still fails as non-retryable on a 401: the token itself is refused', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
+
+      const failure = await client().listAssignableMarkingDefinitions('tenant-1').catch((err: unknown) => err);
+
+      expect(failure).toBeInstanceOf(NonRetryableError);
+    });
+  });
+
+  it('keeps a 403 on any other route non-retryable', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('Forbidden', { status: 403 }));
+
+    const failure = await client().listTags('tenant-1').catch((err: unknown) => err);
+
+    expect(failure).toBeInstanceOf(NonRetryableError);
+  });
 });
 
 describe('createOpenaevClient — snapshot calls', () => {

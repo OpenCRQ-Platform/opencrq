@@ -1,5 +1,6 @@
 import { NonRetryableError, TimeoutError } from '@app/module';
-import type { AiTargetAsset, AssetInventoryRow, AssetOverview, AttackObservation, AttackPathGraph, AttackPathSimulation, EndpointEntity, OpenaevAssetGroup, OpenaevMarkingDefinition, OpenaevTag, OpenaevUser, SnapshotPage, TenantOutput, VulnerabilityObservation } from './openaev-types';
+import type { OpenaevMarkingVocabulary } from './openaev-marking-phase';
+import type { AiTargetAsset, AssetInventoryRow, AssetOverview, AttackObservation, AttackPathGraph, AttackPathSimulation, EndpointEntity, OpenaevAssetGroup, OpenaevTag, OpenaevUser, SnapshotPage, TenantOutput, VulnerabilityObservation } from './openaev-types';
 import { fromError, newError, StructuredError } from '@app/utils';
 import {
   aiTargetAssetSchema,
@@ -31,6 +32,14 @@ export const SNAPSHOT_STATUS_MESSAGES: StatusMessages = {
   403: 'OpenAEV refused the snapshot request: the account lacks the ACCESS_SNAPSHOT_OBSERVATION capability',
   404: 'OpenAEV snapshot route not found: the BULK_SNAPSHOT_EXPORT preview feature is off on this OpenAEV instance',
 };
+
+/**
+ * Thrown for a 403: still non-retryable, so a route the sync cannot do without kills the job as
+ * before, while a caller that can do without the route (an optional vocabulary) tells it apart.
+ */
+export class OpenaevForbiddenError extends NonRetryableError {
+  override readonly name: string = 'OpenaevForbiddenError';
+}
 
 // Thrown for 404s so callers can skip a single missing resource (e.g. a deleted
 // asset) instead of the whole sync job being killed as non-retryable.
@@ -99,7 +108,11 @@ const fetchJson = async (url: string, options: RequestInit, signal: AbortSignal,
     const body = await res.text();
     throw new NonRetryableError(`${statusMessage} (${res.status}): ${body.slice(0, 200)}`);
   }
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 403) {
+    const body = await res.text();
+    throw new OpenaevForbiddenError(`OpenAEV auth error (${res.status}): ${body.slice(0, 200)}`);
+  }
+  if (res.status === 401) {
     const body = await res.text();
     throw new NonRetryableError(`OpenAEV auth error (${res.status}): ${body.slice(0, 200)}`);
   }
@@ -246,17 +259,19 @@ export const createOpenaevClient = (baseUrl: string, token: string, signal: Abor
     },
 
     /**
-     * One page of the tenant's marking definitions, each with the STIX id OpenCTI gives it when
-     * OpenAEV holds one. An OpenAEV that predates markings answers 404: an empty last page, so its
-     * assets carry no marking, as OpenAEV itself shows them.
+     * The tenant's marking definitions the account is cleared for, each with the STIX id OpenCTI
+     * gives it when OpenAEV holds one. `/assignable` needs no capability (OpenAEV narrows it to the
+     * caller's clearance), unlike `/search`, which needs ACCESS_MARKING_DEFINITION that no connector
+     * role holds. An OpenAEV without the route (404) or refusing it (403) serves no vocabulary: the
+     * sync goes on without one rather than dying on an optional read.
      */
-    searchMarkingDefinitions: async (tenantId: string, page: number): Promise<OpenaevPageResponse<OpenaevMarkingDefinition>> => {
+    listAssignableMarkingDefinitions: async (tenantId: string): Promise<OpenaevMarkingVocabulary> => {
       try {
-        const raw = await post(tenantPath(tenantId, '/marking_definitions/search'), { page, size: 100 });
-        return openaevPageSchema(openaevMarkingDefinitionSchema).parse(raw);
+        const raw = await get(tenantPath(tenantId, '/marking_definitions/assignable'));
+        return { available: true, markings: openaevMarkingDefinitionSchema.array().parse(raw) };
       } catch (err) {
-        if (err instanceof OpenaevNotFoundError) {
-          return { content: [], totalElements: 0, totalPages: 0, number: page, size: 100, last: true };
+        if (err instanceof OpenaevNotFoundError || err instanceof OpenaevForbiddenError) {
+          return { available: false, reason: err.message };
         }
         throw err;
       }
