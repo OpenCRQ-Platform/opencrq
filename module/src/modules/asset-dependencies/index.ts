@@ -26,4 +26,20 @@ export type { CriterionInheritance, InheritedCriteria, SecurityCriterion, Suppor
 export { PRIMARY_TO_PRIMARY_LINK_STRENGTHS, UNKNOWN_LINK_STRENGTH } from './link-strengths';
 export type { PrimaryToPrimaryLinkStrength } from './link-strengths';
 export { assetDependenciesRepository } from './repository';
-export { assetDependenciesService, PrimaryAssetNotFoundError, PrimaryToPrimaryLinkRefusedError } from './service';
+export {
+  DEPENDENCY_RULE_NAME_MAX_LENGTH,
+  DEPENDENCY_RULE_NAME_PATTERN_KINDS,
+  DEPENDENCY_RULE_PATTERN_MAX_LENGTH,
+  DEPENDENCY_RULE_PREVIEW_LIMIT,
+  SUPPORT_TO_PRIMARY_LINK_SOURCES,
+  globToRegex,
+} from './rule-matching';
+export type { DependencyRuleConditions, DependencyRuleNamePatternKind, SupportToPrimaryLinkSource } from './rule-matching';
+export {
+  assetDependenciesService,
+  DependencyRuleNotFoundError,
+  DependencyRuleRefusedError,
+  PrimaryAssetNotFoundError,
+  PrimaryToPrimaryLinkRefusedError,
+} from './service';
+export type { DependencyRuleInput } from './service';

@@ -43,6 +43,7 @@ export const recomputeEngineInputs = async (services: PlatformSeedServices, now:
   const derived = await derivation.controlCapabilities.rederiveAssessments();
   await derivation.controlValidation.measureTechniqueTestResults({ now, crossings: derived.crossings });
   await services.withOrigin(acmeJobOrigin('asset-criticality-lift-recompute')).supportingAssets.recomputeCriticalityLifts();
+  await services.withOrigin(acmeJobOrigin('dependency-rules-apply')).assetDependencies.applyDependencyRules();
   await services.withOrigin(acmeJobOrigin('primary-asset-reach-recompute')).assetDependencies.recomputePrimaryAssetReach();
   await services.withOrigin(acmeJobOrigin('threat-list-projection-recompute')).threatAnalyses.recomputeListProjections();
   await services.withOrigin(acmeJobOrigin('finding-score-recompute')).findingScore.recomputeFindingScores();
