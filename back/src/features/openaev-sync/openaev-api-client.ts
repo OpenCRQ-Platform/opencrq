@@ -1,7 +1,8 @@
 import { NonRetryableError, TimeoutError } from '@app/module';
-import type { OpenaevMarkingVocabulary } from './openaev-marking-phase';
+import type { OpenaevMarkingFeature, OpenaevMarkingVocabulary } from './openaev-marking-phase';
 import type { AiTargetAsset, AssetInventoryRow, AssetOverview, AttackObservation, AttackPathGraph, AttackPathSimulation, EndpointEntity, OpenaevAssetGroup, OpenaevTag, OpenaevUser, SnapshotPage, TenantOutput, VulnerabilityObservation } from './openaev-types';
 import { fromError, newError, StructuredError } from '@app/utils';
+import { openaevMarkingFeatureOf } from './openaev-marking-phase';
 import {
   aiTargetAssetSchema,
   assetInventoryRowSchema,
@@ -274,6 +275,21 @@ export const createOpenaevClient = (baseUrl: string, token: string, signal: Abor
           return { available: false, reason: err.message };
         }
         throw err;
+      }
+    },
+
+    /**
+     * Whether the instance enforces markings, from `GET /api/settings/public` (no capability, no
+     * tenant). An OpenAEV that predates the field or the route, or answers anything but a 2xx with
+     * JSON, counts as markings off: this read never fails the sync.
+     */
+    readMarkingFeature: async (): Promise<OpenaevMarkingFeature> => {
+      try {
+        const raw = await get('/api/settings/public');
+        const features = raw !== null && typeof raw === 'object' && 'enabled_dev_features' in raw ? raw.enabled_dev_features : undefined;
+        return openaevMarkingFeatureOf(features);
+      } catch (err) {
+        return { active: false, reason: `OpenAEV public settings unreadable: ${err instanceof Error ? err.message : String(err)}` };
       }
     },
 

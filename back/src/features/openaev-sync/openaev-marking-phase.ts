@@ -10,6 +10,27 @@ export type OpenaevMarkingVocabulary =
   | { readonly available: true, readonly markings: ReadonlyArray<OpenaevMarkingDefinition> }
   | { readonly available: false, readonly reason: string };
 
+/**
+ * Whether OpenAEV enforces markings: its `MARKING` preview feature is on (`enabled_dev_features`
+ * holds `MARKING`, or `*` for every preview feature). Off, OpenAEV filters nothing and shows every
+ * asset unmarked, even one that carries `asset_markings` (a marking write is not feature-gated).
+ */
+export type OpenaevMarkingFeature =
+  | { readonly active: true }
+  | { readonly active: false, readonly reason: string };
+
+/** The preview feature that turns markings on in OpenAEV (`PreviewFeature.MARKING`). */
+export const OPENAEV_MARKING_FEATURE = 'MARKING';
+
+/** Reads `enabled_dev_features` of `GET /api/settings/public`: anything but a list naming `MARKING` or `*` is off. */
+export const openaevMarkingFeatureOf = (enabledDevFeatures: unknown): OpenaevMarkingFeature => {
+  if (!Array.isArray(enabledDevFeatures)) {
+    return { active: false, reason: 'OpenAEV states no enabled_dev_features' };
+  }
+  const enabled = enabledDevFeatures.some((feature) => typeof feature === 'string' && (feature.trim().toUpperCase() === OPENAEV_MARKING_FEATURE || feature.trim() === '*'));
+  return enabled ? { active: true } : { active: false, reason: `the ${OPENAEV_MARKING_FEATURE} preview feature is off` };
+};
+
 /** What the marking phase reads from OpenAEV and writes to OpenCRQ, injected so it is tested without either. */
 export interface OpenaevMarkingPhaseDeps {
   readonly listAssignableMarkingDefinitions: (openaevTenantId: string) => Promise<OpenaevMarkingVocabulary>,

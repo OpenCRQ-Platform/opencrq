@@ -145,6 +145,47 @@ describe('createOpenaevClient — inventory calls', () => {
     });
   });
 
+  describe('readMarkingFeature', () => {
+    it.each([
+      [['MARKING'], true],
+      [['*'], true],
+      [['BULK_SNAPSHOT_EXPORT', 'marking'], true],
+      [['BULK_SNAPSHOT_EXPORT'], false],
+      [[], false],
+    ])('reads enabled_dev_features %j of the public settings as markings active: %s', async (features, active) => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ platform_lang: 'auto', enabled_dev_features: features }));
+
+      const feature = await client().readMarkingFeature();
+
+      expect(feature.active).toBe(active);
+      const [url, options] = vi.mocked(fetch).mock.calls[0];
+      expect(url).toBe('https://openaev.example.com/api/settings/public');
+      expect(options?.method).toBe('GET');
+    });
+
+    it('counts markings off when OpenAEV states no enabled_dev_features', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ platform_lang: 'auto' }));
+
+      expect(await client().readMarkingFeature()).toEqual({ active: false, reason: expect.any(String) });
+    });
+
+    it.each([
+      [404, 'Not Found'],
+      [500, 'Internal Server Error'],
+      [401, 'Unauthorized'],
+    ])('counts markings off, without failing the sync, on a %i', async (status, body) => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response(body, { status }));
+
+      expect(await client().readMarkingFeature()).toEqual({ active: false, reason: expect.stringContaining(`(${status})`) });
+    });
+
+    it('counts markings off when the settings are not JSON', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response('<html></html>', { status: 200 }));
+
+      expect((await client().readMarkingFeature()).active).toBe(false);
+    });
+  });
+
   it('keeps a 403 on any other route non-retryable', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response('Forbidden', { status: 403 }));
 
