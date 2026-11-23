@@ -10,7 +10,7 @@ This guide details the environment variables and configuration options for deplo
 
 ## Database (PostgreSQL)
 
-**Version.** PostgreSQL 17 is the reference version: the one the XTM bundle runs OpenCRQ beside XTM One on (`pgvector/pgvector`, PostgreSQL 17 with pgvector), and the one the development stack, the shipped Compose file and CI run. OpenCRQ uses no pgvector itself.
+**Version.** PostgreSQL 17 is the reference version: the one the XTM bundle runs OpenCRQ beside XTM One on (`pgvector/pgvector`, PostgreSQL 17 with pgvector), and the one the development stack and CI run. OpenCRQ uses no pgvector itself.
 
 | Variable             | Required | Default Value | Architectural/Functional Impact                                       |
 |:---------------------|:--------:|:--------------|:----------------------------------------------------------------------|
@@ -21,13 +21,13 @@ This guide details the environment variables and configuration options for deplo
 | `POSTGRES__DATABASE` |   Yes    | `opencrq`     | Name of the target database.                                          |
 | `POSTGRES__POOL_MAX` |    No    | `20`          | Maximum number of PostgreSQL connections in the shared pool of one application process. Increase on high-volume environments. What must stay under PostgreSQL's own `max_connections` is the sum over every process, and a process opens connections this pool does not count: a control pool of 5 on every process that runs jobs, reserved for the job runtime's own claims, lease renewals and log writes so they never queue behind a handler's reads, and one long-lived client per `LISTEN` channel the process subscribes to. |
 
-**Shared memory.** A parallel query passes tuples between its workers through `/dev/shm`, and an aggregate over a large asset estate exceeds the 64 MB a container gets by default: the query then fails outright with `could not resize shared memory segment`. Give the PostgreSQL service at least 1 GB (`shm_size: 1gb` in Compose, an `emptyDir` of `medium: Memory` sized to match on Kubernetes); the composes shipped here already do.
+**Shared memory.** A parallel query passes tuples between its workers through `/dev/shm`, and an aggregate over a large asset estate exceeds the 64 MB a container gets by default: the query then fails outright with `could not resize shared memory segment`. Give the PostgreSQL service at least 1 GB (`shm_size: 1gb` in Compose, an `emptyDir` of `medium: Memory` sized to match on Kubernetes); the development stack and the XTM Docker bundle already do.
 
 **Extensions.** The migrations create the `unaccent` extension. It is trusted, so the database owner can create it without superuser rights, but a managed service that allowlists extensions one by one refuses any it does not list, and the migration then fails at startup. On Azure Database for PostgreSQL Flexible Server, add it to the `azure.extensions` server parameter before the first start.
 
 ## File Storage (RustFS / S3-compatible)
 
-OpenCRQ stores uploaded files (e.g. imported bundles) in an S3-compatible object store. The reference deployment ships [RustFS](https://github.com/rustfs/rustfs), but any S3-compatible backend (MinIO, AWS S3, …) works. Files are scoped per tenant under the key `{tenantId}/{storageKey}`, where `storageKey` is a UUIDv7 generated per upload. The store is only contacted by the backend — there is no direct browser access.
+OpenCRQ stores uploaded files (e.g. imported bundles) in an S3-compatible object store. The development stack ships [RustFS](https://github.com/rustfs/rustfs) and the XTM Docker bundle Silo, but any S3-compatible backend (MinIO, AWS S3, …) works. Files are scoped per tenant under the key `{tenantId}/{storageKey}`, where `storageKey` is a UUIDv7 generated per upload. The store is only contacted by the backend — there is no direct browser access.
 
 File storage is **optional configuration**. Boot behavior depends on the `FILE_STORAGE__*` variables below:
 - **Unset entirely** — the app boots normally with the feature disabled: no upload/download routes are mounted, and the frontend hides the corresponding actions.
@@ -38,7 +38,7 @@ In **non-production**, the bucket is created automatically at startup if missing
 
 | Variable                    | Required (when enabling) | Default Value | Architectural/Functional Impact                                                                                    |
 |:----------------------------|:------------------------:|:--------------|:-------------------------------------------------------------------------------------------------------------------|
-| `FILE_STORAGE__ENDPOINT`   | **Yes**                  | -             | S3 API endpoint of the object store (e.g. `http://rustfs:9000` inside the Compose network). Enables the feature when set together with the access/secret key.  |
+| `FILE_STORAGE__ENDPOINT`   | **Yes**                  | -             | S3 API endpoint of the object store (e.g. `http://minio:9000` inside the XTM Docker bundle). Enables the feature when set together with the access/secret key.  |
 | `FILE_STORAGE__ACCESS_KEY` | **Yes**                  | -             | Access key for the object store. Pass through a secret store (Vault, K8s Secret, SOPS, CI secret).                 |
 | `FILE_STORAGE__SECRET_KEY` | **Yes**                  | -             | Secret key for the object store. Pass through a secret store — never a `ConfigMap` or committed JSON file.         |
 | `FILE_STORAGE__BUCKET`     |    No    | `opencrq`     | Bucket that holds all tenant files.                                                                                |
@@ -54,11 +54,11 @@ In **non-production**, the bucket is created automatically at startup if missing
 
 | Variable                               | Required | Default Value                      | Architectural/Functional Impact                                                            |
 |:---------------------------------------|:--------:|:-----------------------------------|:-------------------------------------------------------------------------------------------|
-| `HTTP_SERVER__PUBLIC_PORT`             |    No    | `3002` (Compose) / `3020` (Sample) | Port exposed on the host to access the application.                                        |
-| `HEALTHCHECK_HTTP_SERVER__PUBLIC_PORT` |    No    | `8444`                             | Port exposed on the host for healthchecks. Separates management traffic from user traffic. |
-| `HTTP_SERVER__HOST`                    |    -     | `0.0.0.0`                          | Defines the internal listening interface of the container.                                 |
-| `HTTP_SERVER__PORT`                    |    -     | `3002`                             | Internal listening port of the application.                                                |
-| `HEALTHCHECK_HTTP_SERVER__PORT`        |    -     | `8444`                             | Internal listening port for healthchecks.                                                  |
+| `HTTP_SERVER__PUBLIC_PORT`             |    No    | -                                  | Port the host publishes the application on, logged beside the internal one.                |
+| `HEALTHCHECK_HTTP_SERVER__PUBLIC_PORT` |    No    | -                                  | Port the host publishes the healthcheck on, logged beside the internal one.                |
+| `HTTP_SERVER__HOST`                    | **Yes**  | -                                  | Internal listening interface, `0.0.0.0` in a container.                                    |
+| `HTTP_SERVER__PORT`                    | **Yes**  | -                                  | Internal listening port of the application, `3002`, which the published image exposes.     |
+| `HEALTHCHECK_HTTP_SERVER__PORT`        | **Yes**  | -                                  | Internal listening port for healthchecks, `8444`, which the published image exposes.       |
 | `APP__ADMIN__TOKEN`                    |    No    | -                                  | Bootstrap admin token, a UUIDv4 (the counterpart of OpenCTI's `APP__ADMIN__TOKEN`). It authenticates the peer provisioning API below and is an admin bearer on the API (see [Admin token as a bearer](#admin-token-as-a-bearer)); unset, both are off. Pass through a secret store. |
 | `XTM__OPENCTI_URL`                     |    No    | -                                  | URL of the deployment's OpenCTI, where the product switcher sends a person. Unset: the URL of the tenant's OpenCTI connection, if any. |
 | `XTM__OPENAEV_URL`                     |    No    | -                                  | URL of the deployment's OpenAEV, for the product switcher. Unset: the URL of the tenant's OpenAEV connection, if any. |
@@ -130,7 +130,7 @@ See [Metrics](metrics.md) for the full contract of every family the Prometheus a
 | Variable                                              | Required | Default Value | Architectural/Functional Impact | OpenCTI equivalent |
 |:------------------------------------------------------|:--------:|:--------------|:--------------------------------|:-------------------|
 | `TELEMETRY__OBSERVABILITY__PYROSCOPE__ENABLED`        |    No    | `false`       | Enable or disable Pyroscope profiling. | `APP__TELEMETRY__PYROSCOPE__ENABLED` |
-| `TELEMETRY__OBSERVABILITY__PYROSCOPE__SERVER_ADDRESS` |    No    | -             | URL used by the App agent to send profiles. **Required** when Pyroscope is enabled (e.g. `http://pyroscope:4040` in the dev/prod Compose files). | `APP__TELEMETRY__PYROSCOPE__EXPORTER` |
+| `TELEMETRY__OBSERVABILITY__PYROSCOPE__SERVER_ADDRESS` |    No    | -             | URL used by the App agent to send profiles. **Required** when Pyroscope is enabled (e.g. `http://pyroscope:4040` in the development Compose file). | `APP__TELEMETRY__PYROSCOPE__EXPORTER` |
 
 ## Jobs (background runtime)
 

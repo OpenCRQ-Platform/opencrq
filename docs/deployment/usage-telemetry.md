@@ -11,7 +11,7 @@ OpenCRQ collects **anonymous usage statistics** to help Filigran understand flee
 
 ## How to disable telemetry
 
-Set `TELEMETRY__USAGE__ENABLED=false` on the platform and restart it. With the shipped Docker Compose, put it in your `.env`, which `docker/compose.yml` passes to the platform. The platform then makes no connection to the collector at all: no startup check, no export. The startup log says `Anonymous usage telemetry is disabled by TELEMETRY__USAGE__ENABLED=false, nothing is sent`.
+Set `TELEMETRY__USAGE__ENABLED=false` on the platform and restart it. In the XTM Docker bundle, add it to the `environment` of the `opencrq` service, in a `docker-compose.override.yml` that an update of the bundle leaves alone. The platform then makes no connection to the collector at all: no startup check, no export. The startup log says `Anonymous usage telemetry is disabled by TELEMETRY__USAGE__ENABLED=false, nothing is sent`.
 
 Blocking outbound access to the collector and restarting has the same effect. Air-gapped platforms never send telemetry.
 

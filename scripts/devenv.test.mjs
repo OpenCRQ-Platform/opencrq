@@ -385,18 +385,13 @@ describe('PostgreSQL image pins', () => {
   it('names the database volumes after the major version the images run, mounted where that image expects them', () => {
     assert.ok(major, 'infra/local/compose.yml pins its image in the x-postgres-image anchor');
     const mount = `${postgresVolume(major)}:${postgresMountPath(major)}`;
-    const why = {
-      'infra/local/compose.yml': 'another major is another volume, which devenv.mjs moves the databases into',
-      'docker/compose.yml': `another major is another volume, which a self-hosted install starts empty: this change is breaking, and "Upgrade from PostgreSQL" in docs/deployment/docker.md needs the steps from the former major to ${major}`,
-    };
-    for (const [file, reason] of Object.entries(why)) {
-      assert.ok(text(file).includes(`- ${mount}\n`), `${file} mounts ${mount}: ${reason}`);
-      assert.match(text(file), new RegExp(`^volumes:\\n(  \\S+:\\n)*  ${postgresVolume(major)}:$`, 'm'), `${file} declares ${postgresVolume(major)}`);
-    }
+    const file = 'infra/local/compose.yml';
+    assert.ok(text(file).includes(`- ${mount}\n`), `${file} mounts ${mount}: another major is another volume, which devenv.mjs moves the databases into`);
+    assert.match(text(file), new RegExp(`^volumes:\\n(  \\S+:\\n)*  ${postgresVolume(major)}:$`, 'm'), `${file} declares ${postgresVolume(major)}`);
   });
 
   it('runs one image everywhere', () => {
-    for (const file of ['infra/local/compose.yml', 'docker/compose.yml', '.github/workflows/ci-test-app.yml', '.github/workflows/ci-docker-build.yml']) {
+    for (const file of ['infra/local/compose.yml', '.github/workflows/ci-test-app.yml', '.github/workflows/ci-docker-build.yml']) {
       assert.deepEqual([...new Set(text(file).match(/pgvector\/pgvector:\S+/g))], [image], file);
     }
   });

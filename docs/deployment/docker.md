@@ -1,92 +1,105 @@
-# 🐋 Docker Configuration
+# 🐋 Docker Deployment
 
-This guide explains how to use the Docker configuration located in the `docker/` directory to build and run OpenCRQ (Backend + Frontend) in a production-like environment.
+OpenCRQ is deployed with Docker through the [XTM Docker bundle](https://github.com/FiligranHQ/xtm-docker),
+as OpenCTI and OpenAEV are: it runs OpenCRQ beside XTM One, OpenCTI and OpenAEV, on the bundle's shared
+PostgreSQL and object storage, registered with XTM One and connected to OpenCTI and OpenAEV. Follow its
+[README](https://github.com/FiligranHQ/xtm-docker#readme), or the [Quick Start Guide](../quick-start.md)
+for a first sign-in.
 
-## Prerequisites
+## Attach OpenCRQ to an XTM One that already runs
 
-- [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/getting-started/installation)
-- [Docker Compose](https://docs.docker.com/compose/install/) or `podman compose`
+The rest of this page is for an OpenCRQ run next to an XTM One the bundle does not start with it: one
+on another host, or a bundle deployed before OpenCRQ joined it.
 
-## Configuration
+### Image
 
-1. Navigate to the docker directory:
-   ```bash
-   cd docker
-   ```
+The image is [`filigran/opencrq`](https://hub.docker.com/r/filigran/opencrq) on Docker Hub, built for
+`linux/amd64` and `linux/arm64`: a pull takes the host's own.
 
-2. Copy the sample environment file:
-   ```bash
-   cp .env.sample .env
-   ```
+| Tag         | What it holds                                         |
+|:------------|:------------------------------------------------------|
+| `latest`    | The highest release.                                  |
+| `<version>` | That release, e.g. `0.261123.0`. Pin one in production. |
+| `rolling`   | The tip of `main`, unreleased.                        |
 
-3. Edit `.env` to configure your environment. See [Configuration Guide](configuration.md) for details. `XTM_ONE__URL`, `XTM_ONE__TOKEN` and `XTM_ONE__PLATFORM_URL` are required: the platform refuses to start without them (see [XTM One](configuration.md#xtm-one-ai-assistant)).
+### What it needs
 
-## Usage
+- **A PostgreSQL 17 database** it owns. A role that owns the database is enough, no superuser: the
+  application applies its migrations itself at every boot. See [Database](configuration.md#database-postgresql).
+- **An S3-compatible bucket**, created beforehand: in production the application does not create it
+  and stops at boot while it is missing. See [File Storage](configuration.md#file-storage-rustfs--s3-compatible).
+- **XTM One**, reachable from the container, with the same `PLATFORM_REGISTRATION_TOKEN`, a token of
+  your own rather than XTM One's published default. When XTM One's containers cannot reach OpenCRQ on
+  `XTM_ONE__PLATFORM_URL`, set `OPENCRQ_API_URL` on the XTM One side to an address they can. See
+  [XTM One](configuration.md#xtm-one-ai-assistant).
+- **HTTPS**: XTM One refuses a sign-in callback on any other scheme than HTTPS, a loopback address
+  aside, and browsers keep OpenCRQ's `Secure` session cookie over plain HTTP on `localhost` only, so
+  `XTM_ONE__PLATFORM_URL` is the HTTPS address OpenCRQ is published on.
 
-### Start the application
+### Variables
 
-Build and start the containers:
+| Variable                          | Value                                                                 |
+|:----------------------------------|:----------------------------------------------------------------------|
+| `HTTP_SERVER__HOST`               | `0.0.0.0`                                                             |
+| `HTTP_SERVER__PORT`               | `3002`                                                                |
+| `HEALTHCHECK_HTTP_SERVER__PORT`   | `8444`                                                                |
+| `POSTGRES__HOST`, `POSTGRES__PORT`, `POSTGRES__USER`, `POSTGRES__PASSWORD`, `POSTGRES__DATABASE` | The database above. |
+| `FILE_STORAGE__ENDPOINT`, `FILE_STORAGE__ACCESS_KEY`, `FILE_STORAGE__SECRET_KEY`, `FILE_STORAGE__BUCKET` | The bucket above; `FILE_STORAGE__REGION` too when the store checks it. |
+| `XTM_ONE__URL`                    | The address OpenCRQ reaches XTM One on, internal or public.            |
+| `XTM_ONE__TOKEN`                  | XTM One's `PLATFORM_REGISTRATION_TOKEN`.                               |
+| `XTM_ONE__PLATFORM_URL`           | OpenCRQ's public base URL.                                            |
+| `INITIAL_TENANT__ID`, `INITIAL_TENANT__NAME` | The tenant OpenCRQ creates at its first start: see [Initial tenant](configuration.md#initial-tenant). |
+| `CONNECTORS__<NAME>__<tenant-uuid>__<FIELD>` | Per tenant: see [Connectors](configuration.md#connectors). |
+| `APP__ADMIN__TOKEN`               | Optional: the UUIDv4 a sibling product (OpenAEV, OpenCTI) calls OpenCRQ's API with. See [Admin token as a bearer](configuration.md#admin-token-as-a-bearer). |
+| `XTM__OPENCTI_URL`, `XTM__OPENAEV_URL` | Optional: where the product switcher sends a person. See [Application](configuration.md#application-backendfrontend). |
 
-**Using Docker:**
-```bash
-docker compose up --build --pull always -d
-```
+The application refuses to start while one of the three `XTM_ONE__*` is missing. Every other setting
+is in the [Configuration Guide](configuration.md).
 
-**Using Podman:**
-```bash
-podman compose up --build --pull=always -d
-```
+The initial tenant's id is known before the first start, `INITIAL_TENANT__ID` or its default, so
+its connectors (OpenCTI, OpenAEV, Microsoft Graph, Drata, an NVD API key) can be set from the
+start. Choose `INITIAL_TENANT__NAME` before that start too: in Community Edition this tenant is the
+only one. A tenant created later in Platform › Tenants gets its connector variables afterwards, and
+the container restarted to read them.
 
-The application will be available at `http://localhost:<HTTP_SERVER__PUBLIC_PORT>` (`3020` in the shipped `.env.sample`; Compose only falls back to `3002` if the variable is left unset).
+### Ports
 
-### Upgrade from PostgreSQL 16
+| Port   | Serves                                                                        |
+|:-------|:------------------------------------------------------------------------------|
+| `3002` | The application and its API, to publish behind the HTTPS address above.       |
+| `8444` | The healthcheck: `200` while every process of the application runs, `503` otherwise, on any path. Keep it off the public network. |
 
-The database runs PostgreSQL 17 (`pgvector/pgvector`, the XTM bundle's image), in the `postgres17_data` volume. An installation created when this file ran PostgreSQL 16 keeps its data in `postgres_data`, which PostgreSQL 17 cannot open, so the first `up` of this version starts on an empty database. Move the data before that `up`, from the `docker` directory:
+### Example
 
-```bash
-set -a; . ./.env; set +a
-docker compose down
+A Compose service, to adapt to the PostgreSQL, object storage and XTM One already running:
 
-# Dump the roles and every database from a PostgreSQL 16 server started on the former volume.
-docker run -d --name opencrq-pg16 -v opengrc-prod_postgres_data:/var/lib/postgresql/data postgres:16-alpine
-until docker exec opencrq-pg16 pg_isready -U "$POSTGRES__USER"; do sleep 1; done
-docker exec opencrq-pg16 pg_dumpall -U "$POSTGRES__USER" > opencrq-pg16.sql
-docker rm -f opencrq-pg16
-
-# Start PostgreSQL 17 alone and load the dump.
-docker compose up -d postgres
-until docker compose exec postgres pg_isready -h localhost -U "$POSTGRES__USER"; do sleep 1; done
-docker compose exec -T postgres psql -U "$POSTGRES__USER" -d postgres < opencrq-pg16.sql
-
-docker compose up -d
-```
-
-The load reports that the role and the database named after `POSTGRES__USER` already exist: the new server created them, and the dump fills that database. With Podman, write `podman` for `docker` and `podman compose` for `docker compose`.
-
-If the first `up` of this version already ran, the application set up a new platform in the empty database. Remove it with `docker compose down` and `docker volume rm opencrq-prod_postgres17_data` before the steps above.
-
-`postgres_data` is left as it was. Once the application shows its data again, `docker volume rm opengrc-prod_postgres_data` reclaims it.
-
-### Stop the application
-
-**Using Docker:**
-```bash
-docker compose down
-```
-
-**Using Podman:**
-```bash
-podman compose down
-```
-
-### View logs
-
-**Using Docker:**
-```bash
-docker compose logs -f
-```
-
-**Using Podman:**
-```bash
-podman compose logs -f
+```yaml
+services:
+  opencrq:
+    image: filigran/opencrq:<version>
+    restart: always
+    environment:
+      HTTP_SERVER__HOST: 0.0.0.0
+      HTTP_SERVER__PORT: 3002
+      HEALTHCHECK_HTTP_SERVER__PORT: 8444
+      POSTGRES__HOST: pgsql
+      POSTGRES__PORT: 5432
+      POSTGRES__USER: opencrq
+      POSTGRES__PASSWORD: ${OPENCRQ_POSTGRES_PASSWORD}
+      POSTGRES__DATABASE: opencrq
+      FILE_STORAGE__ENDPOINT: http://minio:9000
+      FILE_STORAGE__ACCESS_KEY: ${OPENCRQ_S3_ACCESS_KEY}
+      FILE_STORAGE__SECRET_KEY: ${OPENCRQ_S3_SECRET_KEY}
+      FILE_STORAGE__BUCKET: opencrq
+      XTM_ONE__URL: http://xtm-one:4000
+      XTM_ONE__TOKEN: ${PLATFORM_REGISTRATION_TOKEN}
+      XTM_ONE__PLATFORM_URL: https://opencrq.mycompany.com
+    ports:
+      - "3002:3002"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8444/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
 ```

@@ -40,6 +40,7 @@
 - doc: docs/deployment/docker.md
   watches:
     - docker/**
+    - back/src/config-schema.ts
 
 - doc: docs/deployment/metrics.md
   watches:
