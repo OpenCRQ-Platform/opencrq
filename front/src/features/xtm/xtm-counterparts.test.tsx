@@ -4,7 +4,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { XtmCounterpart, XtmEmblemInput } from './xtm-counterparts';
-import { FAILED, NEVER, renderWithTrpc } from '../../providers/trpc-test-harness';
+import { FAILED, renderWithTrpc } from '../../providers/trpc-test-harness';
 import { emblemProducts, factValueLabel, howItGetsThere, safeCounterpartUrl, visibleSurfaceSections, XtmConnectTeaser, xtmEmblemState, XtmPivotEmblems, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
 
 const canConfigure = vi.fn<() => boolean>();

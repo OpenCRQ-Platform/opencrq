@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { i18n } from '@lingui/core';
 import { focusManager } from '@tanstack/react-query';
-import { act, cleanup, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ThreatAnalysisDetailData } from './threat-detail-tabs';
 import { messages as frenchMessages } from '../../../locales/fr/messages.po';
@@ -99,13 +99,16 @@ describe('ThreatHero', () => {
     expect(screen.queryByText('85%')).toBeNull();
   });
 
-  it('opens a connector threat in OpenCTI from an icon-only emblem and offers no delete menu', () => {
+  it('opens a connector threat in OpenCTI from the single icon-only XTM One emblem and offers no delete menu', async () => {
     renderHero(detail({ kind: 'connector' }));
 
-    const link = screen.getByRole('link', { name: 'Open in OpenCTI' });
-    expect(link.getAttribute('href')).toBe(`https://opencti.example.com/dashboard/id/${STIX_ID}`);
-    expect(link.textContent).toBe('');
+    const emblem = await screen.findByTestId('xtm-emblem');
+    expect(emblem.textContent).toBe('');
     expect(screen.queryByRole('button', { name: 'Threat actions' })).toBeNull();
+    fireEvent.click(emblem);
+    const surface = await screen.findByTestId('xtm-surface');
+    const link = within(surface).getByRole('link', { name: 'Open in OpenCTI' });
+    expect(link.getAttribute('href')).toBe(`https://opencti.example.com/dashboard/id/${STIX_ID}`);
   });
 
   it('gives a STIX import the delete menu and no active OpenCTI emblem', () => {
