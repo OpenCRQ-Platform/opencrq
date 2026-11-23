@@ -22,6 +22,7 @@ export const JOB_CATALOGUE_KINDS = [
   'opencti-mirror-rebuild',
   'financial-estimates-recompute',
   'asset-criticality-lift-recompute',
+  'dependency-rules-apply',
   'primary-asset-reach-recompute',
   'attack-outcome-mixture-recompute',
   'jobs-retention',
@@ -69,6 +70,8 @@ export const JOB_CATALOGUE: Readonly<Record<JobCatalogueKind, JobCatalogueEntry>
   'opencti-mirror-rebuild': { kind: 'opencti-mirror-rebuild', observed: true, daily: false, serialized: false },
   'financial-estimates-recompute': { kind: 'financial-estimates-recompute', observed: true, daily: false, serialized: false },
   'asset-criticality-lift-recompute': { kind: 'asset-criticality-lift-recompute', observed: true, daily: false, serialized: false },
+  // Woken by the inventory a sync writes and by the rules themselves: what it links, the reach reads.
+  'dependency-rules-apply': { kind: 'dependency-rules-apply', observed: true, daily: false, serialized: false },
   'primary-asset-reach-recompute': { kind: 'primary-asset-reach-recompute', observed: true, daily: false, serialized: false },
   'attack-outcome-mixture-recompute': { kind: 'attack-outcome-mixture-recompute', observed: true, daily: true, serialized: false },
   // Works on the clock alone: nothing it reads should wake it, so it is not observed, and what it
