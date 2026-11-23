@@ -1,12 +1,21 @@
 /** The settings pane at a 1080 px screen, where the tags table must not scroll sideways. */
 export const TAGS_TABLE_PANE_WIDTH_AT_1080 = 652;
 
-/** Horizontal padding of a header or body cell of the DS table (16 px left, 8 px right). */
-export const TABLE_CELL_PADDING = 24;
+/**
+ * Horizontal padding of a body cell of the DS table (16 px left, 16 px right), measured in the lab.
+ * A header cell is padded 16/8 (24): the chip is sized from the body padding, which is the larger.
+ */
+export const TABLE_BODY_CELL_PADDING = 32;
 
-/** The widest a tag chip of the Name column gets before its label truncates (DS Chip tooltip). */
-export const TAG_NAME_CHIP_MAX_WIDTH = 108;
-export const TAG_NAME_CHIP_CLASS = 'max-w-[108px]';
+/** The Name column of the tags table. */
+export const TAG_NAME_COLUMN_WIDTH = 132;
+
+/**
+ * The widest a tag chip of the Name column gets before its label truncates (DS Chip tooltip): the
+ * column minus the body cell padding, so the cell never overflows and paints its own ellipsis.
+ */
+export const TAG_NAME_CHIP_MAX_WIDTH = TAG_NAME_COLUMN_WIDTH - TABLE_BODY_CELL_PADDING;
+export const TAG_NAME_CHIP_CLASS = 'max-w-[100px]';
 
 /**
  * The min-content each header needs, measured in the lab at 1080 (label, the header's options
@@ -25,7 +34,7 @@ export const TAG_HEADER_MIN_WIDTHS = {
  * every header at its min-content and add up to the pane at 1080.
  */
 export const TAG_COLUMN_SIZES = {
-  name: TAG_NAME_CHIP_MAX_WIDTH + TABLE_CELL_PADDING,
+  name: TAG_NAME_COLUMN_WIDTH,
   connectorNames: TAG_HEADER_MIN_WIDTHS.connectorNames,
   sources: 104,
   mergedTags: TAG_HEADER_MIN_WIDTHS.mergedTags,

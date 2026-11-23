@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  TABLE_CELL_PADDING,
+  TABLE_BODY_CELL_PADDING,
   TAG_COLUMN_SIZES,
   TAG_HEADER_MIN_WIDTHS,
+  TAG_NAME_CHIP_CLASS,
   TAG_NAME_CHIP_MAX_WIDTH,
   TAGS_TABLE_PANE_WIDTH_AT_1080,
 } from './tags-table-columns';
@@ -19,7 +20,11 @@ describe('tags table column widths', () => {
     expect(TAG_COLUMN_SIZES.assetCount).toBeGreaterThanOrEqual(TAG_HEADER_MIN_WIDTHS.assetCount);
   });
 
-  it('should fit the widest tag chip and the cell padding in the Name column', () => {
-    expect(TAG_COLUMN_SIZES.name).toBeGreaterThanOrEqual(TAG_NAME_CHIP_MAX_WIDTH + TABLE_CELL_PADDING);
+  it('should fit the widest tag chip and the body cell padding in the Name column, so the cell never overflows', () => {
+    expect(TAG_NAME_CHIP_MAX_WIDTH + TABLE_BODY_CELL_PADDING).toBeLessThanOrEqual(TAG_COLUMN_SIZES.name);
+  });
+
+  it('should cap the chip with a class that matches its max width', () => {
+    expect(TAG_NAME_CHIP_CLASS).toBe(`max-w-[${TAG_NAME_CHIP_MAX_WIDTH}px]`);
   });
 });
