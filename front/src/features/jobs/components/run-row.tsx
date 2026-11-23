@@ -12,14 +12,26 @@ import { RUN_PROGRESS_TONE, RUN_STATUS_SEVERITY, runStatusLabel, runUnitLabels }
 import { runDisplayName, runProgressPercent, runPulse, runRetryWait } from '../run-utils';
 import { runTimings } from '../run-timings';
 import { RunErrorsDrawer } from './run-errors-drawer';
+import { RunCount } from './run-count';
 import { RunReferenceList } from './run-reference-list';
 import { RunStepCounts } from './run-step-counts';
 
 const PULSE_TICK_MS = 1_000;
 
+/** The last grid row the run row draws: its rows are fixed (2 always, 3 progress, 4 current step, 5 last attempt). */
+const runLastRow = (shown: { progress: boolean, currentStep: boolean, lastAttempt: boolean }): number => {
+  if (shown.lastAttempt) {
+    return 5;
+  }
+  if (shown.currentStep) {
+    return 4;
+  }
+  return shown.progress ? 3 : 2;
+};
+
 const Figure: FunctionComponent<{ title: string, value: number | null }> = ({ title, value }) => (
   <CardField title={title}>
-    {value === null ? <EmptyValue /> : <span className="txt-title font-bold tabular-nums">{value}</span>}
+    {value === null ? <EmptyValue /> : <RunCount value={value} className="txt-title font-bold" />}
   </CardField>
 );
 
@@ -65,9 +77,15 @@ export const RunRow: FunctionComponent<{ run: JobRunListItem, unit: RunUnit | nu
   const waitingRetry = runRetryWait(run) !== null;
   const showFigures = run.expectedTotal !== null || run.processedTotal > 0;
   const timings = runTimings(run, now - skewMs);
+  const showCurrentStep = running && run.currentStep !== null;
+  const showLastAttempt = waitingRetry && run.lastError !== null;
+  // The step counts take the rows under the last row drawn, so no empty row and no gap is left above them.
+  const lastRow = runLastRow({ progress: percent !== null, currentStep: showCurrentStep, lastAttempt: showLastAttempt });
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_auto] items-start gap-x-6 gap-y-4">
+      {/* One grid for the whole card: the step counts lay out on its columns (subgrid), under the row's fields.
+          Fixed tracks, never an auto track content resizes, so every card of the list draws the same columns. */}
+      <div className="grid grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))] items-start gap-x-6 gap-y-4">
         <CardField title={t`Name`}>{name}</CardField>
         <CardField title={t`Status`} className="gap-1">
           <span><Chip severity={RUN_STATUS_SEVERITY[run.status]} label={runStatusLabel(run.status)} /></span>
@@ -75,7 +93,7 @@ export const RunRow: FunctionComponent<{ run: JobRunListItem, unit: RunUnit | nu
         </CardField>
         {showFigures && <Figure title={labels.processed} value={run.processedTotal} />}
         {showFigures && <Figure title={labels.expected} value={run.expectedTotal} />}
-        <div className="row-start-1 col-start-5">
+        <div className="row-start-1 col-start-5 justify-self-end">
           <RunErrorsDrawer runId={run.id} runName={name} errorCount={run.errorCount} />
         </div>
 
@@ -111,7 +129,7 @@ export const RunRow: FunctionComponent<{ run: JobRunListItem, unit: RunUnit | nu
             <span className="txt-sub-content tabular-nums text-default-secondary">{percent} %</span>
           </CardField>
         )}
-        {running && run.currentStep !== null && (
+        {showCurrentStep && (
           <CardField title={t`Current step`} className="row-start-4 col-span-full">
             <span className="flex items-center gap-2">
               <Spinner size="sm" />
@@ -119,13 +137,13 @@ export const RunRow: FunctionComponent<{ run: JobRunListItem, unit: RunUnit | nu
             </span>
           </CardField>
         )}
-        {waitingRetry && run.lastError !== null && (
+        {showLastAttempt && (
           <CardField title={t`Last attempt`} className="row-start-5 col-span-full">
             <span className="text-feedback-error-primary">{run.lastError}</span>
           </CardField>
         )}
+        <RunStepCounts stepCounts={run.stepCounts} firstRow={lastRow + 1} />
       </div>
-      <RunStepCounts stepCounts={run.stepCounts} />
       {references.length > 0 && (
         <CardField title={t`Related to`}>
           <RunReferenceList references={references} />
