@@ -204,11 +204,10 @@ export const assetDependenciesRouter = (procedure: TenantProcedure) => router({
     .mutation(async ({ input, ctx: { services, origin } }) => services.withOrigin(origin)
       .assetDependencies.deleteSupportToPrimaryLinks(input)),
 
-  // eslint-disable-next-line app/no-unbounded-list-query, app/no-unused-router-endpoint -- grows with the rules an administrator writes by hand, a few dozen; the rules screen of #125 slice 2 and XTM One's sync read it
+  // eslint-disable-next-line app/no-unbounded-list-query -- grows with the rules an administrator writes by hand, a few dozen
   listDependencyRules: procedure
     .output(z.array(DEPENDENCY_RULE_ROW_SCHEMA))
     .query(({ ctx: { services, origin } }) => services.withOrigin(origin).assetDependencies.listDependencyRules()),
-  // eslint-disable-next-line app/no-unused-router-endpoint -- the rule editor of #125 slice 2 reads it
   previewDependencyRule: procedure
     .input(DEPENDENCY_RULE_CONDITIONS_INPUT.and(z.object({
       primaryAssetId: z.uuid(),
@@ -217,18 +216,15 @@ export const assetDependenciesRouter = (procedure: TenantProcedure) => router({
     .output(DEPENDENCY_RULE_PREVIEW_SCHEMA)
     .query(({ input: { limit, ...rule }, ctx: { services, origin } }) => withNotFoundOn(PrimaryAssetNotFoundError, () =>
       withBadRequestOn(DependencyRuleRefusedError, () => services.withOrigin(origin).assetDependencies.previewDependencyRule(rule, limit)))),
-  // eslint-disable-next-line app/no-unused-router-endpoint -- the rule editor of #125 slice 2 calls it
   createDependencyRule: procedure
     .input(DEPENDENCY_RULE_CONDITIONS_INPUT.and(DEPENDENCY_RULE_INPUT).and(z.object({ id: z.uuid().optional() })))
     .mutation(({ input, ctx: { services, origin } }) => withNotFoundOn(PrimaryAssetNotFoundError, () =>
       withBadRequestOn(DependencyRuleRefusedError, () => services.withOrigin(origin).assetDependencies.createDependencyRule(input)))),
-  // eslint-disable-next-line app/no-unused-router-endpoint -- the rule editor of #125 slice 2 calls it
   updateDependencyRule: procedure
     .input(DEPENDENCY_RULE_CONDITIONS_INPUT.and(DEPENDENCY_RULE_INPUT).and(z.object({ id: z.uuid() })))
     .mutation(({ input: { id, ...rule }, ctx: { services, origin } }) => withNotFoundOn(PrimaryAssetNotFoundError, () =>
       withNotFoundOn(DependencyRuleNotFoundError, () =>
         withBadRequestOn(DependencyRuleRefusedError, () => services.withOrigin(origin).assetDependencies.updateDependencyRule(id, rule))))),
-  // eslint-disable-next-line app/no-unused-router-endpoint -- the rules screen of #125 slice 2 calls it
   deleteDependencyRules: procedure
     .input(z.array(z.uuid()).max(MAX_DEPENDENCY_LINKS_PER_WRITE))
     .mutation(({ input, ctx: { services, origin } }) => services.withOrigin(origin).assetDependencies.deleteDependencyRules(input)),

@@ -1,5 +1,6 @@
-import type { AssetCategory, SupportToPrimaryLinkRole } from '@app/module/client';
+import type { AssetCategory, SupportToPrimaryLinkRole, SupportToPrimaryLinkSource } from '@app/module/client';
 import { inheritedCriteriaOfRoles } from '@app/module/client';
+import { Chip } from '@filigran/design-system';
 import { DataTable, DataTableHeadBarOptions } from '@filigran/ui';
 import type { ColumnDefWithOptionsHeader } from '@filigran/ui';
 import { EllipsisVertical } from 'lucide-react';
@@ -30,6 +31,8 @@ import { SupportToPrimaryLinkEditSheet } from './support-to-primary-link-edit-sh
 interface LinkRow {
   id: string,
   roles: Array<SupportToPrimaryLinkRole>,
+  source: SupportToPrimaryLinkSource,
+  ruleName: string | null,
   supportingAssetId?: string,
   supportingAssetName?: string | null,
   supportingAssetDerivedName?: string | null,
@@ -78,6 +81,8 @@ export const SupportToPrimaryLinksCard: FunctionComponent<SupportToPrimaryLinksC
   };
 
   const links = (primaryAssetId ? linksByPrimary : linksBySupporting) as Array<LinkRow> | undefined;
+  const pendingLink = links?.find((link) => link.id === confirmationDialog.pendingId);
+  const pendingRuleName = pendingLink?.source === 'rule' ? pendingLink.ruleName : null;
 
   const unnamedAsset = t`Unnamed asset`;
   const relatedAssetParts = (row: LinkRow): AssetNameParts => (primaryAssetId
@@ -119,6 +124,19 @@ export const SupportToPrimaryLinksCard: FunctionComponent<SupportToPrimaryLinksC
       id: 'roles',
       header: t`Role`,
       cell: ({ row }): ReactElement => <LinkRoleChips roles={row.original.roles} />,
+    },
+    {
+      id: 'source',
+      header: t`Linked by`,
+      accessorFn: (row) => (row.source === 'rule' ? row.ruleName ?? '' : ''),
+      size: 170,
+      cell: ({ row }): ReactElement => {
+        if (row.original.source !== 'rule') {
+          return <span className="text-muted-foreground">{t`Manual`}</span>;
+        }
+        const ruleName = row.original.ruleName ?? t`deleted rule`;
+        return <Chip label={t`Rule: ${ruleName}`} severity="info" />;
+      },
     },
     {
       id: 'inheritedCriteria',
@@ -212,7 +230,9 @@ export const SupportToPrimaryLinksCard: FunctionComponent<SupportToPrimaryLinksC
         }}
         onConfirm={handleDeleteConfirm}
         title={<Trans>Delete dependency</Trans>}
-        description={<Trans>Are you sure you want to delete this dependency? This action cannot be undone.</Trans>}
+        description={pendingRuleName === null
+          ? <Trans>Are you sure you want to delete this dependency? This action cannot be undone.</Trans>
+          : <Trans>The rule “{pendingRuleName}” wrote this dependency. Once you delete it, the rule never links these two assets again.</Trans>}
       />
     </>
   );

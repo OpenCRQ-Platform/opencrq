@@ -30,9 +30,9 @@ import { Route as AuthTenantIdChar123OrganizationIdChar125IntegrationsRouteRoute
 import { Route as AuthTenantIdChar123OrganizationIdChar125NotificationsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/notifications/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/primary-assets/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125ProfileRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/profile'
-import { Route as AuthTenantIdChar123OrganizationIdChar125SearchRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/search'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scenarios/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scopes/route'
+import { Route as AuthTenantIdChar123OrganizationIdChar125SearchRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/search'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125ThreatCenterRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/threat-center/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125ThreatEventFrequencyRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/threat-event-frequency/route'
@@ -189,6 +189,7 @@ import { Route as AuthTenantIdChar123OrganizationIdChar125IntegrationsConnectors
 import { Route as AuthTenantIdChar123OrganizationIdChar125IntegrationsConnectorsConnectorSlugStreamRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug/stream'
 import { Route as AuthTenantIdChar123OrganizationIdChar125IntegrationsConnectorsConnectorSlugWorksRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug/works'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/engine/crq-indicators/index'
+import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/engine/dependency-rules/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/engine/threat-relevance/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsJobsKindsIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/jobs/kinds/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsJobsKindsJobKindRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/jobs/kinds/$jobKind/route'
@@ -367,12 +368,6 @@ const AuthTenantIdChar123OrganizationIdChar125ProfileRoute =
     path: '/profile',
     getParentRoute: () => AuthTenantIdChar123OrganizationIdChar125RouteRoute,
   } as any)
-const AuthTenantIdChar123OrganizationIdChar125SearchRoute =
-  AuthTenantIdChar123OrganizationIdChar125SearchRouteImport.update({
-    id: '/search',
-    path: '/search',
-    getParentRoute: () => AuthTenantIdChar123OrganizationIdChar125RouteRoute,
-  } as any)
 const AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRoute =
   AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRouteImport.update({
     id: '/risk-scenarios',
@@ -383,6 +378,12 @@ const AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRoute =
   AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteImport.update({
     id: '/risk-scopes',
     path: '/risk-scopes',
+    getParentRoute: () => AuthTenantIdChar123OrganizationIdChar125RouteRoute,
+  } as any)
+const AuthTenantIdChar123OrganizationIdChar125SearchRoute =
+  AuthTenantIdChar123OrganizationIdChar125SearchRouteImport.update({
+    id: '/search',
+    path: '/search',
     getParentRoute: () => AuthTenantIdChar123OrganizationIdChar125RouteRoute,
   } as any)
 const AuthTenantIdChar123OrganizationIdChar125SettingsRouteRoute =
@@ -1687,6 +1688,15 @@ const AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRo
         AuthTenantIdChar123OrganizationIdChar125SettingsEngineRouteRoute,
     } as any,
   )
+const AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRoute =
+  AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRouteImport.update(
+    {
+      id: '/dependency-rules/',
+      path: '/dependency-rules/',
+      getParentRoute: () =>
+        AuthTenantIdChar123OrganizationIdChar125SettingsEngineRouteRoute,
+    } as any,
+  )
 const AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRoute =
   AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRouteImport.update(
     {
@@ -2408,6 +2418,7 @@ export interface FileRoutesByFullPath {
   '/$tenantId/{-$organizationId}/findings/cve/$cveId/': typeof AuthTenantIdChar123OrganizationIdChar125FindingsCveCveIdIndexRoute
   '/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug/': typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsConnectorsConnectorSlugIndexRoute
   '/$tenantId/{-$organizationId}/settings/engine/crq-indicators/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRoute
+  '/$tenantId/{-$organizationId}/settings/engine/dependency-rules/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRoute
   '/$tenantId/{-$organizationId}/settings/engine/threat-relevance/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRoute
   '/$tenantId/{-$organizationId}/settings/jobs/kinds/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsJobsKindsIndexRoute
   '/$tenantId/{-$organizationId}/settings/jobs/runs/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsJobsRunsIndexRoute
@@ -2580,6 +2591,7 @@ export interface FileRoutesByTo {
   '/$tenantId/{-$organizationId}/findings/cve/$cveId': typeof AuthTenantIdChar123OrganizationIdChar125FindingsCveCveIdIndexRoute
   '/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug': typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsConnectorsConnectorSlugIndexRoute
   '/$tenantId/{-$organizationId}/settings/engine/crq-indicators': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRoute
+  '/$tenantId/{-$organizationId}/settings/engine/dependency-rules': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRoute
   '/$tenantId/{-$organizationId}/settings/engine/threat-relevance': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRoute
   '/$tenantId/{-$organizationId}/settings/jobs/kinds': typeof AuthTenantIdChar123OrganizationIdChar125SettingsJobsKindsIndexRoute
   '/$tenantId/{-$organizationId}/settings/jobs/runs': typeof AuthTenantIdChar123OrganizationIdChar125SettingsJobsRunsIndexRoute
@@ -2820,6 +2832,7 @@ export interface FileRoutesById {
   '/_auth/$tenantId/{-$organizationId}/findings/cve/$cveId/': typeof AuthTenantIdChar123OrganizationIdChar125FindingsCveCveIdIndexRoute
   '/_auth/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug/': typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsConnectorsConnectorSlugIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/engine/crq-indicators/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRoute
+  '/_auth/$tenantId/{-$organizationId}/settings/engine/dependency-rules/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/engine/threat-relevance/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/jobs/kinds/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsJobsKindsIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/jobs/runs/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsJobsRunsIndexRoute
@@ -3061,6 +3074,7 @@ export interface FileRouteTypes {
     | '/$tenantId/{-$organizationId}/findings/cve/$cveId/'
     | '/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug/'
     | '/$tenantId/{-$organizationId}/settings/engine/crq-indicators/'
+    | '/$tenantId/{-$organizationId}/settings/engine/dependency-rules/'
     | '/$tenantId/{-$organizationId}/settings/engine/threat-relevance/'
     | '/$tenantId/{-$organizationId}/settings/jobs/kinds/'
     | '/$tenantId/{-$organizationId}/settings/jobs/runs/'
@@ -3233,6 +3247,7 @@ export interface FileRouteTypes {
     | '/$tenantId/{-$organizationId}/findings/cve/$cveId'
     | '/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug'
     | '/$tenantId/{-$organizationId}/settings/engine/crq-indicators'
+    | '/$tenantId/{-$organizationId}/settings/engine/dependency-rules'
     | '/$tenantId/{-$organizationId}/settings/engine/threat-relevance'
     | '/$tenantId/{-$organizationId}/settings/jobs/kinds'
     | '/$tenantId/{-$organizationId}/settings/jobs/runs'
@@ -3472,6 +3487,7 @@ export interface FileRouteTypes {
     | '/_auth/$tenantId/{-$organizationId}/findings/cve/$cveId/'
     | '/_auth/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug/'
     | '/_auth/$tenantId/{-$organizationId}/settings/engine/crq-indicators/'
+    | '/_auth/$tenantId/{-$organizationId}/settings/engine/dependency-rules/'
     | '/_auth/$tenantId/{-$organizationId}/settings/engine/threat-relevance/'
     | '/_auth/$tenantId/{-$organizationId}/settings/jobs/kinds/'
     | '/_auth/$tenantId/{-$organizationId}/settings/jobs/runs/'
@@ -3669,13 +3685,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125ProfileRouteImport
       parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RouteRoute
     }
-    '/_auth/$tenantId/{-$organizationId}/search': {
-      id: '/_auth/$tenantId/{-$organizationId}/search'
-      path: '/search'
-      fullPath: '/$tenantId/{-$organizationId}/search'
-      preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SearchRouteImport
-      parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RouteRoute
-    }
     '/_auth/$tenantId/{-$organizationId}/risk-scenarios': {
       id: '/_auth/$tenantId/{-$organizationId}/risk-scenarios'
       path: '/risk-scenarios'
@@ -3688,6 +3697,13 @@ declare module '@tanstack/react-router' {
       path: '/risk-scopes'
       fullPath: '/$tenantId/{-$organizationId}/risk-scopes'
       preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteImport
+      parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RouteRoute
+    }
+    '/_auth/$tenantId/{-$organizationId}/search': {
+      id: '/_auth/$tenantId/{-$organizationId}/search'
+      path: '/search'
+      fullPath: '/$tenantId/{-$organizationId}/search'
+      preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SearchRouteImport
       parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RouteRoute
     }
     '/_auth/$tenantId/{-$organizationId}/settings': {
@@ -4782,6 +4798,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRouteImport
       parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineRouteRoute
     }
+    '/_auth/$tenantId/{-$organizationId}/settings/engine/dependency-rules/': {
+      id: '/_auth/$tenantId/{-$organizationId}/settings/engine/dependency-rules/'
+      path: '/dependency-rules'
+      fullPath: '/$tenantId/{-$organizationId}/settings/engine/dependency-rules/'
+      preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRouteImport
+      parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineRouteRoute
+    }
     '/_auth/$tenantId/{-$organizationId}/settings/engine/threat-relevance/': {
       id: '/_auth/$tenantId/{-$organizationId}/settings/engine/threat-relevance/'
       path: '/threat-relevance'
@@ -5866,6 +5889,7 @@ const AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteWithChildren =
 interface AuthTenantIdChar123OrganizationIdChar125SettingsEngineRouteRouteChildren {
   AuthTenantIdChar123OrganizationIdChar125SettingsEngineIndexRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineIndexRoute
   AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRoute
+  AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRoute
   AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRoute
 }
 
@@ -5875,6 +5899,8 @@ const AuthTenantIdChar123OrganizationIdChar125SettingsEngineRouteRouteChildren: 
       AuthTenantIdChar123OrganizationIdChar125SettingsEngineIndexRoute,
     AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRoute:
       AuthTenantIdChar123OrganizationIdChar125SettingsEngineCrqIndicatorsIndexRoute,
+    AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRoute:
+      AuthTenantIdChar123OrganizationIdChar125SettingsEngineDependencyRulesIndexRoute,
     AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRoute:
       AuthTenantIdChar123OrganizationIdChar125SettingsEngineThreatRelevanceIndexRoute,
   }
