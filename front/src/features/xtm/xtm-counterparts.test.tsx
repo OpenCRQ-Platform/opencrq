@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { XtmCounterpart, XtmEmblemInput } from './xtm-counterparts';
 import { FAILED, NEVER, renderWithTrpc } from '../../providers/trpc-test-harness';
-import { emblemProducts, factValueLabel, XtmConnectTeaser, xtmEmblemState, XtmPivotEmblems, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
+import { emblemProducts, factValueLabel, howItGetsThere, XtmConnectTeaser, xtmEmblemState, XtmPivotEmblems, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
 
 const canConfigure = vi.fn<() => boolean>();
 vi.mock('../../hooks/utils/use-has-manage-security', () => ({ useHasManageSecurity: () => canConfigure() }));
@@ -146,6 +146,16 @@ describe('emblemProducts', () => {
     expect(emblemProducts('ASSET')).toEqual(['xtmone', 'opencti', 'openaev']);
     expect(emblemProducts('VULNERABILITY')).toEqual(['opencti', 'openaev']);
     expect(emblemProducts('THREAT')).toEqual(['opencti', 'openaev']);
+  });
+});
+
+describe('howItGetsThere', () => {
+  it('names every key the asset lookup sends to XTM One, never a hostname alone', () => {
+    expect(howItGetsThere('ASSET', 'xtmone')).toBe('It appears here once a source of the XTM One inventory reports the same OpenAEV asset, name, hostname, URL or address.');
+  });
+
+  it('keeps the hostname line for the sibling products', () => {
+    expect(howItGetsThere('ASSET', 'opencti')).toBe('It appears here once OpenCTI holds a machine with the same hostname.');
   });
 });
 
