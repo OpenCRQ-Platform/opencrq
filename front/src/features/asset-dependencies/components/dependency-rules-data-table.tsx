@@ -1,12 +1,12 @@
-import { Chip } from '@filigran/design-system';
+import { Chip, Icon } from '@filigran/design-system';
 import { msg, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { EllipsisVertical, Pause, Pencil, Play, Trash2 } from 'lucide-react';
 import type { FunctionComponent, ReactElement } from 'react';
 import { useState } from 'react';
 import type { ColumnDefWithOptionsHeader } from '../../../components/ui/data-table-types';
 import type { DependencyRule } from '../dependency-rules-utils';
+import { DetailPageLayout, TooltipHint, TooltipHintProvider } from '../../../components/shared';
 import { DeleteConfirmDialog } from '../../../components/shared/delete-confirm-dialog';
 import { IconActions, IconActionsItem } from '../../../components/shared/icon-actions';
 import { DataPageLayout } from '../../../components/ui/data-page-layout';
@@ -16,8 +16,17 @@ import { useTRPC } from '../../../lib';
 import { getAssetCategoryLabel, getAssetSubcategoryLabel } from '../../../utils';
 import { getConnectorNameBySource } from '../../integrations';
 import { conditionsDraftOf, conditionSummaries, toConditionsInput } from '../dependency-rules-utils';
+import { getLinkRoleLabel } from '../link-role-labels';
 import { DependencyRuleDrawer } from './dependency-rule-drawer';
-import { LinkRoleChips } from './link-role-display';
+import { RULE_COLUMN_SIZES } from './dependency-rules-table-columns';
+import { OneLineChips } from './one-line-chips';
+
+/** A value cut with an ellipsis when wider than its column, shown whole in the shared tooltip. */
+const CutText = ({ value, className }: { value: string, className?: string }): ReactElement => (
+  <TooltipHint hint={value}>
+    <span className={`block min-w-0 truncate ${className ?? ''}`}>{value}</span>
+  </TooltipHint>
+);
 
 type Editor = { rule: DependencyRule | null } | null;
 
@@ -69,45 +78,46 @@ export const DependencyRulesDataTable: FunctionComponent = () => {
       id: 'name',
       accessorKey: 'name',
       header: t`Name`,
-      size: 220,
-      cell: ({ row }): ReactElement => <span className="font-medium">{row.original.name}</span>,
+      size: RULE_COLUMN_SIZES.name,
+      cell: ({ row }): ReactElement => <CutText value={row.original.name} className="font-medium" />,
     },
     {
       id: 'conditions',
       accessorFn: (row) => conditionSummaries(row, labels).join(', '),
       enableSorting: false,
       header: t`Conditions`,
-      size: 300,
+      size: RULE_COLUMN_SIZES.conditions,
       cell: ({ row }): ReactElement => (
-        <div className="flex flex-wrap gap-1">
-          {conditionSummaries(row.original, labels).map((summary) => <Chip key={summary} label={summary} />)}
-        </div>
+        <OneLineChips items={conditionSummaries(row.original, labels).map((summary) => ({ key: summary, label: summary }))} />
       ),
     },
     {
       id: 'primaryAssetName',
       accessorKey: 'primaryAssetName',
       header: t`Primary asset`,
-      size: 220,
+      size: RULE_COLUMN_SIZES.primaryAssetName,
+      cell: ({ row }): ReactElement => <CutText value={row.original.primaryAssetName} />,
     },
     {
       id: 'roles',
       enableSorting: false,
       header: t`Role`,
-      size: 200,
-      cell: ({ row }): ReactElement => <LinkRoleChips roles={row.original.roles} />,
+      size: RULE_COLUMN_SIZES.roles,
+      cell: ({ row }): ReactElement => (
+        <OneLineChips items={row.original.roles.map((role) => ({ key: role, label: getLinkRoleLabel(role) }))} />
+      ),
     },
     {
       id: 'linkCount',
       accessorKey: 'linkCount',
       header: t`Links`,
-      size: 90,
+      size: RULE_COLUMN_SIZES.linkCount,
     },
     {
       id: 'enabled',
       accessorFn: (row) => (row.enabled ? 1 : 0),
       header: t`Status`,
-      size: 110,
+      size: RULE_COLUMN_SIZES.enabled,
       cell: ({ row }): ReactElement => (row.original.enabled
         ? <Chip label={t`Enabled`} severity="low" />
         : <Chip label={t`Disabled`} />),
@@ -115,24 +125,24 @@ export const DependencyRulesDataTable: FunctionComponent = () => {
     {
       id: 'actions',
       header: '',
-      size: 56,
+      size: RULE_COLUMN_SIZES.actions,
       enableHiding: false,
       enableResizing: false,
       cell: ({ row }): ReactElement => (
         <div className="flex items-center justify-end">
-          <IconActions icon={<EllipsisVertical className="h-4 w-4 text-primary" />}>
-            <IconActionsItem startIcon={<Pencil className="h-4 w-4" />} onClick={() => setEditor({ rule: row.original })}>
+          <IconActions icon={<Icon name="ellipsis-vertical" size={16} className="text-primary" />}>
+            <IconActionsItem startIcon={<Icon name="pencil" size={16} />} onClick={() => setEditor({ rule: row.original })}>
               {t`Edit`}
             </IconActionsItem>
             <IconActionsItem
-              startIcon={row.original.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              startIcon={<Icon name={row.original.enabled ? 'circle-stop' : 'play'} size={16} />}
               onClick={() => toggle(row.original)}
             >
               {row.original.enabled ? t`Disable` : t`Enable`}
             </IconActionsItem>
             <IconActionsItem
               className="text-feedback-error-primary"
-              startIcon={<Trash2 className="h-4 w-4 text-feedback-error-primary" />}
+              startIcon={<Icon name="trash-2" size={16} className="text-feedback-error-primary" />}
               onClick={() => confirmationDialog.requestConfirmation(row.original.id)}
             >
               {t`Delete`}
@@ -147,32 +157,37 @@ export const DependencyRulesDataTable: FunctionComponent = () => {
   const pendingName = pendingDelete?.name ?? '';
 
   return (
-    <>
-      <DataPageLayout
-        data={rules ?? []}
-        columns={columns}
-        isLoading={isLoading}
-        storageKey="dependency-rules"
-        search={{ placeholder: t`Search rules...`, texts: (rule) => [rule.name, rule.primaryAssetName] }}
-        filters={[{
-          id: 'status',
-          label: t`Status`,
-          allLabel: t`All statuses`,
-          options: [{ value: 'enabled', label: t`Enabled` }, { value: 'disabled', label: t`Disabled` }],
-          valueOf: (rule) => (rule.enabled ? 'enabled' : 'disabled'),
-        }]}
-        fixedColumnWidths
-        initialSorting={[{ id: 'name', desc: false }]}
-        onCreate={() => setEditor({ rule: null })}
-        onClickRow={({ original }) => setEditor({ rule: original })}
-        emptyState={(
-          <ListEmptyCard
-            title={<Trans>No dependency rules yet</Trans>}
-            body={<Trans>A rule links the supporting assets that match its conditions to a primary asset, now and at every sync. A link made or removed by hand always wins.</Trans>}
-            actions={null}
-          />
-        )}
-      />
+    <DetailPageLayout title={t`Dependency Rules`}>
+      <p className="txt-sub-content text-muted-foreground">
+        <Trans>A rule links the supporting assets that match its conditions to a primary asset, now and at every sync. A link made or removed by hand always wins.</Trans>
+      </p>
+      <TooltipHintProvider>
+        <DataPageLayout
+          data={rules ?? []}
+          columns={columns}
+          isLoading={isLoading}
+          storageKey="dependency-rules"
+          search={{ placeholder: t`Search rules...`, texts: (rule) => [rule.name, rule.primaryAssetName] }}
+          filters={[{
+            id: 'status',
+            label: t`Status`,
+            allLabel: t`All statuses`,
+            options: [{ value: 'enabled', label: t`Enabled` }, { value: 'disabled', label: t`Disabled` }],
+            valueOf: (rule) => (rule.enabled ? 'enabled' : 'disabled'),
+          }]}
+          fixedColumnWidths
+          initialSorting={[{ id: 'name', desc: false }]}
+          onCreate={() => setEditor({ rule: null })}
+          onClickRow={({ original }) => setEditor({ rule: original })}
+          emptyState={(
+            <ListEmptyCard
+              title={<Trans>No dependency rules yet</Trans>}
+              body={<Trans>A rule links the supporting assets that match its conditions to a primary asset, now and at every sync. A link made or removed by hand always wins.</Trans>}
+              actions={null}
+            />
+          )}
+        />
+      </TooltipHintProvider>
       <DependencyRuleDrawer open={editor !== null} rule={editor?.rule ?? null} onClose={() => setEditor(null)} />
       <DeleteConfirmDialog
         open={confirmationDialog.isOpen}
@@ -185,6 +200,6 @@ export const DependencyRulesDataTable: FunctionComponent = () => {
         title={<Trans>Delete the rule “{pendingName}”</Trans>}
         description={<Trans>The links this rule wrote are removed. Links a person made stay.</Trans>}
       />
-    </>
+    </DetailPageLayout>
   );
 };
