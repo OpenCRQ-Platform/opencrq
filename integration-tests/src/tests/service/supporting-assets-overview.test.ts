@@ -337,18 +337,18 @@ describe('Supporting Assets Service', () => {
       const cveUuid001 = await insertCve(tenantId, 'CVE-2024-001');
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: uuidv7(), supportingAssetId: assetAId,
-        cveId: cveUuid001, userId,
+        cve: { rowId: cveUuid001 }, userId,
       });
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: uuidv7(), supportingAssetId: assetBId,
-        cveId: cveUuid001, userId,
+        cve: { rowId: cveUuid001 }, userId,
       });
       // Asset A also has a separate CVE, dismissed
       const cveUuid002 = await insertCve(tenantId, 'CVE-2024-002');
       const evidenceId2 = uuidv7();
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: evidenceId2, supportingAssetId: assetAId,
-        cveId: cveUuid002, userId,
+        cve: { rowId: cveUuid002 }, userId,
       });
       await services.withOrigin(adminOrigin).supportingAssets.dismissEvidence({
         evidenceId: evidenceId2,
@@ -409,7 +409,7 @@ describe('Supporting Assets Service', () => {
         await services.withOrigin(adminOrigin).supportingAssets.createSupportingAsset({
           id: assetId, name, description: null, ownerId: null, exposure: 'internal', categoryId: 'host',
         });
-        await services.withOrigin(adminOrigin).supportingAssets.createEvidence({ id: uuidv7(), supportingAssetId: assetId, cveId: flaw, userId: adminUserId });
+        await services.withOrigin(adminOrigin).supportingAssets.createEvidence({ id: uuidv7(), supportingAssetId: assetId, cve: { rowId: flaw }, userId: adminUserId });
       }
       const assetNames = async (sortDesc: boolean) => (await affectedAssets({ cveId: 'CVE-2024-003' }, { sortDesc })).items.map((a) => a.assetName);
 
@@ -443,7 +443,7 @@ describe('Supporting Assets Service', () => {
         id: otherAssetId, name: 'Other tenant server', description: null, ownerId: null, exposure: 'internal', categoryId: 'host',
       });
       await services.withOrigin(otherOrigin).supportingAssets.createEvidence({
-        id: uuidv7(), supportingAssetId: otherAssetId, cveId: await insertCve(otherTenantId, 'CVE-2024-001'), userId: adminUserId,
+        id: uuidv7(), supportingAssetId: otherAssetId, cve: { rowId: await insertCve(otherTenantId, 'CVE-2024-001') }, userId: adminUserId,
       });
 
       const own = await affectedAssets({ cveId: 'CVE-2024-001' }, {}, otherOrigin);

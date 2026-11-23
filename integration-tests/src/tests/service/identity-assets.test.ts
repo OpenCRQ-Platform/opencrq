@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createTenantWithAdmin } from '../../helpers/factories';
 import { db } from '../../setup/db';
 import { createTestServices, truncateAllTables } from '../../setup/test-context';
+import { heldCveFeeds } from '../../helpers/held-cve-feeds';
 
 const services = createTestServices(db);
 
@@ -507,12 +508,12 @@ describe('identities as assets', () => {
           }]);
         }],
         ['a finding a person attached', async (assetId: string) => {
-          await services.withOrigin(adminOrigin).cve.upsertEpssScores([{ cveId: 'CVE-2024-0001', epss: 0.05, date: '2024-01-15' }]);
+          await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([{ cveId: 'CVE-2024-0001', epss: 0.05, date: '2024-01-15' }]);
           const cveRow = await services.withOrigin(adminOrigin).cve.getCveByCveId('CVE-2024-0001');
-          await services.withOrigin(adminOrigin).supportingAssets.createEvidence({ id: uuidv7(), supportingAssetId: assetId, cveId: cveRow!.id, userId: adminUserId });
+          await services.withOrigin(adminOrigin).supportingAssets.createEvidence({ id: uuidv7(), supportingAssetId: assetId, cve: { rowId: cveRow!.id }, userId: adminUserId });
         }],
         ['a finding a person set aside', async (assetId: string) => {
-          await services.withOrigin(adminOrigin).cve.upsertEpssScores([{ cveId: 'CVE-2024-0001', epss: 0.05, date: '2024-01-15' }]);
+          await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([{ cveId: 'CVE-2024-0001', epss: 0.05, date: '2024-01-15' }]);
           const cveRow = await services.withOrigin(adminOrigin).cve.getCveByCveId('CVE-2024-0001');
           const evidenceId = uuidv7();
           await services.withOrigin(connectorOrigin).supportingAssets.bulkUpsertEvidence([{

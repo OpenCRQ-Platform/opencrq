@@ -276,7 +276,7 @@ describe('Asset Dependencies Service', () => {
         await db.insert(cve).values([{ id: cveId, tenantId: adminTenantId, cveId: `CVE-2026-${cveId.slice(-5)}` }]);
         const evidenceId = uuidv7();
         await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-          id: evidenceId, supportingAssetId: assetId, cveId, userId: adminUserId, changedByUserId: adminUserId,
+          id: evidenceId, supportingAssetId: assetId, cve: { rowId: cveId }, userId: adminUserId, changedByUserId: adminUserId,
         });
         await db.insert(findingScores).values({
           assetEvidenceId: evidenceId,

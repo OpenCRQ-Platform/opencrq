@@ -1,4 +1,5 @@
 import type { cve, cveAffectedVersions, cveReferences } from '../../modules/cve/schema';
+import { ACME_FINDING_SPECS } from './acme-findings';
 import {
   Cve_AcmeAdselfserviceBypass,
   Cve_AcmeApacheTraversalRce,
@@ -1029,8 +1030,20 @@ const nvdReference = (cveId: string): AcmeCveReference => ({
   source: 'nvd@nist.gov',
 });
 
-export const buildAcmeCveRows = (now: Date): Array<typeof cve.$inferInsert> =>
-  ACME_CVE_SPECS.map((spec) => ({
+/**
+ * The base seed holds the CVEs a seeded finding carries, as a tenant only holds those a finding or
+ * a threat carries: any other would go at the first daily purge. The large estate profile holds the
+ * rest, which its findings draw on.
+ */
+export type AcmeCveShare = 'carried' | 'large-estate';
+
+const CARRIED_CVE_ROW_IDS = new Set(ACME_FINDING_SPECS.map((finding) => finding.cveRowId));
+
+const inShare = (spec: AcmeCveSpec, share: AcmeCveShare): boolean =>
+  CARRIED_CVE_ROW_IDS.has(spec.id) === (share === 'carried');
+
+export const buildAcmeCveRows = (now: Date, share: AcmeCveShare): Array<typeof cve.$inferInsert> =>
+  ACME_CVE_SPECS.filter((spec) => inShare(spec, share)).map((spec) => ({
     id: spec.id,
     tenantId: Tenant_Acme,
     cveId: spec.cveId,
@@ -1058,8 +1071,8 @@ export const buildAcmeCveRows = (now: Date): Array<typeof cve.$inferInsert> =>
  * NVD row carries no tag on purpose: an unanalysed record is the common case in the live feed, and
  * the surfaces have to read as well without tags as with them.
  */
-export const buildAcmeCveReferenceRows = (): Array<typeof cveReferences.$inferInsert> =>
-  ACME_CVE_SPECS.flatMap((spec, specIndex) =>
+export const buildAcmeCveReferenceRows = (share: AcmeCveShare): Array<typeof cveReferences.$inferInsert> =>
+  ACME_CVE_SPECS.flatMap((spec, specIndex) => !inShare(spec, share) ? [] :
     [nvdReference(spec.cveId), ...(spec.references ?? [])].map((reference, referenceIndex) => ({
       id: cveReferenceId(specIndex, referenceIndex),
       tenantId: Tenant_Acme,
@@ -1069,8 +1082,8 @@ export const buildAcmeCveReferenceRows = (): Array<typeof cveReferences.$inferIn
       tags: reference.tags ?? null,
     })));
 
-export const buildAcmeCveAffectedVersionRows = (): Array<typeof cveAffectedVersions.$inferInsert> =>
-  ACME_CVE_SPECS.flatMap((spec, specIndex) =>
+export const buildAcmeCveAffectedVersionRows = (share: AcmeCveShare): Array<typeof cveAffectedVersions.$inferInsert> =>
+  ACME_CVE_SPECS.flatMap((spec, specIndex) => !inShare(spec, share) ? [] :
     (spec.fixes ?? []).map((fix, fixIndex) => ({
       id: cveAffectedVersionId(specIndex, fixIndex),
       tenantId: Tenant_Acme,

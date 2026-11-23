@@ -8,6 +8,7 @@ import { createTenantWithAdmin } from '../../helpers/factories';
 import { seedAttackRunScenario } from '../../helpers/attack-run-scenario';
 import { db } from '../../setup/db';
 import { createTestServices, truncateAllTables } from '../../setup/test-context';
+import { heldCveFeeds } from '../../helpers/held-cve-feeds';
 
 const services = createTestServices(db);
 
@@ -111,7 +112,7 @@ describe('CRQ price pass over unchanged inputs', () => {
       id: uuidv7(), tenantId, name: 'Jump host', exposure: 'internet_facing', categoryId: 'host', criticality: 'high',
     })],
     ['a finding on an asset', async () => {
-      await scoped().cve.upsertCvssScores([{ cveId: 'CVE-2024-3400', cvss: 10, lastModified: '2024-04-12T00:00:00.000Z' }]);
+      await heldCveFeeds(scoped().cve).upsertCvssScores([{ cveId: 'CVE-2024-3400', cvss: 10, lastModified: '2024-04-12T00:00:00.000Z' }]);
       const flaw = await scoped().cve.getCveByCveId('CVE-2024-3400');
       await db.insert(assetEvidence).values({ id: uuidv7(), tenantId, supportingAssetId: await supportingAssetNamed('Workstation 1'), cveId: flaw!.id });
     }],

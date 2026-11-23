@@ -45,7 +45,7 @@ import { composeParts } from '../../modules/finding-score/engine';
 import { deriveAssetName } from '../../modules/supporting-assets/derived-name';
 import { UNEVALUATED_LET_THROUGH } from '../../modules/finding-score/constants';
 import { createPrng, deriveSeed } from '../../modules/crq-indicators/engine/prng';
-import { cve } from '../../modules/cve/schema';
+import { cve, cveAffectedVersions, cveReferences } from '../../modules/cve/schema';
 import { cveTechniqueMapping } from '../../modules/technique-mapping/schema';
 import { deriveSeedId } from '../../seed-ids';
 import { declaredEstate } from '../../modules/declared-estate/schema';
@@ -68,6 +68,7 @@ import { assetEnumerations, assetEvidence, assetEvidenceHistory, assetEvidenceSo
 import { countryCatalogId } from '../../modules/countries/data';
 import { sectorCatalogId } from '../../modules/sectors/data';
 import { acmeCorpDeclaredEstate } from '../data/declared-estate';
+import { buildAcmeCveAffectedVersionRows, buildAcmeCveReferenceRows, buildAcmeCveRows } from '../data/acme-cves';
 import { acmeCorpFinancialProfile } from '../data/financial-profiles';
 import {
   FinancialProfile_AcmeRetailNetwork,
@@ -900,6 +901,9 @@ registerPlatformSeed('large-estate', async (ctx) => {
   }
 
   const { db, now } = ctx;
+  await db.insert(cve).values(buildAcmeCveRows(now, 'large-estate'));
+  await db.insert(cveReferences).values(buildAcmeCveReferenceRows('large-estate'));
+  await db.insert(cveAffectedVersions).values(buildAcmeCveAffectedVersionRows('large-estate'));
   for (const table of BULK_TABLES) {
     await db.execute(sql.raw(`ALTER TABLE ${table} DISABLE TRIGGER USER`));
   }

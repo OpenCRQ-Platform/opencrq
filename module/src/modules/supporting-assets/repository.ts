@@ -386,8 +386,6 @@ export const supportingAssetsRepository = defineRepository({
     db.update(supportingAssets).set(values).where(eq(supportingAssets.id, id)),
   deleteSupportingAssets: ({ db }, ids: Array<string>) =>
     db.delete(supportingAssets).where(inArray(supportingAssets.id, ids)),
-  isCveVisible: async ({ db, views }, id: string) =>
-    (await db.select({ id: views.cve.id }).from(views.cve).where(eq(views.cve.id, id)).limit(1)).length > 0,
   /**
    * The members of the tenant whose email or shown name is `text`, case-insensitively: the owner
    * candidates of a push (`resolveOwner`). The shown name is the tenant's own name for the member,

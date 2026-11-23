@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createTenant, createTenantWithAdmin } from '../../helpers/factories';
 import { db } from '../../setup/db';
 import { createTestServices, truncateAllTables } from '../../setup/test-context';
+import { heldCveFeeds } from '../../helpers/held-cve-feeds';
 
 const services = createTestServices(db);
 
@@ -72,7 +73,7 @@ describe('Technique Mapping Service', () => {
     services.withOrigin(origin).supportingAssets.createEvidence({
       id: uuidv7(),
       supportingAssetId: assetId,
-      cveId: cveRowId,
+      cve: { rowId: cveRowId },
       userId: userId ?? adminUserId,
     });
 
@@ -189,7 +190,7 @@ describe('Technique Mapping Service', () => {
 
       const otherAssetId = await createAsset(adminOrigin);
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id: uuidv7(), supportingAssetId: otherAssetId, cveId: cveRowId, userId: adminUserId,
+        id: uuidv7(), supportingAssetId: otherAssetId, cve: { rowId: cveRowId }, userId: adminUserId,
       });
 
       const second = await resolutionOf(cveRowId);
@@ -217,7 +218,7 @@ describe('Technique Mapping Service', () => {
       const cveRowId = await insertCve(adminTenantId, UNMAPPABLE);
       await writeFinding(cveRowId);
 
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([{
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([{
         cveId: UNMAPPABLE, cvss: 9.8, cvssVector: LOG4SHELL_VECTOR, cwe: LOG4SHELL_CWE, lastModified: '2024-01-10T00:00:00.000Z',
       }]);
       await services.withOrigin(adminOrigin).techniqueMapping.resolveTechniquesForCves([cveRowId]);
@@ -231,7 +232,7 @@ describe('Technique Mapping Service', () => {
       const cveRowId = await insertCve(adminTenantId, UNMAPPABLE);
       const v2Vector = 'AV:N/AC:M/Au:N/C:P/I:P/A:P';
 
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([{
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([{
         cveId: UNMAPPABLE, cvss: 6.8, cvssVector: v2Vector, cvssV2UserInteractionRequired: true, lastModified: '2024-01-10T00:00:00.000Z',
       }]);
 

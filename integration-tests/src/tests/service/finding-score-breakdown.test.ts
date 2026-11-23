@@ -106,7 +106,7 @@ describe('Finding Score Service', () => {
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id,
         supportingAssetId: assetId,
-        cveId: await insertCve('CVE-2099-0190', {}, undefined, 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H'),
+        cve: { rowId: await insertCve('CVE-2099-0190', {}, undefined, 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H') },
         userId: adminUserId,
       });
       return id;
@@ -556,7 +556,7 @@ describe('Finding Score Service', () => {
     const writeCveFinding = async (supportingAssetId: string, cveUuid: string): Promise<string> => {
       const id = uuidv7();
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id, supportingAssetId, cveId: cveUuid, userId: adminUserId,
+        id, supportingAssetId, cve: { rowId: cveUuid }, userId: adminUserId,
       });
       return id;
     };

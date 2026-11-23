@@ -3,7 +3,7 @@ import type { InferRepository } from '../../registry';
 import type { CategoryResolverInput, ChangeCategoryKey, ChangeEvent, ChangeGroupKind, ChangeGroupRow, ChangeGroupSort, ChangeTab, ComparedRun, WindowRun } from './types';
 import type { GroupMember } from './categories/groups';
 import { defineService } from '../../registry';
-import { UNIQUE_SCORE_HISTORY_RETENTION_DAYS } from '../finding-score/service';
+import { UNIQUE_SCORE_HISTORY_RETENTION_DAYS } from '../finding-score/retention';
 import { resolveAssetChanges } from './categories/asset-posture';
 import { resolveCveChanges } from './categories/findings';
 import { magnitudeOf, susceptibilityOf, tefOf } from './categories/run-results';

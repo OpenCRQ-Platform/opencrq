@@ -82,9 +82,12 @@ const makeDeps = (overrides: Partial<LegacySyncDeps> = {}): LegacySyncDeps => ({
       findCveScopePairsSince: mocks.findCveScopePairsSince,
       markScopesEnumerated: mocks.markScopesEnumerated,
     },
-    cve: { upsertCves: mocks.upsertCves, getCveIdMap: mocks.getCveIdMap },
     mitreAttack: { getTechniqueIdsByExternalIds: mocks.getTechniqueIdsByExternalIds },
   },
+  inCveFindingsTransaction: (work) => work({
+    cve: { upsertCves: mocks.upsertCves, getCveIdMap: mocks.getCveIdMap },
+    supportingAssets: { bulkUpsertEvidence: mocks.bulkUpsertEvidence },
+  }),
   connectorId: CONNECTOR_ID,
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- only the calls the legacy run makes are provided
   client: {

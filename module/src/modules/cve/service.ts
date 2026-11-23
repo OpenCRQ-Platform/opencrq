@@ -3,6 +3,7 @@ import { uuidv7 } from 'uuidv7';
 import type { EventOrigin } from '../../security';
 import type { InferRepository } from '../../registry';
 import type { CveListSortKey } from './list-sort';
+import type { CveFetchListing } from './repository';
 import type { cveSourceObservations } from './schema';
 import type { CveSource } from './sources';
 import { defineService } from '../../registry';
@@ -26,32 +27,56 @@ const requireTenant = (eventOrigin: EventOrigin): string => {
   return eventOrigin.tenantId;
 };
 
+const PURGE_BATCH = 1_000;
+
 type Atomic = <T>(callback: (ctx: { repo: Repo }) => Promise<T>) => Promise<T>;
+
+/**
+ * Creates the CVE rows the tenant lacks and holds every row of `cveIds` until the caller's
+ * transaction ends.
+ *
+ * A row a purge had locked when the insert found it is gone by the time the hold gets it: it is
+ * inserted again, once, and a row this transaction inserted is one no purge can see.
+ */
+const insertAndHoldCves = async (repo: Repo, tenantId: string, cveIds: Array<string>) => {
+  let missing = cveIds;
+  for (let attempt = 0; attempt < 2 && missing.length > 0; attempt++) {
+    await repo.insertCveShells(missing.map((cveId) => ({ id: uuidv7(), tenantId, cveId })));
+    const held = await repo.holdCveRowsByCveIds(missing);
+    missing = missing.filter((cveId) => !held.has(cveId));
+  }
+};
 
 /**
  * Holds the touched CVE rows from before reading their observations until the resolved fields are
  * written, so a source writing the same CVEs concurrently resolves after this one commits, with its
  * observation in hand.
+ *
+ * A report on a CVE the tenant does not hold is dropped: a feed enriches the flaws in the tenant's
+ * scope, and only `shellCveIds`, the CVEs a finding connector carries, enter it here.
  */
 const recordSourceReports = async (
   atomic: Atomic,
   tenantId: string,
   source: CveSource,
   reports: Array<SourceReport>,
-  idOnlyCveIds: Array<string> = [],
+  shellCveIds: Array<string> = [],
 ) => {
   // One statement cannot conflict twice on the same row, so a CVE listed twice keeps its last report.
   const byCveId = new Map(reports.map((report) => [report.cveId, report]));
-  const shellIds = [...new Set([...byCveId.keys(), ...idOnlyCveIds])].sort();
-  if (shellIds.length === 0) {
+  const shellIds = [...new Set(shellCveIds)].sort();
+  if (byCveId.size === 0 && shellIds.length === 0) {
     return;
   }
   await atomic(async ({ repo }) => {
-    await repo.insertCveShells(shellIds.map((cveId) => ({ id: uuidv7(), tenantId, cveId })));
+    await insertAndHoldCves(repo, tenantId, shellIds);
     if (byCveId.size === 0) {
       return;
     }
     const rowIdByCveId = await repo.lockIdsByCveIds([...byCveId.keys()]);
+    if (rowIdByCveId.size === 0) {
+      return;
+    }
     await repo.upsertSourceObservations([...byCveId.values()].flatMap(({ cveId, ...fields }) => {
       const rowId = rowIdByCveId.get(cveId);
       return rowId === undefined ? [] : [{ ...fields, id: uuidv7(), tenantId, cveId: rowId, source }];
@@ -103,8 +128,7 @@ export const cveService = defineService(
   getCvesByCveIds: async ({ repo }, cveIds: Array<string>) =>
     (await repo.findByCveIds(cveIds)).map(withCisaListing),
 
-  searchCve: async ({ repo }, query: string, excludeAttachedToAssetId: string | null = null) =>
-    await repo.search(query, 20, excludeAttachedToAssetId),
+  searchCve: async ({ repo }, query: string) => await repo.search(query, 20),
 
   upsertEpssScores: async ({ atomic, eventOrigin }, scores: Array<{ cveId: string, epss: number, date: string }>) => {
     const tenantId = requireTenant(eventOrigin);
@@ -223,13 +247,76 @@ export const cveService = defineService(
     }
   },
 
-  /** For a connector that only knows a CVE's id: the CVE exists afterwards, and nothing it holds changes. */
-  upsertCves: async ({ repo, eventOrigin }, cves: Array<{ cveId: string }>) => {
+  /**
+   * For a connector that only knows a CVE's id: the CVE exists afterwards, and nothing it holds
+   * changes. Inside a caller's transaction the rows are held until it ends, so a caller writing the
+   * finding or the threat that keeps them in the same transaction never loses them to the purge.
+   */
+  upsertCves: async ({ atomic, eventOrigin }, cves: Array<{ cveId: string }>) => {
     const tenantId = requireTenant(eventOrigin);
-    await repo.insertCveShells(cves.map(({ cveId }) => ({ id: uuidv7(), tenantId, cveId })));
+    const cveIds = [...new Set(cves.map(({ cveId }) => cveId))].sort();
+    await atomic(async ({ repo }) => {
+      await insertAndHoldCves(repo, tenantId, cveIds);
+    });
   },
 
   getCveIdsWithFindings: async ({ repo }) => await repo.findCveRowIdsWithFindings(),
+
+  getCveIdsToFetch: async ({ repo }, params: CveFetchListing & { afterCveId: string | null, limit: number }) =>
+    await repo.findCveIdsToFetch(params),
+
+  countCveIdsToFetch: async ({ repo }, params: CveFetchListing) => await repo.countCveIdsToFetch(params),
+
+  /**
+   * Brings a CVE into the tenant's scope by its published id, and holds its row until the caller's
+   * transaction ends, so the purge cannot take it before the caller has attached what keeps it.
+   *
+   * A purge deleting the row between the insert and the lock is answered by inserting it again,
+   * once: that purge has committed, and the next one passes by the row this call holds.
+   */
+  holdCve: async ({ atomic, eventOrigin }, cveId: string): Promise<string | null> => {
+    const tenantId = requireTenant(eventOrigin);
+    return atomic(async ({ repo }) => {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const createdId = await repo.insertCveShell({ id: uuidv7(), tenantId, cveId });
+        const id = createdId ?? (await repo.findIdsByCveIds([cveId])).get(cveId);
+        if (id !== undefined && await repo.holdCveRows([id]) > 0) {
+          return id;
+        }
+      }
+      return null;
+    });
+  },
+
+  /** Holds a CVE row the tenant holds until the caller's transaction ends; false when it holds none. */
+  lockCve: async ({ repo }, id: string) => await repo.holdCveRows([id]) > 0,
+
+  /**
+   * Deletes the tenant's CVEs nothing keeps any more, a batch per transaction so the first purge of
+   * a tenant that held the whole NVD catalogue never holds its locks for the whole walk.
+   *
+   * @returns how many CVE rows went
+   */
+  purgeOutOfScope: async ({ atomic, eventOrigin }, signal?: AbortSignal) => {
+    // The keep test reads findings and threats through their marking policies, which narrow a
+    // member's reads: a finding out of their clearance would read as absent, and go with its CVE.
+    if (eventOrigin.type !== 'job') {
+      throw newError('The CVE purge runs as a job, whose origin no marking narrows');
+    }
+    requireTenant(eventOrigin);
+    let purged = 0;
+    while (signal?.aborted !== true) {
+      const deleted = await atomic(async ({ repo }) => {
+        const ids = await repo.lockPurgeableCveIds(PURGE_BATCH);
+        return { locked: ids.length, deleted: await repo.deleteUnkeptCves(ids) };
+      });
+      purged += deleted.deleted;
+      if (deleted.locked < PURGE_BATCH) {
+        break;
+      }
+    }
+    return purged;
+  },
 
   /**
    * What the feeds published on how to fix this flaw.
@@ -300,7 +387,9 @@ export const cveService = defineService(
       affectedUpToIncluded: version.affectedUpToIncluded,
     })));
     await atomic(async ({ repo }) => {
-      await repo.replaceCveEnrichment(entries.map((entry) => entry.cveRowId), references, affectedVersions);
+      const cveRowIds = entries.map((entry) => entry.cveRowId);
+      await repo.replaceCveEnrichment(cveRowIds, references, affectedVersions);
+      await repo.markRemediationRead(cveRowIds);
     });
   },
 

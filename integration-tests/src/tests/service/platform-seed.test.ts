@@ -108,7 +108,7 @@ import { assetEvidence,
   users } from '@app/module';
 import { pricedFraction } from '@app/module/client';
 import { communityEditionTenantId } from '@app/back/src/features/app-router/tenant-edition-utils';
-import { count, eq, getTableName, inArray, is, sql } from 'drizzle-orm';
+import { count, eq, getTableName, inArray, is, isNotNull, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -716,10 +716,12 @@ describe('Platform Seed', () => {
     expect(allLinks).toHaveLength(2);
   });
 
-  it('should create realistic CVEs for Acme only', async () => {
+  it('should create realistic CVEs for Acme only, each carried by a seeded finding', async () => {
     const acme = await db.select().from(tenants).where(eq(tenants.name, 'Acme Bank'));
     const allCves = await db.select().from(cve);
-    expect(allCves).toHaveLength(60);
+    expect(allCves).toHaveLength(18);
+    const carried = await db.selectDistinct({ cveId: assetEvidence.cveId }).from(assetEvidence).where(isNotNull(assetEvidence.cveId));
+    expect(carried.map((row) => row.cveId).toSorted()).toEqual(allCves.map((c) => c.id).toSorted());
     expect(allCves.every((c) => c.tenantId === acme[0].id)).toBe(true);
 
     const log4shell = allCves.find((c) => c.cveId === 'CVE-2021-44228');
@@ -737,7 +739,7 @@ describe('Platform Seed', () => {
     const withoutWeakness = allCves.filter((c) => c.cwe === null);
     expect(withoutWeakness).toHaveLength(1);
     expect(allCves.every((c) => c.cwe === null || c.cwe.length > 0)).toBe(true);
-    expect(allCves.filter((c) => c.cvssVector !== null)).toHaveLength(59);
+    expect(allCves.filter((c) => c.cvssVector !== null)).toHaveLength(17);
   });
 
   it('should ingest threats with dated children', async () => {

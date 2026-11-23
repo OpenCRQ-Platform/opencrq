@@ -1,6 +1,7 @@
 import type { AttackObservationMirror, EvidenceWrittenEntry, FullWalkTimestamps, ObservationPair, OpenaevStream } from '@app/module';
 import { isFullWalkDue } from '@app/module';
 import type { createOpenaevClient } from './openaev-api-client';
+import type { CveFindingsTransaction } from './cve-findings-transaction';
 import type { AttackObservation, CveEvidenceRow, ExpectationEvidenceRow, SnapshotPage, VulnerabilityObservation } from './openaev-types';
 import { createLogger } from '../../utils/logger';
 import { buildAttackEvidenceRows, buildVulnerabilityEvidenceRows, cveIdentifierOfObservation } from './openaev-mapping-utils';
@@ -39,10 +40,6 @@ export interface ObservationPhaseServices {
   supportingAssets: {
     bulkUpsertEvidence: (evidences: Array<ExpectationEvidenceRow | CveEvidenceRow>) => Promise<unknown>,
   },
-  cve: {
-    upsertCves: (cves: Array<{ cveId: string }>) => Promise<unknown>,
-    getCveIdMap: (cveIds: Array<string>) => Promise<Map<string, string>>,
-  },
   mitreAttack: {
     getTechniqueIdsByExternalIds: (externalIds: Array<string>) => Promise<Map<string, string>>,
   },
@@ -59,6 +56,7 @@ export interface ObservationPhaseProgress {
 export interface ObservationPhaseDeps {
   client: Pick<ReturnType<typeof createOpenaevClient>, 'searchAttackObservations' | 'searchVulnerabilityObservations'>,
   svc: ObservationPhaseServices,
+  inCveFindingsTransaction: CveFindingsTransaction,
   connectorId: string,
   openaevTenantId: string,
   /** When the run began: what a stream read in this run is noted as unreconciled from, unless an earlier read already is. */
@@ -135,7 +133,7 @@ const toMirror = (observation: AttackObservation): AttackObservationMirror => {
  * the cursor on the last page written.
  */
 export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promise<ObservationPhaseResult> => {
-  const { svc, client, connectorId, openaevTenantId, runStartedAt, signal, now, onProgress } = deps;
+  const { svc, client, connectorId, openaevTenantId, runStartedAt, signal, now, onProgress, inCveFindingsTransaction } = deps;
   const assets = { map: deps.assetIdMap, inventoryRan: false };
 
   // The inventory can return a partial map when it aborts, and a page written against it would
@@ -224,13 +222,16 @@ export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promis
     if (cveIds.length === 0) {
       return true;
     }
-    // The observations carry no CVSS or exploit data, so those fields stay null.
-    await svc.cve.upsertCves(cveIds.map((cveId) => ({ cveId })));
-    const cveIdMap = await svc.cve.getCveIdMap(cveIds);
-    const evidenceRows = buildVulnerabilityEvidenceRows({ observations: usable, cveIdMap, assetIdMap, connectorId });
-    if (evidenceRows.length > 0) {
-      await svc.supportingAssets.bulkUpsertEvidence(evidenceRows);
-    }
+    const evidenceRows = await inCveFindingsTransaction(async (tx) => {
+      // The observations carry no CVSS or exploit data, so those fields stay null.
+      await tx.cve.upsertCves(cveIds.map((cveId) => ({ cveId })));
+      const cveIdMap = await tx.cve.getCveIdMap(cveIds);
+      const rows = buildVulnerabilityEvidenceRows({ observations: usable, cveIdMap, assetIdMap, connectorId });
+      if (rows.length > 0) {
+        await tx.supportingAssets.bulkUpsertEvidence(rows);
+      }
+      return rows;
+    });
     logTrace('Vulnerability observations written', { openaevTenantId, observations: observations.length, evidenceRows: evidenceRows.length });
     return true;
   };

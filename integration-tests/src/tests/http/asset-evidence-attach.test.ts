@@ -1,4 +1,5 @@
-import { cve } from '@app/module';
+import { assetEvidence, cve } from '@app/module';
+import { eq } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createTrpcTestClient } from '../../helpers/trpc-client';
@@ -14,6 +15,7 @@ describe('Attaching a CVE to an asset (HTTP/tRPC)', () => {
   const services = createTestServices(db);
 
   let tenantId: string;
+  let adminId: string;
   let supportingAssetId: string;
   let foreignCveId: string;
 
@@ -21,7 +23,7 @@ describe('Attaching a CVE to an asset (HTTP/tRPC)', () => {
     await truncateAllTables(db);
     client = createTrpcTestClient(await getTestServer());
 
-    const adminId = uuidv7();
+    adminId = uuidv7();
     await signInAsFirstAdmin(client, { id: adminId, email: ADMIN_EMAIL });
     tenantId = uuidv7();
     const otherTenantId = uuidv7();
@@ -52,5 +54,36 @@ describe('Attaching a CVE to an asset (HTTP/tRPC)', () => {
     const res = await attach({ supportingAssetId: uuidv7(), cveId: foreignCveId });
 
     expect(res.json.error).toMatchObject({ message: 'Supporting asset not found', data: { code: 'NOT_FOUND' } });
+  });
+
+  describe('by its published id', () => {
+    const heldCveIds = async () =>
+      (await db.select({ cveId: cve.cveId }).from(cve).where(eq(cve.tenantId, tenantId))).map((row) => row.cveId);
+
+    it('should create a CVE the tenant does not hold, the id typed in any case, even one another tenant holds', async () => {
+      const res = await attach({ supportingAssetId, cveId: ' cve-2021-44228 ' });
+
+      expect(res.status).toBe(200);
+      expect(await heldCveIds()).toEqual(['CVE-2021-44228']);
+      const findings = await db.select({ cveId: cve.cveId }).from(assetEvidence)
+        .innerJoin(cve, eq(cve.id, assetEvidence.cveId))
+        .where(eq(assetEvidence.supportingAssetId, supportingAssetId));
+      expect(findings).toEqual([{ cveId: 'CVE-2021-44228' }]);
+    });
+
+    it('should refuse an id that is not a CVE id', async () => {
+      const res = await attach({ supportingAssetId, cveId: 'CVE-21-44228' });
+
+      expect(res.json.error).toMatchObject({ data: { code: 'BAD_REQUEST' } });
+      expect(await heldCveIds()).toEqual([]);
+    });
+
+    it('should answer a CVE the asset already carries with a reason the drawer tells apart', async () => {
+      await attach({ supportingAssetId, cveId: 'CVE-2021-44228' });
+
+      const res = await attach({ supportingAssetId, cveId: 'cve-2021-44228' });
+
+      expect(res.json.error).toMatchObject({ data: { code: 'CONFLICT', reason: 'EVIDENCE_ALREADY_EXISTS' } });
+    });
   });
 });

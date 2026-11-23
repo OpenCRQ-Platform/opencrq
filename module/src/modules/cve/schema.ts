@@ -37,6 +37,10 @@ export const cve = pgTable('cve', {
   cveDescription: text('cve_description'),
   // NULL and an empty array answer different questions: NULL is "no usable CWE", `{}` would be a resolved-to-nothing claim.
   cwe: text('cwe').array(),
+  // When the NVD record was first read for the remediation of a flaw a finding carries, whatever it
+  // stated: a record with no reference, or a CVE NVD does not know, is read once, not on every pass.
+  // Set once and moving no `updated_at`, which the technique resolution reads as the CVE changing.
+  remediationReadAt: timestamp('remediation_read_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => [
@@ -91,9 +95,8 @@ defineSecurityPolicies(cveSourceObservations, tenantIsolationPolicy);
 /**
  * A reference published on a CVE record: advisory, patch, mailing list, exploit.
  *
- * Stored only for the flaws a tenant actually carries. The NVD catalogue holds 380k CVEs and the
- * sync walks all of them, so keeping every reference would add millions of rows per tenant that no
- * page ever opens; the remediation surfaces only ever read from a finding.
+ * Stored only for the flaws a tenant's findings carry: a threat names many CVEs no asset has, and
+ * the remediation surfaces only ever read from a finding.
  *
  * `tags` is null for a CVE the NVD has not analysed yet, which is the normal state of a freshly
  * published one: the tag list comes from the analysis pass, never from the CNA. A reader therefore

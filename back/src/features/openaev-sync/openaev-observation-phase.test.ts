@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { NonRetryableError } from '@app/module';
 import type { AttackObservation, SnapshotPage, VulnerabilityObservation } from './openaev-types';
+import type { CveFindingServices } from './cve-findings-transaction';
 import type { ObservationPhaseDeps, ObservationPhaseServices, ObservationStreamState } from './openaev-observation-phase';
 import { syncObservationStreams } from './openaev-observation-phase';
 
@@ -92,8 +93,8 @@ const makeSvc = (states: Array<ObservationStreamState>) => {
       bulkUpsertEvidence: vi.fn<ObservationPhaseServices['supportingAssets']['bulkUpsertEvidence']>().mockResolvedValue(undefined),
     },
     cve: {
-      upsertCves: vi.fn<ObservationPhaseServices['cve']['upsertCves']>().mockResolvedValue(undefined),
-      getCveIdMap: vi.fn<ObservationPhaseServices['cve']['getCveIdMap']>().mockResolvedValue(new Map([['CVE-2024-1234', 'cve-uuid-1']])),
+      upsertCves: vi.fn<CveFindingServices['cve']['upsertCves']>().mockResolvedValue(undefined),
+      getCveIdMap: vi.fn<CveFindingServices['cve']['getCveIdMap']>().mockResolvedValue(new Map([['CVE-2024-1234', 'cve-uuid-1']])),
     },
     mitreAttack: {
       getTechniqueIdsByExternalIds: vi.fn<ObservationPhaseServices['mitreAttack']['getTechniqueIdsByExternalIds']>()
@@ -122,6 +123,7 @@ const makeHarness = (
   const deps: ObservationPhaseDeps = {
     client,
     svc,
+    inCveFindingsTransaction: (work) => work(svc),
     connectorId: CONNECTOR_ID,
     openaevTenantId: OA_TENANT,
     runStartedAt: RUN_STARTED_AT,

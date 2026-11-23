@@ -498,7 +498,7 @@ describe('Risk Scenarios Service', () => {
       const flaw = uuidv7();
       await db.insert(cve).values([{ id: flaw, tenantId: adminTenantId, cveId: 'CVE-2026-0900' }]);
       for (const supportingAssetId of [addressAssetId, providerAssetId]) {
-        await services.withOrigin(adminOrigin).supportingAssets.createEvidence({ id: uuidv7(), supportingAssetId, cveId: flaw, userId: adminUserId });
+        await services.withOrigin(adminOrigin).supportingAssets.createEvidence({ id: uuidv7(), supportingAssetId, cve: { rowId: flaw }, userId: adminUserId });
       }
 
       const findings = await findingsOf(adminOrigin, scenarioId);
@@ -556,7 +556,7 @@ describe('Risk Scenarios Service', () => {
     const attachEvidence = async (supportingAssetId: string, cveUuid: string): Promise<string> => {
       const id = uuidv7();
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id, supportingAssetId, cveId: cveUuid, userId: adminUserId,
+        id, supportingAssetId, cve: { rowId: cveUuid }, userId: adminUserId,
       });
       return id;
     };

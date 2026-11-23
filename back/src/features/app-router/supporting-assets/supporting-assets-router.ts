@@ -9,6 +9,8 @@ import {
   CLOUD_PROVIDER_VALUES,
   ConnectorBackedEvidenceError,
   CVE_AFFECTED_ASSET_SORT_KEYS,
+  CVE_ID_MAX_LENGTH,
+  CVE_ID_PATTERN,
   CveNotFoundError,
   DEPENDENCY_GRAPH_MAX_DEPTH,
   DISMISSAL_REASON_CODE_VALUES,
@@ -375,7 +377,12 @@ export const supportingAssetsRouter = (procedure: TenantProcedure) => router({
   createAssetEvidence: procedure
     .input(z.object({
       supportingAssetId: z.uuid(),
-      cveId: z.uuid(),
+      // A CVE row, or a published CVE id, which brings a CVE the tenant does not hold yet into its
+      // scope. XTM One sends the row it read from `cve.search`.
+      cveId: z.union([
+        z.uuid().transform((rowId) => ({ rowId })),
+        z.string().trim().toUpperCase().max(CVE_ID_MAX_LENGTH).regex(CVE_ID_PATTERN).transform((publishedId) => ({ publishedId })),
+      ]),
     }))
     .mutation(({ input, ctx: { services, origin, user } }) => {
       if (!user) {
@@ -383,18 +390,15 @@ export const supportingAssetsRouter = (procedure: TenantProcedure) => router({
       }
       const svc = services.withOrigin(origin);
       return withNotFoundOn(SupportingAssetNotFoundError, () => withNotFoundOn(CveNotFoundError, () =>
-        withConflictOn(EvidenceAlreadyExistsError, async () => {
-          const created = await svc.supportingAssets.createEvidence({
-            id: uuidv7(),
-            supportingAssetId: input.supportingAssetId,
-            cveId: input.cveId,
-            mitreTechniqueId: null,
-            expectationType: null,
-            userId: user.id,
-            changedByUserId: user.id,
-          });
-          return created;
-        })));
+        withConflictOn(EvidenceAlreadyExistsError, () => svc.supportingAssets.createEvidence({
+          id: uuidv7(),
+          supportingAssetId: input.supportingAssetId,
+          cve: input.cveId,
+          mitreTechniqueId: null,
+          expectationType: null,
+          userId: user.id,
+          changedByUserId: user.id,
+        }))));
     }),
 
   deleteAssetEvidence: procedure

@@ -34,6 +34,7 @@ import type { EventOrigin } from '../../security';
 import { isForeignKeyViolationOf, isUniqueViolationOf } from '../../db/pg-errors';
 import { defineService } from '../../registry';
 import { originUserId, requireTenantId } from '../../security';
+import { cveService } from '../cve/service';
 import { organizationsService } from '../organizations/service';
 import { techniqueMappingService } from '../technique-mapping/service';
 import { identityFamilyOf } from './identity-families';
@@ -58,6 +59,8 @@ const BATCH_CHUNK_SIZE = 1000;
 
 export class EvidenceAlreadyExistsError extends StructuredError {
   override readonly name: string = 'EvidenceAlreadyExistsError';
+
+  override readonly reason: string = 'EVIDENCE_ALREADY_EXISTS';
 
   constructor() {
     super('This evidence already exists', { data: {} });
@@ -1099,7 +1102,7 @@ const writeManualAssetTags = async (repo: SupportingAssetsRepo, eventOrigin: Eve
 export const supportingAssetsService = defineService(
   'supportingAssets',
   supportingAssetsRepository,
-).dependsOn(() => [organizationsService, techniqueMappingService]).implement({
+).dependsOn(() => [cveService, organizationsService, techniqueMappingService]).implement({
   /**
    * `mapIntoOrganizationId` is the closed risk scope the asset is created inside, resolved by the
    * caller: an asset created by hand there is mapped into it, or it would not appear in the very
@@ -1501,10 +1504,14 @@ export const supportingAssetsService = defineService(
   },
   getAssetCountsBySource: async ({ repo }, mappedToOrganizationId: string | null = null) => repo.getAssetCountsBySource(mappedToOrganizationId),
 
+  /**
+   * Attaches a finding by hand. A CVE is named by its row or by its published id, which brings a
+   * CVE the tenant does not hold into its scope.
+   */
   createEvidence: async ({ repo, atomic, eventOrigin }, values: {
     id: string,
     supportingAssetId: string,
-    cveId?: string | null,
+    cve?: { rowId: string } | { publishedId: string } | null,
     mitreTechniqueId?: string | null,
     expectationType?: ExpectationType | null,
     userId?: string | null,
@@ -1517,19 +1524,30 @@ export const supportingAssetsService = defineService(
     if (!values.userId) {
       throw newError('userId is required to attach a finding by hand');
     }
-    const cveId = values.cveId ?? null;
+    const named = values.cve ?? null;
     const mitreTechniqueId = values.mitreTechniqueId ?? null;
     const expectationType = values.expectationType ?? null;
-    assertValidEvidenceFinding({ cveId, mitreTechniqueId, expectationType });
+    assertValidEvidenceFinding({
+      cveId: named === null ? null : 'rowId' in named ? named.rowId : named.publishedId,
+      mitreTechniqueId,
+      expectationType,
+    });
     const asset = await repo.findSupportingAssetById(values.supportingAssetId);
     if (!asset) {
       throw new SupportingAssetNotFoundError();
     }
-    if (cveId !== null && !await repo.isCveVisible(cveId)) {
-      throw new CveNotFoundError();
-    }
     const now = new Date();
     await atomic(async ({ repo: atomicRepo, deps }) => {
+      // The row is held until the finding commits: the daily purge deletes a CVE nothing carries.
+      let cveId: string | null = null;
+      if (named !== null && 'rowId' in named) {
+        cveId = await deps.cve.lockCve(named.rowId) ? named.rowId : null;
+      } else if (named !== null) {
+        cveId = await deps.cve.holdCve(named.publishedId);
+      }
+      if (named !== null && cveId === null) {
+        throw new CveNotFoundError();
+      }
       try {
         await atomicRepo.insertAssetEvidence({
           id: values.id,

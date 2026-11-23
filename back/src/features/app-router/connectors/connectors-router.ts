@@ -44,6 +44,7 @@ import {
 } from '../jobs/run-contract';
 import { computeTimelineProgressPercent } from '../opencti/opencti-backfill-progress-utils';
 import { defaultThreatsRunState, readConnectorSchedule, resolveConnectorConfigurations, resolveRunnableConnectors } from './connector-configuration';
+import { enqueueConnectorRuns } from './enqueue-connector-run';
 
 const ConnectorListItemSchema = z.object({
   source: z.enum(CONNECTOR_SOURCES),
@@ -483,29 +484,16 @@ export const connectorsRouter = (
           message: 'This connector runs continuously and has no run to enqueue.',
         });
       }
-      const scoped = services.withOrigin(origin);
-      const [settings, defaultThreats] = await Promise.all([
-        scoped.integrationSettings.getAllIntegrationSettings(),
-        scoped.defaultThreats.getSettings(tenantId),
-      ]);
-      const payload = resolveRunnableConnectors(config().connectors, tenantId, settings, defaultThreatsRunState(defaultThreats))
-        .find((connector) => connector.entry.source === input.source)?.payload ?? null;
-      if (payload === null) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This connector is not configured for this tenant.' });
-      }
-      const minuteSlot = new Date().toISOString().slice(0, 16);
-      const { jobId } = await scoped.jobs.enqueueJob({
-        kind: entry.jobKind,
-        tenantId,
-        payload,
-        idempotencyKey: `${tenantId}:${entry.idempotencyPrefix}-${minuteSlot}`,
+      const booked = await enqueueConnectorRuns(services.withOrigin(origin), tenantId, [entry.source], {
         // The run assumes the service account from its payload, so this books who asked rather
         // than whose authorization it will run on.
         ...originTrigger(origin),
         interactive: true,
-        maxRuntimeMs: entry.maxRuntimeMs,
-        maxAttempts: entry.maxAttempts,
       });
+      const jobId = booked.at(0)?.jobId;
+      if (jobId === undefined) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This connector is not configured for this tenant.' });
+      }
       try {
         telemetry.onConnectorSyncLaunched?.();
       } catch {

@@ -1,12 +1,12 @@
 import type { CveListSortKey, EventOrigin } from '@app/module';
 import { cveAffectedVersions, cveReferences } from '@app/module';
 import { eq } from 'drizzle-orm';
-import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createTenant, createTenantWithAdmin } from '../../helpers/factories';
 import { expectReplayedSyncSilent } from '../../helpers/replayed-sync';
 import { db } from '../../setup/db';
 import { createTestServices, truncateAllTables } from '../../setup/test-context';
+import { heldCveFeeds } from '../../helpers/held-cve-feeds';
 
 const services = createTestServices(db);
 
@@ -22,8 +22,8 @@ describe('CVE Service', () => {
   });
 
   describe('upsert operations', () => {
-    it('should create a cve record via upsertEpssScores', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+    it('should score a held cve via upsertEpssScores', async () => {
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2024-0001', epss: 0.05, date: '2024-01-15' },
       ]);
 
@@ -35,11 +35,11 @@ describe('CVE Service', () => {
     });
 
     it('should update epss score on second upsert', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2024-0002', epss: 0.10, date: '2024-01-15' },
       ]);
 
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2024-0002', epss: 0.20, date: '2024-02-01' },
       ]);
 
@@ -49,8 +49,8 @@ describe('CVE Service', () => {
       expect(result!.epssUpdatedAt).toEqual(new Date('2024-02-01'));
     });
 
-    it('should create a cve record via upsertCvssScores', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+    it('should score a held cve via upsertCvssScores', async () => {
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         {
           cveId: 'CVE-2024-0003',
           cvss: 9.8,
@@ -68,10 +68,10 @@ describe('CVE Service', () => {
     });
 
     it('should preserve existing epss score when upserting cvss', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2024-0004', epss: 0.42, date: '2024-01-01' },
       ]);
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         { cveId: 'CVE-2024-0004', cvss: 7.5, lastModified: '2024-01-05T00:00:00.000Z' },
       ]);
 
@@ -82,7 +82,7 @@ describe('CVE Service', () => {
     });
 
     it('should persist the CWE list and the CVSS vector via upsertCvssScores', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         {
           cveId: 'CVE-2024-0031',
           cvss: 9.8,
@@ -99,7 +99,7 @@ describe('CVE Service', () => {
     });
 
     it('should leave the CWE absent rather than empty when none is supplied', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         { cveId: 'CVE-2024-0032', cvss: 7.5, lastModified: '2024-01-10T00:00:00.000Z' },
       ]);
 
@@ -110,7 +110,7 @@ describe('CVE Service', () => {
     });
 
     it('should preserve a stored CWE and vector, with the score paired to that vector, when a later sync brings neither', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         {
           cveId: 'CVE-2024-0033',
           cvss: 9.8,
@@ -119,7 +119,7 @@ describe('CVE Service', () => {
           lastModified: '2024-01-10T00:00:00.000Z',
         },
       ]);
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         { cveId: 'CVE-2024-0033', cvss: 9.9, lastModified: '2024-02-10T00:00:00.000Z' },
       ]);
 
@@ -134,7 +134,7 @@ describe('CVE Service', () => {
       await services.withOrigin(adminOrigin).cve.upsertDefenderReports([
         { cveId: 'CVE-2024-0037', cvss: 7.8, isExploitAvailable: null },
       ]);
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         { cveId: 'CVE-2024-0037', cwe: ['CWE-122'], description: 'Heap overflow', lastModified: '2024-01-10T00:00:00.000Z' },
       ]);
 
@@ -155,22 +155,22 @@ describe('CVE Service', () => {
         lastModified: '2024-01-10T00:00:00.000Z',
         description: 'Path traversal',
       };
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([score]);
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([score]);
       const before = await services.withOrigin(adminOrigin).cve.getCveByCveId('CVE-2024-0035');
 
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([score]);
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([score]);
 
       const after = await services.withOrigin(adminOrigin).cve.getCveByCveId('CVE-2024-0035');
       expect(after!.updatedAt).toEqual(before!.updatedAt);
     });
 
     it('should move the update time when a later sync changes a value', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         { cveId: 'CVE-2024-0036', cvss: 7.5, lastModified: '2024-01-10T00:00:00.000Z' },
       ]);
       const before = await services.withOrigin(adminOrigin).cve.getCveByCveId('CVE-2024-0036');
 
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         { cveId: 'CVE-2024-0036', cvss: 7.5, cwe: ['CWE-79'], lastModified: '2024-01-10T00:00:00.000Z' },
       ]);
 
@@ -180,7 +180,7 @@ describe('CVE Service', () => {
     });
 
     it('should not let a Defender score touch the CWE or the vector', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         {
           cveId: 'CVE-2024-0034',
           cvss: 9.8,
@@ -199,8 +199,8 @@ describe('CVE Service', () => {
       expect(result!.cvssVector).toBe('CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H');
     });
 
-    it('should create a cve record via upsertKevFlags', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertKevFlags([
+    it('should flag a held cve via upsertKevFlags', async () => {
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertKevFlags([
         { cveId: 'CVE-2024-0005', dateAdded: '2024-03-01', title: 'Log4Shell Variant' },
       ]);
 
@@ -211,10 +211,10 @@ describe('CVE Service', () => {
     });
 
     it('should preserve existing scores when upserting kev flag', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2024-0006', epss: 0.75, date: '2024-01-01' },
       ]);
-      await services.withOrigin(adminOrigin).cve.upsertKevFlags([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertKevFlags([
         { cveId: 'CVE-2024-0006', dateAdded: '2024-02-01', title: 'Known Exploit' },
       ]);
 
@@ -228,7 +228,7 @@ describe('CVE Service', () => {
   describe('pagination', () => {
     it('should return paginated results', async () => {
       const cveIds = Array.from({ length: 5 }, (_, i) => `CVE-2025-00${String(i + 1).padStart(2, '0')}`);
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores(
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores(
         cveIds.map((cveId) => ({ cveId, epss: 0.1, date: '2025-01-01' })),
       );
 
@@ -248,7 +248,7 @@ describe('CVE Service', () => {
     });
 
     it('should return correct total count', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-9001', epss: 0.1, date: '2025-01-01' },
         { cveId: 'CVE-2025-9002', epss: 0.2, date: '2025-01-01' },
       ]);
@@ -260,16 +260,16 @@ describe('CVE Service', () => {
 
   describe('search and sort', () => {
     beforeEach(async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-1001', epss: 0.9, date: '2025-01-01' },
         { cveId: 'CVE-2025-1002', epss: 0.1, date: '2025-01-01' },
         { cveId: 'CVE-2025-1003', epss: 0.5, date: '2025-01-01' },
       ]);
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         { cveId: 'CVE-2025-1001', cvss: 5.0, lastModified: '2025-01-01T00:00:00.000Z' },
         { cveId: 'CVE-2025-1002', cvss: 9.8, lastModified: '2025-01-01T00:00:00.000Z', title: 'Log4Shell' },
       ]);
-      await services.withOrigin(adminOrigin).cve.upsertKevFlags([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertKevFlags([
         { cveId: 'CVE-2025-1003', dateAdded: '2025-01-01', title: 'Known exploited flaw' },
       ]);
     });
@@ -288,7 +288,7 @@ describe('CVE Service', () => {
     });
 
     it('should match accents and ligatures in both directions', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertCvssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertCvssScores([
         { cveId: 'CVE-2025-1001', cvss: 5.0, lastModified: '2025-01-02T00:00:00.000Z', title: 'École Straße' },
       ]);
 
@@ -335,27 +335,16 @@ describe('CVE Service', () => {
       expect((await listIds({ sortBy: 'kev', sortDesc: false })).at(-1)).toBe('CVE-2025-1003');
     });
 
-    it('should leave out of the attach search the CVEs the asset already carries, and only those', async () => {
-      const assetId = uuidv7();
-      const otherAssetId = uuidv7();
-      const read = services.withOrigin(adminOrigin);
-      for (const id of [assetId, otherAssetId]) {
-        await read.supportingAssets.createSupportingAsset({ id, name: id, description: null, ownerId: null, exposure: 'internal', categoryId: 'host' });
-      }
-      const attached = await read.cve.getCveByCveId('CVE-2025-1002');
-      await read.supportingAssets.createEvidence({ id: uuidv7(), supportingAssetId: assetId, cveId: attached!.id, userId: adminUserId });
-
-      const ids = async (excluded: string | null) => (await read.cve.searchCve('CVE-2025', excluded)).map((row) => row.cveId);
-      expect(await ids(assetId)).toEqual(['CVE-2025-1001', 'CVE-2025-1003']);
-      expect(await ids(otherAssetId)).toEqual(['CVE-2025-1001', 'CVE-2025-1002', 'CVE-2025-1003']);
-      expect(await ids(null)).toEqual(['CVE-2025-1001', 'CVE-2025-1002', 'CVE-2025-1003']);
+    it('should search the CVEs held by the prefix of their id', async () => {
+      const ids = (await services.withOrigin(adminOrigin).cve.searchCve('CVE-2025-100')).map((row) => row.cveId);
+      expect(ids).toEqual(['CVE-2025-1001', 'CVE-2025-1002', 'CVE-2025-1003']);
     });
   });
 
   describe('batch upsert', () => {
     it('should handle empty batch without error', async () => {
       await expect(
-        services.withOrigin(adminOrigin).cve.upsertEpssScores([]),
+        heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([]),
       ).resolves.toBeUndefined();
     });
   });
@@ -367,7 +356,7 @@ describe('CVE Service', () => {
     };
 
     it('should replace what the feed stated before rather than merging with it', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-FIXED', epss: 0.4, date: '2025-01-01' },
       ]);
       const cveRowId = await rowIdOf(adminOrigin, 'CVE-2025-FIXED');
@@ -389,7 +378,7 @@ describe('CVE Service', () => {
     });
 
     it('should clear the guidance a later record no longer states', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-WITHDRAWN', epss: 0.4, date: '2025-01-01' },
       ]);
       const cveRowId = await rowIdOf(adminOrigin, 'CVE-2025-WITHDRAWN');
@@ -411,12 +400,12 @@ describe('CVE Service', () => {
     });
 
     it('should keep the remediation of one tenant out of another', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-BOTH', epss: 0.4, date: '2025-01-01' },
       ]);
       const tenantBId = await createTenant(services, adminUserId);
       const tenantBOrigin: EventOrigin = { type: 'client', userId: adminUserId, tenantId: tenantBId };
-      await services.withOrigin(tenantBOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(tenantBOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-BOTH', epss: 0.4, date: '2025-01-01' },
       ]);
 
@@ -435,7 +424,7 @@ describe('CVE Service', () => {
 
       const walkFeeds = async () => {
         const read = services.withOrigin(adminOrigin);
-        await read.cve.upsertCvssScores([{
+        await heldCveFeeds(read.cve).upsertCvssScores([{
           cveId: 'CVE-2025-WALK',
           cvss: 9.8,
           cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
@@ -455,7 +444,7 @@ describe('CVE Service', () => {
             { affectedUpTo: '2.0', affectedUpToIncluded: true },
           ],
         }]);
-        await read.cve.upsertKevFlags([{
+        await heldCveFeeds(read.cve).upsertKevFlags([{
           cveId: 'CVE-2025-WALK',
           dateAdded: '2025-02-01',
           requiredAction: 'Apply updates',
@@ -463,7 +452,7 @@ describe('CVE Service', () => {
           dueDate: '2025-02-22',
           notes: 'https://vendor.example/advisory',
         }]);
-        await read.cve.upsertEpssScores([{ cveId: 'CVE-2025-WALK', epss: 0.42, date: '2025-03-01' }]);
+        await heldCveFeeds(read.cve).upsertEpssScores([{ cveId: 'CVE-2025-WALK', epss: 0.42, date: '2025-03-01' }]);
       };
 
       it('should ring nothing and move no updated_at when the feeds state the same data', async () => {
@@ -518,7 +507,7 @@ describe('CVE Service', () => {
     });
 
     it('refuses to read without a tenant, which no policy predicate would scope', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-NOTENANT', epss: 0.4, date: '2025-01-01' },
       ]);
       const tenantlessOrigin: EventOrigin = { type: 'platform', userId: adminUserId };
@@ -530,7 +519,7 @@ describe('CVE Service', () => {
 
   describe('tenant isolation', () => {
     it('should not see CVEs from another tenant', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-TENANT-A', epss: 0.5, date: '2025-01-01' },
       ]);
 
@@ -543,14 +532,14 @@ describe('CVE Service', () => {
     });
 
     it('should allow the same CVE ID to be stored independently per tenant', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-SHARED', epss: 0.3, date: '2025-01-01' },
       ]);
 
       const tenantBId = await createTenant(services, adminUserId);
       const tenantBOrigin: EventOrigin = { type: 'client', userId: adminUserId, tenantId: tenantBId };
 
-      await services.withOrigin(tenantBOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(tenantBOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2025-SHARED', epss: 0.9, date: '2025-01-01' },
       ]);
 

@@ -432,7 +432,7 @@ export const threatAnalysesService = defineService(
    * answers its demo threats from stored percentages rather than pay for the model.
    */
   ingestBundle: async (
-    { atomic, deps, repo },
+    { atomic, repo },
     parsed: Array<ParsedThreatInput>,
     tenantId: string,
     sourceKind: ThreatSourceKind,
@@ -445,15 +445,6 @@ export const threatAnalysesService = defineService(
     let skipped = 0;
     let claimRows = 0;
     const counter = options.counter ?? loadOutcomeCounter();
-
-    // Upsert a CVE catalog shell for every targeted CVE, same pattern as the Microsoft Defender
-    // import (`cveService.upsertCves`): keeps existing authoritative scores (NIST/FIRST/CISA)
-    // untouched, but guarantees the CVE exists in the catalog so the CVEs tab can show it even
-    // before any scoring sync has run.
-    const allCveIds = [...new Set(parsed.flatMap((entry) => entry.cves.map((c) => c.cveId)))];
-    if (allCveIds.length > 0) {
-      await deps.cve.upsertCves(allCveIds.map((cveId) => ({ cveId })));
-    }
 
     const catalogOutcomeIdsByRowId = resolveCatalogAttackOutcomeRowIds(await repo.findAttackOutcomeNames());
     const rowIdByCatalogId = new Map([...catalogOutcomeIdsByRowId].map(([rowId, catalogId]) => [catalogId, rowId]));
@@ -468,7 +459,7 @@ export const threatAnalysesService = defineService(
       const threatActorTypes = dedupeCaseInsensitive(entry.threatActorTypes);
       const roles = dedupeCaseInsensitive(entry.roles);
 
-      const outcome = await atomic(async ({ repo: atomicRepo }) => {
+      const outcome = await atomic(async ({ repo: atomicRepo, deps: atomicDeps }) => {
         const existing = await atomicRepo.findAnalysisByStixId(tenantId, entry.threat.stixId);
         if (rescoreOnly && (existing === undefined || existing.outcomeModelVersion === OUTCOME_COUNTER_VERSION)) {
           return null;
@@ -525,6 +516,11 @@ export const threatAnalysesService = defineService(
         // ingest that committed in between would otherwise read as this run's change.
         const attributesChanged = restated?.updatedAt.getTime() === ingestedAt.getTime();
 
+        // Brings every CVE the threat names into the tenant's scope in the transaction writing the
+        // claim that keeps it there, and before the scores exist: the CVEs tab shows it at once.
+        if (entry.cves.length > 0) {
+          await atomicDeps.cve.upsertCves(entry.cves.map(({ cveId }) => ({ cveId })));
+        }
         const claimsChanged = await atomicRepo.replaceAnalysisChildren(analysisId, {
           aliases: aliases.map((alias) => ({ id: uuidv7(), analysisId, alias })),
           secondaryMotivations: secondaryMotivations.map((value) => ({ id: uuidv7(), analysisId, value })),
