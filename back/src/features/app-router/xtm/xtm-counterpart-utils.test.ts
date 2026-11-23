@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CounterpartProvider, XtmCounterpart } from './xtm-counterpart-utils';
 import type { ReaderAuthorization } from './xtm-providers';
 import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, switcherProducts, xtmConnections } from './xtm-counterpart-utils';
-import { openaevProvider, openctiProvider } from './xtm-providers';
+import { openaevProvider, openctiProvider, XTM_ONE_LOOKUP_PATH, xtmOneProvider } from './xtm-providers';
 
 const NO_READER: ReaderAuthorization = () => Promise.resolve(null);
 const READER = 'reader-1';
@@ -126,9 +126,9 @@ describe('xtmConnections', () => {
   });
 });
 
-describe('providers', () => {
-  const authHeaderOf = (init: RequestInit | undefined): string | undefined => new Headers(init?.headers).get('Authorization') ?? undefined;
+const authHeaderOf = (init: RequestInit | undefined): string | undefined => new Headers(init?.headers).get('Authorization') ?? undefined;
 
+describe('providers', () => {
   it('asks OpenAEV its reverse lookup as the reader, and keeps only the keys asked', async () => {
     const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response(JSON.stringify([
       { object_key: 'cve-2024-3400', object_id: 'v1', object_type: 'vulnerability', object_name: 'PAN-OS', object_url: 'https://openaev.example/v/v1', object_facts: [{ fact_key: 'findings', fact_value: '2' }] },
@@ -178,5 +178,46 @@ describe('providers', () => {
     const p = openaevProvider({ url: 'https://openaev.example', token: 't' }, () => Promise.resolve('secret-reader-jwt'), fetchImpl);
     await expect(p.resolve('ASSET', ['web-01'])).rejects.toThrow(/403/);
     await expect(p.resolve('ASSET', ['web-01'])).rejects.not.toThrow(/secret-reader-jwt/);
+  });
+});
+
+describe('xtmOneProvider', () => {
+  const READER_HEADERS = () => Promise.resolve({ Authorization: 'Bearer reader-xtm-one-jwt', 'X-Platform-Product': 'opencrq' });
+
+  it('looks an asset up in the XTM One inventory as the reader and keeps its criticality and category', async () => {
+    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response(JSON.stringify({ items: [
+      { key: 'web-01', id: 'x1', name: 'web-01.corp', category: 'generic_asset', criticality: 'very_high', matches: 1, url: 'https://xtm-one.example/ctem/inventory/assets/x1' },
+      { key: 'not-asked', id: 'x2', name: 'other', matches: 1, url: 'https://xtm-one.example/ctem/inventory/assets/x2' },
+    ] }))));
+    const p = xtmOneProvider('https://xtm-one.example/', READER_HEADERS, fetchImpl);
+    expect(p.supports('ASSET')).toBe(true);
+    expect(p.supports('VULNERABILITY')).toBe(false);
+    const found = await p.resolve('ASSET', ['web-01']);
+    expect(fetchImpl.mock.calls[0][0]).toBe(`https://xtm-one.example${XTM_ONE_LOOKUP_PATH}`);
+    expect(JSON.parse(String(fetchImpl.mock.calls[0][1].body))).toEqual({ keys: ['web-01'] });
+    expect(authHeaderOf(fetchImpl.mock.calls[0][1])).toBe('Bearer reader-xtm-one-jwt');
+    expect(found).toEqual([{
+      key: 'web-01', product: 'xtmone', objectId: 'x1', objectType: 'asset', objectName: 'web-01.corp',
+      objectUrl: 'https://xtm-one.example/ctem/inventory/assets/x1',
+      facts: [{ key: 'criticality', value: 'very_high' }, { key: 'category', value: 'generic_asset' }],
+    }]);
+  });
+
+  it('makes no call without a reader to sign for, nor for a kind the inventory does not hold', async () => {
+    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response('{}')));
+    expect(await xtmOneProvider('https://xtm-one.example', () => Promise.resolve(null), fetchImpl).resolve('ASSET', ['web-01'])).toEqual([]);
+    expect(await xtmOneProvider('https://xtm-one.example', READER_HEADERS, fetchImpl).resolve('VULNERABILITY', ['CVE-2024-3400'])).toEqual([]);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(xtmOneProvider(null, READER_HEADERS, fetchImpl).isConnected).toBe(false);
+  });
+
+  it('fails on a refusal without the reader token in the message, and drops a link that is not http(s)', async () => {
+    const refused = xtmOneProvider('https://xtm-one.example', READER_HEADERS, vi.fn(() => Promise.resolve(new Response('no', { status: 401 }))));
+    await expect(refused.resolve('ASSET', ['web-01'])).rejects.toThrow(/401/);
+    await expect(refused.resolve('ASSET', ['web-01'])).rejects.not.toThrow(/reader-xtm-one-jwt/);
+    const script = xtmOneProvider('https://xtm-one.example', READER_HEADERS, vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [
+      { key: 'web-01', id: 'x1', name: 'web-01', url: 'javascript:alert(1)' },
+    ] })))));
+    expect(await script.resolve('ASSET', ['web-01'])).toEqual([]);
   });
 });

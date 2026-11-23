@@ -4,17 +4,18 @@ import { z } from 'zod';
 import type { AuthUser } from '../../../trpc';
 import type { TenantProcedure } from '../app-router-router';
 import type { CounterpartProvider } from './xtm-counterpart-utils';
-import type { ReaderAuthorization } from './xtm-providers';
+import type { ReaderAuthorization, XtmOneReaderHeaders } from './xtm-providers';
 import { isOriginAuthorizedForItsTenant } from '../tenant-access-utils';
 import { config } from '../../../config';
 import { router } from '../../../trpc';
 import { authenticateXtmOneJwt } from '../../xtm-one/xtm-one-auth';
 import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
+import { buildXtmOneHeaders } from '../../xtm-one/xtm-one-headers';
 import { issueUserJwt } from '../../xtm-one/xtm-one-jwt';
 import { ensureSigningKey } from '../../xtm-one/xtm-one-keys';
-import { COUNTERPART_KINDS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
+import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
 import { lookupXtmObjects, resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
-import { openaevProvider, openctiProvider } from './xtm-providers';
+import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
 
 /** No reader identity to sign: a lookup made with it reaches nothing. */
 const NO_READER: ReaderAuthorization = () => Promise.resolve(null);
@@ -36,27 +37,48 @@ export const readerAuthorization = (db: DrizzleDB, user: AuthUser | null | undef
   };
 };
 
+/** No reader to sign for XTM One: its lookup reaches nothing. */
+const NO_XTM_ONE_READER: XtmOneReaderHeaders = () => Promise.resolve(null);
+
 /**
- * The providers of one tenant, from the connections its deployment already configures. Their
- * lookups authenticate as the reader `authorization` signs for, never with a connector token.
+ * The headers one OpenCRQ user calls XTM One with (their short-lived JWT, as the chat proxy
+ * sends); `null` without a user (a service account or a connector never pivots).
  */
-export const tenantProviders = (tenantId: string, authorization: ReaderAuthorization = NO_READER): Array<CounterpartProvider> => {
+export const xtmOneReaderHeaders = (db: DrizzleDB, user: AuthUser | null | undefined): XtmOneReaderHeaders => {
+  const settings = getXtmOneSettings();
+  if (!user || !settings) {
+    return NO_XTM_ONE_READER;
+  }
+  return () => buildXtmOneHeaders(settings, db, { id: user.id, email: user.email, name: user.name });
+};
+
+/**
+ * The providers of one tenant in the emblem order (XTM One, OpenCTI, OpenAEV), from the connections
+ * its deployment already configures. Their lookups authenticate as the reader they sign for, never
+ * with a connector token.
+ */
+export const tenantProviders = (
+  tenantId: string,
+  authorization: ReaderAuthorization = NO_READER,
+  xtmOneHeaders: XtmOneReaderHeaders = NO_XTM_ONE_READER,
+): Array<CounterpartProvider> => {
   const connectors = config().connectors;
   return [
+    xtmOneProvider(getXtmOneSettings()?.url ?? null, xtmOneHeaders),
     openctiProvider(connectors?.opencti?.[tenantId], authorization),
     openaevProvider(connectors?.openaev?.[tenantId], authorization),
   ];
 };
 
 const connectionSchema = z.object({
-  product: z.enum(XTM_PRODUCTS),
+  product: z.enum(COUNTERPART_PRODUCTS),
   connected: z.boolean(),
   url: z.string().nullable(),
 });
 
 const counterpartSchema = z.object({
   key: z.string(),
-  product: z.enum(XTM_PRODUCTS),
+  product: z.enum(COUNTERPART_PRODUCTS),
   objectId: z.string(),
   objectType: z.string(),
   objectName: z.string().nullable(),
@@ -100,7 +122,7 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
       tenantProviders(await authorizedTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t))),
     )),
 
-  // bounded-by: XTM_PRODUCTS, one row per product this tenant can reach
+  // bounded-by: COUNTERPART_PRODUCTS, one row per product this tenant can reach
   connections: procedure
     .output(z.array(connectionSchema))
     .query(async ({ ctx: { services, origin } }) => xtmConnections(tenantProviders(
@@ -120,7 +142,7 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
         // Only a person pivots, with their own rights in the sibling product.
         return [];
       }
-      return resolveCounterparts(tenantId, user.id, input.kind, input.keys, tenantProviders(tenantId, readerAuthorization(db, user)));
+      return resolveCounterparts(tenantId, user.id, input.kind, input.keys, tenantProviders(tenantId, readerAuthorization(db, user), xtmOneReaderHeaders(db, user)));
     }),
 
   // bounded-by: MAX_COUNTERPART_KEYS keys per call, one batched read of one kind

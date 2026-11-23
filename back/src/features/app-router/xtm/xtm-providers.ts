@@ -1,5 +1,5 @@
 import { newError } from '@app/utils';
-import type { CounterpartKind, CounterpartProvider, XtmCounterpart } from './xtm-counterpart-utils';
+import type { CounterpartKind, CounterpartProduct, CounterpartProvider, XtmCounterpart } from './xtm-counterpart-utils';
 import { isHttpUrl, isRecord, normaliseCounterpartKey, sanitiseFacts } from './xtm-counterpart-utils';
 
 /**
@@ -76,8 +76,70 @@ export const openaevProvider = (
   },
 });
 
+// -- XTM One: its CTEM inventory (XTM-One-Platform/xtm-one#1349, POST /api/v1/organization-context/assets/lookup) --
+
+export const XTM_ONE_LOOKUP_PATH = '/api/v1/organization-context/assets/lookup';
+
+/**
+ * The headers of one reader's call to XTM One (their short-lived JWT addressed to XTM One's
+ * identity, and this platform's `X-Platform-*`); `null` when this platform cannot sign for them.
+ */
+export type XtmOneReaderHeaders = () => Promise<Record<string, string> | null>;
+
+/** The XTM One facts the preview shows, read from the inventory asset when it holds them. */
+const XTM_ONE_FACTS = ['criticality', 'category'] as const;
+
+/**
+ * Finds our assets in the inventory of the XTM One this deployment is connected to (`xtm_one.url`),
+ * with the reader's own XTM One account: what it answers is what that reader may read there. XTM
+ * One's inventory holds assets only. Its answer is `{ items: [{ key, id, name, category,
+ * criticality, url, ... }] }`, the key echoed as asked.
+ */
+export const xtmOneProvider = (
+  xtmOneUrl: string | null,
+  headers: XtmOneReaderHeaders,
+  fetchImpl: FetchLike = fetch,
+): CounterpartProvider => ({
+  product: 'xtmone',
+  url: xtmOneUrl ? trimSlash(xtmOneUrl) : null,
+  isConnected: !!xtmOneUrl,
+  supports: (kind) => kind === 'ASSET',
+  resolve: async (kind, keys) => {
+    if (!xtmOneUrl || kind !== 'ASSET' || keys.length === 0) {
+      return [];
+    }
+    const readerHeaders = await headers();
+    if (!readerHeaders) {
+      return [];
+    }
+    const res = await fetchImpl(`${trimSlash(xtmOneUrl)}${XTM_ONE_LOOKUP_PATH}`, {
+      method: 'POST',
+      headers: { ...readerHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keys }),
+      signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      // Never the request in the message: its headers carry the reader's token.
+      throw newError('XTM One asset lookup failed', { status: res.status });
+    }
+    const answer: unknown = await res.json();
+    const items = isRecord(answer) && Array.isArray(answer.items) ? answer.items.filter(isRecord) : [];
+    return toCounterparts('xtmone', kind, keys, items.map((item) => ({
+      object_key: item.key,
+      object_id: item.id,
+      object_type: 'asset',
+      object_name: typeof item.name === 'string' ? item.name : null,
+      object_url: item.url,
+      object_facts: XTM_ONE_FACTS.flatMap((fact) => {
+        const value = item[fact];
+        return typeof value === 'string' && value !== '' ? [{ key: fact, value }] : [];
+      }),
+    })));
+  },
+});
+
 const toCounterparts = (
-  product: 'openaev' | 'opencti',
+  product: CounterpartProduct,
   kind: CounterpartKind,
   asked: ReadonlyArray<string>,
   objects: ReadonlyArray<Record<string, unknown>>,
