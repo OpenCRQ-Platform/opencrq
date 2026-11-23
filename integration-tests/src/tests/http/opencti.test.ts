@@ -179,17 +179,26 @@ describe('OpenCTI connector (HTTP/tRPC)', () => {
       await client.mutation('opencti.configure', { streamId: 'live-stream-1', serviceAccountId }, { tenantId });
       const scoped = services.withOrigin({ type: 'client', userId: adminId, tenantId });
       await scoped.openctiConnector.updateCursor(tenantId, '1620249512318-0', new Date(), null, 0, 0);
-      expect((await client.query('opencti.getSettings', undefined, { tenantId })).json.result.data.threatVisibility).toBe('per_member');
+      const visibility = async () => (await client.query('opencti.getThreatVisibility', undefined, { tenantId })).json.result.data;
+      expect(await visibility()).toEqual({ threatVisibility: 'per_member' });
 
       const res = await client.mutation('opencti.setThreatVisibility', { threatVisibility: 'service_account' }, { tenantId });
 
       expect(res.status).toBe(200);
+      expect(await visibility()).toEqual({ threatVisibility: 'service_account' });
       expect((await client.query('opencti.getSettings', undefined, { tenantId })).json.result.data).toMatchObject({
-        threatVisibility: 'service_account',
         streamId: 'live-stream-1',
         cursor: '1620249512318-0',
         streamGeneration: 0,
       });
+    });
+
+    it('should set the choice of a tenant with no stream bound yet', async () => {
+      const res = await client.mutation('opencti.setThreatVisibility', { threatVisibility: 'service_account' }, { tenantId });
+
+      expect(res.status).toBe(200);
+      expect((await client.query('opencti.getThreatVisibility', undefined, { tenantId })).json.result.data).toEqual({ threatVisibility: 'service_account' });
+      expect((await client.query('opencti.getSettings', undefined, { tenantId })).json.result.data).toBeNull();
     });
 
     it('should refuse a choice that is not one', async () => {

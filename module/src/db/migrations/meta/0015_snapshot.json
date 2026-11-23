@@ -1,5 +1,5 @@
 {
-  "id": "b791f36a-2a10-4ed3-8655-8f5a02633250",
+  "id": "dd74d32d-f0b4-4fce-a77c-40952168156a",
   "prevId": "19d09ba0-f3d5-4faa-9b1f-f883b8a2c59d",
   "version": "7",
   "dialect": "postgresql",
@@ -976,6 +976,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "threat_visibility": {
+          "name": "threat_visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'per_member'"
         }
       },
       "indexes": {},
@@ -983,7 +990,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "tenants_threat_visibility_ck": {
+          "name": "tenants_threat_visibility_ck",
+          "value": "\"tenants\".\"threat_visibility\" IN ('per_member', 'service_account')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.users": {
@@ -16169,13 +16181,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "threat_visibility": {
-          "name": "threat_visibility",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'per_member'"
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -16239,12 +16244,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "opencti_connector_settings_threat_visibility_ck": {
-          "name": "opencti_connector_settings_threat_visibility_ck",
-          "value": "\"opencti_connector_settings\".\"threat_visibility\" IN ('per_member', 'service_account')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.opencti_stream_objects": {

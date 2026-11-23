@@ -89,7 +89,7 @@ describe('readerAuthorization', () => {
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- it reads the user's id, email and name, and hands the database to the signer
-const scopeAuthorization = (user: typeof USER | null, visibility: 'per_member' | 'service_account') => readerScopeAuthorization(DB as never, user as never, () => Promise.resolve(visibility));
+const scopeAuthorization = (user: typeof USER | null, visibility: 'per_member' | 'service_account') => readerScopeAuthorization(DB as never, user as never, visibility);
 
 describe('readerScopeAuthorization', () => {
   it('should ask OpenCTI with the connector token once the tenant reads as the service account, XTM One or not', async () => {

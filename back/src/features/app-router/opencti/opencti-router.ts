@@ -10,15 +10,14 @@ import { config } from '../../../config';
 import { router } from '../../../trpc';
 import { createLogger } from '../../../utils/logger';
 import { assertOneServiceAccountChoice, NewServiceAccountSchema } from '../integrations/new-service-account-input';
-import { readerMarkings } from '../xtm/reader-markings';
+import { userSessionOnly } from '../user-session-only';
 import { probeReaderLink, READER_LINKS, readerAuthorization } from '../xtm/xtm-router';
 import { computeTimelineProgressPercent } from './opencti-backfill-progress-utils';
 import { describeStreams, STREAM_RELATIONSHIPS, STREAM_VERDICTS, streamFilterGroupSchema } from './opencti-stream-filter-utils';
 
 const { logWarn } = createLogger({ feature: 'opencti' });
 
-const OpenctiConnectorSettingsSchema = createSelectSchema(openctiConnectorSettings)
-  .extend({ threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES) });
+const OpenctiConnectorSettingsSchema = createSelectSchema(openctiConnectorSettings);
 
 const STREAM_COLLECTIONS_QUERY = `
   query StreamCollections {
@@ -193,19 +192,24 @@ export const openctiRouter = (procedure: TenantProcedure, db: DrizzleDB) => rout
       return { link: connection ? await probeReaderLink(readerAuthorization(db, user), connection) : 'unknown' };
     }),
 
-  setThreatVisibility: procedure
-    .input(z.object({ threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES) }))
-    .mutation(async ({ input, ctx: { services, origin } }) => {
+  getThreatVisibility: procedure
+    .output(z.object({ threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES) }))
+    .query(async ({ ctx: { services, origin } }) => {
       if (!origin.tenantId) {
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
-      const canManage = await services.withOrigin(origin).capabilities.hasManageSecurity();
-      if (!canManage) {
+      return { threatVisibility: await services.withOrigin(origin).tenants.getThreatVisibility(origin.tenantId) };
+    }),
+
+  setThreatVisibility: procedure
+    .use(userSessionOnly)
+    .input(z.object({ threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES) }))
+    .mutation(async ({ input, ctx: { services, origin } }) => {
+      const scoped = services.withOrigin(origin);
+      if (!await scoped.capabilities.hasManageSecurity()) {
         throw new TRPCError({ code: 'FORBIDDEN' });
       }
-      await services.withOrigin(origin).openctiConnector.setThreatVisibility(origin.tenantId, input.threatVisibility);
-      // The members' scopes were read under the previous choice.
-      readerMarkings.clear();
+      await scoped.tenants.setThreatVisibility(input.threatVisibility);
     }),
 
   setEnabled: procedure

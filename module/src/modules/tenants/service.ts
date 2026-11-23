@@ -1,6 +1,7 @@
 import { newError, StructuredError } from '@app/utils';
 import type { SupportedLocale } from '../users/validation';
 import type { CreateTenantOptions } from './repository';
+import type { OpenctiThreatVisibility } from './threat-visibility';
 import { isForeignKeyViolationOf } from '../../db/pg-errors';
 import { defineService } from '../../registry';
 import { requireClientTenantId } from '../../security';
@@ -34,6 +35,11 @@ export const tenantsService = defineService(
   getTenant: async ({ repo }, id: string) => await repo.findTenantById(id),
   setTenantDefaultLocale: async ({ repo, eventOrigin }, defaultLocale: SupportedLocale | null) => {
     await repo.updateDefaultLocale(requireClientTenantId(eventOrigin), defaultLocale);
+  },
+  getThreatVisibility: async ({ repo }, tenantId: string): Promise<OpenctiThreatVisibility> =>
+    (await repo.findTenantById(tenantId))?.threatVisibility ?? 'per_member',
+  setThreatVisibility: async ({ repo, eventOrigin }, threatVisibility: OpenctiThreatVisibility) => {
+    await repo.updateThreatVisibility(requireClientTenantId(eventOrigin), threatVisibility);
   },
   // Whether the acting user reaches the tenant, as the tenants policy answers it: a member, or the super administrator.
   callerReachesTenant: async ({ repo }, tenantId: string) => (await repo.findTenantById(tenantId)) !== undefined,

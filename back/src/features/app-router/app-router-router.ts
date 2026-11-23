@@ -88,15 +88,16 @@ export const createTenantProcedure = (services: ReturnType<typeof instantiateSer
       // The objects mirrored from OpenCTI a person reads are the ones OpenCTI lets them read
       // (opencrq #31, #35): their markings and identity there, asked as them, ride on the origin
       // every view reads.
+      // The visibility is read on every call, cached scope or not, so that its change refreshes
+      // every query of the tenant through the doorbell of `tenants`.
+      const connection = config().connectors?.opencti?.[tenantId];
+      const threatVisibility = connection?.url ? await services.withOrigin(origin).tenants.getThreatVisibility(tenantId) : 'per_member';
       const scope = await readerMarkings.resolve(
         tenantId,
         origin.userId,
-        config().connectors?.opencti?.[tenantId],
-        readerScopeAuthorization(
-          db,
-          ctx.user,
-          async () => (await services.withOrigin(origin).openctiConnector.getSettings(tenantId))?.threatVisibility ?? 'per_member',
-        ),
+        connection,
+        threatVisibility,
+        readerScopeAuthorization(db, ctx.user, threatVisibility),
       );
       const markedOrigin: UserOrigin | ConnectorOrigin = scope === undefined
         ? origin

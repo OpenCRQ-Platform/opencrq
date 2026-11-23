@@ -51,8 +51,8 @@ export {
   revenueBandMidpoint,
 } from './modules/organizations/constants';
 export { CONNECTOR_INVENTORY, CONNECTOR_SCOPE_KINDS, CONNECTOR_SOURCES } from './modules/connectors/inventory';
-export { OPENCTI_THREAT_VISIBILITIES } from './modules/opencti-connector/threat-visibility';
-export type { OpenctiThreatVisibility } from './modules/opencti-connector/threat-visibility';
+export { OPENCTI_THREAT_VISIBILITIES } from './modules/tenants/threat-visibility';
+export type { OpenctiThreatVisibility } from './modules/tenants/threat-visibility';
 export type {
   ConnectorSource,
   ConnectorDomain,

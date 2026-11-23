@@ -2,7 +2,6 @@ import { newError } from '@app/utils';
 import { uuidv7 } from 'uuidv7';
 import type { ParsedThreatInput } from '../threat-analyses';
 import type { PendingMark } from './pending-batch';
-import type { OpenctiThreatVisibility } from './threat-visibility';
 import { defineService } from '../../registry';
 import { serviceAccountsService } from '../service-accounts/service';
 import { threatAnalysesService } from '../threat-analyses';
@@ -95,10 +94,6 @@ export const openctiConnectorService = defineService(
       await repo.upsertConfig(tenantId, uuidv7(), serviceAccountId, streamId);
       return serviceAccountId;
     }),
-
-  setThreatVisibility: async ({ repo }, tenantId: string, threatVisibility: OpenctiThreatVisibility) => {
-    await repo.setThreatVisibility(tenantId, uuidv7(), threatVisibility);
-  },
 
   setEnabled: async ({ repo }, tenantId: string, enabled: boolean) => {
     await repo.setEnabled(tenantId, uuidv7(), enabled);

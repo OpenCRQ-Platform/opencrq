@@ -9,6 +9,7 @@ import type { FunctionComponent } from 'react';
 import type { Control, FieldValues, Path } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import { CardField, RadioCard } from '../../../components/shared';
+import { EmptyValue } from '../../../components/ui/empty-value';
 import { useTRPC } from '../../../lib';
 import { ConnectorBanner } from './connector-banner';
 
@@ -20,14 +21,15 @@ const threatVisibilityLabel = (visibility: OpenctiThreatVisibility): string => (
 );
 
 /**
- * The tenant's choice and whether OpenCTI can be asked as a member. `perMemberUnavailable` only on
- * XTM One's word that OpenCTI is not registered with it: any other failure leaves the page quiet.
+ * The tenant's choice, `undefined` until it is read, and whether OpenCTI can be asked as a member.
+ * `perMemberUnavailable` only on XTM One's word that OpenCTI is not registered with it: any other
+ * failure, of either read, leaves the page quiet.
  */
 export const useOpenctiThreatVisibility = () => {
   const trpc = useTRPC();
-  const { data: settings } = useQuery(trpc.opencti.getSettings.queryOptions(undefined, { retry: false }));
+  const { data: saved } = useQuery(trpc.opencti.getThreatVisibility.queryOptions(undefined, { retry: false }));
   const { data: readerLink } = useQuery(trpc.opencti.getReaderLink.queryOptions(undefined, { retry: false }));
-  const visibility: OpenctiThreatVisibility = settings?.threatVisibility ?? 'per_member';
+  const visibility: OpenctiThreatVisibility | undefined = saved?.threatVisibility;
   const perMemberUnavailable = readerLink?.link === 'not_linked';
   return { visibility, perMemberUnavailable, hidesMarkedThreats: visibility === 'per_member' && perMemberUnavailable };
 };
@@ -50,7 +52,7 @@ export const OpenctiThreatVisibilityField: FunctionComponent<{ className?: strin
   return (
     <CardField title={t`Threat visibility`} className={className}>
       <span className="flex flex-wrap items-center gap-2">
-        <span>{threatVisibilityLabel(visibility)}</span>
+        {visibility ? <span>{threatVisibilityLabel(visibility)}</span> : <EmptyValue />}
         {hidesMarkedThreats && <Chip label={t`Unavailable`} severity="medium" />}
       </span>
     </CardField>

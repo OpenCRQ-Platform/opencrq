@@ -8,7 +8,6 @@ import type { ProductConnection, ReaderAuthorization, XtmOneReaderHeaders } from
 import { isOriginAuthorizedForItsTenant } from '../tenant-access-utils';
 import { config } from '../../../config';
 import { router } from '../../../trpc';
-import { outsideObservedCall } from '../../events/query-dependency-index';
 import { authenticateXtmOneJwt } from '../../xtm-one/xtm-one-auth';
 import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
 import { buildXtmOneHeaders } from '../../xtm-one/xtm-one-headers';
@@ -50,19 +49,17 @@ export const readerAuthorization = (db: DrizzleDB, user: AuthUser | null | undef
 /**
  * The bearer OpenCTI is asked a member's scope with: the member's own (`readerAuthorization`), or
  * the connector token once the tenant chose `service_account`, so every member reads what the
- * connector reads. The choice is read only when a scope is, outside the call that asked: it is
- * kept with the scope in the process, not in anything a doorbell refreshes.
+ * connector reads.
  */
 export const readerScopeAuthorization = (
   db: DrizzleDB,
   user: AuthUser | null | undefined,
-  threatVisibility: () => Promise<OpenctiThreatVisibility>,
+  threatVisibility: OpenctiThreatVisibility,
 ): ReaderAuthorization => {
-  const reader = readerAuthorization(db, user);
-  const authorization: ReaderAuthorization = async (product, connection) => (
-    await outsideObservedCall(threatVisibility) === 'service_account' ? connection.token : reader(product, connection)
-  );
-  return reader.unsigned === undefined ? authorization : Object.assign(authorization, { unsigned: reader.unsigned });
+  if (threatVisibility === 'service_account') {
+    return (_product, connection) => Promise.resolve(connection.token);
+  }
+  return readerAuthorization(db, user);
 };
 
 export const READER_LINKS = ['linked', 'not_linked', 'unknown'] as const;

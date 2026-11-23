@@ -6502,6 +6502,11 @@
       "input": null
     },
     {
+      "path": "opencti.getThreatVisibility",
+      "type": "query",
+      "input": null
+    },
+    {
       "path": "opencti.listStreams",
       "type": "query",
       "input": null

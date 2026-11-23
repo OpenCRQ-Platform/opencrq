@@ -1,12 +1,8 @@
 import { sql } from 'drizzle-orm';
-import { bigint, boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
-import type { OpenctiThreatVisibility } from './threat-visibility';
+import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { defineSecurityPolicies, reportRefMarkingPolicy, streamObjectMarkingPolicy, tenantIsolationPolicy } from '../../security';
 import { serviceAccounts } from '../service-accounts/schema';
 import { tenants } from '../tenants';
-import { OPENCTI_THREAT_VISIBILITIES } from './threat-visibility';
-
-const THREAT_VISIBILITY_LITERALS = sql.raw(OPENCTI_THREAT_VISIBILITIES.map((visibility) => `'${visibility}'`).join(', '));
 
 // Per-tenant OpenCTI Live Stream connector config. Credentials (`connectors.opencti.{url,token}`)
 // are deployment-wide (`config-schema.ts`). `serviceAccountId` lives here (not `integration_settings`)
@@ -43,12 +39,10 @@ export const openctiConnectorSettings = pgTable('opencti_connector_settings', {
   // The OpenCTI capability the deployment's token lacks to create the Live Stream OpenCRQ manages, set
   // at boot for a tenant with nothing bound; cleared once a stream is bound, by the boot or by Configure.
   streamMissingCapability: text('stream_missing_capability'),
-  threatVisibility: text('threat_visibility').notNull().default('per_member').$type<OpenctiThreatVisibility>(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex('opencti_connector_settings_tenantid_idx').on(table.tenantId),
-  check('opencti_connector_settings_threat_visibility_ck', sql`${table.threatVisibility} IN (${THREAT_VISIBILITY_LITERALS})`),
 ]);
 
 defineSecurityPolicies(openctiConnectorSettings, tenantIsolationPolicy);

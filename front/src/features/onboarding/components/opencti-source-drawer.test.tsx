@@ -50,6 +50,7 @@ const renderCard = ({ platformConfigured, hasManageSecurity = false }: CardState
       activeRunId: null,
     },
     'opencti.getSettings': null,
+    'opencti.getThreatVisibility': { threatVisibility: 'per_member' },
     'opencti.listStreams': [],
     'capabilities.hasManageSecurity': hasManageSecurity,
     'serviceAccounts.getServiceAccounts': [{ id: 'sa-1', name: 'OpenCTI import', active: true }],

@@ -1,4 +1,4 @@
-import type { OpenCtiReaderAccess } from '@app/module';
+import type { OpenCtiReaderAccess, OpenctiThreatVisibility } from '@app/module';
 import type { ProductConnection, ReaderAuthorization } from './xtm-providers';
 import { errorCategory, logCategory } from '../../../utils/error-category';
 import { createLogger } from '../../../utils/logger';
@@ -11,8 +11,8 @@ const { logWarn } = createLogger({ feature: 'reader-markings' });
  * What one OpenCRQ user may read in the tenant's OpenCTI (opencrq #31, #35): the marking
  * definitions they hold and who they are there (their id, individual, organizations, groups, the
  * BYPASS capability and the platform organization), asked of OpenCTI as that user (the short-lived
- * JWT XTM One signs for them), never with the connector token, so OpenCTI's own
- * rules decide. A mirrored object is then read only when OpenCTI would show it to them: all its
+ * JWT XTM One signs for them), so OpenCTI's own rules decide, or with the connector token once the
+ * tenant chose to show every member what the connector reads. A mirrored object is then read only when OpenCTI would show it to them: all its
  * markings are among theirs, and its organization sharing and authorized members admit them.
  *
  * `null` when the answer is unknown (no identity to sign for, a refusal, a timeout, a malformed
@@ -158,7 +158,13 @@ const lookUpReaderScope = async (
 interface CachedScope { scope: Promise<ReaderScope | null>, expiresAt: number }
 
 export interface ReaderMarkingsResolver {
-  resolve: (tenantId: string, userId: string, connection: ProductConnection | undefined, authorization: ReaderAuthorization) => Promise<ReaderScope | null | undefined>,
+  resolve: (
+    tenantId: string,
+    userId: string,
+    connection: ProductConnection | undefined,
+    threatVisibility: OpenctiThreatVisibility,
+    authorization: ReaderAuthorization,
+  ) => Promise<ReaderScope | null | undefined>,
   clear: () => void,
 }
 
@@ -169,11 +175,12 @@ export const createReaderMarkingsResolver = (
 ): ReaderMarkingsResolver => {
   const cache = new Map<string, CachedScope>();
   return {
-    resolve: async (tenantId, userId, connection, authorization) => {
+    resolve: async (tenantId, userId, connection, threatVisibility, authorization) => {
       if (!connection?.url) {
         return undefined;
       }
-      const key = `${tenantId}:${userId}`;
+      // A scope read under the other visibility was asked with another bearer.
+      const key = `${tenantId}:${userId}:${threatVisibility}`;
       const cached = cache.get(key);
       if (cached && cached.expiresAt > now()) {
         return cached.scope;

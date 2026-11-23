@@ -54,7 +54,7 @@ interface UseOpenctiConfigureOptions {
   onSaved?: () => void,
 }
 
-/** Suspends on the saved settings, the service accounts and the platform status: render it under a `Suspense`. */
+/** Suspends on the saved settings and visibility, the service accounts and the platform status: render it under a `Suspense`. */
 export const useOpenctiConfigure = ({ onSaved }: UseOpenctiConfigureOptions) => {
   const trpc = useTRPC();
   const { toast } = useToast();
@@ -63,8 +63,8 @@ export const useOpenctiConfigure = ({ onSaved }: UseOpenctiConfigureOptions) => 
   const { data: connectorsStatus } = useSuspenseQuery(trpc.integrations.getConnectorsStatus.queryOptions());
   const { data: streams, isLoading: isStreamsLoading, isError: isStreamsError } = useQuery(trpc.opencti.listStreams.queryOptions(undefined, { retry: false }));
 
+  const { data: { threatVisibility: savedVisibility } } = useSuspenseQuery(trpc.opencti.getThreatVisibility.queryOptions());
   const { perMemberUnavailable } = useOpenctiThreatVisibility();
-  const savedVisibility = settings?.threatVisibility ?? 'per_member';
 
   const form = useForm<ConfigureFormValues>({
     resolver: zodResolver(configureSchema),
@@ -85,7 +85,7 @@ export const useOpenctiConfigure = ({ onSaved }: UseOpenctiConfigureOptions) => 
 
   const save = async (values: ConfigureFormValues): Promise<void> => {
     const choice = toServiceAccountChoice(values);
-    const { rebind, setVisibility } = configureSaveSteps(settings, {
+    const { rebind, setVisibility } = configureSaveSteps(settings, savedVisibility, {
       streamId: values.streamId,
       serviceAccountId: 'newServiceAccount' in choice ? null : choice.serviceAccountId,
       threatVisibility: values.threatVisibility,

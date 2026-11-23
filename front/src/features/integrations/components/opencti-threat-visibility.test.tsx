@@ -17,7 +17,7 @@ afterEach(() => {
 const BANNER = 'Marked threats are hidden from members';
 
 const answers = (threatVisibility: 'per_member' | 'service_account' | null, link: unknown) => ({
-  'opencti.getSettings': threatVisibility === null ? null : { threatVisibility },
+  'opencti.getThreatVisibility': threatVisibility === null ? FAILED : { threatVisibility },
   'opencti.getReaderLink': link,
 });
 
@@ -28,15 +28,10 @@ describe('OpenctiThreatVisibilityBanner', () => {
     expect(await screen.findByText(BANNER)).toBeTruthy();
   });
 
-  it('should also count a tenant with nothing saved as per member', async () => {
-    renderWithTrpc(<OpenctiThreatVisibilityBanner />, { answers: answers(null, { link: 'not_linked' }) });
-
-    expect(await screen.findByText(BANNER)).toBeTruthy();
-  });
-
-  it('should say nothing once the service account is chosen, or while the link is linked, unknown or unanswered', async () => {
+  it('should say nothing once the service account is chosen, while the choice is unread, or while the link is linked, unknown or unanswered', async () => {
     for (const [visibility, link] of [
       ['service_account', { link: 'not_linked' }],
+      [null, { link: 'not_linked' }],
       ['per_member', { link: 'linked' }],
       ['per_member', { link: 'unknown' }],
       ['per_member', FAILED],

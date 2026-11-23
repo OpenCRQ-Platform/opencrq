@@ -1,2 +1,0 @@
-ALTER TABLE "opencti_connector_settings" ADD COLUMN "threat_visibility" text DEFAULT 'per_member' NOT NULL;--> statement-breakpoint
-ALTER TABLE "opencti_connector_settings" ADD CONSTRAINT "opencti_connector_settings_threat_visibility_ck" CHECK ("opencti_connector_settings"."threat_visibility" IN ('per_member', 'service_account'));

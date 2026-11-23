@@ -108,8 +108,8 @@
     {
       "idx": 15,
       "version": "7",
-      "when": 1795451127805,
-      "tag": "0015_opencti_threat_visibility",
+      "when": 1795453137878,
+      "tag": "0015_tenant_threat_visibility",
       "breakpoints": true
     }
   ],

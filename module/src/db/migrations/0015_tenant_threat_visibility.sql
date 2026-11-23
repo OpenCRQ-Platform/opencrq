@@ -1,0 +1,2 @@
+ALTER TABLE "tenants" ADD COLUMN "threat_visibility" text DEFAULT 'per_member' NOT NULL;--> statement-breakpoint
+ALTER TABLE "tenants" ADD CONSTRAINT "tenants_threat_visibility_ck" CHECK ("tenants"."threat_visibility" IN ('per_member', 'service_account'));
