@@ -17,8 +17,10 @@ import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveC
 import { lookupXtmObjects, resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
 
-/** No reader identity to sign: a lookup made with it reaches nothing. */
-const NO_READER: ReaderAuthorization = () => Promise.resolve(null);
+/** An authorization with no reader identity to sign, and why: a lookup made with it reaches nothing. */
+const signsNothing = (unsigned: string): ReaderAuthorization => Object.assign(() => Promise.resolve(null), { unsigned });
+const NO_READER = signsNothing('no user to sign for');
+const NO_ISSUER = signsNothing('no xtm_one.platform_url configured');
 
 /**
  * The bearer a sibling product reads with on behalf of one OpenCRQ user: a short-lived JWT this
@@ -28,8 +30,11 @@ const NO_READER: ReaderAuthorization = () => Promise.resolve(null);
  */
 export const readerAuthorization = (db: DrizzleDB, user: AuthUser | null | undefined): ReaderAuthorization => {
   const issuer = getXtmOneSettings()?.platformUrl;
-  if (!user || !issuer) {
+  if (!user) {
     return NO_READER;
+  }
+  if (!issuer) {
+    return NO_ISSUER;
   }
   return async (productUrl) => {
     const material = await ensureSigningKey(db);

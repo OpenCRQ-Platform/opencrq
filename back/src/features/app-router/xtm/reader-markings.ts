@@ -104,10 +104,11 @@ const unreadableAnswer = (answer: unknown): string => {
   return `OpenCTI refused the query: ${code ?? 'no error code'}`;
 };
 
-const requestFailure = (err: unknown): string => {
+/** An error's name and its cause's code, such as `TimeoutError` or `Error, ECONNREFUSED`. */
+const errorCategory = (err: unknown): string => {
   const name = err instanceof Error ? category(err.name) : null;
   const cause = err instanceof Error && isRecord(err.cause) ? category(err.cause.code) : null;
-  return `the request failed: ${[name ?? 'unknown error', cause].filter(Boolean).join(', ')}`;
+  return [name ?? 'unknown error', cause].filter(Boolean).join(', ');
 };
 
 type ScopeAnswer = { ok: true, scope: ReaderScope } | { ok: false, failure: string };
@@ -118,9 +119,15 @@ const fetchReaderScope = async (
   fetchImpl: FetchLike,
 ): Promise<ScopeAnswer> => {
   const base = connection.url.replace(/\/+$/, '');
-  const bearer = await authorization(base);
+  let bearer: string | null;
+  try {
+    bearer = await authorization(base);
+  } catch (err) {
+    // Signing reads the key from the database: nothing has been sent to OpenCTI yet.
+    return { ok: false, failure: `signing the reader's token failed: ${errorCategory(err)}` };
+  }
   if (!bearer) {
-    return { ok: false, failure: 'no token could be signed for the reader' };
+    return { ok: false, failure: `no token could be signed for the reader: ${authorization.unsigned ?? 'no reason given'}` };
   }
   const res = await fetchImpl(`${base}/graphql`, {
     method: 'POST',
@@ -153,7 +160,7 @@ const lookUpReaderScope = async (
   try {
     answer = await fetchReaderScope(connection, authorization, fetchImpl);
   } catch (err) {
-    answer = { ok: false, failure: requestFailure(err) };
+    answer = { ok: false, failure: `the request failed: ${errorCategory(err)}` };
   }
   if (!answer.ok) {
     logWarn('OpenCTI reader scope unresolved', { tenantId, userId, reason: answer.failure });

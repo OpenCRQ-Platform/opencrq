@@ -20,9 +20,9 @@ export interface ProductConnection { url: string, token: string }
 
 /**
  * The bearer of one reader for one product, addressed to its base URL; `null` when this platform
- * cannot sign for the reader (no user session, no public URL configured).
+ * cannot sign for the reader (no user session, no public URL configured), which `unsigned` names.
  */
-export type ReaderAuthorization = (productUrl: string) => Promise<string | null>;
+export type ReaderAuthorization = ((productUrl: string) => Promise<string | null>) & { readonly unsigned?: string };
 
 type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 

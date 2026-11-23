@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReaderAuthorization } from './xtm-providers';
 
 const { logWarn } = vi.hoisted(() => ({ logWarn: vi.fn() }));
 // The logger parses the process config at import time.
@@ -14,7 +15,7 @@ beforeEach(() => {
 
 const CONNECTION = { url: 'https://opencti.example/', token: 'connector-token' };
 const SIGN = () => Promise.resolve('reader-jwt');
-const NO_SIGN = () => Promise.resolve(null);
+const NO_SIGN = Object.assign(() => Promise.resolve(null), { unsigned: 'no xtm_one.platform_url configured' });
 
 const body = (markings: Array<string>) => ({
   data: {
@@ -108,7 +109,7 @@ describe('createReaderMarkingsResolver', () => {
   });
 
   it('should say why a reader has no scope, with the tenant and the user and never the token', async () => {
-    const unresolved = (fetchImpl: () => Promise<Response>, sign: () => Promise<string | null> = SIGN) =>
+    const unresolved = (fetchImpl: () => Promise<Response>, sign: ReaderAuthorization = SIGN) =>
       createReaderMarkingsResolver(vi.fn(fetchImpl)).resolve('t-1', 'u-1', CONNECTION, sign);
     const refusal = (error: Record<string, unknown>) => new Response(JSON.stringify({ errors: [error], data: null }), { status: 200 });
     const networkError = new Error('connect failed for reader@example.com with Bearer leaked-token', { cause: { code: 'ECONNREFUSED' } });
@@ -121,6 +122,8 @@ describe('createReaderMarkingsResolver', () => {
     await unresolved(() => Promise.reject(networkError));
     await unresolved(() => Promise.reject(new DOMException('The operation timed out for reader@example.com', 'TimeoutError')));
     await unresolved(() => Promise.resolve(answer([])), NO_SIGN);
+    await unresolved(() => Promise.resolve(answer([])), () => Promise.resolve(null));
+    await unresolved(() => Promise.resolve(answer([])), () => Promise.reject(new Error('XTM One signing key is missing for reader@example.com')));
 
     expect(logWarn.mock.calls.map(([, data]) => data.reason)).toEqual([
       'OpenCTI answered HTTP 401',
@@ -130,7 +133,9 @@ describe('createReaderMarkingsResolver', () => {
       'OpenCTI answered something other than JSON',
       'the request failed: Error, ECONNREFUSED',
       'the request failed: TimeoutError',
-      'no token could be signed for the reader',
+      'no token could be signed for the reader: no xtm_one.platform_url configured',
+      'no token could be signed for the reader: no reason given',
+      'signing the reader\'s token failed: Error',
     ]);
     expect(logWarn.mock.calls.every(([message, data]) => message === 'OpenCTI reader scope unresolved'
       && data.tenantId === 't-1' && data.userId === 'u-1')).toBe(true);
