@@ -1,6 +1,9 @@
 import type { OpenCtiReaderAccess } from '@app/module';
 import type { ProductConnection, ReaderAuthorization } from './xtm-providers';
+import { createLogger } from '../../../utils/logger';
 import { isRecord } from './xtm-counterpart-utils';
+
+const { logWarn } = createLogger({ feature: 'reader-markings' });
 
 /**
  * What one OpenCRQ user may read in the tenant's OpenCTI (opencrq #31, #35): the marking
@@ -81,15 +84,26 @@ export const parseReaderScope = (answer: unknown): ReaderScope | null => {
   };
 };
 
+/** Why OpenCTI's answer holds no scope: GraphQL reports its refusals as a 200 with `errors`. */
+const unreadableAnswer = (answer: unknown): string => {
+  const errors = isRecord(answer) && Array.isArray(answer.errors) ? answer.errors : [];
+  const first: unknown = errors[0];
+  return isRecord(first) && typeof first.message === 'string'
+    ? `OpenCTI refused the query: ${first.message.slice(0, 200)}`
+    : 'the answer lacks the reader scope fields';
+};
+
+type ScopeAnswer = { scope: ReaderScope } | { failure: string };
+
 const fetchReaderScope = async (
   connection: ProductConnection,
   authorization: ReaderAuthorization,
   fetchImpl: FetchLike,
-): Promise<ReaderScope | null> => {
+): Promise<ScopeAnswer> => {
   const base = connection.url.replace(/\/+$/, '');
   const bearer = await authorization(base);
   if (!bearer) {
-    return null;
+    return { failure: 'no token could be signed for the reader' };
   }
   const res = await fetchImpl(`${base}/graphql`, {
     method: 'POST',
@@ -99,9 +113,11 @@ const fetchReaderScope = async (
     signal: AbortSignal.timeout(READER_MARKINGS_TIMEOUT_MS),
   });
   if (!res.ok) {
-    return null;
+    return { failure: `OpenCTI answered HTTP ${res.status}` };
   }
-  return parseReaderScope(await res.json());
+  const answer: unknown = await res.json();
+  const scope = parseReaderScope(answer);
+  return scope ? { scope } : { failure: unreadableAnswer(answer) };
 };
 
 interface CachedScope { scope: ReaderScope | null, expiresAt: number }
@@ -127,11 +143,15 @@ export const createReaderMarkingsResolver = (
       if (cached && cached.expiresAt > now()) {
         return cached.scope;
       }
-      let scope: ReaderScope | null;
+      let answer: ScopeAnswer;
       try {
-        scope = await fetchReaderScope(connection, authorization, fetchImpl);
-      } catch {
-        scope = null;
+        answer = await fetchReaderScope(connection, authorization, fetchImpl);
+      } catch (err) {
+        answer = { failure: `the request failed: ${err instanceof Error ? err.message : 'unknown error'}` };
+      }
+      const scope = 'scope' in answer ? answer.scope : null;
+      if ('failure' in answer) {
+        logWarn('OpenCTI reader scope unresolved', { tenantId, userId, reason: answer.failure });
       }
       if (cache.size >= MAX_CACHED_READERS) {
         cache.clear();

@@ -1,3 +1,4 @@
+import { Alert } from '@filigran/design-system';
 import { plural, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import type { FunctionComponent, ReactNode } from 'react';
@@ -15,9 +16,20 @@ const ThreatsProcessingIndicator: FunctionComponent<{ pending: number }> = ({ pe
     : null
 );
 
+const HiddenThreatsNotice: FunctionComponent = () => (
+  <Alert
+    elevation={1}
+    severity="warning"
+    title={t`Some threats may be hidden from you.`}
+    description={t`OpenCRQ could not read what you are allowed to see in OpenCTI, so it lists only the threats that carry no marking. Ask an administrator to check that your OpenCTI account exists and that OpenCTI accepts sign-in from this platform.`}
+  />
+);
+
 interface ThreatListPageProps {
   /** Threats the list admits before their outcome probability, CVEs and techniques are computed. */
   pending: number,
+  /** OpenCTI did not answer for the reader, so the list is short of the threats they may hold there. */
+  readerScopeUnresolved: boolean,
   catalogEmpty: boolean,
   emptyState: ReactNode,
   kpiBand: ReactNode,
@@ -28,6 +40,7 @@ interface ThreatListPageProps {
 
 export const ThreatListPage: FunctionComponent<ThreatListPageProps> = ({
   pending,
+  readerScopeUnresolved,
   catalogEmpty,
   emptyState,
   kpiBand,
@@ -35,6 +48,7 @@ export const ThreatListPage: FunctionComponent<ThreatListPageProps> = ({
   backfillStatus,
   children,
 }) => {
+  const notice = readerScopeUnresolved ? <HiddenThreatsNotice /> : null;
   // The empty card carries the upload action itself.
   const actions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -45,11 +59,12 @@ export const ThreatListPage: FunctionComponent<ThreatListPageProps> = ({
   );
 
   if (catalogEmpty) {
-    return <DetailPageLayout title={t`Threats`} actions={actions}>{emptyState}</DetailPageLayout>;
+    return <DetailPageLayout title={t`Threats`} actions={actions}>{notice}{emptyState}</DetailPageLayout>;
   }
 
   return (
     <DetailPageLayout title={t`Threats`} actions={actions}>
+      {notice}
       {kpiBand}
       {children}
     </DetailPageLayout>

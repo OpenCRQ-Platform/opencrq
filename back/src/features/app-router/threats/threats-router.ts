@@ -1,5 +1,6 @@
 import {
   activityWeightFor,
+  originMarkingScope,
   SEVERITY_BANDS,
   THREAT_CVE_PRESENCES,
   THREAT_ENTITY_TYPES,
@@ -91,6 +92,9 @@ const ThreatListResultSchema = pagedOutput(ThreatListRowSchema).extend({
   // Analyses the recompute has never covered yet, admitted to the page like any other row (see
   // `countPendingAnalyses`) but called out here so the UI can explain their blank columns.
   pending: z.number().int(),
+  // OpenCTI did not say what the reader may read there, so the mirrored threats they see are only
+  // the unmarked ones.
+  readerScopeUnresolved: z.boolean(),
 });
 
 // The citing rows carry the STIX id of the vulnerability object the relationship pointed at, which
@@ -327,8 +331,10 @@ export const threatsRouter = (procedure: TenantProcedure) => router({
   list: procedure
     .input(ThreatListInputSchema)
     .output(ThreatListResultSchema)
-    .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin)
-      .threatAnalyses.list(input)),
+    .query(async ({ input, ctx: { services, origin } }) => ({
+      ...await services.withOrigin(origin).threatAnalyses.list(input),
+      readerScopeUnresolved: originMarkingScope(origin) === null,
+    })),
 
   deleteImported: procedure
     .input(z.array(z.uuid()).min(1))
