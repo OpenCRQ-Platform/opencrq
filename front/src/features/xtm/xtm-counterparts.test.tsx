@@ -114,7 +114,7 @@ describe('XtmPivotEmblems (single XTM One emblem, parity with opencti #20153)', 
     const { surface } = await openSurface();
     const sections = within(surface).getAllByRole('region');
     expect(sections[0]?.getAttribute('data-testid')).toBe('xtm-section-xtmone');
-    expect(within(sections[0]!).getByRole('link', { name: 'Open in XTM One' }).getAttribute('href')).toBe(xtmOne.objectUrl);
+    expect(within(sections[0]).getByRole('link', { name: 'Open in XTM One' }).getAttribute('href')).toBe(xtmOne.objectUrl);
   });
 
   it('draws no XTM One section outside assets', async () => {

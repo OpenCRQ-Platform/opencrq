@@ -385,7 +385,8 @@ const SurfaceSection: FunctionComponent<XtmSurfaceSection & { kind: CounterpartK
     case 'found': chip = <Chip severity="info" label={t`Found`} />; break;
     case 'not-found': chip = <Chip label={t`Not found`} />; break;
     case 'unavailable': chip = <Chip severity="medium" label={t`Unavailable`} />; break;
-    default: chip = <Chip label={t`Not connected`} />;
+    case 'checking':
+    case 'not-connected': chip = <Chip label={t`Not connected`} />; break;
   }
   return (
     <section aria-label={name} data-testid={`xtm-section-${product}`} data-status={state.kind} className="flex flex-col gap-2">
