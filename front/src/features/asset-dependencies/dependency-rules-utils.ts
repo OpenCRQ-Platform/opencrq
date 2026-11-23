@@ -4,7 +4,6 @@ import type { inferRouterOutputs } from '@trpc/server';
 
 type RouterOutputs = inferRouterOutputs<TRPCRouter>;
 export type DependencyRule = RouterOutputs['assetDependencies']['listDependencyRules'][number];
-export type DependencyRulePreview = RouterOutputs['assetDependencies']['previewDependencyRule'];
 
 /** The conditions a rule matches supporting assets on, as the editor holds them. */
 export interface DependencyRuleConditionsDraft {
