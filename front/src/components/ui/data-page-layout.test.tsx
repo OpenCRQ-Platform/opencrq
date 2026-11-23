@@ -166,6 +166,23 @@ describe('DataPageLayout fillHeight', () => {
   });
 });
 
+describe('DataPageLayout fixedColumnWidths', () => {
+  const SIZED: Array<ColumnDefWithOptionsHeader<Row, unknown>> = [{ id: 'name', accessorKey: 'name', header: 'Name', size: 120 }];
+
+  it('should lay the table out fixed, so a header cannot grow its column past its size', () => {
+    const { container } = render(<DataPageLayout data={ROWS} columns={SIZED} storageKey="data-page-layout-test" fixedColumnWidths />);
+
+    expect(container.querySelector('.data-table-fixed-columns')?.className).toContain('[&_table]:table-fixed');
+    expect(container.querySelector('th')?.style.width).toBe('120px');
+  });
+
+  it('should leave the table layout to the browser by default', () => {
+    const { container } = render(<DataPageLayout data={ROWS} columns={SIZED} storageKey="data-page-layout-test" />);
+
+    expect(container.querySelector('.data-table-fixed-columns')).toBeNull();
+  });
+});
+
 describe('DataPageLayout expandable rows', () => {
   const renderExpandable = (onClickRow = vi.fn()) => render(
     <DataPageLayout
