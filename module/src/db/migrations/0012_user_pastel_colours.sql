@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "pastel_colours" boolean DEFAULT false NOT NULL;

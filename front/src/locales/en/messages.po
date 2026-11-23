@@ -9284,6 +9284,9 @@ msgstr "Past simulations keep the names of the threats they used. Enabling the c
 msgid "Past threats, assets and loss estimates are not kept, only postures are, so every day is priced on the latest simulation's model. The further that model is from the fiscal year's end, the less precise the curve."
 msgstr "Past threats, assets and loss estimates are not kept, only postures are, so every day is priced on the latest simulation's model. The further that model is from the fiscal year's end, the less precise the curve."
 
+msgid "Pastel colours"
+msgstr "Pastel colours"
+
 msgid "Patch leverage"
 msgstr "Patch leverage"
 
@@ -13733,6 +13736,9 @@ msgstr "Use as many as you need, they add up."
 
 msgid "Use saved value"
 msgstr "Use saved value"
+
+msgid "Use the softer pastel palette for severity, status and marking colours"
+msgstr "Use the softer pastel palette for severity, status and marking colours"
 
 msgid "Used by groups"
 msgstr "Used by groups"
