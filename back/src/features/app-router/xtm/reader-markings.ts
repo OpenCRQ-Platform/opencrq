@@ -1,6 +1,8 @@
 import type { OpenCtiReaderAccess } from '@app/module';
 import type { ProductConnection, ReaderAuthorization } from './xtm-providers';
+import { errorCategory, logCategory } from '../../../utils/error-category';
 import { createLogger } from '../../../utils/logger';
+import { ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
 import { isRecord } from './xtm-counterpart-utils';
 
 const { logWarn } = createLogger({ feature: 'reader-markings' });
@@ -9,7 +11,7 @@ const { logWarn } = createLogger({ feature: 'reader-markings' });
  * What one OpenCRQ user may read in the tenant's OpenCTI (opencrq #31, #35): the marking
  * definitions they hold and who they are there (their id, individual, organizations, groups, the
  * BYPASS capability and the platform organization), asked of OpenCTI as that user (the short-lived
- * JWT this platform signs for them, opencrq #24), never with the connector token, so OpenCTI's own
+ * JWT XTM One signs for them), never with the connector token, so OpenCTI's own
  * rules decide. A mirrored object is then read only when OpenCTI would show it to them: all its
  * markings are among theirs, and its organization sharing and authorized members admit them.
  *
@@ -84,15 +86,6 @@ export const parseReaderScope = (answer: unknown): ReaderScope | null => {
   };
 };
 
-const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
-
-/**
- * A value logged as a category: an error code or name is an identifier, while a message is free text
- * from another product that may name the reader.
- */
-const category = (value: unknown): string | null =>
-  (typeof value === 'string' && IDENTIFIER.test(value) ? value : null);
-
 /** Why OpenCTI's answer holds no scope: GraphQL refuses with a 200 whose `errors` carry a code. */
 const unreadableAnswer = (answer: unknown): string => {
   const errors = isRecord(answer) && Array.isArray(answer.errors) ? answer.errors : [];
@@ -100,15 +93,8 @@ const unreadableAnswer = (answer: unknown): string => {
   if (!isRecord(first)) {
     return 'the answer lacks the reader scope fields';
   }
-  const code = isRecord(first.extensions) ? category(first.extensions.code) : null;
+  const code = isRecord(first.extensions) ? logCategory(first.extensions.code) : null;
   return `OpenCTI refused the query: ${code ?? 'no error code'}`;
-};
-
-/** An error's name and its cause's code, such as `TimeoutError` or `Error, ECONNREFUSED`. */
-const errorCategory = (err: unknown): string => {
-  const name = err instanceof Error ? category(err.name) : null;
-  const cause = err instanceof Error && isRecord(err.cause) ? category(err.cause.code) : null;
-  return [name ?? 'unknown error', cause].filter(Boolean).join(', ');
 };
 
 type ScopeAnswer = { ok: true, scope: ReaderScope } | { ok: false, failure: string };
@@ -121,10 +107,10 @@ const fetchReaderScope = async (
   const base = connection.url.replace(/\/+$/, '');
   let bearer: string | null;
   try {
-    bearer = await authorization(base);
+    bearer = await authorization('opencti', connection);
   } catch (err) {
-    // Signing reads the key from the database: nothing has been sent to OpenCTI yet.
-    return { ok: false, failure: `signing the reader's token failed: ${errorCategory(err)}` };
+    // Nothing has been sent to OpenCTI yet.
+    return { ok: false, failure: err instanceof ReaderTokenUnavailable ? err.failure : `obtaining the reader's token failed: ${errorCategory(err)}` };
   }
   if (!bearer) {
     return { ok: false, failure: `no token could be signed for the reader: ${authorization.unsigned ?? 'no reason given'}` };

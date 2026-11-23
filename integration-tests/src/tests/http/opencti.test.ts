@@ -174,6 +174,43 @@ describe('OpenCTI connector (HTTP/tRPC)', () => {
     expect(res.json.result.data).toMatchObject({ streamId: 'live-stream-2', cursor: null });
   });
 
+  describe('opencti.setThreatVisibility', () => {
+    it('should keep the stream where it was, nothing to replay for a reader-side choice', async () => {
+      await client.mutation('opencti.configure', { streamId: 'live-stream-1', serviceAccountId }, { tenantId });
+      const scoped = services.withOrigin({ type: 'client', userId: adminId, tenantId });
+      await scoped.openctiConnector.updateCursor(tenantId, '1620249512318-0', new Date(), null, 0, 0);
+      expect((await client.query('opencti.getSettings', undefined, { tenantId })).json.result.data.threatVisibility).toBe('per_member');
+
+      const res = await client.mutation('opencti.setThreatVisibility', { threatVisibility: 'service_account' }, { tenantId });
+
+      expect(res.status).toBe(200);
+      expect((await client.query('opencti.getSettings', undefined, { tenantId })).json.result.data).toMatchObject({
+        threatVisibility: 'service_account',
+        streamId: 'live-stream-1',
+        cursor: '1620249512318-0',
+        streamGeneration: 0,
+      });
+    });
+
+    it('should refuse a choice that is not one', async () => {
+      const res = await client.mutation('opencti.setThreatVisibility', { threatVisibility: 'everyone' }, { tenantId });
+
+      expect(res.json.error.data.code).toBe('BAD_REQUEST');
+    });
+
+    it('should refuse a tenant member who cannot manage security', async () => {
+      const regularUser = await createUser(db);
+      await services.withOrigin({ type: 'client', userId: adminId, tenantId })
+        .tenants.addTenantUser(tenantId, regularUser.userId);
+      client.clearCookies();
+      await signInAs(client, regularUser.userId);
+
+      const res = await client.mutation('opencti.setThreatVisibility', { threatVisibility: 'service_account' }, { tenantId });
+
+      expect(res.json.error.data.code).toBe('FORBIDDEN');
+    });
+  });
+
   it('configure rejects an unknown service account', async () => {
     const res = await client.mutation('opencti.configure', {
       streamId: 'live-stream-1',

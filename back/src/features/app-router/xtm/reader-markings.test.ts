@@ -8,6 +8,7 @@ vi.mock('../../../utils/logger', () => ({
 }));
 
 const { createReaderMarkingsResolver, parseAllowedMarkings, parseReaderScope, READER_MARKINGS_QUERY } = await import('./reader-markings');
+const { ReaderTokenUnavailable } = await import('../../xtm-one/xtm-one-token-exchange');
 
 beforeEach(() => {
   logWarn.mockClear();
@@ -15,7 +16,7 @@ beforeEach(() => {
 
 const CONNECTION = { url: 'https://opencti.example/', token: 'connector-token' };
 const SIGN = () => Promise.resolve('reader-jwt');
-const NO_SIGN = Object.assign(() => Promise.resolve(null), { unsigned: 'no xtm_one.platform_url configured' });
+const NO_SIGN = Object.assign(() => Promise.resolve(null), { unsigned: 'XTM One is not configured' });
 
 const body = (markings: Array<string>) => ({
   data: {
@@ -82,8 +83,10 @@ describe('createReaderMarkingsResolver', () => {
   it('should ask OpenCTI as the reader, never with the connector token', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(answer(['m-1']));
     const resolver = createReaderMarkingsResolver(fetchImpl);
+    const sign = vi.fn(SIGN);
 
-    expect((await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN))?.markings).toEqual(['m-1']);
+    expect((await resolver.resolve('t-1', 'u-1', CONNECTION, sign))?.markings).toEqual(['m-1']);
+    expect(sign).toHaveBeenCalledWith('opencti', CONNECTION);
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe('https://opencti.example/graphql');
     expect(init.headers.Authorization).toBe('Bearer reader-jwt');
@@ -123,6 +126,8 @@ describe('createReaderMarkingsResolver', () => {
     await unresolved(() => Promise.reject(new DOMException('The operation timed out for reader@example.com', 'TimeoutError')));
     await unresolved(() => Promise.resolve(answer([])), NO_SIGN);
     await unresolved(() => Promise.resolve(answer([])), () => Promise.resolve(null));
+    await unresolved(() => Promise.resolve(answer([])), () => Promise.reject(new ReaderTokenUnavailable('XTM One refused the token exchange: HTTP 403')));
+    await unresolved(() => Promise.resolve(answer([])), () => Promise.reject(new ReaderTokenUnavailable('reading OpenCTI\'s public URL failed: HTTP 401')));
     await unresolved(() => Promise.resolve(answer([])), () => Promise.reject(new Error('XTM One signing key is missing for reader@example.com')));
 
     expect(logWarn.mock.calls.map(([, data]) => data.reason)).toEqual([
@@ -133,9 +138,11 @@ describe('createReaderMarkingsResolver', () => {
       'OpenCTI answered something other than JSON',
       'the request failed: Error, ECONNREFUSED',
       'the request failed: TimeoutError',
-      'no token could be signed for the reader: no xtm_one.platform_url configured',
+      'no token could be signed for the reader: XTM One is not configured',
       'no token could be signed for the reader: no reason given',
-      'signing the reader\'s token failed: Error',
+      'XTM One refused the token exchange: HTTP 403',
+      'reading OpenCTI\'s public URL failed: HTTP 401',
+      'obtaining the reader\'s token failed: Error',
     ]);
     expect(logWarn.mock.calls.every(([message, data]) => message === 'OpenCTI reader scope unresolved'
       && data.tenantId === 't-1' && data.userId === 'u-1')).toBe(true);

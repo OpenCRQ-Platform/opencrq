@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Widening } from './query-dependency-index';
 import { EVERY_TABLE } from './data-changed-hub';
-import { ATTRIBUTION_DEADLINE_MS, installQueryDependencyIndex, observeQueryProcedure, QueryDependencyIndex } from './query-dependency-index';
+import { ATTRIBUTION_DEADLINE_MS, installQueryDependencyIndex, observeQueryProcedure, outsideObservedCall, QueryDependencyIndex } from './query-dependency-index';
 
 const scan = (...tables: Array<string>) => [{
   Plan: { 'Node Type': 'Append', Plans: tables.map((table) => ({ 'Node Type': 'Seq Scan', 'Relation Name': table })) },
@@ -52,6 +52,22 @@ describe('QueryDependencyIndex', () => {
     expect(index.readsOf('notifications.getNotifications')).toEqual(['notifications', 'users']);
     expect(index.targetsOf(['organizations'])).toEqual({ procedures: ['organizations.getOrganizations'], all: false });
     expect(index.targetsOf(['users'])).toEqual({ procedures: ['notifications.getNotifications'], all: false });
+  });
+
+  it('attributes nothing a call reads outside its observed scope, even after an await', async () => {
+    const index = new QueryDependencyIndex({ explain: explainFrom({ 'select orgs': ['organizations'], 'select settings': ['opencti_connector_settings'] }) });
+
+    await index.observe('organizations.getOrganizations', async () => {
+      await outsideObservedCall(async () => {
+        await tick();
+        index.logQuery('select settings');
+      });
+      index.logQuery('select orgs');
+      return ok;
+    });
+
+    expect(index.readsOf('organizations.getOrganizations')).toEqual(['organizations']);
+    expect(index.targetsOf(['opencti_connector_settings'])).toEqual({ procedures: [], all: false });
   });
 
   it('runs one EXPLAIN per statement text, whatever the procedure or the number of calls', async () => {

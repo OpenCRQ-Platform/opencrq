@@ -2668,6 +2668,9 @@ msgstr "Intelligence artificielle"
 msgid "As reported by Drata"
 msgstr "Tel que rapporté par Drata"
 
+msgid "As the service account"
+msgstr "Comme le compte de service"
+
 msgid "Asc"
 msgstr "Croissant"
 
@@ -3293,6 +3296,9 @@ msgstr "Par CVE"
 
 msgid "By detecting it"
 msgstr "En la détectant"
+
+msgid "By each member's rights in OpenCTI"
+msgstr "Selon les droits de chaque membre dans OpenCTI"
 
 msgid "By finding"
 msgstr "Par finding"
@@ -4867,6 +4873,9 @@ msgstr "Chaque gain est la perte annuelle moyenne que corriger la CVE sur tous l
 msgid "Each level includes the ones below it."
 msgstr "Chaque échelon inclut ceux qui le précèdent."
 
+msgid "Each member sees the threats they can read in OpenCTI."
+msgstr "Chaque membre voit les menaces qu'il peut lire dans OpenCTI."
+
 msgid "Each named risk scenario is simulated on its own, and its ALE mean is added to the total."
 msgstr "Chaque scénario de risque nommé est simulé isolément, et sa perte annuelle attendue (ALE) moyenne est ajoutée au total."
 
@@ -5248,6 +5257,9 @@ msgstr "Toutes les heures"
 
 msgid "Every input is filled in and reflected by the latest simulation."
 msgstr "Toutes les données d'entrée sont renseignées et prises en compte par la dernière simulation."
+
+msgid "Every member of the tenant sees what the connector reads in OpenCTI, whatever their own rights there."
+msgstr "Tous les membres du tenant voient ce que lit le connecteur dans OpenCTI, quels que soient leurs propres droits dans OpenCTI."
 
 msgid "Every pair some capability of the catalogue could contest, minus the pairs at least one of your deployed controls covers on that family."
 msgstr "Toutes les paires qu'une capacité du catalogue pourrait contester, moins les paires qu'au moins un de vos contrôles déployés couvre sur cette famille."
@@ -7233,6 +7245,9 @@ msgstr "Marquer comme lu"
 msgid "Mark as unread"
 msgstr "Marquer comme non lu"
 
+msgid "Marked threats are hidden from members"
+msgstr "Les menaces marquées sont masquées aux membres"
+
 msgid "Marking"
 msgstr "Marquage"
 
@@ -8983,8 +8998,8 @@ msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du 
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du déploiement n'a pas la capacité {capability}. Accordez-la à l'utilisateur de ce jeton et redémarrez OpenCRQ, ou utilisez Configurer pour choisir un flux en direct."
 
-msgid "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that your OpenCTI account exists and that OpenCTI accepts sign-in from this platform."
-msgstr "OpenCRQ n'a pas pu lire ce que vous avez le droit de voir dans OpenCTI : il n'affiche donc les menaces issues d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur de vérifier qu'OpenCTI est joignable, que votre compte OpenCTI existe et qu'OpenCTI accepte la connexion depuis cette plateforme."
+msgid "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that it is registered with this platform's XTM One, and that your email has an account in both."
+msgstr "OpenCRQ n'a pas pu lire ce que vous avez le droit de voir dans OpenCTI : il n'affiche donc les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur de vérifier qu'OpenCTI est joignable, qu'il est enregistré auprès du XTM One de cette plateforme, et que votre e-mail a un compte dans les deux."
 
 msgid "OpenCRQ home"
 msgstr "Accueil OpenCRQ"
@@ -13040,6 +13055,12 @@ msgstr "Ce nom est déjà pris"
 msgid "This name is already taken."
 msgstr "Ce nom est déjà pris."
 
+msgid "This OpenCTI is not linked to OpenCRQ's XTM One, so it does not recognize the members. Link it to the same XTM One, or choose in Configure what members see."
+msgstr "Cet OpenCTI n'est pas relié au XTM One d'OpenCRQ : il ne reconnaît pas les membres. Reliez-le au même XTM One, ou choisissez dans Configurer ce que voient les membres."
+
+msgid "This OpenCTI is not linked to OpenCRQ's XTM One."
+msgstr "Cet OpenCTI n'est pas relié au XTM One d'OpenCRQ."
+
 msgid "This order is specific to this tenant: several workers pull from the same queue."
 msgstr "Cet ordre est propre à ce tenant : plusieurs workers puisent dans la même file."
 
@@ -13309,6 +13330,9 @@ msgstr "Score de la menace : {score} sur 100, tranche {bandWord}"
 
 msgid "Threat sources"
 msgstr "Sources de menaces"
+
+msgid "Threat visibility"
+msgstr "Visibilité des menaces"
 
 msgid "Threats"
 msgstr "Menaces"

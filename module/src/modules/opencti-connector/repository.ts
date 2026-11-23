@@ -1,6 +1,7 @@
 import type { SQL } from 'drizzle-orm';
-import { aliasedTable, and, eq, exists, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { aliasedTable, and, eq, exists, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import type { PendingMark, PendingStreamObject } from './pending-batch';
+import type { OpenctiThreatVisibility } from './threat-visibility';
 import type { RepositoryContext } from '../../registry';
 import { LATERAL_ON } from '../../db/lateral';
 import { diffRows } from '../../db/row-diff';
@@ -138,6 +139,19 @@ export const openctiConnectorRepository = defineRepository({
       .onConflictDoUpdate({
         target: openctiConnectorSettings.tenantId,
         set: { streamMissingCapability: capability, updatedAt },
+      });
+  },
+
+  /** Leaves the stream and its position alone: a reader-side choice replays nothing. */
+  setThreatVisibility: async ({ db }, tenantId: string, id: string, threatVisibility: OpenctiThreatVisibility) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
+    const updatedAt = sql`now()` as unknown as Date;
+    return db.insert(openctiConnectorSettings)
+      .values([{ id, tenantId, threatVisibility }])
+      .onConflictDoUpdate({
+        target: openctiConnectorSettings.tenantId,
+        set: { threatVisibility, updatedAt },
+        setWhere: ne(openctiConnectorSettings.threatVisibility, threatVisibility),
       });
   },
 

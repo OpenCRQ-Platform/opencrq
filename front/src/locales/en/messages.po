@@ -2668,6 +2668,9 @@ msgstr "Artificial intelligence"
 msgid "As reported by Drata"
 msgstr "As reported by Drata"
 
+msgid "As the service account"
+msgstr "As the service account"
+
 msgid "Asc"
 msgstr "Asc"
 
@@ -3293,6 +3296,9 @@ msgstr "By CVE"
 
 msgid "By detecting it"
 msgstr "By detecting it"
+
+msgid "By each member's rights in OpenCTI"
+msgstr "By each member's rights in OpenCTI"
 
 msgid "By finding"
 msgstr "By finding"
@@ -4867,6 +4873,9 @@ msgstr "Each gain is the mean annual loss that fixing the CVE on every asset car
 msgid "Each level includes the ones below it."
 msgstr "Each level includes the ones below it."
 
+msgid "Each member sees the threats they can read in OpenCTI."
+msgstr "Each member sees the threats they can read in OpenCTI."
+
 msgid "Each named risk scenario is simulated on its own, and its ALE mean is added to the total."
 msgstr "Each named risk scenario is simulated on its own, and its ALE mean is added to the total."
 
@@ -5248,6 +5257,9 @@ msgstr "Every hour"
 
 msgid "Every input is filled in and reflected by the latest simulation."
 msgstr "Every input is filled in and reflected by the latest simulation."
+
+msgid "Every member of the tenant sees what the connector reads in OpenCTI, whatever their own rights there."
+msgstr "Every member of the tenant sees what the connector reads in OpenCTI, whatever their own rights there."
 
 msgid "Every pair some capability of the catalogue could contest, minus the pairs at least one of your deployed controls covers on that family."
 msgstr "Every pair some capability of the catalogue could contest, minus the pairs at least one of your deployed controls covers on that family."
@@ -7233,6 +7245,9 @@ msgstr "Mark as read"
 msgid "Mark as unread"
 msgstr "Mark as unread"
 
+msgid "Marked threats are hidden from members"
+msgstr "Marked threats are hidden from members"
+
 msgid "Marking"
 msgstr "Marking"
 
@@ -8983,8 +8998,8 @@ msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's to
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 
-msgid "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that your OpenCTI account exists and that OpenCTI accepts sign-in from this platform."
-msgstr "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that your OpenCTI account exists and that OpenCTI accepts sign-in from this platform."
+msgid "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that it is registered with this platform's XTM One, and that your email has an account in both."
+msgstr "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that it is registered with this platform's XTM One, and that your email has an account in both."
 
 msgid "OpenCRQ home"
 msgstr "OpenCRQ home"
@@ -13040,6 +13055,12 @@ msgstr "This name is already taken"
 msgid "This name is already taken."
 msgstr "This name is already taken."
 
+msgid "This OpenCTI is not linked to OpenCRQ's XTM One, so it does not recognize the members. Link it to the same XTM One, or choose in Configure what members see."
+msgstr "This OpenCTI is not linked to OpenCRQ's XTM One, so it does not recognize the members. Link it to the same XTM One, or choose in Configure what members see."
+
+msgid "This OpenCTI is not linked to OpenCRQ's XTM One."
+msgstr "This OpenCTI is not linked to OpenCRQ's XTM One."
+
 msgid "This order is specific to this tenant: several workers pull from the same queue."
 msgstr "This order is specific to this tenant: several workers pull from the same queue."
 
@@ -13309,6 +13330,9 @@ msgstr "Threat score: {score} out of 100, {bandWord} band"
 
 msgid "Threat sources"
 msgstr "Threat sources"
+
+msgid "Threat visibility"
+msgstr "Threat visibility"
 
 msgid "Threats"
 msgstr "Threats"

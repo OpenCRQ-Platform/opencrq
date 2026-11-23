@@ -337,3 +337,10 @@ export const observeQueryProcedure = <R extends { ok: boolean }>(
   invoke: () => Promise<R>,
   declaredReads?: ReadonlyArray<string>,
 ): Promise<R> => (installed === null ? invoke() : installed.observe(procedure, invoke, declaredReads));
+
+/**
+ * Runs `read` as no call's statement, for a process cache that outlives the call filling it: its
+ * reads belong to no procedure, and attributing them to whichever call missed the cache would
+ * subscribe that one procedure, and no other, to the table.
+ */
+export const outsideObservedCall = <T>(read: () => T): T => currentCall.exit(read);

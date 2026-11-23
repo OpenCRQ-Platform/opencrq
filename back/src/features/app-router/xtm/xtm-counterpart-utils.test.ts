@@ -134,11 +134,12 @@ describe('providers', () => {
       { object_key: 'cve-2024-3400', object_id: 'v1', object_type: 'vulnerability', object_name: 'PAN-OS', object_url: 'https://openaev.example/v/v1', object_facts: [{ fact_key: 'findings', fact_value: '2' }] },
       { object_key: 'CVE-2000-0001', object_id: 'v2', object_url: 'https://openaev.example/v/v2' },
     ]))));
-    const authorization = vi.fn((_productUrl: string) => Promise.resolve('reader-jwt'));
-    const p = openaevProvider({ url: 'https://openaev.example/', token: 'connector-token' }, authorization, fetchImpl);
+    const authorization = vi.fn((_product: string, _connection: unknown) => Promise.resolve('reader-jwt'));
+    const connection = { url: 'https://openaev.example/', token: 'connector-token' };
+    const p = openaevProvider(connection, authorization, fetchImpl);
     const found = await p.resolve('VULNERABILITY', ['CVE-2024-3400']);
     expect(fetchImpl.mock.calls[0][0]).toBe('https://openaev.example/api/tenants/2cffad3a-0001-4078-b0e2-ef74274022c3/xtm/objects/vulnerabilities');
-    expect(authorization).toHaveBeenCalledWith('https://openaev.example');
+    expect(authorization).toHaveBeenCalledWith('openaev', connection);
     expect(authHeaderOf(fetchImpl.mock.calls[0][1])).toBe('Bearer reader-jwt');
     expect(found).toEqual([{ key: 'CVE-2024-3400', product: 'openaev', objectId: 'v1', objectType: 'vulnerability', objectName: 'PAN-OS', objectUrl: 'https://openaev.example/v/v1', facts: [{ key: 'findings', value: '2' }] }]);
   });
@@ -147,8 +148,11 @@ describe('providers', () => {
     const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response(JSON.stringify({ data: { stixCoreObjects: { edges: [
       { node: { id: 'abc', standard_id: STIX, entity_type: 'Intrusion-Set', representative: { main: 'APT28' } } },
     ] } } }))));
-    const p = openctiProvider({ url: 'https://opencti.example/', token: 'connector-token' }, () => Promise.resolve('reader-jwt'), fetchImpl);
+    const authorization = vi.fn((_product: string, _connection: unknown) => Promise.resolve('reader-jwt'));
+    const connection = { url: 'https://opencti.example/', token: 'connector-token' };
+    const p = openctiProvider(connection, authorization, fetchImpl);
     const found = await p.resolve('THREAT', [STIX]);
+    expect(authorization).toHaveBeenCalledWith('opencti', connection);
     expect(authHeaderOf(fetchImpl.mock.calls[0][1])).toBe('Bearer reader-jwt');
     expect(found).toEqual([{ key: STIX, product: 'opencti', objectId: 'abc', objectType: 'Intrusion-Set', objectName: 'APT28', objectUrl: 'https://opencti.example/dashboard/id/abc', facts: [] }]);
   });

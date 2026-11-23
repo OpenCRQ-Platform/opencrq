@@ -9,6 +9,8 @@ import {
   ComboboxTrigger,
   Switch,
 } from '@filigran/design-system';
+import { OPENCTI_THREAT_VISIBILITIES } from '@app/module/client';
+import { useToast } from '@filigran/ui';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { msg, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
@@ -20,16 +22,19 @@ import type { OpenctiStream } from '../opencti-stream-filter-utils';
 import { ComboboxPanel } from '../../../components/shared';
 import { useTRPC } from '../../../lib';
 import { filterOptionsByLabel } from '../../../utils';
+import { configureSaveSteps } from '../opencti-configure-utils';
 import { defaultServiceAccountChoice, refineServiceAccountChoice, serviceAccountChoiceFields, toServiceAccountChoice } from '../service-account-choice-utils';
 import { getConnectors } from './connectors-list';
 import { OpenctiStreamFilter } from './opencti-stream-filter';
 import { OpenctiStreamOption } from './opencti-stream-option';
 import { OpenctiStreamHistoryNotice, OpenctiStreamVerdictNotice } from './opencti-stream-verdict';
+import { ThreatVisibilityFields, useOpenctiThreatVisibility } from './opencti-threat-visibility';
 import { ServiceAccountChoiceFields } from './service-account-choice-fields';
 
 const configureSchema = z.object({
   streamId: z.string().min(1),
   ...serviceAccountChoiceFields(),
+  threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES),
 }).superRefine((values, ctx) => refineServiceAccountChoice(values, ctx, { accountRequired: true }));
 
 type ConfigureFormValues = z.infer<typeof configureSchema>;
@@ -52,23 +57,54 @@ interface UseOpenctiConfigureOptions {
 /** Suspends on the saved settings, the service accounts and the platform status: render it under a `Suspense`. */
 export const useOpenctiConfigure = ({ onSaved }: UseOpenctiConfigureOptions) => {
   const trpc = useTRPC();
+  const { toast } = useToast();
   const { data: settings } = useSuspenseQuery(trpc.opencti.getSettings.queryOptions());
   const { data: serviceAccounts } = useSuspenseQuery(trpc.serviceAccounts.getServiceAccounts.queryOptions());
   const { data: connectorsStatus } = useSuspenseQuery(trpc.integrations.getConnectorsStatus.queryOptions());
   const { data: streams, isLoading: isStreamsLoading, isError: isStreamsError } = useQuery(trpc.opencti.listStreams.queryOptions(undefined, { retry: false }));
+
+  const { perMemberUnavailable } = useOpenctiThreatVisibility();
+  const savedVisibility = settings?.threatVisibility ?? 'per_member';
 
   const form = useForm<ConfigureFormValues>({
     resolver: zodResolver(configureSchema),
     defaultValues: {
       streamId: settings?.streamId ?? '',
       ...defaultServiceAccountChoice(getConnectors().opencti.name, serviceAccounts, settings?.serviceAccountId),
+      threatVisibility: savedVisibility,
     },
   });
 
   const configureMutation = useMutation(trpc.opencti.configure.mutationOptions({
     meta: { successMessage: msg`Integration configured successfully.` },
-    onSuccess: () => onSaved?.(),
   }));
+  // Its toast is the binding's when both are saved, its own otherwise.
+  const visibilityMutation = useMutation(trpc.opencti.setThreatVisibility.mutationOptions({
+    meta: { skipSuccessToast: true },
+  }));
+
+  const save = async (values: ConfigureFormValues): Promise<void> => {
+    const choice = toServiceAccountChoice(values);
+    const { rebind, setVisibility } = configureSaveSteps(settings, {
+      streamId: values.streamId,
+      serviceAccountId: 'newServiceAccount' in choice ? null : choice.serviceAccountId,
+      threatVisibility: values.threatVisibility,
+    });
+    if (setVisibility) {
+      await visibilityMutation.mutateAsync({ threatVisibility: values.threatVisibility });
+    }
+    if (rebind) {
+      // The stream needs an account: the schema refuses an empty existing one before it gets here.
+      if ('newServiceAccount' in choice) {
+        await configureMutation.mutateAsync({ streamId: values.streamId, newServiceAccount: choice.newServiceAccount });
+      } else if (choice.serviceAccountId !== null) {
+        await configureMutation.mutateAsync({ streamId: values.streamId, serviceAccountId: choice.serviceAccountId });
+      }
+    } else {
+      toast({ description: t`Integration configured successfully.` });
+    }
+    onSaved?.();
+  };
 
   // The Switch's own state flip is the feedback, per the toaster convention for inline state changes.
   const setEnabledMutation = useMutation(trpc.opencti.setEnabled.mutationOptions({
@@ -77,16 +113,10 @@ export const useOpenctiConfigure = ({ onSaved }: UseOpenctiConfigureOptions) => 
 
   return {
     form,
-    submit: (values: ConfigureFormValues) => {
-      const choice = toServiceAccountChoice(values);
-      // The stream needs an account: the schema refuses an empty existing one before it gets here.
-      if ('newServiceAccount' in choice) {
-        configureMutation.mutate({ streamId: values.streamId, newServiceAccount: choice.newServiceAccount });
-      } else if (choice.serviceAccountId !== null) {
-        configureMutation.mutate({ streamId: values.streamId, serviceAccountId: choice.serviceAccountId });
-      }
-    },
-    isPending: configureMutation.isPending,
+    // A failed call has already raised its error toast; the drawer stays open.
+    submit: (values: ConfigureFormValues) => save(values).catch(() => undefined),
+    isPending: configureMutation.isPending || visibilityMutation.isPending,
+    perMemberUnavailable,
     settings,
     serviceAccounts,
     streams: streams ?? [],
@@ -163,6 +193,7 @@ export const OpenctiConfigureFields: FunctionComponent<{ configure: OpenctiConfi
         serviceAccounts={serviceAccounts}
         configuredServiceAccountId={settings?.serviceAccountId ?? undefined}
       />
+      <ThreatVisibilityFields control={form.control} perMemberUnavailable={configure.perMemberUnavailable} />
     </>
   );
 };

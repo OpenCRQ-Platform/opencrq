@@ -6,8 +6,8 @@ import type { OnboardingWizard, StepProgressCount, StepSyncReads, StepSyncSource
 import { useTRPC } from '../../../lib';
 import { countAssessed } from '../defenses-utils';
 
-/** A threat source's own threats, or the tenant's whole count without a kind; undefined while it loads. */
-export const useThreatCount = (kind?: ThreatSourceKind, enabled = true): number | undefined => {
+/** A threat source's own threats; undefined while it loads. */
+export const useThreatCount = (kind: ThreatSourceKind, enabled = true): number | undefined => {
   const trpc = useTRPC();
   const { data } = useQuery(trpc.threats.list.queryOptions({ page: 1, limit: 1, kind }, { enabled }));
   return data?.total;

@@ -5,8 +5,8 @@ import { isHttpUrl, isRecord, normaliseCounterpartKey, sanitiseFacts } from './x
 /**
  * The providers OpenCRQ resolves counterparts with, built from the URLs of the connections it
  * already holds (`connectors.opencti.<tenant>` and `connectors.openaev.<tenant>`). A lookup runs for
- * one reader and authenticates as that reader (`authorization`: a short-lived JWT this platform
- * signs for them, opencrq #24): the product applies the reader's own rights, and the connector
+ * one reader and authenticates as that reader (`authorization`: a short-lived JWT XTM One signs for
+ * them): the product applies the reader's own rights, and the connector
  * token, which reads everything the sync reads, is never sent on a reader's behalf. No identity for
  * the reader, or a refusal, gives no counterpart.
  */
@@ -18,11 +18,13 @@ const LOOKUP_TIMEOUT_MS = 5_000;
 
 export interface ProductConnection { url: string, token: string }
 
+export type ReaderProduct = 'opencti' | 'openaev';
+
 /**
- * The bearer of one reader for one product, addressed to its base URL; `null` when this platform
- * cannot sign for the reader (no user session, no public URL configured), which `unsigned` names.
+ * The bearer of one reader for the product behind `connection`; `null` when this platform cannot
+ * sign for the reader (no user session, no XTM One), which `unsigned` names.
  */
-export type ReaderAuthorization = ((productUrl: string) => Promise<string | null>) & { readonly unsigned?: string };
+export type ReaderAuthorization = ((product: ReaderProduct, connection: ProductConnection) => Promise<string | null>) & { readonly unsigned?: string };
 
 type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
@@ -65,12 +67,11 @@ export const openaevProvider = (
     if (!connection || !path) {
       return [];
     }
-    const base = trimSlash(connection.url);
-    const bearer = await authorization(base);
+    const bearer = await authorization('openaev', connection);
     if (!bearer) {
       return [];
     }
-    const url = `${base}/api/tenants/${OPENAEV_DEFAULT_TENANT_ID}/xtm/objects/${path}`;
+    const url = `${trimSlash(connection.url)}/api/tenants/${OPENAEV_DEFAULT_TENANT_ID}/xtm/objects/${path}`;
     const data = await postJson(fetchImpl, url, bearer, { counterpart_keys: keys });
     return toCounterparts('openaev', kind, keys, Array.isArray(data) ? data : []);
   },
@@ -216,7 +217,7 @@ export const openctiProvider = (
       return [];
     }
     const base = trimSlash(connection.url);
-    const bearer = await authorization(base);
+    const bearer = await authorization('opencti', connection);
     if (!bearer) {
       return [];
     }
