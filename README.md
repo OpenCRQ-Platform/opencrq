@@ -165,15 +165,15 @@ OpenCRQ is one of the five products of the [XTM Platform](https://filigran.io), 
 
 ## Quick start
 
-Requirements: Docker with Docker Compose.
+OpenCRQ runs with Docker in the [XTM Docker bundle](https://github.com/FiligranHQ/xtm-docker), beside XTM One, OpenCTI and OpenAEV. Requirements: Docker with Docker Compose v2, and the memory and disk the bundle's README asks for.
 
 ```bash
-git clone https://github.com/OpenCRQ-Platform/opencrq.git && cd opencrq/docker
-cp .env.sample .env      # set XTM_ONE__URL, XTM_ONE__TOKEN and XTM_ONE__PLATFORM_URL
-docker compose up --build --pull always -d
+git clone https://github.com/FiligranHQ/xtm-docker.git && cd xtm-docker
+cp .env.sample .env      # replace every ChangeMe and changeme value, and every value marked [MANDATORY]
+docker compose up -d
 ```
 
-Open http://localhost:3020, then connect OpenCTI and OpenAEV from the connectors guides.
+Open http://localhost:8082 and sign in with XTM One: OpenCTI and OpenAEV are already connected.
 
 - **Guides**: [quick start](docs/quick-start.md) and [Docker deployment](docs/deployment/docker.md).
 - **Docker**: [`filigran/opencrq`](https://hub.docker.com/r/filigran/opencrq).

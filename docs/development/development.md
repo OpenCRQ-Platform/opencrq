@@ -193,8 +193,8 @@ From PostgreSQL 16, XTM One's database is not moved: it had a server of its own,
 hand in the earlier XTM One, its conversations and its settings stay behind in that volume.
 
 The major version follows the XTM bundle's: Renovate reads it from the bundle's Compose file and
-proposes the new tag. A new major also renames the volume in `infra/local/compose.yml` and
-`docker/compose.yml`, and from 18 on mounts it at `/var/lib/postgresql`. `yarn test:scripts` fails
+proposes the new tag. A new major also renames the volume in `infra/local/compose.yml`, and from 18
+on mounts it at `/var/lib/postgresql`. `yarn test:scripts` fails
 until the volume, its mount and every image pin agree.
 
 - **Its URL** is `xtmOne` in `yarn env:status --json`, on the port family 4005 + 100 × slot.
@@ -232,10 +232,8 @@ and you land back in OpenCRQ.
 
 - **The super administrator** is XTM One's own administrator, `xtm-admin@example.com` with the
   password `yarn env:status` prints (`XTM_ONE_ADMIN_PASSWORD` in the worktree's `infra/local/.env`):
-  every right in every tenant and on the platform, with no membership, as long as the stack's XTM One
-  sends the `xtm_super_admin` claim. The published `rolling` image does not yet: until it does, that
-  account signs in as a user with no access, unless the stack runs an XTM One built from a branch
-  that sends it (see [XTM One in the stack](#xtm-one-in-the-stack)).
+  every right in every tenant and on the platform, with no membership, signalled by the
+  `xtm_super_admin` claim the stack's XTM One sends.
 - **The seeded users** exist in the stack's XTM One with the seeded password: the admin you typed in
   `seed:setup-dev` (`admin@example.com` by default), a platform administrator in OpenCRQ through
   its platform group, and `alice`, `bob`, `charlie` and `eve` `@example.com`, all with the same
