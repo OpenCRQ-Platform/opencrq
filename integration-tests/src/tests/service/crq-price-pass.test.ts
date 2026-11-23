@@ -48,6 +48,22 @@ describe('CRQ price pass over unchanged inputs', () => {
     expect(await runCount()).toBe(1);
   });
 
+  it('should name the scenario it re-priced, and none on a pass over unchanged inputs', async () => {
+    await seed();
+    const progress: Array<{ walked: number, total: number }> = [];
+
+    const onProgress = (update: { walked: number, total: number }) => {
+      progress.push(update);
+      return Promise.resolve();
+    };
+
+    expect(await pass({ onProgress }))
+      .toMatchObject({ priced: 1, moved: [riskScenarioId], walked: 1, total: 1 });
+    expect(progress).toEqual([{ walked: 0, total: 1 }]);
+
+    expect(await pass()).toMatchObject({ priced: 0, unchanged: 1, moved: [], walked: 1, total: 1 });
+  });
+
   it('should still write the run of a manual simulation over unchanged inputs', async () => {
     await seed();
     await pass();

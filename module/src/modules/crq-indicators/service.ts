@@ -906,15 +906,34 @@ export interface ScenarioPricingPass {
   unchanged: number,
   skipped: number,
   refused: Array<{ riskScenarioId: string, reason: string }>,
+  /** The scenarios this pass wrote a new run for, in the order it walked them: the ones `priced` counts. */
+  moved: Array<string>,
+  /** The scenarios this pass went through, refused ones included. */
+  walked: number,
+  /** The scenarios this pass had ahead of it when it started: everything after `after`. */
+  total: number,
   /** The last scenario this pass went through when it stopped on its budget, null once it reached the end. */
   resumeAfter: string | null,
 }
+
+export interface ScenarioPricingPassProgress {
+  walked: number,
+  total: number,
+}
+
+/** How many scenarios a pass goes through between two progress reports. */
+export const SCENARIO_PRICING_PROGRESS_EVERY = 25;
 
 export interface ScenarioPricingPassOptions {
   priceBudgetReviews?: boolean,
   appVersion?: string,
   after?: string,
   budgetMs?: number,
+  /**
+   * Called once the scenarios are listed, then every `SCENARIO_PRICING_PROGRESS_EVERY` scenarios.
+   * The pass's own answer carries the final figures, so the caller reports the end itself.
+   */
+  onProgress?: (progress: ScenarioPricingPassProgress) => Promise<void>,
 }
 
 /**
@@ -1238,16 +1257,22 @@ export const crqIndicatorsService = defineService(
     tenantId: string,
     signal?: AbortSignal,
     jobId?: string,
-    { after, budgetMs, ...engineOptions }: ScenarioPricingPassOptions = {},
+    { after, budgetMs, onProgress, ...engineOptions }: ScenarioPricingPassOptions = {},
   ): Promise<ScenarioPricingPass | null> => {
     const startedAtMs = Date.now();
-    const pass: ScenarioPricingPass = { priced: 0, unchanged: 0, skipped: 0, refused: [], resumeAfter: null };
     const riskScenarioIds = await context.deps.riskScenarios.getAllRiskScenarioIds(after);
+    const pass: ScenarioPricingPass = {
+      priced: 0, unchanged: 0, skipped: 0, refused: [], moved: [], walked: 0, total: riskScenarioIds.length, resumeAfter: null,
+    };
+    await onProgress?.({ walked: 0, total: pass.total });
     let previous: string | undefined;
     for (const riskScenarioId of riskScenarioIds) {
       if (previous !== undefined && budgetMs !== undefined && Date.now() - startedAtMs >= budgetMs) {
         pass.resumeAfter = previous;
         return pass;
+      }
+      if (pass.walked > 0 && pass.walked % SCENARIO_PRICING_PROGRESS_EVERY === 0) {
+        await onProgress?.({ walked: pass.walked, total: pass.total });
       }
       try {
         const outcome = await runAttackRunEngine(
@@ -1270,6 +1295,7 @@ export const crqIndicatorsService = defineService(
           }
         } else {
           pass.priced += 1;
+          pass.moved.push(riskScenarioId);
         }
       } catch (error) {
         if (!(error instanceof NonRetryableError)) {
@@ -1277,6 +1303,7 @@ export const crqIndicatorsService = defineService(
         }
         pass.refused.push({ riskScenarioId, reason: error.message });
       }
+      pass.walked += 1;
       previous = riskScenarioId;
     }
     return pass;

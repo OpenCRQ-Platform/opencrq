@@ -81,6 +81,24 @@ describe('jobs runs and queue (HTTP/tRPC)', () => {
     expect(res.json.result.data.items[0].id).toBe(dlqId);
   });
 
+  it('reads a price pass\'s progress and the scenarios it moved back from listAllRuns and getRun', async () => {
+    const { jobId } = await system().enqueueJob({ kind: 'crq-price-recompute', tenantId, payload: {} });
+    const workerId = `worker-${jobId}`;
+    await system().claimNext(workerId, ['crq-price-recompute'], 30_000);
+    const summary = { walked: 3, priced: 1, unchanged: 2, skipped: 0, refused: 0, moved: [uuidv7()], movedCount: 1, complete: true };
+    await system().updateProgress(jobId, workerId, { processedTotal: 3, expectedTotal: 3, message: JSON.stringify(summary) });
+    await system().recordSuccess(jobId, workerId);
+
+    const listed = await client.query('jobs.listAllRuns', { kinds: ['crq-price-recompute'] }, { tenantId });
+    const detail = await client.query('jobs.getRun', { id: jobId }, { tenantId });
+
+    expect(listed.json.result.data.items).toHaveLength(1);
+    for (const run of [listed.json.result.data.items[0], detail.json.result.data]) {
+      expect(run).toMatchObject({ id: jobId, status: 'succeeded', processedTotal: 3, expectedTotal: 3 });
+      expect(JSON.parse(run.currentStep)).toEqual(summary);
+    }
+  });
+
   it('windows listAllRuns on enqueuedAt', async () => {
     const { jobId: firstId } = await system().enqueueJob({ kind: 'cve-epss-sync', tenantId, payload: {} });
     const first = await system().getJob(firstId);
