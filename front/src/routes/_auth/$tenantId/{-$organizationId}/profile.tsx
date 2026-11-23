@@ -298,12 +298,16 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/profil
               {/* The 36 px control line of the selects next to it: a short label keeps the switch on it in every
                   language; the explanation is a muted description below the line (the Switch composes no helper text). */}
               <div className="flex h-9 items-center">
+                {/* Never disabled while the update is pending: a disabled control drops keyboard focus to the body.
+                    The pending value shows at once (optimistic) until onSuccess's refetch settles it. */}
                 <Switch
-                  checked={pastelColoursQuery.data === true}
+                  checked={updatePastelColoursMutation.isPending
+                    ? updatePastelColoursMutation.variables?.pastelColours === true
+                    : pastelColoursQuery.data === true}
                   onCheckedChange={(checked) => {
                     void updatePastelColoursMutation.mutateAsync({ pastelColours: checked });
                   }}
-                  disabled={!pastelColoursQuery.isSuccess || updatePastelColoursMutation.isPending}
+                  disabled={!pastelColoursQuery.isSuccess}
                   label={t`Softer tones`}
                   aria-describedby="profile-pastel-colours-description"
                 />
