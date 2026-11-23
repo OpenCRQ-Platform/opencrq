@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { XtmCounterpart, XtmEmblemInput } from './xtm-counterparts';
 import { FAILED, NEVER, renderWithTrpc } from '../../providers/trpc-test-harness';
-import { XtmConnectTeaser, xtmEmblemState, XtmPivotEmblems, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
+import { emblemProducts, factValueLabel, XtmConnectTeaser, xtmEmblemState, XtmPivotEmblems, XtmPivotPreview, XtmRowMarks, xtmSourceProducts } from './xtm-counterparts';
 
 const canConfigure = vi.fn<() => boolean>();
 vi.mock('../../hooks/utils/use-has-manage-security', () => ({ useHasManageSecurity: () => canConfigure() }));
@@ -83,6 +83,35 @@ describe('XtmPivotEmblems', () => {
     expect(await screen.findByRole('button', { name: 'Looking in OpenCTI…' })).toBeTruthy();
   });
 
+  it('puts XTM One first on an asset, in the XTM One purple when its inventory holds it', async () => {
+    const xtmOne: XtmCounterpart = {
+      key: 'web-01', product: 'xtmone', objectId: 'x1', objectType: 'asset', objectName: 'web-01', objectUrl: 'https://xtm-one.example/ctem/inventory/assets/x1',
+      facts: [{ key: 'criticality', value: 'very_high' }, { key: 'category', value: 'generic_asset' }],
+    };
+    renderWithTrpc(
+      <XtmPivotEmblems kind="ASSET" objectKey="web-01" />,
+      { answers: { 'xtm.connections': [{ product: 'xtmone', connected: true, url: 'https://xtm-one.example' }, ...BOTH], 'xtm.counterparts': [xtmOne] } },
+    );
+    const found = await screen.findByRole('link', { name: 'Open in XTM One' });
+    expect(found.getAttribute('href')).toBe(xtmOne.objectUrl);
+    expect(found.querySelector('[data-testid="xtm-mark"]')?.className).toContain('text-filigran-ia-primary');
+    const opencti = screen.getByRole('button', { name: 'Not found in OpenCTI' });
+    expect(found.compareDocumentPosition(opencti) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(opencti.querySelector('[data-testid="xtm-mark"]')?.className).toContain('text-icon-disabled');
+  });
+
+  it('draws no XTM One emblem outside assets, and never a connector link for XTM One', async () => {
+    renderEmblems([], [{ product: 'xtmone', connected: false, url: null }, ...BOTH]);
+    await screen.findByRole('button', { name: 'Not found in OpenCTI' });
+    expect(screen.queryByRole('button', { name: /XTM One/ })).toBeNull();
+    renderWithTrpc(
+      <XtmPivotEmblems kind="ASSET" objectKey="web-01" />,
+      { answers: { 'xtm.connections': [{ product: 'xtmone', connected: false, url: null }, ...BOTH], 'xtm.counterparts': [] } },
+    );
+    expect(await screen.findByRole('button', { name: 'XTM One is not connected' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Connect XTM One' })).toBeNull();
+  });
+
   it('finds a product the object came from by its source link, with no lookup hit needed', async () => {
     renderEmblems([], BOTH, 'ww-onedev-worker-001', { openaev: SOURCED });
     const found = await screen.findByRole('link', { name: 'Open in OpenAEV' });
@@ -109,6 +138,23 @@ describe('xtmEmblemState', () => {
     const state = xtmEmblemState('openaev', { ...base, sourced: SOURCED, counterparts: [{ ...SOURCED, objectUrl: 'https://elsewhere', facts }] });
     expect(state).toEqual({ kind: 'found', counterpart: { ...SOURCED, facts } });
     expect(xtmEmblemState('openaev', { ...base, connected: undefined, sourced: SOURCED }).kind).toBe('found');
+  });
+});
+
+describe('emblemProducts', () => {
+  it('orders XTM One, OpenCTI, OpenAEV on assets and the siblings alone elsewhere', () => {
+    expect(emblemProducts('ASSET')).toEqual(['xtmone', 'opencti', 'openaev']);
+    expect(emblemProducts('VULNERABILITY')).toEqual(['opencti', 'openaev']);
+    expect(emblemProducts('THREAT')).toEqual(['opencti', 'openaev']);
+  });
+});
+
+describe('factValueLabel', () => {
+  it('reads the XTM One inventory enums as labels, other facts as answered', () => {
+    expect(factValueLabel('criticality', 'very_high')).toBe('Very High');
+    expect(factValueLabel('criticality', 'high')).toBe('High');
+    expect(factValueLabel('category', 'generic_asset')).toBe('Generic asset');
+    expect(factValueLabel('findings', '3')).toBe('3');
   });
 });
 

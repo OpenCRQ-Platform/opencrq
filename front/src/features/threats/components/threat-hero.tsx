@@ -73,8 +73,9 @@ export const ThreatHero: FunctionComponent<ThreatHeroProps> = ({ detail }) => {
   const quantify = bestMatch === null ? null : <ThreatQuantifyAction attackOutcomeId={bestMatch.attackOutcomeId} outcomeName={bestMatch.outcomeName} />;
   const action = (
     <span className="flex items-center gap-2">
-      {quantify}
+      {/* The cross-product emblems come first, before this product's own actions (Sam, 23 Nov 2026). */}
       {pivots}
+      {quantify}
       {origin.kind === 'stix-import' && <ThreatActionsMenu threatId={analysis.id} />}
     </span>
   );

@@ -6554,6 +6554,9 @@ msgstr "It appears here once {name} holds the same technique, by its MITRE id."
 msgid "It appears here once {name} holds the same threat, by its STIX id."
 msgstr "It appears here once {name} holds the same threat, by its STIX id."
 
+msgid "It appears here once a source of the XTM One inventory reports a machine with the same hostname."
+msgstr "It appears here once a source of the XTM One inventory reports a machine with the same hostname."
+
 msgid "It goes back to draft and can be edited again. Its publication date is cleared and its answers stop feeding the linked controls until it is published again."
 msgstr "It goes back to draft and can be edited again. Its publication date is cleared and its answers stop feeding the linked controls until it is published again."
 
@@ -10950,6 +10953,9 @@ msgstr "See the tests in {control} › Validation"
 
 msgid "See the whole chain"
 msgstr "See the whole chain"
+
+msgid "See this asset in the XTM One CTEM inventory, with every source that reports it."
+msgstr "See this asset in the XTM One CTEM inventory, with every source that reports it."
 
 msgid "See which"
 msgstr "See which"

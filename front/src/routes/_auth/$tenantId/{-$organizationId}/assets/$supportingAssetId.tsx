@@ -132,7 +132,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
             crqPosture={crqPosture}
             actions={
               <>
-                {/* The same machine in OpenCTI (System, Hostname) and OpenAEV (asset): source link first, hostname second. */}
+                {/* First in the row: the same machine in the XTM One inventory, OpenCTI (System, Hostname) and OpenAEV (asset): source link first, hostname second. */}
                 <XtmPivotEmblems kind="ASSET" objectKey={hostname} sourced={sourced} />
                 <AssetResyncAction
                   supportingAssetId={supportingAsset.id}

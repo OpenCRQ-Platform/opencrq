@@ -13,8 +13,16 @@ export type CounterpartKind = typeof COUNTERPART_KINDS[number];
 export const XTM_PRODUCTS = ['opencti', 'openaev'] as const;
 export type XtmProduct = typeof XTM_PRODUCTS[number];
 
+/**
+ * The products an object is looked up in, in the emblem order of the contract (Sam, 23 Nov 2026):
+ * XTM One first (its CTEM inventory), then OpenCTI and OpenAEV. The product switcher keeps
+ * `XTM_PRODUCTS`: XTM One is not a sibling product there.
+ */
+export const COUNTERPART_PRODUCTS = ['xtmone', 'opencti', 'openaev'] as const;
+export type CounterpartProduct = typeof COUNTERPART_PRODUCTS[number];
+
 export interface XtmConnection {
-  product: XtmProduct,
+  product: CounterpartProduct,
   connected: boolean,
   url: string | null,
 }
@@ -26,7 +34,7 @@ export interface XtmCounterpartFact {
 
 export interface XtmCounterpart {
   key: string,
-  product: XtmProduct,
+  product: CounterpartProduct,
   objectId: string,
   objectType: string,
   objectName: string | null,
@@ -126,7 +134,7 @@ export const isHttpUrl = (value: unknown): value is string => {
  * provider; the resolver below knows nothing of any product.
  */
 export interface CounterpartProvider {
-  product: XtmProduct,
+  product: CounterpartProduct,
   url: string | null,
   isConnected: boolean,
   supports: (kind: CounterpartKind) => boolean,

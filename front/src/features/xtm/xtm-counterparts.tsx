@@ -13,8 +13,10 @@ type RouterOutputs = inferRouterOutputs<TRPCRouter>;
 
 /**
  * Cross-product awareness, contract v3, the same in OpenCTI, OpenAEV and OpenCRQ: in every hero, one
- * icon-only button per counterpart product (OpenCTI, then OpenAEV; OpenCRQ is this product), its
- * emblem and no text, at the size of the sibling header actions (36 px). Three states, one emblem:
+ * icon-only button per counterpart product, its emblem and no text, at the size of the sibling header
+ * actions (36 px). The emblem group comes first in the action row, before this product's own actions,
+ * ordered XTM One, OpenCTI, OpenAEV (OpenCRQ is this product; Sam, 23 Nov 2026). XTM One's CTEM
+ * inventory holds assets only, so its emblem is drawn on assets alone. Three states, one emblem:
  * - found: the emblem in colour, the click opens the object there, hover and focus show its facts;
  * - connected, not found: the emblem greyed, still focusable, a tooltip saying how it gets there;
  * - not connected: the emblem greyed, a teaser of what the product would show (example fields as
@@ -23,21 +25,36 @@ type RouterOutputs = inferRouterOutputs<TRPCRouter>;
  * List rows carry a 16 px mark only when found, nothing otherwise.
  */
 
+/** The sibling products an object can come from (its sources). */
 export type XtmProduct = 'opencti' | 'openaev';
+/** Every product an object is looked up in: XTM One and the siblings. */
+export type CounterpartProduct = 'xtmone' | XtmProduct;
 export type CounterpartKind = 'ASSET' | 'ATTACK_PATTERN' | 'VULNERABILITY' | 'THREAT';
 export type XtmCounterpart = RouterOutputs['xtm']['counterparts'][number];
 
 // eslint-disable-next-line lingui/no-unlocalized-strings -- product names, never translated
-const PRODUCT_NAMES: Record<XtmProduct, string> = { opencti: 'OpenCTI', openaev: 'OpenAEV' };
+const PRODUCT_NAMES: Record<CounterpartProduct, string> = { xtmone: 'XTM One', opencti: 'OpenCTI', openaev: 'OpenAEV' };
 // The product glyphs of the design system's product switcher (filigran-design-system
 // product-logos.generated.tsx, its fill-highlight group), monochrome, painted through a CSS mask.
-const PRODUCT_MARKS: Record<XtmProduct, string> = { opencti: '/img/xtm-mark-opencti.svg', openaev: '/img/xtm-mark-openaev.svg' };
-/** The emblem order of the contract: OpenCTI, OpenAEV, OpenCRQ, this product skipped. */
+const PRODUCT_MARKS: Record<CounterpartProduct, string> = {
+  xtmone: '/img/xtm-mark-xtmone.svg',
+  opencti: '/img/xtm-mark-opencti.svg',
+  openaev: '/img/xtm-mark-openaev.svg',
+};
+/** The sibling products in the emblem order: OpenCTI, OpenAEV, OpenCRQ, this product skipped. */
 export const XTM_PRODUCTS: ReadonlyArray<XtmProduct> = ['opencti', 'openaev'];
 
-export const productName = (product: XtmProduct) => PRODUCT_NAMES[product];
+/**
+ * The emblems of one kind, in the order of the contract: XTM One first, then the siblings. XTM One's
+ * inventory holds assets only.
+ */
+export const emblemProducts = (kind: CounterpartKind): ReadonlyArray<CounterpartProduct> => (
+  kind === 'ASSET' ? ['xtmone', ...XTM_PRODUCTS] : XTM_PRODUCTS
+);
 
-const openIn = (product: XtmProduct) => {
+export const productName = (product: CounterpartProduct) => PRODUCT_NAMES[product];
+
+const openIn = (product: CounterpartProduct) => {
   const name = productName(product);
   return t`Open in ${name}`;
 };
@@ -62,11 +79,16 @@ export const useCounterparts = (kind: CounterpartKind, keys: ReadonlyArray<strin
 };
 
 /**
- * Two colours only, the same for every product (Sam, 22 Nov 2026): found = the design system's
+ * Two colours, the same for every sibling product (Sam, 22 Nov 2026): found = the design system's
  * highlight ink (--icon-highlight, the brand primary of the theme, the colour of the product switcher
- * marks); not found or not connected = its disabled ink (--icon-disabled). No per-product colour.
+ * marks); not found or not connected = its disabled ink (--icon-disabled). The one exception (Sam,
+ * 23 Nov 2026): a found XTM One emblem is the canonical XTM One purple, the design system's
+ * --color-filigran-ia-primary (--purple-500 #651fe5 light, --purple-300 #a47af0 dark,
+ * filigran-design-system src/tokens/theme.css; the brand mark xtm-one-logo-light.svg fills #651FE5).
  */
-const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number, muted?: boolean }> = ({ product, size, muted }) => {
+const foundInk = (product: CounterpartProduct) => (product === 'xtmone' ? 'text-filigran-ia-primary' : 'text-icon-highlight');
+
+const ProductMark: FunctionComponent<{ product: CounterpartProduct, size?: number, muted?: boolean }> = ({ product, size, muted }) => {
   const px = size ?? 16;
   // eslint-disable-next-line lingui/no-unlocalized-strings -- CSS mask value, not copy
   const mask = `url("${PRODUCT_MARKS[product]}") center / contain no-repeat`;
@@ -75,7 +97,7 @@ const ProductMark: FunctionComponent<{ product: XtmProduct, size?: number, muted
       aria-hidden
       data-testid="xtm-mark"
       data-muted={muted ? 'true' : 'false'}
-      className={`inline-block shrink-0 bg-current ${muted ? 'text-icon-disabled' : 'text-icon-highlight'}`}
+      className={`inline-block shrink-0 bg-current ${muted ? 'text-icon-disabled' : foundInk(product)}`}
       style={{ width: px, height: px, mask, WebkitMask: mask }}
     />
   );
@@ -88,21 +110,52 @@ const FACT_LABELS = (): Record<string, string> => ({
   last_simulation: t`Last simulation`,
   reports: t`Reports`,
   relationships: t`Relationships`,
+  criticality: t`Criticality`,
+  category: t`Category`,
 });
 
+/**
+ * A fact value as a person reads it. XTM One answers its inventory enums (`very_high`,
+ * `generic_asset`): a criticality takes this product's label, any other enum is sentence-cased.
+ */
+export const factValueLabel = (key: string, value: string): string => {
+  if (key === 'criticality') {
+    switch (value) {
+      case 'low': return t`Low`;
+      case 'medium': return t`Medium`;
+      case 'high': return t`High`;
+      case 'very_high': return t`Very High`;
+      case 'critical': return t`Critical`;
+    }
+  }
+  if (key === 'criticality' || key === 'category') {
+    const words = value.replace(/_/g, ' ').trim().toLowerCase();
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+  return value;
+};
+
 /** The fields a product would show once connected, by their fact key: labels only, never values. */
-const TEASER_FIELDS: Record<XtmProduct, ReadonlyArray<string>> = {
+const TEASER_FIELDS: Record<CounterpartProduct, ReadonlyArray<string>> = {
+  xtmone: ['criticality', 'category'],
   opencti: ['reports', 'relationships'],
   openaev: ['simulations', 'findings'],
 };
 
-const actionIn = (product: XtmProduct) => (product === 'opencti'
-  ? t`See the reports, relationships and context of this object in OpenCTI.`
-  : t`See the simulations and findings of this object in OpenAEV.`);
+const actionIn = (product: CounterpartProduct) => {
+  switch (product) {
+    case 'xtmone': return t`See this asset in the XTM One CTEM inventory, with every source that reports it.`;
+    case 'opencti': return t`See the reports, relationships and context of this object in OpenCTI.`;
+    case 'openaev': return t`See the simulations and findings of this object in OpenAEV.`;
+  }
+};
 
 /** How an object of `kind` gets into `product`: the key the two products share. */
-const howItGetsThere = (kind: CounterpartKind, product: XtmProduct) => {
+const howItGetsThere = (kind: CounterpartKind, product: CounterpartProduct) => {
   const name = productName(product);
+  if (product === 'xtmone') {
+    return t`It appears here once a source of the XTM One inventory reports a machine with the same hostname.`;
+  }
   switch (kind) {
     case 'ASSET':
       return t`It appears here once ${name} holds a machine with the same hostname.`;
@@ -134,7 +187,7 @@ export const XtmPivotPreview: FunctionComponent<{ counterpart: XtmCounterpart }>
           {counterpart.facts.map((f) => (
             <div key={f.key} className="contents">
               <dt className="text-default-secondary">{labels[f.key] ?? f.key}</dt>
-              <dd className="m-0 font-semibold">{f.value}</dd>
+              <dd className="m-0 font-semibold">{factValueLabel(f.key, f.value)}</dd>
             </div>
           ))}
         </dl>
@@ -145,7 +198,7 @@ export const XtmPivotPreview: FunctionComponent<{ counterpart: XtmCounterpart }>
 };
 
 /** The teaser of a product not connected: what it would show, example fields as labelled skeletons. */
-export const XtmConnectTeaser: FunctionComponent<{ product: XtmProduct, canConfigure: boolean }> = ({ product, canConfigure }) => {
+export const XtmConnectTeaser: FunctionComponent<{ product: CounterpartProduct, canConfigure: boolean }> = ({ product, canConfigure }) => {
   const name = productName(product);
   const labels = FACT_LABELS();
   return (
@@ -195,7 +248,7 @@ export interface XtmEmblemInput {
  * One product's emblem state. A product the object came from is found from its source link, its
  * facts taken from the lookup when that answered the same product; otherwise the lookup decides.
  */
-export const xtmEmblemState = (product: XtmProduct, input: XtmEmblemInput): XtmEmblemState => {
+export const xtmEmblemState = (product: CounterpartProduct, input: XtmEmblemInput): XtmEmblemState => {
   const match = input.counterparts?.find((c) => c.product === product);
   if (input.sourced) {
     return { kind: 'found', counterpart: match ? { ...input.sourced, facts: match.facts } : input.sourced };
@@ -222,7 +275,7 @@ export const xtmEmblemState = (product: XtmProduct, input: XtmEmblemInput): XtmE
 };
 
 interface XtmEmblemProps {
-  product: XtmProduct,
+  product: CounterpartProduct,
   kind: CounterpartKind,
   state: XtmEmblemState,
 }
@@ -234,9 +287,14 @@ const GreyHint: FunctionComponent<{ title: string, line: string }> = ({ title, l
   </div>
 );
 
-/** The not-connected emblem: the connector link for a configurer, a disabled look and a read-only hint for the others. */
-const NotConnectedEmblem: FunctionComponent<{ product: XtmProduct }> = ({ product }) => {
-  const canConfigure = useHasManageSecurity();
+/**
+ * The not-connected emblem: the connector link for a configurer, a disabled look and a read-only hint
+ * for the others. XTM One is deployment configuration (`XTM_ONE__URL`), never a connector page: its
+ * emblem takes the read-only hint for everyone.
+ */
+const NotConnectedEmblem: FunctionComponent<{ product: CounterpartProduct }> = ({ product }) => {
+  const canManageSecurity = useHasManageSecurity();
+  const canConfigure = canManageSecurity && product !== 'xtmone';
   const name = productName(product);
   const control = canConfigure
     ? (
@@ -291,7 +349,7 @@ interface XtmPivotEmblemsProps {
   sourced?: Partial<Record<XtmProduct, XtmCounterpart>>,
 }
 
-/** Hero slot: one emblem per counterpart product, OpenCTI then OpenAEV, always drawn. */
+/** Hero slot, first in the action row: one emblem per counterpart product, XTM One (assets), OpenCTI, OpenAEV, always drawn. */
 export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind, objectKey, sourced }) => {
   const trpc = useTRPC();
   const connections = useXtmConnections();
@@ -299,7 +357,7 @@ export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind,
   const lookup = useQuery(trpc.xtm.counterparts.queryOptions({ kind, keys: present }, options));
   return (
     <TooltipHintProvider>
-      {XTM_PRODUCTS.map((product) => (
+      {emblemProducts(kind).map((product) => (
         <XtmEmblem
           key={product}
           product={product}
@@ -307,7 +365,7 @@ export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind,
           state={xtmEmblemState(product, {
             connected: connections.data?.find((c) => c.product === product)?.connected ?? (connections.data ? false : undefined),
             connectionsFailed: connections.isError,
-            sourced: sourced?.[product],
+            sourced: product === 'xtmone' ? undefined : sourced?.[product],
             counterparts: lookup.data,
             lookupFailed: lookup.isError,
             hasKey: present.length > 0,
