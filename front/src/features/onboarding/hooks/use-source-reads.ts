@@ -13,6 +13,13 @@ export const useThreatCount = (kind?: ThreatSourceKind, enabled = true): number 
   return data?.total;
 };
 
+/** Whether OpenCTI left the reader's scope unresolved, so the counts may lack threats; read from `useThreatCount()`'s query. */
+export const useThreatsHidden = (): boolean => {
+  const trpc = useTRPC();
+  const { data } = useQuery(trpc.threats.list.queryOptions({ page: 1, limit: 1, kind: undefined }));
+  return data?.readerScopeUnresolved ?? false;
+};
+
 /** An asset source's own assets, or the tenant's whole count without a source; undefined while it loads. */
 export const useAssetCount = (source?: 'microsoft_graph' | 'user', enabled = true): number | undefined => {
   const trpc = useTRPC();

@@ -117,6 +117,7 @@ describe('createReaderMarkingsResolver', () => {
     await unresolved(() => Promise.resolve(refusal({ message: 'No user reader@example.com', extensions: { code: 'AUTH_REQUIRED' } })));
     await unresolved(() => Promise.resolve(refusal({ message: 'reader@example.com', extensions: { code: 'reader@example.com' } })));
     await unresolved(() => Promise.resolve(new Response(JSON.stringify({ data: { me: null } }), { status: 200 })));
+    await unresolved(() => Promise.resolve(new Response('<html>Sign in</html>', { status: 200 })));
     await unresolved(() => Promise.reject(networkError));
     await unresolved(() => Promise.reject(new DOMException('The operation timed out for reader@example.com', 'TimeoutError')));
     await unresolved(() => Promise.resolve(answer([])), NO_SIGN);
@@ -126,6 +127,7 @@ describe('createReaderMarkingsResolver', () => {
       'OpenCTI refused the query: AUTH_REQUIRED',
       'OpenCTI refused the query: no error code',
       'the answer lacks the reader scope fields',
+      'OpenCTI answered something other than JSON',
       'the request failed: Error, ECONNREFUSED',
       'the request failed: TimeoutError',
       'no token could be signed for the reader',
@@ -163,6 +165,21 @@ describe('createReaderMarkingsResolver', () => {
     await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
 
     expect(logWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it('should count the cache window from the answer, not from the request', async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn().mockImplementation(() => {
+      clock += 500;
+      return Promise.resolve(answer(['m-1']));
+    });
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, 1_000);
+
+    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+    clock = 1_400;
+    await resolver.resolve('t-1', 'u-1', CONNECTION, SIGN);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('should keep an answer per tenant and user until it expires', async () => {

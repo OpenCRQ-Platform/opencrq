@@ -17,8 +17,8 @@ const { logWarn } = createLogger({ feature: 'reader-markings' });
  * answer): the reader then holds no clearance and no membership, and sees only unmarked,
  * unrestricted mirrored objects (fail closed means seeing less, never nothing, as OpenAEV ADR-009).
  * `undefined` when the tenant has no OpenCTI connection: there is no OpenCTI to ask and nothing to
- * enforce, so nothing is narrowed. Answers are kept a short while per tenant and user so a page's
- * burst of reads asks OpenCTI once.
+ * enforce, so nothing is narrowed. A lookup is shared per tenant and user from the moment it starts,
+ * and its answer kept a short while after, so a page's burst of reads asks OpenCTI once.
  */
 
 export const READER_MARKINGS_TTL_MS = 60_000;
@@ -110,7 +110,7 @@ const requestFailure = (err: unknown): string => {
   return `the request failed: ${[name ?? 'unknown error', cause].filter(Boolean).join(', ')}`;
 };
 
-type ScopeAnswer = { scope: ReaderScope } | { failure: string };
+type ScopeAnswer = { ok: true, scope: ReaderScope } | { ok: false, failure: string };
 
 const fetchReaderScope = async (
   connection: ProductConnection,
@@ -120,7 +120,7 @@ const fetchReaderScope = async (
   const base = connection.url.replace(/\/+$/, '');
   const bearer = await authorization(base);
   if (!bearer) {
-    return { failure: 'no token could be signed for the reader' };
+    return { ok: false, failure: 'no token could be signed for the reader' };
   }
   const res = await fetchImpl(`${base}/graphql`, {
     method: 'POST',
@@ -130,11 +130,20 @@ const fetchReaderScope = async (
     signal: AbortSignal.timeout(READER_MARKINGS_TIMEOUT_MS),
   });
   if (!res.ok) {
-    return { failure: `OpenCTI answered HTTP ${res.status}` };
+    return { ok: false, failure: `OpenCTI answered HTTP ${res.status}` };
   }
-  const answer: unknown = await res.json();
+  let answer: unknown;
+  try {
+    answer = await res.json();
+  } catch (err) {
+    // A page answering for OpenCTI (a proxy, a wrong URL) is an answer, not a failed request.
+    if (err instanceof SyntaxError) {
+      return { ok: false, failure: 'OpenCTI answered something other than JSON' };
+    }
+    throw err;
+  }
   const scope = parseReaderScope(answer);
-  return scope ? { scope } : { failure: unreadableAnswer(answer) };
+  return scope ? { ok: true, scope } : { ok: false, failure: unreadableAnswer(answer) };
 };
 
 const lookUpReaderScope = async (
@@ -144,17 +153,15 @@ const lookUpReaderScope = async (
   try {
     answer = await fetchReaderScope(connection, authorization, fetchImpl);
   } catch (err) {
-    answer = { failure: requestFailure(err) };
+    answer = { ok: false, failure: requestFailure(err) };
   }
-  if ('failure' in answer) {
+  if (!answer.ok) {
     logWarn('OpenCTI reader scope unresolved', { tenantId, userId, reason: answer.failure });
     return null;
   }
   return answer.scope;
 };
 
-// The lookup in flight, not its result: a page's queries arrive together, and each would otherwise
-// miss the cache, ask OpenCTI and log the same failure.
 interface CachedScope { scope: Promise<ReaderScope | null>, expiresAt: number }
 
 export interface ReaderMarkingsResolver {
@@ -178,12 +185,17 @@ export const createReaderMarkingsResolver = (
       if (cached && cached.expiresAt > now()) {
         return cached.scope;
       }
-      const scope = lookUpReaderScope(tenantId, userId, connection, authorization, fetchImpl);
+      // The window restarts at the answer; it is set at the start too, so a lookup that never settles is retried.
+      const entry: CachedScope = { scope: lookUpReaderScope(tenantId, userId, connection, authorization, fetchImpl), expiresAt: now() + ttlMs };
+      const restartWindow = () => {
+        entry.expiresAt = now() + ttlMs;
+      };
+      void entry.scope.then(restartWindow, restartWindow);
       if (cache.size >= MAX_CACHED_READERS) {
         cache.clear();
       }
-      cache.set(key, { scope, expiresAt: now() + ttlMs });
-      return scope;
+      cache.set(key, entry);
+      return entry.scope;
     },
     clear: () => cache.clear(),
   };
