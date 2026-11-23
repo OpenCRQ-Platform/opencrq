@@ -1,5 +1,5 @@
 {
-  "id": "855dabb5-08d9-44a8-bd1a-3011aac7108d",
+  "id": "3fb7c86c-91fe-4172-887c-e54d9a5a5c9e",
   "prevId": "ad9933ce-fc5f-4756-b80d-3de8be97467d",
   "version": "7",
   "dialect": "postgresql",
@@ -1043,6 +1043,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "pastel_colours": {
+          "name": "pastel_colours",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "home_dashboard_id": {
           "name": "home_dashboard_id",
@@ -9289,6 +9296,349 @@
       },
       "isRLSEnabled": false
     },
+    "public.dependency_rule_suppressions": {
+      "name": "dependency_rule_suppressions",
+      "schema": "",
+      "columns": {
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supporting_asset_id": {
+          "name": "supporting_asset_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "primary_asset_id": {
+          "name": "primary_asset_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "dependency_rule_suppressions_primary_asset_idx": {
+          "name": "dependency_rule_suppressions_primary_asset_idx",
+          "columns": [
+            {
+              "expression": "primary_asset_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "dependency_rule_suppressions_tenant_id_tenants_id_fk": {
+          "name": "dependency_rule_suppressions_tenant_id_tenants_id_fk",
+          "tableFrom": "dependency_rule_suppressions",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "dependency_rule_suppressions_supporting_asset_fk": {
+          "name": "dependency_rule_suppressions_supporting_asset_fk",
+          "tableFrom": "dependency_rule_suppressions",
+          "tableTo": "supporting_assets",
+          "columnsFrom": [
+            "supporting_asset_id",
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id",
+            "tenant_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "dependency_rule_suppressions_primary_asset_fk": {
+          "name": "dependency_rule_suppressions_primary_asset_fk",
+          "tableFrom": "dependency_rule_suppressions",
+          "tableTo": "primary_assets",
+          "columnsFrom": [
+            "primary_asset_id",
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id",
+            "tenant_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "dependency_rule_suppressions_pk": {
+          "name": "dependency_rule_suppressions_pk",
+          "columns": [
+            "tenant_id",
+            "supporting_asset_id",
+            "primary_asset_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dependency_rules": {
+      "name": "dependency_rules",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "primary_asset_id": {
+          "name": "primary_asset_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "roles": {
+          "name": "roles",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{unknown}'"
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subcategory_id": {
+          "name": "subcategory_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_pattern": {
+          "name": "name_pattern",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_pattern_kind": {
+          "name": "name_pattern_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tag_id": {
+          "name": "tag_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "dependency_rules_primary_asset_idx": {
+          "name": "dependency_rules_primary_asset_idx",
+          "columns": [
+            {
+              "expression": "primary_asset_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "dependency_rules_tag_idx": {
+          "name": "dependency_rules_tag_idx",
+          "columns": [
+            {
+              "expression": "tag_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "dependency_rules_tenant_id_tenants_id_fk": {
+          "name": "dependency_rules_tenant_id_tenants_id_fk",
+          "tableFrom": "dependency_rules",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "dependency_rules_primary_asset_tenant_fk": {
+          "name": "dependency_rules_primary_asset_tenant_fk",
+          "tableFrom": "dependency_rules",
+          "tableTo": "primary_assets",
+          "columnsFrom": [
+            "primary_asset_id",
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id",
+            "tenant_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "dependency_rules_tag_tenant_fk": {
+          "name": "dependency_rules_tag_tenant_fk",
+          "tableFrom": "dependency_rules",
+          "tableTo": "tags",
+          "columnsFrom": [
+            "tag_id",
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id",
+            "tenant_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "dependency_rules_id_tenant_id_uq": {
+          "name": "dependency_rules_id_tenant_id_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "tenant_id"
+          ]
+        },
+        "dependency_rules_tenant_name_uq": {
+          "name": "dependency_rules_tenant_name_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tenant_id",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "dependency_rules_roles_known_ck": {
+          "name": "dependency_rules_roles_known_ck",
+          "value": "\"dependency_rules\".\"roles\" <@ ARRAY['stores', 'processes', 'reads', 'transmits', 'administers', 'monitors', 'supports_availability', 'performs', 'unknown']::text[]"
+        },
+        "dependency_rules_roles_not_empty_ck": {
+          "name": "dependency_rules_roles_not_empty_ck",
+          "value": "cardinality(\"dependency_rules\".\"roles\") > 0"
+        },
+        "dependency_rules_roles_unknown_alone_ck": {
+          "name": "dependency_rules_roles_unknown_alone_ck",
+          "value": "NOT ('unknown' = ANY(\"dependency_rules\".\"roles\")) OR cardinality(\"dependency_rules\".\"roles\") = 1"
+        },
+        "dependency_rules_pattern_pair_ck": {
+          "name": "dependency_rules_pattern_pair_ck",
+          "value": "(\"dependency_rules\".\"name_pattern\" IS NULL) = (\"dependency_rules\".\"name_pattern_kind\" IS NULL)"
+        },
+        "dependency_rules_pattern_kind_ck": {
+          "name": "dependency_rules_pattern_kind_ck",
+          "value": "\"dependency_rules\".\"name_pattern_kind\" IN ('glob', 'regex')"
+        },
+        "dependency_rules_condition_ck": {
+          "name": "dependency_rules_condition_ck",
+          "value": "num_nonnulls(\"dependency_rules\".\"category_id\", \"dependency_rules\".\"subcategory_id\", \"dependency_rules\".\"name_pattern\", \"dependency_rules\".\"tag_id\", \"dependency_rules\".\"source\") > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.primary_asset_reach": {
       "name": "primary_asset_reach",
       "schema": "",
@@ -9616,9 +9966,36 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{unknown}'"
+        },
+        "rule_id": {
+          "name": "rule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
+        "support_to_primary_links_rule_idx": {
+          "name": "support_to_primary_links_rule_idx",
+          "columns": [
+            {
+              "expression": "rule_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "support_to_primary_links_primary_asset_idx": {
           "name": "support_to_primary_links_primary_asset_idx",
           "columns": [
@@ -9651,6 +10028,21 @@
           ],
           "columnsTo": [
             "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "support_to_primary_links_rule_tenant_fk": {
+          "name": "support_to_primary_links_rule_tenant_fk",
+          "tableFrom": "support_to_primary_links",
+          "tableTo": "dependency_rules",
+          "columnsFrom": [
+            "rule_id",
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id",
+            "tenant_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
