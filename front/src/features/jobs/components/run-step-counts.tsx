@@ -29,9 +29,11 @@ const Count: FunctionComponent<{ title: string, value: number }> = ({ title, val
  * What each step of a run counted, so a run that succeeded with nothing new reads as such. Renders
  * nothing for a kind that reports no step counts.
  *
- * Laid out on the columns of the run row's grid (a subgrid starting at `firstRow`): the step title stands
- * under the run name and each count under a column of the row. A count the step does not know (created,
- * which a bulk upsert cannot tell from updated) is left out rather than drawn empty on every run.
+ * Laid out on the columns of the run row's grid (a subgrid starting at `firstRow`): the step title takes a
+ * row of its own, then the counts fill the row under it from the first column (read, written, created,
+ * removed, skipped under Name, Status, Operations, Total and the last column), so the 4 or 5 counts of a
+ * step never wrap and each count keeps its column from one run to the next. A count the step does not
+ * know (created, which a bulk upsert cannot tell from updated) is left out rather than drawn empty.
  */
 export const RunStepCounts: FunctionComponent<{ stepCounts: Array<StepCounts>, firstRow: number }> = ({ stepCounts, firstRow }) => {
   if (stepCounts.length === 0) {
@@ -43,8 +45,8 @@ export const RunStepCounts: FunctionComponent<{ stepCounts: Array<StepCounts>, f
         const labels = entityLabels(counts.entity);
         return (
           <div key={`${counts.step}:${counts.entity}`} className="col-span-full grid grid-cols-subgrid items-start gap-y-4">
-            <p className="col-start-1 txt-sub-content font-bold">{stepTitle(counts)}</p>
-            <div className="col-start-2 col-span-4 grid grid-cols-subgrid items-start gap-y-4">
+            <p className="col-span-full txt-sub-content font-bold" data-testid="run-step-title">{stepTitle(counts)}</p>
+            <div className="col-span-full grid grid-cols-subgrid items-start gap-y-4" data-testid="run-step-count-row">
               <Count title={labels.read} value={counts.read} />
               <Count title={labels.written} value={counts.written} />
               {counts.created !== null && <Count title={labels.created} value={counts.created} />}

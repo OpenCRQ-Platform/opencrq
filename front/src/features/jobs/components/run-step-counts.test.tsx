@@ -59,4 +59,22 @@ describe('RunStepCounts', () => {
     expect(within(block).getByText('Findings created')).toBeTruthy();
     expect(within(block).getByText('4')).toBeTruthy();
   });
+
+  it('puts the step title on a row of its own and the counts on the full row under it', () => {
+    render(
+      <RunStepCounts
+        firstRow={3}
+        stepCounts={[
+          { step: 'observations', entity: 'findings', mode: null, read: 5, written: 5, created: 4, removed: 0, skipped: 1 },
+        ]}
+      />,
+    );
+
+    const title = screen.getByTestId('run-step-title');
+    expect(title.className).toContain('col-span-full');
+    const row = screen.getByTestId('run-step-count-row');
+    expect(row.className).toContain('col-span-full');
+    expect(row.className).not.toContain('col-start-2');
+    expect(row.children).toHaveLength(5);
+  });
 });

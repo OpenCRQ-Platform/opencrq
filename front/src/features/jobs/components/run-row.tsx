@@ -83,8 +83,9 @@ export const RunRow: FunctionComponent<{ run: JobRunListItem, unit: RunUnit | nu
   const lastRow = runLastRow({ progress: percent !== null, currentStep: showCurrentStep, lastAttempt: showLastAttempt });
   return (
     <div className="flex flex-col gap-4">
-      {/* One grid for the whole card: the step counts lay out on its columns (subgrid), under the row's fields. */}
-      <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_auto] items-start gap-x-6 gap-y-4">
+      {/* One grid for the whole card: the step counts lay out on its columns (subgrid), under the row's fields.
+          Fixed tracks, never an auto track content resizes, so every card of the list draws the same columns. */}
+      <div className="grid grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))] items-start gap-x-6 gap-y-4">
         <CardField title={t`Name`}>{name}</CardField>
         <CardField title={t`Status`} className="gap-1">
           <span><Chip severity={RUN_STATUS_SEVERITY[run.status]} label={runStatusLabel(run.status)} /></span>
@@ -92,7 +93,7 @@ export const RunRow: FunctionComponent<{ run: JobRunListItem, unit: RunUnit | nu
         </CardField>
         {showFigures && <Figure title={labels.processed} value={run.processedTotal} />}
         {showFigures && <Figure title={labels.expected} value={run.expectedTotal} />}
-        <div className="row-start-1 col-start-5">
+        <div className="row-start-1 col-start-5 justify-self-end">
           <RunErrorsDrawer runId={run.id} runName={name} errorCount={run.errorCount} />
         </div>
 
