@@ -1,6 +1,5 @@
 import { newError, StructuredError } from '@app/utils';
 import { uuidv7 } from 'uuidv7';
-import { isForeignKeyViolationOf, isInvalidRegularExpression, isUniqueViolationOf } from '../../db/pg-errors';
 import type {
   AccessRelationGraph,
   AccessRelationGraphAsset,
@@ -18,6 +17,8 @@ import type { AttackPathHopRow } from './attack-path-reach';
 import type { SupportToPrimaryLinkRole } from './link-roles';
 import type { PrimaryToPrimaryLinkStrength } from './link-strengths';
 import type { ReachRow } from './reach';
+import type { DependencyRuleConditions } from './rule-matching';
+import { isForeignKeyViolationOf, isInvalidRegularExpression, isUniqueViolationOf } from '../../db/pg-errors';
 import { defineService } from '../../registry';
 import { requireTenantId } from '../../security';
 import { ASSET_CRITICALITY_SEVERITY, ATTACK_PATH_STALE_AFTER_DAYS } from '../supporting-assets/constants';
@@ -31,7 +32,6 @@ import { UNKNOWN_LINK_STRENGTH } from './link-strengths';
 import { diffReach, walkReach } from './reach';
 import { assetDependenciesRepository } from './repository';
 import { DEPENDENCY_RULE_PREVIEW_LIMIT, hasCondition, pairKey, wantedRuleLinks } from './rule-matching';
-import type { DependencyRuleConditions } from './rule-matching';
 
 type Repo = InferRepository<typeof assetDependenciesRepository>;
 

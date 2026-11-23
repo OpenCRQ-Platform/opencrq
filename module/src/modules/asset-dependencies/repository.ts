@@ -11,6 +11,9 @@ import { defineRepository } from '../../registry';
 import { namePatternRegex } from './rule-matching';
 import { dependencyRules, dependencyRuleSuppressions, primaryAssetReach, primaryToPrimaryLinks, supportToPrimaryLinks, supportToSupportLinks } from './schema';
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
+const dbNow = () => sql`now()` as unknown as Date;
+
 /**
  * What a supporting asset has to hold for a rule to match it: every condition the rule sets. The
  * pattern reads the display name and each hostname a source reports; a tag reads its merges too.
@@ -180,28 +183,12 @@ export const assetDependenciesRepository = defineRepository({
       .groupBy(views.supportToPrimaryLinks.ruleId);
     return new Map(rows.map((row) => [row.ruleId!, row.linkCount]));
   },
-  findDependencyRule: async ({ db, views }, id: string) => {
-    const [row] = await db.select({
-      id: views.dependencyRules.id,
-      name: views.dependencyRules.name,
-      primaryAssetId: views.dependencyRules.primaryAssetId,
-      roles: views.dependencyRules.roles,
-      enabled: views.dependencyRules.enabled,
-      categoryId: views.dependencyRules.categoryId,
-      subcategoryId: views.dependencyRules.subcategoryId,
-      namePattern: views.dependencyRules.namePattern,
-      namePatternKind: views.dependencyRules.namePatternKind,
-      tagId: views.dependencyRules.tagId,
-      source: views.dependencyRules.source,
-    }).from(views.dependencyRules).where(eq(views.dependencyRules.id, id));
-    return row ?? null;
-  },
   insertDependencyRule: async ({ db }, value: typeof dependencyRules.$inferInsert) => {
     await db.insert(dependencyRules).values(value);
   },
   /** False when the rule is gone or out of the caller's reach. */
-  updateDependencyRule: async ({ db }, id: string, value: Omit<Partial<typeof dependencyRules.$inferInsert>, 'id' | 'tenantId'>) =>
-    (await db.update(dependencyRules).set({ ...value, updatedAt: new Date() }).where(eq(dependencyRules.id, id)).returning()).length > 0,
+  updateDependencyRule: async ({ db }, id: string, value: Omit<Partial<typeof dependencyRules.$inferInsert>, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>) =>
+    (await db.update(dependencyRules).set({ ...value, updatedAt: dbNow() }).where(eq(dependencyRules.id, id)).returning()).length > 0,
   /** Its links cascade with it; the links a person took over are theirs and stay. */
   deleteDependencyRules: async ({ db }, ids: ReadonlyArray<string>) => {
     if (ids.length === 0) {
