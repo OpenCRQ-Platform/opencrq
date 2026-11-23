@@ -42,4 +42,6 @@ CREATE INDEX "dependency_rule_suppressions_primary_asset_idx" ON "dependency_rul
 CREATE INDEX "dependency_rules_primary_asset_idx" ON "dependency_rules" USING btree ("primary_asset_id","tenant_id");--> statement-breakpoint
 CREATE INDEX "dependency_rules_tag_idx" ON "dependency_rules" USING btree ("tag_id","tenant_id");--> statement-breakpoint
 ALTER TABLE "support_to_primary_links" ADD CONSTRAINT "support_to_primary_links_rule_tenant_fk" FOREIGN KEY ("rule_id","tenant_id") REFERENCES "public"."dependency_rules"("id","tenant_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "support_to_primary_links_rule_idx" ON "support_to_primary_links" USING btree ("rule_id","tenant_id");
+CREATE INDEX "support_to_primary_links_rule_idx" ON "support_to_primary_links" USING btree ("rule_id","tenant_id");--> statement-breakpoint
+CREATE TRIGGER dependency_rules_notify_data_changed AFTER INSERT OR DELETE OR UPDATE ON public.dependency_rules FOR EACH ROW EXECUTE FUNCTION public.notify_data_changed_tenant();--> statement-breakpoint
+CREATE TRIGGER dependency_rule_suppressions_notify_data_changed AFTER INSERT OR DELETE OR UPDATE ON public.dependency_rule_suppressions FOR EACH ROW EXECUTE FUNCTION public.notify_data_changed_tenant();

@@ -423,6 +423,37 @@ const crqPriceEstate: ObservedJobFixture = async ({ services, tenantId, adminOri
   ], { maxUpdatedAt: null, rowCount: 0 });
 };
 
+/** A rule on the host category and one host it matches, so the pass writes a rule link. */
+const dependencyRulesEstate: ObservedJobFixture = async ({ services, adminOrigin }) => {
+  const scoped = services.withOrigin(adminOrigin);
+  const organizationId = uuidv7();
+  await scoped.organizations.createOrganizations([{ id: organizationId, name: 'Observed organization' }]);
+  const primaryAssetId = uuidv7();
+  await scoped.primaryAssets.createPrimaryAsset({
+    id: primaryAssetId,
+    organizationId,
+    name: 'Observed primary asset',
+    description: null,
+    ownerId: null,
+    businessValueCategoryIds: [],
+  });
+  await scoped.supportingAssets.createSupportingAsset({
+    id: uuidv7(), name: 'Observed host', description: null, ownerId: null, exposure: 'unknown', categoryId: 'host', criticality: 'unknown',
+  });
+  await scoped.assetDependencies.createDependencyRule({
+    name: 'Observed hosts',
+    primaryAssetId,
+    roles: ['processes'],
+    enabled: true,
+    categoryId: 'host',
+    subcategoryId: null,
+    namePattern: null,
+    namePatternKind: null,
+    tagId: null,
+    source: null,
+  });
+};
+
 /** The actor's description and malware lead the outcome counter past 0.5 on Service Disruption, so the scenario's pair weighs a group. */
 const attackOutcomeMixtureEstate: ObservedJobFixture = async (ctx) => {
   const { services, tenantId, adminOrigin } = ctx;
@@ -454,4 +485,5 @@ export const OBSERVED_JOB_FIXTURES: Record<string, ObservedJobFixture> = {
   'attack-outcome-mixture-recompute': attackOutcomeMixtureEstate,
   'opencti-mirror-rebuild': openctiMirrorEstate,
   'crq-price-recompute': crqPriceEstate,
+  'dependency-rules-apply': dependencyRulesEstate,
 };

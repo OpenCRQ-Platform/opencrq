@@ -658,7 +658,8 @@ export const assetDependenciesService = defineService(
 
   /** Every rule of the tenant by name, with how many links it holds now. */
   listDependencyRules: async ({ repo }) => {
-    const [rules, counts] = await Promise.all([repo.listDependencyRules(), repo.countRuleLinks()]);
+    const rules = await repo.listDependencyRules();
+    const counts = await repo.countRuleLinks();
     return rules.map((rule) => ({ ...rule, linkCount: counts.get(rule.id) ?? 0 }));
   },
   /**
@@ -673,10 +674,8 @@ export const assetDependenciesService = defineService(
     if (!(await repo.findVisiblePrimaryAssetIds([input.primaryAssetId])).has(input.primaryAssetId)) {
       throw new PrimaryAssetNotFoundError();
     }
-    const [matched, blocked] = await Promise.all([
-      matchIdsOf(repo, conditionsOf(input)),
-      repo.findRuleBlockedSupportingAssetIdsOf(input.primaryAssetId),
-    ]);
+    const matched = await matchIdsOf(repo, conditionsOf(input));
+    const blocked = await repo.findRuleBlockedSupportingAssetIdsOf(input.primaryAssetId);
     const linkable = matched.filter((id) => !blocked.manual.has(id) && !blocked.suppressed.has(id));
     return {
       total: linkable.length,
@@ -727,7 +726,9 @@ export const assetDependenciesService = defineService(
           candidates.push({ ruleId: rule.id, ruleName: rule.name, supportingAssetId, primaryAssetId: rule.primaryAssetId, roles: rule.roles });
         }
       }
-      const [links, suppressions] = await Promise.all([repo.findAllSupportToPrimaryLinksForRules(), repo.findRuleSuppressions()]);
+      // One after the other: the pass runs in the job's transaction, on one connection.
+      const links = await repo.findAllSupportToPrimaryLinksForRules();
+      const suppressions = await repo.findRuleSuppressions();
       const manualPairs = new Set(links.filter((link) => link.ruleId === null).map((link) => pairKey(link.supportingAssetId, link.primaryAssetId)));
       const suppressedPairs = new Set(suppressions.map((row) => pairKey(row.supportingAssetId, row.primaryAssetId)));
       const wanted = new Map(wantedRuleLinks(candidates, manualPairs, suppressedPairs)

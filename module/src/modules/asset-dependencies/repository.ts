@@ -214,12 +214,10 @@ export const assetDependenciesRepository = defineRepository({
   },
   /** The supporting assets no rule may link to `primaryAssetId`: a person linked or unlinked the pair. */
   findRuleBlockedSupportingAssetIdsOf: async ({ db, views }, primaryAssetId: string) => {
-    const [manual, suppressed] = await Promise.all([
-      db.select({ id: views.supportToPrimaryLinks.supportingAssetId }).from(views.supportToPrimaryLinks)
-        .where(and(eq(views.supportToPrimaryLinks.primaryAssetId, primaryAssetId), isNull(views.supportToPrimaryLinks.ruleId))),
-      db.select({ id: views.dependencyRuleSuppressions.supportingAssetId }).from(views.dependencyRuleSuppressions)
-        .where(eq(views.dependencyRuleSuppressions.primaryAssetId, primaryAssetId)),
-    ]);
+    const manual = await db.select({ id: views.supportToPrimaryLinks.supportingAssetId }).from(views.supportToPrimaryLinks)
+      .where(and(eq(views.supportToPrimaryLinks.primaryAssetId, primaryAssetId), isNull(views.supportToPrimaryLinks.ruleId)));
+    const suppressed = await db.select({ id: views.dependencyRuleSuppressions.supportingAssetId }).from(views.dependencyRuleSuppressions)
+      .where(eq(views.dependencyRuleSuppressions.primaryAssetId, primaryAssetId));
     return {
       manual: new Set(manual.map((row) => row.id)),
       suppressed: new Set(suppressed.map((row) => row.id)),
