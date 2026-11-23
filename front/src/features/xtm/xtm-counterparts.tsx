@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import type { FunctionComponent, ReactElement, ReactNode } from 'react';
+import type { FunctionComponent, ReactElement } from 'react';
 import { TooltipHint, TooltipHintProvider } from '../../components/shared/tooltip-hint';
 import { useHasManageSecurity } from '../../hooks/utils/use-has-manage-security';
 import { useTRPC } from '../../lib';
@@ -274,73 +274,6 @@ export const xtmEmblemState = (product: CounterpartProduct, input: XtmEmblemInpu
     return { kind: 'checking' };
   }
   return match ? { kind: 'found', counterpart: match } : { kind: 'not-found' };
-};
-
-interface XtmEmblemProps {
-  product: CounterpartProduct,
-  kind: CounterpartKind,
-  state: XtmEmblemState,
-}
-
-const GreyHint: FunctionComponent<{ title: string, line: string }> = ({ title, line }) => (
-  <div className="flex max-w-72 flex-col gap-1 py-1">
-    <span className="font-semibold">{title}</span>
-    <span className="text-default-secondary">{line}</span>
-  </div>
-);
-
-/**
- * The not-connected emblem: the connector link for a configurer, a disabled look and a read-only hint
- * for the others. XTM One is deployment configuration (`XTM_ONE__URL`), never a connector page: its
- * emblem takes the read-only hint for everyone.
- */
-const NotConnectedEmblem: FunctionComponent<{ product: CounterpartProduct }> = ({ product }) => {
-  const canManageSecurity = useHasManageSecurity();
-  const canConfigure = canManageSecurity && product !== 'xtmone';
-  const name = productName(product);
-  const control = canConfigure
-    ? (
-      <IconButton asChild priority="secondary" size="md" aria-label={t`Connect ${name}`} icon={<ProductMark product={product} size={20} muted />}>
-        <Link
-          from="/$tenantId/{-$organizationId}"
-          to="/$tenantId/{-$organizationId}/integrations/connectors/$connectorSlug"
-          params={{ connectorSlug: product }}
-        />
-      </IconButton>
-    )
-    : <IconButton priority="secondary" size="md" aria-disabled aria-label={t`${name} is not connected`} icon={<ProductMark product={product} size={20} muted />} />;
-  return <TooltipHint hint={<XtmConnectTeaser product={product} canConfigure={canConfigure} />} keepOpenOnPress={!canConfigure}>{control}</TooltipHint>;
-};
-
-/** One product's icon-only hero button, 36 px like the sibling header actions, in its state. */
-export const XtmEmblem: FunctionComponent<XtmEmblemProps> = ({ product, kind, state }) => {
-  const name = productName(product);
-  let control: ReactElement;
-  let hint: ReactNode;
-  if (state.kind === 'not-connected') {
-    return <NotConnectedEmblem product={product} />;
-  }
-  if (state.kind === 'found') {
-    hint = <XtmPivotPreview counterpart={state.counterpart} />;
-    control = (
-      <IconButton asChild priority="secondary" size="md" aria-label={openIn(product)} icon={<ProductMark product={product} size={20} />}>
-        <a href={state.counterpart.objectUrl} target="_blank" rel="noreferrer noopener" />
-      </IconButton>
-    );
-  } else {
-    let title = t`Not found in ${name}`;
-    let line = howItGetsThere(kind, product);
-    if (state.kind === 'checking') {
-      title = t`Looking in ${name}…`;
-      line = t`The emblem turns active if ${name} holds this object.`;
-    } else if (state.kind === 'unavailable') {
-      title = t`${name} could not be reached`;
-      line = t`Try again later.`;
-    }
-    hint = <GreyHint title={title} line={line} />;
-    control = <IconButton priority="secondary" size="md" aria-disabled aria-label={title} icon={<ProductMark product={product} size={20} muted />} />;
-  }
-  return <TooltipHint hint={hint} keepOpenOnPress={state.kind !== 'found'}>{control}</TooltipHint>;
 };
 
 interface XtmPivotEmblemsProps {

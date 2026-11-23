@@ -1003,8 +1003,8 @@ msgstr "{name} (inactif)"
 msgid "{name} (this concerns you)"
 msgstr "{name} (cela vous concerne)"
 
-msgid "{name} could not be reached"
-msgstr "{name} est injoignable"
+msgid "{name} could not be reached. Try again later."
+msgstr "{name} est injoignable. Réessayez plus tard."
 
 msgid "{name} depends on…"
 msgstr "{name} dépend de…"
@@ -2060,6 +2060,9 @@ msgstr "Compte actif"
 
 msgid "Account name"
 msgstr "Nom du compte"
+
+msgid "Across the XTM Platform"
+msgstr "Sur la plateforme XTM"
 
 msgid "Acting without identifiable reason or purpose."
 msgstr "Agissant sans raison ni but identifiable."
@@ -5778,6 +5781,9 @@ msgstr "Suit la source retenue pour la catégorie ; abandonnée si une catégori
 msgid "Forwards traffic between networks"
 msgstr "Achemine le trafic entre réseaux"
 
+msgid "Found"
+msgstr "Trouvé"
+
 msgid "Four columns, each a split of the same total, so the ribbon widths add up at every stage. Select any node to open it. Beside each value sits one extra figure: an actor's V is the vulnerability conditional on that actor, an outcome shows how many scenarios feed it, and a technique shows the open technique findings recorded against it. The bar on a technique is its resistance: the share of attempts the current control set is expected to stop."
 msgstr "Quatre colonnes, chacune une répartition du même total : la largeur des rubans s'additionne donc à chaque étape. Sélectionnez un nœud pour l'ouvrir. À côté de chaque valeur figure un chiffre supplémentaire : le V d'un acteur est la vulnérabilité conditionnelle à cet acteur, une issue d'attaque indique combien de scénarios l'alimentent, et une technique affiche les findings de technique ouverts enregistrés contre elle. La barre d'une technique est sa résistance : la part des tentatives que l'ensemble de contrôles actuel devrait arrêter."
 
@@ -6983,9 +6989,6 @@ msgstr "Journaux"
 
 msgid "Logs / monitors"
 msgstr "Journalise / supervise"
-
-msgid "Looking in {name}…"
-msgstr "Recherche dans {name}…"
 
 msgid "Loss avoided"
 msgstr "Perte évitée"
@@ -8515,6 +8518,9 @@ msgstr "Non configuré"
 msgid "Not configured in this deployment"
 msgstr "Non configuré dans ce déploiement"
 
+msgid "Not connected"
+msgstr "Non connecté"
+
 msgid "Not contestable by the catalogue"
 msgstr "Non contestables par le catalogue"
 
@@ -8580,8 +8586,11 @@ msgstr "Non exposé"
 msgid "Not externally exposed"
 msgstr "Non exposé vers l'extérieur"
 
-msgid "Not found in {name}"
-msgstr "Absent de {name}"
+msgid "Not found"
+msgstr "Introuvable"
+
+msgid "Not found across the XTM Platform"
+msgstr "Introuvable sur la plateforme XTM"
 
 msgid "not inherited"
 msgstr "non héritée"
@@ -12322,9 +12331,6 @@ msgstr "L'écart entre les deux chiffres est ce que vaut le gain choisi. Un éca
 msgid "The effectiveness history could not be loaded."
 msgstr "L'historique de l'efficacité n'a pas pu être chargé."
 
-msgid "The emblem turns active if {name} holds this object."
-msgstr "L'emblème s'active si {name} contient cet objet."
-
 msgid "The engine prices {control} only on the techniques it covers."
 msgstr "Le moteur ne chiffre le contrôle {control} que sur les techniques qu'il couvre."
 
@@ -13554,9 +13560,6 @@ msgstr "Réessayer"
 msgid "Try again in a few minutes. If the problem persists, contact your administrator."
 msgstr "Réessayez dans quelques minutes. Si le problème persiste, contactez votre administrateur."
 
-msgid "Try again later."
-msgstr "Réessayez plus tard."
-
 msgid "TTP"
 msgstr "TTP"
 
@@ -14571,21 +14574,3 @@ msgstr "Zoomer"
 
 msgid "Zoom out"
 msgstr "Dézoomer"
-
-msgid "Across the XTM Platform"
-msgstr "Sur la plateforme XTM"
-
-msgid "Not found across the XTM Platform"
-msgstr "Introuvable sur la plateforme XTM"
-
-msgid "Found"
-msgstr "Trouvé"
-
-msgid "Not found"
-msgstr "Introuvable"
-
-msgid "Not connected"
-msgstr "Non connecté"
-
-msgid "{name} could not be reached. Try again later."
-msgstr "{name} est injoignable. Réessayez plus tard."
