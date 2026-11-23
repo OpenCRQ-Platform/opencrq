@@ -21,7 +21,6 @@ export interface PlatformUserDetailsProps {
     title: string | null,
     locale: string | null,
     theme: string | null,
-    pastelColours: boolean,
     homeDashboardId: string | null,
     isSuperAdmin: boolean,
   },
