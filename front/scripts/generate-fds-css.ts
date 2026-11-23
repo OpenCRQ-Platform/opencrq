@@ -11,13 +11,16 @@ const PREFIX = '--fds-';
  * - `--fds-`: the design system's own prefix, double prefixing would break the class
  *   selectors that embed those names.
  * - `--radix-`: injected at runtime by Radix on the element itself, never declared here.
+ * - `--chip-data-ink-`: set inline on a data-coloured `Chip` by the design system JS (the label
+ *   colour for dark and light); prefixing the references would point them at a variable nothing
+ *   sets, and label chips would lose their edge and ink.
  * - `--tw-`: Tailwind's internal slots, where one utility deposits a fragment and another
  *   assembles it. Renaming them severs composition across the two builds: a `text-sm` from
  *   this stylesheet would read its line height from a slot the host's `leading-*` never
  *   writes, silently. Sound only while both builds know the same slots, hence
  *   `assertInterchangeableSlots`.
  */
-const PRESERVED_NAMESPACES = [PREFIX, '--radix-', '--tw-'];
+const PRESERVED_NAMESPACES = [PREFIX, '--radix-', '--chip-data-ink-', '--tw-'];
 
 const VAR_REFERENCE = /var\(\s*(--[\w-]+)/g;
 
