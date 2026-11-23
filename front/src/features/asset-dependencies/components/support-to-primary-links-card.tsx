@@ -1,9 +1,8 @@
 import type { AssetCategory, SupportToPrimaryLinkRole, SupportToPrimaryLinkSource } from '@app/module/client';
 import { inheritedCriteriaOfRoles } from '@app/module/client';
-import { Chip } from '@filigran/design-system';
+import { Chip, Icon } from '@filigran/design-system';
 import { DataTable, DataTableHeadBarOptions } from '@filigran/ui';
 import type { ColumnDefWithOptionsHeader } from '@filigran/ui';
-import { EllipsisVertical } from 'lucide-react';
 import { msg, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -135,7 +134,8 @@ export const SupportToPrimaryLinksCard: FunctionComponent<SupportToPrimaryLinksC
           return <span className="text-muted-foreground">{t`Manual`}</span>;
         }
         const ruleName = row.original.ruleName ?? t`deleted rule`;
-        return <Chip label={t`Rule: ${ruleName}`} severity="info" />;
+        // Cut to the cell: the design system Chip shows a cut label whole in its own tooltip.
+        return <Chip label={t`Rule: ${ruleName}`} severity="info" className="min-w-0 max-w-full" />;
       },
     },
     {
@@ -167,7 +167,7 @@ export const SupportToPrimaryLinksCard: FunctionComponent<SupportToPrimaryLinksC
           className="flex items-center justify-end"
           onClick={(e) => e.stopPropagation()}
         >
-          <IconActions icon={<EllipsisVertical className="h-4 w-4 text-primary" />}>
+          <IconActions icon={<Icon name="ellipsis-vertical" size={16} className="text-primary" />}>
             <IconActionsItem onClick={() => openEdit(row.original)}>
               {t`Edit`}
             </IconActionsItem>
