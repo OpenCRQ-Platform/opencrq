@@ -16,6 +16,9 @@ This folder contains all documentation related to deploying and configuring Open
 - [**Asset Consolidation**](asset-consolidation.md)  
   How several connectors reporting one machine become one asset, which value wins, and what a hand edit survives.
 
+- [**Dependency Rules**](dependency-rules.md)  
+  How rules link supporting assets to primary assets, what a person's link or removal wins over, and when rules re-apply.
+
 - [**OpenCTI Connector**](opencti-connector.md)  
   Live Stream filter, token access requirements and tenant connection steps for the OpenCTI connector.
 

@@ -1,4 +1,5 @@
 import { newError, StructuredError } from '@app/utils';
+import { uuidv7 } from 'uuidv7';
 import type {
   AccessRelationGraph,
   AccessRelationGraphAsset,
@@ -16,6 +17,8 @@ import type { AttackPathHopRow } from './attack-path-reach';
 import type { SupportToPrimaryLinkRole } from './link-roles';
 import type { PrimaryToPrimaryLinkStrength } from './link-strengths';
 import type { ReachRow } from './reach';
+import type { DependencyRuleConditions } from './rule-matching';
+import { isForeignKeyViolationOf, isInvalidRegularExpression, isUniqueViolationOf } from '../../db/pg-errors';
 import { defineService } from '../../registry';
 import { requireTenantId } from '../../security';
 import { ASSET_CRITICALITY_SEVERITY, ATTACK_PATH_STALE_AFTER_DAYS } from '../supporting-assets/constants';
@@ -28,6 +31,7 @@ import { canonicalLinkRoles, isStorableLinkRoleSet, UNKNOWN_LINK_ROLE } from './
 import { UNKNOWN_LINK_STRENGTH } from './link-strengths';
 import { diffReach, walkReach } from './reach';
 import { assetDependenciesRepository } from './repository';
+import { DEPENDENCY_RULE_PREVIEW_LIMIT, hasCondition, pairKey, wantedRuleLinks } from './rule-matching';
 
 type Repo = InferRepository<typeof assetDependenciesRepository>;
 
@@ -74,6 +78,84 @@ export class PrimaryToPrimaryLinkRefusedError extends StructuredError {
     super(reason, { data: {} });
   }
 }
+
+/** A rule the caller's tenant cannot see: unknown, deleted, or another tenant's. */
+export class DependencyRuleNotFoundError extends StructuredError {
+  override readonly name: string = 'DependencyRuleNotFoundError';
+
+  constructor() {
+    super('Dependency rule not found', { data: {} });
+  }
+}
+
+/** A rule the input cannot make: no condition, a name taken, a pattern PostgreSQL cannot compile, a tag out of reach. */
+export class DependencyRuleRefusedError extends StructuredError {
+  override readonly name: string = 'DependencyRuleRefusedError';
+
+  constructor(reason: string) {
+    super(reason, { data: {} });
+  }
+}
+
+export interface DependencyRuleInput extends DependencyRuleConditions {
+  name: string,
+  primaryAssetId: string,
+  roles: Array<SupportToPrimaryLinkRole>,
+  enabled: boolean,
+}
+
+const conditionsOf = (rule: DependencyRuleConditions): DependencyRuleConditions => ({
+  categoryId: rule.categoryId,
+  subcategoryId: rule.subcategoryId,
+  namePattern: rule.namePattern,
+  namePatternKind: rule.namePatternKind,
+  tagId: rule.tagId,
+  source: rule.source,
+});
+
+/** The ids a rule matches, a pattern the database refuses reported as the input's fault. */
+const matchIdsOf = async (repo: Repo, conditions: DependencyRuleConditions): Promise<Array<string>> => {
+  try {
+    return await repo.findDependencyRuleMatchIds(conditions);
+  } catch (error) {
+    if (isInvalidRegularExpression(error)) {
+      throw new DependencyRuleRefusedError('The name pattern is not a valid regular expression');
+    }
+    throw error;
+  }
+};
+
+const checkRuleInput = async (repo: Repo, input: DependencyRuleInput) => {
+  if (!hasCondition(input)) {
+    throw new DependencyRuleRefusedError('A rule needs at least one condition');
+  }
+  if (!(await repo.findVisiblePrimaryAssetIds([input.primaryAssetId])).has(input.primaryAssetId)) {
+    throw new PrimaryAssetNotFoundError();
+  }
+  return storableLinkRoles(input.roles);
+};
+
+const DEPENDENCY_RULE_NAME_UNIQUE = 'dependency_rules_tenant_name_uq';
+const DEPENDENCY_RULE_TAG_FK = 'dependency_rules_tag_tenant_fk';
+
+const writeRule = async <T>(write: () => Promise<T>): Promise<T> => {
+  try {
+    return await write();
+  } catch (error) {
+    if (isUniqueViolationOf(error, DEPENDENCY_RULE_NAME_UNIQUE)) {
+      throw new DependencyRuleRefusedError('A rule with this name already exists');
+    }
+    if (isForeignKeyViolationOf(error, DEPENDENCY_RULE_TAG_FK)) {
+      throw new DependencyRuleRefusedError('The tag does not exist');
+    }
+    throw error;
+  }
+};
+
+const withLinkSource = <Link extends { ruleId: string | null }>(link: Link) => ({
+  ...link,
+  source: link.ruleId === null ? 'manual' as const : 'rule' as const,
+});
 
 const storableLinkRoles = (roles: ReadonlyArray<SupportToPrimaryLinkRole>): Array<SupportToPrimaryLinkRole> => {
   if (!isStorableLinkRoleSet(roles)) {
@@ -532,7 +614,11 @@ export const assetDependenciesService = defineService(
         return { ...NOTHING_SKIPPED, goneIds };
       }
       const ordered = inPairOrder(reachable, (link) => [link.supportingAssetId, link.primaryAssetId]);
-      return { ...skippedAmong(reachable, await repo.insertSupportToPrimaryLinks(ordered)), goneIds };
+      const outcome = skippedAmong(reachable, await repo.insertSupportToPrimaryLinks(ordered));
+      // A pair a rule already links is the person's from now on, the rule's roles kept.
+      const skipped = new Set(outcome.skippedIds);
+      await repo.claimRuleLinksOfPairs(reachable.filter((link) => skipped.has(link.id)));
+      return { ...outcome, goneIds };
     });
   },
   /**
@@ -559,12 +645,133 @@ export const assetDependenciesService = defineService(
       return skippedAmong(values, updated);
     });
   },
-  deleteSupportToPrimaryLinks: async ({ repo }, ids: Array<string>) =>
-    await repo.deleteSupportToPrimaryLinks(ids),
+  /** A pair a person unlinks stays unlinked: no rule links it again. */
+  deleteSupportToPrimaryLinks: async ({ atomic }, ids: Array<string>) =>
+    atomic(async ({ repo }) => {
+      await repo.insertRuleSuppressions(await repo.findLinkPairsAmong(ids));
+      await repo.deleteSupportToPrimaryLinks(ids);
+    }),
   getSupportToPrimaryLinksBySupportingAssetId: async ({ repo }, supportingAssetId: string) =>
-    await repo.findSupportToPrimaryLinksBySupportingAssetId(supportingAssetId),
+    (await repo.findSupportToPrimaryLinksBySupportingAssetId(supportingAssetId)).map(withLinkSource),
   getSupportToPrimaryLinksByPrimaryAssetId: async ({ repo }, primaryAssetId: string) =>
-    await repo.findSupportToPrimaryLinksByPrimaryAssetId(primaryAssetId),
+    (await repo.findSupportToPrimaryLinksByPrimaryAssetId(primaryAssetId)).map(withLinkSource),
+
+  /** Every rule of the tenant by name, with how many links it holds now. */
+  listDependencyRules: async ({ repo }) => {
+    const rules = await repo.listDependencyRules();
+    const counts = await repo.countRuleLinks();
+    return rules.map((rule) => ({ ...rule, linkCount: counts.get(rule.id) ?? 0 }));
+  },
+  /**
+   * What a rule would hold if applied now: every supporting asset its conditions match, the ones a
+   * person linked or unlinked to its primary asset left out, as the apply pass leaves them out. The
+   * count covers them all, the list the first by display name.
+   */
+  previewDependencyRule: async ({ repo }, input: DependencyRuleConditions & { primaryAssetId: string }, limit: number = DEPENDENCY_RULE_PREVIEW_LIMIT) => {
+    if (!hasCondition(input)) {
+      throw new DependencyRuleRefusedError('A rule needs at least one condition');
+    }
+    if (!(await repo.findVisiblePrimaryAssetIds([input.primaryAssetId])).has(input.primaryAssetId)) {
+      throw new PrimaryAssetNotFoundError();
+    }
+    const matched = await matchIdsOf(repo, conditionsOf(input));
+    const blocked = await repo.findRuleBlockedSupportingAssetIdsOf(input.primaryAssetId);
+    const linkable = matched.filter((id) => !blocked.manual.has(id) && !blocked.suppressed.has(id));
+    return {
+      total: linkable.length,
+      alreadyManual: matched.filter((id) => blocked.manual.has(id)).length,
+      suppressed: matched.filter((id) => blocked.suppressed.has(id)).length,
+      assets: await repo.findPreviewAssets(linkable, limit),
+    };
+  },
+  createDependencyRule: async ({ atomic, eventOrigin }, input: DependencyRuleInput & { id?: string }) => {
+    const tenantId = requireTenantId(eventOrigin);
+    const id = input.id ?? uuidv7();
+    return atomic(async ({ repo }) => {
+      const roles = await checkRuleInput(repo, input);
+      await matchIdsOf(repo, conditionsOf(input));
+      await writeRule(() => repo.insertDependencyRule({ ...conditionsOf(input), id, tenantId, name: input.name.trim(), primaryAssetId: input.primaryAssetId, roles, enabled: input.enabled }));
+      return { id };
+    });
+  },
+  updateDependencyRule: async ({ atomic }, id: string, input: DependencyRuleInput) =>
+    atomic(async ({ repo }) => {
+      const roles = await checkRuleInput(repo, input);
+      await matchIdsOf(repo, conditionsOf(input));
+      const updated = await writeRule(() => repo.updateDependencyRule(id, { ...conditionsOf(input), name: input.name.trim(), primaryAssetId: input.primaryAssetId, roles, enabled: input.enabled }));
+      if (!updated) {
+        throw new DependencyRuleNotFoundError();
+      }
+    }),
+  /** The links a rule wrote go with it; the ones a person took over stay. */
+  deleteDependencyRules: async ({ repo }, ids: Array<string>) =>
+    await repo.deleteDependencyRules(ids),
+
+  /**
+   * Brings the rule links to what the enabled rules match now: a missing one inserted, one whose
+   * asset no longer matches removed, one whose roles or winning rule changed rewritten. A pair a
+   * person linked or unlinked is never touched, and a pair several rules match goes to the first by
+   * name. A run with nothing to change writes nothing.
+   */
+  applyDependencyRules: async ({ atomic, eventOrigin }) => {
+    if (eventOrigin.type !== 'job') {
+      throw newError('Dependency rules are applied by their job alone', { origin: eventOrigin.type });
+    }
+    const { tenantId } = eventOrigin;
+    return await atomic(async ({ repo }) => {
+      const rules = await repo.findEnabledDependencyRules();
+      const candidates = [];
+      for (const rule of rules) {
+        for (const supportingAssetId of await repo.findDependencyRuleMatchIds(conditionsOf(rule))) {
+          candidates.push({ ruleId: rule.id, ruleName: rule.name, supportingAssetId, primaryAssetId: rule.primaryAssetId, roles: rule.roles });
+        }
+      }
+      // One after the other: the pass runs in the job's transaction, on one connection.
+      const links = await repo.findAllSupportToPrimaryLinksForRules();
+      const suppressions = await repo.findRuleSuppressions();
+      const manualPairs = new Set(links.filter((link) => link.ruleId === null).map((link) => pairKey(link.supportingAssetId, link.primaryAssetId)));
+      const suppressedPairs = new Set(suppressions.map((row) => pairKey(row.supportingAssetId, row.primaryAssetId)));
+      const wanted = new Map(wantedRuleLinks(candidates, manualPairs, suppressedPairs)
+        .map((link) => [pairKey(link.supportingAssetId, link.primaryAssetId), link]));
+
+      const stale: Array<string> = [];
+      const rewrites = new Map<string, { ruleId: string, roles: Array<SupportToPrimaryLinkRole>, ids: Array<string> }>();
+      for (const link of links) {
+        if (link.ruleId === null) {
+          continue;
+        }
+        const pair = pairKey(link.supportingAssetId, link.primaryAssetId);
+        const want = wanted.get(pair);
+        wanted.delete(pair);
+        if (want === undefined) {
+          stale.push(link.id);
+        } else if (want.ruleId !== link.ruleId || want.roles.join(',') !== link.roles.join(',')) {
+          const key = `${want.ruleId}:${want.roles.join(',')}`;
+          const group = rewrites.get(key) ?? { ruleId: want.ruleId, roles: want.roles, ids: [] };
+          group.ids.push(link.id);
+          rewrites.set(key, group);
+        }
+      }
+      const missing = inPairOrder([...wanted.values()], (link) => [link.supportingAssetId, link.primaryAssetId]);
+      for (let i = 0; i < stale.length; i += BATCH_CHUNK_SIZE) {
+        await repo.deleteRuleLinks(stale.slice(i, i + BATCH_CHUNK_SIZE));
+      }
+      for (const group of rewrites.values()) {
+        await repo.updateRuleLinks(group.ids, group.ruleId, group.roles);
+      }
+      for (let i = 0; i < missing.length; i += BATCH_CHUNK_SIZE) {
+        await repo.insertRuleLinks(missing.slice(i, i + BATCH_CHUNK_SIZE).map((link) => ({
+          id: uuidv7(), tenantId, supportingAssetId: link.supportingAssetId, primaryAssetId: link.primaryAssetId, roles: link.roles, ruleId: link.ruleId,
+        })));
+      }
+      return {
+        rules: rules.length,
+        inserted: missing.length,
+        updated: [...rewrites.values()].reduce((sum, group) => sum + group.ids.length, 0),
+        deleted: stale.length,
+      };
+    });
+  },
 
   getPrimaryAssetDependencyGraph: async ({ repo }, primaryAssetId: string, depth: number): Promise<DependencyGraph> => {
     if (!(await repo.findVisiblePrimaryAssetIds([primaryAssetId])).has(primaryAssetId)) {
