@@ -295,17 +295,22 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/profil
               </Select>
             </CardField>
             <CardField title={t`Pastel colours`}>
-              {/* The 36 px control line of the selects next to it, so the switch is centred with them. */}
-              <div className="flex min-h-9 items-center">
+              {/* The 36 px control line of the selects next to it: a short label keeps the switch on it in every
+                  language; the explanation is a muted description below the line (the Switch composes no helper text). */}
+              <div className="flex h-9 items-center">
                 <Switch
                   checked={pastelColoursQuery.data === true}
                   onCheckedChange={(checked) => {
                     void updatePastelColoursMutation.mutateAsync({ pastelColours: checked });
                   }}
                   disabled={!pastelColoursQuery.isSuccess || updatePastelColoursMutation.isPending}
-                  label={t`Softer tones for severity, status and marking colours. Off: standard colours, the same in every product.`}
+                  label={t`Softer tones`}
+                  aria-describedby="profile-pastel-colours-description"
                 />
               </div>
+              <p id="profile-pastel-colours-description" className="txt-sub-content mt-1 text-muted-foreground">
+                {t`Softer tones for severity, status and marking colours. Off: standard colours, the same in every product.`}
+              </p>
             </CardField>
             <CardField title={t`Home dashboard`}>
               <HomeDashboardField />

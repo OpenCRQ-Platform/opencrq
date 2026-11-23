@@ -11417,6 +11417,9 @@ msgstr "SOAP or other HTTP service"
 msgid "SOAR"
 msgstr "SOAR"
 
+msgid "Softer tones"
+msgstr "Softer tones"
+
 msgid "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
 msgstr "Softer tones for severity, status and marking colours. Off: standard colours, the same in every product."
 
