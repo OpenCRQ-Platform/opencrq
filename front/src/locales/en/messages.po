@@ -2877,6 +2877,9 @@ msgstr "At most ten years"
 msgid "At the fiscal year end"
 msgstr "At the fiscal year end"
 
+msgid "At the next run"
+msgstr "At the next run"
+
 msgid "ATT&CK release of the dataset"
 msgstr "ATT&CK release of the dataset"
 
@@ -6503,6 +6506,9 @@ msgstr "Intrusion sets"
 msgid "Intune"
 msgstr "Intune"
 
+msgid "Inventory requested. The next run reads every asset again."
+msgstr "Inventory requested. The next run reads every asset again."
+
 msgid "Invitation link"
 msgstr "Invitation link"
 
@@ -6741,6 +6747,9 @@ msgstr "Last event"
 
 msgid "Last ingested"
 msgstr "Last ingested"
+
+msgid "Last inventory"
+msgstr "Last inventory"
 
 msgid "Last observation"
 msgstr "Last observation"
@@ -7710,6 +7719,9 @@ msgstr "Next"
 
 msgid "Next claims"
 msgstr "Next claims"
+
+msgid "Next inventory"
+msgstr "Next inventory"
 
 msgid "Next month"
 msgstr "Next month"
@@ -10594,6 +10606,9 @@ msgstr "Run history could not be loaded, so this curve is incomplete."
 
 msgid "Run history could not be loaded."
 msgstr "Run history could not be loaded."
+
+msgid "Run inventory now"
+msgstr "Run inventory now"
 
 #. js-lingui-explicit-id
 msgid "Run of {date}"

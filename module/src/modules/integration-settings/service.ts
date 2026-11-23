@@ -75,6 +75,20 @@ export const integrationSettingsService = defineService(
     await repo.clearSyncWatermark(eventOrigin.tenantId, source);
   },
 
+  requestInventory: async ({ repo, eventOrigin }, source: IntegrationSource, requestedAt: Date): Promise<boolean> => {
+    if (!('tenantId' in eventOrigin) || !eventOrigin.tenantId) {
+      throw newError('Tenant context required');
+    }
+    return repo.requestInventory(eventOrigin.tenantId, source, requestedAt);
+  },
+
+  clearInventoryRequest: async ({ repo, eventOrigin }, source: IntegrationSource, answeredUpTo: Date) => {
+    if (!('tenantId' in eventOrigin)) {
+      throw newError('Tenant context required');
+    }
+    await repo.clearInventoryRequest(eventOrigin.tenantId, source, answeredUpTo);
+  },
+
   getConnectorId: async ({ repo, eventOrigin }, source: IntegrationSource) => {
     if (!('tenantId' in eventOrigin)) {
       throw newError('Tenant context required');

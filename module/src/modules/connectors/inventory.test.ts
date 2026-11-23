@@ -48,6 +48,10 @@ describe('connector inventory', () => {
     expect(CONNECTOR_INVENTORY.openaev.runUnit).toBe('observations');
   });
 
+  it('declares the supporting assets the OpenAEV inventory writes, beside its findings', () => {
+    expect(CONNECTOR_INVENTORY.openaev.scopeKinds).toEqual(['supporting_assets', 'findings']);
+  });
+
   it('lists exactly the kinds a run summary is read for', () => {
     expect([...JOB_BACKED_CONNECTOR_KINDS]).toEqual([
       'cve-epss-sync',

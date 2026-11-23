@@ -13,6 +13,11 @@ export const integrationSettings = pgTable('integration_settings', {
   source: text('source').notNull().$type<IntegrationSource>(),
   serviceAccountId: uuid('service_account_id').references(() => serviceAccounts.id, { onDelete: 'set null' }),
   lastReportedAt: timestamp('last_reported_at', { withTimezone: true, mode: 'date' }),
+  /**
+   * When an administrator last asked for a full inventory outside its cadence, until a run that read
+   * the whole inventory after the ask clears it. Only the OpenAEV connector reads it today.
+   */
+  inventoryRequestedAt: timestamp('inventory_requested_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => [
