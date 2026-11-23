@@ -110,24 +110,43 @@ describe('createReaderMarkingsResolver', () => {
   it('should say why a reader has no scope, with the tenant and the user and never the token', async () => {
     const unresolved = (fetchImpl: () => Promise<Response>, sign: () => Promise<string | null> = SIGN) =>
       createReaderMarkingsResolver(vi.fn(fetchImpl)).resolve('t-1', 'u-1', CONNECTION, sign);
-    const graphqlRefusal = new Response(JSON.stringify({ errors: [{ message: 'You must be logged in' }], data: null }), { status: 200 });
+    const refusal = (error: Record<string, unknown>) => new Response(JSON.stringify({ errors: [error], data: null }), { status: 200 });
+    const networkError = new Error('connect failed for reader@example.com with Bearer leaked-token', { cause: { code: 'ECONNREFUSED' } });
 
     await unresolved(() => Promise.resolve(new Response('no', { status: 401 })));
-    await unresolved(() => Promise.resolve(graphqlRefusal));
+    await unresolved(() => Promise.resolve(refusal({ message: 'No user reader@example.com', extensions: { code: 'AUTH_REQUIRED' } })));
+    await unresolved(() => Promise.resolve(refusal({ message: 'reader@example.com', extensions: { code: 'reader@example.com' } })));
     await unresolved(() => Promise.resolve(new Response(JSON.stringify({ data: { me: null } }), { status: 200 })));
-    await unresolved(() => Promise.reject(new Error('timeout')));
+    await unresolved(() => Promise.reject(networkError));
+    await unresolved(() => Promise.reject(new DOMException('The operation timed out for reader@example.com', 'TimeoutError')));
     await unresolved(() => Promise.resolve(answer([])), NO_SIGN);
 
     expect(logWarn.mock.calls.map(([, data]) => data.reason)).toEqual([
       'OpenCTI answered HTTP 401',
-      'OpenCTI refused the query: You must be logged in',
+      'OpenCTI refused the query: AUTH_REQUIRED',
+      'OpenCTI refused the query: no error code',
       'the answer lacks the reader scope fields',
-      'the request failed: timeout',
+      'the request failed: Error, ECONNREFUSED',
+      'the request failed: TimeoutError',
       'no token could be signed for the reader',
     ]);
     expect(logWarn.mock.calls.every(([message, data]) => message === 'OpenCTI reader scope unresolved'
       && data.tenantId === 't-1' && data.userId === 'u-1')).toBe(true);
-    expect(JSON.stringify(logWarn.mock.calls)).not.toContain('reader-jwt');
+    const logged = JSON.stringify(logWarn.mock.calls);
+    expect(logged).not.toContain('reader-jwt');
+    expect(logged).not.toContain('leaked-token');
+    expect(logged).not.toContain('reader@example.com');
+  });
+
+  it('should ask OpenCTI once and log once for reads arriving together', async () => {
+    const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(new Response('no', { status: 500 })));
+    const resolver = createReaderMarkingsResolver(fetchImpl);
+
+    const scopes = await Promise.all([1, 2, 3].map(() => resolver.resolve('t-1', 'u-1', CONNECTION, SIGN)));
+
+    expect(scopes).toEqual([null, null, null]);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(logWarn).toHaveBeenCalledTimes(1);
   });
 
   it('should log nothing for a reader whose scope was read or a tenant with no OpenCTI', async () => {

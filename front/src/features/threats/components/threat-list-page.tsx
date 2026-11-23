@@ -21,7 +21,7 @@ const HiddenThreatsNotice: FunctionComponent = () => (
     elevation={1}
     severity="warning"
     title={t`Some threats may be hidden from you.`}
-    description={t`OpenCRQ could not read what you are allowed to see in OpenCTI, so it lists only the threats that carry no marking. Ask an administrator to check that your OpenCTI account exists and that OpenCTI accepts sign-in from this platform.`}
+    description={t`OpenCRQ could not read what you are allowed to see in OpenCTI, so it lists threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that your OpenCTI account exists and that OpenCTI accepts sign-in from this platform.`}
   />
 );
 

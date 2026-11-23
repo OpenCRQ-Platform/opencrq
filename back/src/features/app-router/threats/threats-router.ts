@@ -93,7 +93,7 @@ const ThreatListResultSchema = pagedOutput(ThreatListRowSchema).extend({
   // `countPendingAnalyses`) but called out here so the UI can explain their blank columns.
   pending: z.number().int(),
   // OpenCTI did not say what the reader may read there, so the mirrored threats they see are only
-  // the unmarked ones.
+  // the unmarked, unrestricted ones.
   readerScopeUnresolved: z.boolean(),
 });
 

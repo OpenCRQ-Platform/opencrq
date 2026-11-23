@@ -84,13 +84,30 @@ export const parseReaderScope = (answer: unknown): ReaderScope | null => {
   };
 };
 
-/** Why OpenCTI's answer holds no scope: GraphQL reports its refusals as a 200 with `errors`. */
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+
+/**
+ * A value logged as a category: an error code or name is an identifier, while a message is free text
+ * from another product that may name the reader.
+ */
+const category = (value: unknown): string | null =>
+  (typeof value === 'string' && IDENTIFIER.test(value) ? value : null);
+
+/** Why OpenCTI's answer holds no scope: GraphQL refuses with a 200 whose `errors` carry a code. */
 const unreadableAnswer = (answer: unknown): string => {
   const errors = isRecord(answer) && Array.isArray(answer.errors) ? answer.errors : [];
   const first: unknown = errors[0];
-  return isRecord(first) && typeof first.message === 'string'
-    ? `OpenCTI refused the query: ${first.message.slice(0, 200)}`
-    : 'the answer lacks the reader scope fields';
+  if (!isRecord(first)) {
+    return 'the answer lacks the reader scope fields';
+  }
+  const code = isRecord(first.extensions) ? category(first.extensions.code) : null;
+  return `OpenCTI refused the query: ${code ?? 'no error code'}`;
+};
+
+const requestFailure = (err: unknown): string => {
+  const name = err instanceof Error ? category(err.name) : null;
+  const cause = err instanceof Error && isRecord(err.cause) ? category(err.cause.code) : null;
+  return `the request failed: ${[name ?? 'unknown error', cause].filter(Boolean).join(', ')}`;
 };
 
 type ScopeAnswer = { scope: ReaderScope } | { failure: string };
@@ -120,7 +137,25 @@ const fetchReaderScope = async (
   return scope ? { scope } : { failure: unreadableAnswer(answer) };
 };
 
-interface CachedScope { scope: ReaderScope | null, expiresAt: number }
+const lookUpReaderScope = async (
+  tenantId: string, userId: string, connection: ProductConnection, authorization: ReaderAuthorization, fetchImpl: FetchLike,
+): Promise<ReaderScope | null> => {
+  let answer: ScopeAnswer;
+  try {
+    answer = await fetchReaderScope(connection, authorization, fetchImpl);
+  } catch (err) {
+    answer = { failure: requestFailure(err) };
+  }
+  if ('failure' in answer) {
+    logWarn('OpenCTI reader scope unresolved', { tenantId, userId, reason: answer.failure });
+    return null;
+  }
+  return answer.scope;
+};
+
+// The lookup in flight, not its result: a page's queries arrive together, and each would otherwise
+// miss the cache, ask OpenCTI and log the same failure.
+interface CachedScope { scope: Promise<ReaderScope | null>, expiresAt: number }
 
 export interface ReaderMarkingsResolver {
   resolve: (tenantId: string, userId: string, connection: ProductConnection | undefined, authorization: ReaderAuthorization) => Promise<ReaderScope | null | undefined>,
@@ -143,16 +178,7 @@ export const createReaderMarkingsResolver = (
       if (cached && cached.expiresAt > now()) {
         return cached.scope;
       }
-      let answer: ScopeAnswer;
-      try {
-        answer = await fetchReaderScope(connection, authorization, fetchImpl);
-      } catch (err) {
-        answer = { failure: `the request failed: ${err instanceof Error ? err.message : 'unknown error'}` };
-      }
-      const scope = 'scope' in answer ? answer.scope : null;
-      if ('failure' in answer) {
-        logWarn('OpenCTI reader scope unresolved', { tenantId, userId, reason: answer.failure });
-      }
+      const scope = lookUpReaderScope(tenantId, userId, connection, authorization, fetchImpl);
       if (cache.size >= MAX_CACHED_READERS) {
         cache.clear();
       }
