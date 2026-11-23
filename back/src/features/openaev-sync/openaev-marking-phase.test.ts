@@ -1,6 +1,7 @@
 import { markingStixId } from '@app/module';
 import { describe, expect, it, vi } from 'vitest';
 import type { OpenaevMarkingDefinition } from './openaev-types';
+import type { OpenaevMarkingVocabulary } from './openaev-marking-phase';
 import { openaevMarkingRefs } from './openaev-mapping-utils';
 import { stixIdOfOpenaevMarking, syncOpenaevMarkings } from './openaev-marking-phase';
 
@@ -34,32 +35,42 @@ describe('stixIdOfOpenaevMarking', () => {
 });
 
 describe('syncOpenaevMarkings', () => {
-  it('mirrors every page under its STIX id and answers the OpenAEV id map', async () => {
-    const pages = [
-      { content: [marking('oaev-1', 'TLP', 'TLP:RED', TLP_RED_STIX)], last: false },
-      { content: [marking('oaev-2', 'PAP', 'PAP:RED')], last: true },
-    ];
-    const searchMarkingDefinitions = vi.fn((_tenant: string, page: number) => Promise.resolve(pages[page]));
-    const syncMarkingDefinitions = vi.fn(() => Promise.resolve({ synced: 2, skipped: 0 }));
-    const map = await syncOpenaevMarkings({ searchMarkingDefinitions, syncMarkingDefinitions, signal: new AbortController().signal }, 'oaev-tenant');
-    expect(searchMarkingDefinitions).toHaveBeenCalledTimes(2);
+  const deps = (vocabulary: OpenaevMarkingVocabulary) => ({
+    listAssignableMarkingDefinitions: vi.fn((_tenant: string) => Promise.resolve(vocabulary)),
+    syncMarkingDefinitions: vi.fn((_markings: ReadonlyArray<unknown>) => Promise.resolve({ synced: 0, skipped: 0 })),
+    warn: vi.fn(),
+    signal: new AbortController().signal,
+  });
+
+  it('mirrors the assignable vocabulary under its STIX ids and answers the OpenAEV id map', async () => {
+    const phase = deps({ available: true, markings: [marking('oaev-1', 'TLP', 'TLP:RED', TLP_RED_STIX), marking('oaev-2', 'PAP', 'PAP:RED')] });
+    const map = await syncOpenaevMarkings(phase, 'oaev-tenant');
+    expect(phase.listAssignableMarkingDefinitions).toHaveBeenCalledTimes(1);
+    expect(phase.listAssignableMarkingDefinitions).toHaveBeenCalledWith('oaev-tenant');
     expect(map.get('oaev-1')).toBe(TLP_RED_STIX);
     expect(map.get('oaev-2')).toBe(markingStixId('PAP', 'PAP:RED'));
-    expect(syncMarkingDefinitions).toHaveBeenCalledWith([
+    expect(phase.syncMarkingDefinitions).toHaveBeenCalledWith([
       { stixId: TLP_RED_STIX, definitionType: 'TLP', definition: 'TLP:RED', color: '#c62828', order: 4 },
       { stixId: markingStixId('PAP', 'PAP:RED'), definitionType: 'PAP', definition: 'PAP:RED', color: '#c62828', order: 4 },
     ]);
+    expect(phase.warn).not.toHaveBeenCalled();
   });
 
-  it('writes nothing for an OpenAEV without markings', async () => {
-    const syncMarkingDefinitions = vi.fn(() => Promise.resolve({ synced: 0, skipped: 0 }));
-    const map = await syncOpenaevMarkings({
-      searchMarkingDefinitions: () => Promise.resolve({ content: [], last: true }),
-      syncMarkingDefinitions,
-      signal: new AbortController().signal,
-    }, 'oaev-tenant');
+  it('writes nothing for an OpenAEV whose vocabulary is empty', async () => {
+    const phase = deps({ available: true, markings: [] });
+    const map = await syncOpenaevMarkings(phase, 'oaev-tenant');
     expect(map.size).toBe(0);
-    expect(syncMarkingDefinitions).not.toHaveBeenCalled();
+    expect(phase.syncMarkingDefinitions).not.toHaveBeenCalled();
+    expect(phase.warn).not.toHaveBeenCalled();
+  });
+
+  it('warns once and answers an empty map when OpenAEV serves no vocabulary, so the sync goes on', async () => {
+    const phase = deps({ available: false, reason: 'OpenAEV auth error (403): Forbidden' });
+    const map = await syncOpenaevMarkings(phase, 'oaev-tenant');
+    expect(map.size).toBe(0);
+    expect(phase.syncMarkingDefinitions).not.toHaveBeenCalled();
+    expect(phase.warn).toHaveBeenCalledTimes(1);
+    expect(phase.warn).toHaveBeenCalledWith(expect.stringContaining('unavailable'), { openaevTenantId: 'oaev-tenant', reason: 'OpenAEV auth error (403): Forbidden' });
   });
 });
 

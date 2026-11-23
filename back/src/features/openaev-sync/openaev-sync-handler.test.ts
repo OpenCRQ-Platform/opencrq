@@ -226,7 +226,7 @@ const {
   mockGetAssetOverview,
   mockFindUsers,
   mockListTags,
-  mockSearchMarkingDefinitions,
+  mockListAssignableMarkingDefinitions,
   mockPaginateAll,
 } = vi.hoisted(() => {
   const listTenants = vi.fn().mockResolvedValue([{ tenant_id: 'oa-tenant-1', tenant_name: 'Tenant A' }]);
@@ -245,7 +245,7 @@ const {
   const getAssetOverview = vi.fn().mockImplementation((_tenantId: string, assetId: string) => Promise.resolve({ asset_id: assetId }));
   const findUsers = vi.fn().mockResolvedValue([]);
   const listTags = vi.fn().mockResolvedValue([]);
-  const searchMarkingDefinitions = vi.fn().mockResolvedValue({ content: [], last: true, totalElements: 0, number: 0, size: 100 });
+  const listAssignableMarkingDefinitions = vi.fn().mockResolvedValue({ available: true, markings: [] });
 
   const paginateAll = vi.fn().mockImplementation(
     async <T>(fetchPage: (page: number) => Promise<{ content: Array<T>, last: boolean, totalElements: number }>) => {
@@ -263,7 +263,7 @@ const {
     mockGetAssetOverview: getAssetOverview,
     mockFindUsers: findUsers,
     mockListTags: listTags,
-    mockSearchMarkingDefinitions: searchMarkingDefinitions,
+    mockListAssignableMarkingDefinitions: listAssignableMarkingDefinitions,
     mockPaginateAll: paginateAll,
   };
 });
@@ -279,7 +279,7 @@ vi.mock('./openaev-api-client', async (importOriginal) => {
     getAssetOverview: mockGetAssetOverview,
     findUsers: mockFindUsers,
     listTags: mockListTags,
-    searchMarkingDefinitions: mockSearchMarkingDefinitions,
+    listAssignableMarkingDefinitions: mockListAssignableMarkingDefinitions,
   });
   return {
     OpenaevNotFoundError: actual.OpenaevNotFoundError,
@@ -341,7 +341,7 @@ describe('openaevSyncHandler', () => {
     mockGetAssetOverview.mockImplementation((_tenantId: string, assetId: string) => Promise.resolve({ asset_id: assetId }));
     mockFindUsers.mockResolvedValue([]);
     mockListTags.mockResolvedValue([]);
-    mockSearchMarkingDefinitions.mockResolvedValue({ content: [], last: true, totalElements: 0, number: 0, size: 100 });
+    mockListAssignableMarkingDefinitions.mockResolvedValue({ available: true, markings: [] });
     mockSyncMarkingDefinitions.mockResolvedValue({ synced: 0, skipped: 0 });
     mockGetConnectorId.mockResolvedValue('connector-id-abc');
     inventorySyncedHoursAgo(null);
@@ -1023,12 +1023,9 @@ describe('openaevSyncHandler', () => {
 
     it('mirrors the OpenAEV marking definitions as the platform, then hands each asset its markings as STIX ids', async () => {
       const tlpRed = 'marking-definition--5e57c739-391a-4eb3-b6be-7d15ca92d5ed';
-      mockSearchMarkingDefinitions.mockResolvedValueOnce({
-        content: [{ marking_definition_id: 'oa-marking-1', marking_definition_type: 'TLP', marking_definition_definition: 'TLP:RED', marking_definition_color: '#c62828', marking_definition_order: 4, marking_definition_stix_id: tlpRed }],
-        last: true,
-        totalElements: 1,
-        number: 0,
-        size: 100,
+      mockListAssignableMarkingDefinitions.mockResolvedValueOnce({
+        available: true,
+        markings: [{ marking_definition_id: 'oa-marking-1', marking_definition_type: 'TLP', marking_definition_definition: 'TLP:RED', marking_definition_color: '#c62828', marking_definition_order: 4, marking_definition_stix_id: tlpRed }],
       });
       mockSearchAssets.mockResolvedValueOnce({
         content: [
@@ -1044,7 +1041,7 @@ describe('openaevSyncHandler', () => {
       await openaevSyncHandler(makeCtx());
 
       expect(mockWithOrigin).toHaveBeenCalledWith({ type: 'system' });
-      expect(mockSearchMarkingDefinitions).toHaveBeenCalledWith('oa-tenant-1', 0);
+      expect(mockListAssignableMarkingDefinitions).toHaveBeenCalledWith('oa-tenant-1');
       expect(mockSyncMarkingDefinitions).toHaveBeenCalledWith('tenant-abc', [
         { stixId: tlpRed, definitionType: 'TLP', definition: 'TLP:RED', color: '#c62828', order: 4 },
       ]);
@@ -1053,6 +1050,24 @@ describe('openaevSyncHandler', () => {
       // An OpenAEV id with no definition stays as it is: no clearance names it, so the asset fails closed.
       expect(markingRefsOf('asset-openaev-1')).toEqual(['oa-marking-unknown', tlpRed].sort());
       expect(markingRefsOf('asset-openaev-2')).toBeUndefined();
+    });
+
+    it('goes on through the inventory without markings when OpenAEV serves no marking vocabulary', async () => {
+      mockListAssignableMarkingDefinitions.mockResolvedValueOnce({ available: false, reason: 'OpenAEV auth error (403): Forbidden' });
+      mockSearchAssets.mockResolvedValueOnce({
+        content: [{ asset_id: 'asset-openaev-1', asset_name: 'srv-01', asset_category: 'host', asset_markings: ['oa-marking-1'] }],
+        last: true,
+        totalElements: 1,
+        number: 0,
+        size: 100,
+      });
+
+      await openaevSyncHandler(makeCtx());
+
+      expect(mockSyncMarkingDefinitions).not.toHaveBeenCalled();
+      const inputs: Array<{ sourceAssetId: string, markingRefs?: Array<string> }> = mockBulkUpsertAssets.mock.calls[0][0];
+      // Unresolved, the OpenAEV id stays as it is: no clearance names it, so the asset fails closed.
+      expect(inputs.find((input) => input.sourceAssetId === 'asset-openaev-1')?.markingRefs).toEqual(['oa-marking-1']);
     });
 
     // The tag links are keyed on the connector, and one connector spans every OpenAEV tenant of an
