@@ -2,6 +2,7 @@ import type { JobContext } from '@app/module';
 import type { CveEvidenceRow, ExpectationEvidenceRow, OpenaevSyncPayload, OpenaevSyncState, TenantOutput } from '../openaev-types';
 import type { OpenaevLegacyClient } from './openaev-legacy-client';
 import type { InjectResponse, LegacyExerciseEntry, OpenaevCveRawRow } from './openaev-legacy-types';
+import type { CveFindingsTransaction } from '../cve-findings-transaction';
 import { mapWithConcurrency, sleep } from '../../../utils';
 import { createLogger } from '../../../utils/logger';
 import { OpenaevNotFoundError } from '../openaev-api-client';
@@ -40,10 +41,6 @@ export interface LegacySyncServices {
     findCveScopePairsSince: (connectorId: string, since: Date) => Promise<Array<{ supportingAssetId: string, scope: string }>>,
     markScopesEnumerated: (params: { connectorId: string, pairs: Array<{ supportingAssetId: string, scope: string }>, enumeratedAt: Date }) => Promise<unknown>,
   },
-  cve: {
-    upsertCves: (cves: Array<{ cveId: string }>) => Promise<unknown>,
-    getCveIdMap: (cveIds: Array<string>) => Promise<Map<string, string>>,
-  },
   mitreAttack: {
     getTechniqueIdsByExternalIds: (externalIds: Array<string>) => Promise<Map<string, string>>,
   },
@@ -52,6 +49,7 @@ export interface LegacySyncServices {
 export interface LegacySyncDeps {
   ctx: JobContext<OpenaevSyncPayload, OpenaevSyncState>,
   svc: LegacySyncServices,
+  inCveFindingsTransaction: CveFindingsTransaction,
   connectorId: string,
   client: OpenaevLegacyClient,
   openaevTenants: ReadonlyArray<TenantOutput>,
@@ -77,7 +75,7 @@ export interface LegacySyncDeps {
  * exercises already done, by the state it checkpointed.
  */
 export const runLegacySync = async (deps: LegacySyncDeps): Promise<void> => {
-  const { ctx, svc, connectorId, client, openaevTenants, buildTenantInventory, syncTenantDescriptions } = deps;
+  const { ctx, svc, connectorId, client, openaevTenants, buildTenantInventory, syncTenantDescriptions, inCveFindingsTransaction } = deps;
 
   await svc.openaevConnector.forgetSnapshotState(connectorId);
 
@@ -225,13 +223,15 @@ export const runLegacySync = async (deps: LegacySyncDeps): Promise<void> => {
       // This findings route serves neither CVSS nor the CISA exploit data OpenAEV's Vulnerability
       // entity carries, so those fields stay null.
       const uniqueCveIds = [...new Set(chunk.map((r) => r.cveIdentifier))];
-      await svc.cve.upsertCves(uniqueCveIds.map((cveId) => ({ cveId })));
-      const cveIdMap: Map<string, string> = await svc.cve.getCveIdMap(uniqueCveIds);
-
-      const cveEvidenceRows = buildCveEvidenceRows({ rawCveRows: chunk, cveIdMap, cveAssetIdMap, connectorId });
-      if (cveEvidenceRows.length > 0) {
-        await svc.supportingAssets.bulkUpsertEvidence(cveEvidenceRows);
-      }
+      const cveEvidenceRows = await inCveFindingsTransaction(async (tx) => {
+        await tx.cve.upsertCves(uniqueCveIds.map((cveId) => ({ cveId })));
+        const cveIdMap = await tx.cve.getCveIdMap(uniqueCveIds);
+        const rows = buildCveEvidenceRows({ rawCveRows: chunk, cveIdMap, cveAssetIdMap, connectorId });
+        if (rows.length > 0) {
+          await tx.supportingAssets.bulkUpsertEvidence(rows);
+        }
+        return rows;
+      });
       writtenRows += cveEvidenceRows.length;
     }
     logTrace('CVE evidence', { openaevTenantId, rows: writtenRows });

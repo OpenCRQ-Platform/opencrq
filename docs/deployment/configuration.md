@@ -295,11 +295,23 @@ CONNECTORS__OPENCTI__89c70e9a-8317-4da7-8765-1b9ba004c32c__TOKEN=...
 
 ### NIST (National Vulnerability Database)
 
-Powers the periodic CVE metadata sync (CVSS scores, descriptions) from the [NVD API](https://nvd.nist.gov/). The NVD catalog itself is shared across every tenant, but the API key is still per tenant: NIST attributes rate limits to the key, and each tenant's sync job runs independently. The key is optional but strongly recommended: the NVD rate limit is 5 requests/30s without a key vs. 50 requests/30s with one.
+Powers the periodic CVE metadata sync (CVSS scores, descriptions) from the [NVD API](https://nvd.nist.gov/). The API key is per tenant: NIST attributes rate limits to the key, and each tenant's sync job runs independently. The key is optional but strongly recommended: the NVD rate limit is 5 requests/30s without a key vs. 50 requests/30s with one.
 
 | Variable                                  | Required | Default Value | Architectural/Functional Impact                                                                        |
 |:--------------------------------------------|:--------:|:--------------|:--------------------------------------------------------------------------------------------------------|
 | `CONNECTORS__NIST__<tenant-uuid>__API_KEY` |    No    | -             | NVD API key for that tenant. Pass through a secret store. A tenant with no entry (or no `API_KEY`) syncs in degraded (lower rate-limited) mode. |
+
+#### The CVEs a tenant holds
+
+A tenant holds only the CVEs its findings carry and its threats name, never the whole public catalogue. NIST, FIRST and CISA enrich those CVEs and never add one:
+
+- **NIST** fetches each CVE that entered the tenant since its last run, and each CVE a finding carries whose remediation it has not read yet, one request per CVE, then the records NVD modified since that run; a first run fetches every CVE held. It walks the whole catalogue instead when more CVEs await a fetch than the walk takes requests (about 800).
+- **FIRST** asks for the scores of the CVEs held, a hundred per request.
+- **CISA** reads its one file and keeps the entries held.
+
+A CVE entering a tenant, whether a finding connector, a threat or a person attaching it by hand brought it, books a run of each of the three a minute later, so the CVEs that enter together are read by the same runs; the scheduled runs keep their own cadence. The daily `jobs-retention` job deletes the CVEs no finding and no threat carries any more, unless the unique finding score history holds a line on one within its twelve months, or a CRQ result still points at one. Whatever brings a CVE in writes what keeps it in the same transaction, so the purge never takes one in between.
+
+On a database that held the whole catalogue per tenant, the first purge deletes most rows of `cve` and `cve_source_observations`. PostgreSQL does not give that space back to the volume on its own: reclaim it with `VACUUM FULL` (which locks the tables while it runs) or `pg_repack` on those two tables once the purge has run.
 
 ### Microsoft Graph (Microsoft Defender for Endpoint)
 

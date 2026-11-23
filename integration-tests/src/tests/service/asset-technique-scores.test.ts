@@ -68,7 +68,7 @@ describe('Asset technique scores', () => {
   /** Through the service, which is the path that resolves a finding's techniques. */
   const writeFinding = async (supportingAssetId: string, cveRowId: string, origin: EventOrigin = adminOrigin) => {
     const id = uuidv7();
-    await services.withOrigin(origin).supportingAssets.createEvidence({ id, supportingAssetId, cveId: cveRowId, userId: adminUserId });
+    await services.withOrigin(origin).supportingAssets.createEvidence({ id, supportingAssetId, cve: { rowId: cveRowId }, userId: adminUserId });
     return id;
   };
 

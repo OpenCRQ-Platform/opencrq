@@ -211,7 +211,7 @@ export { POSTURE_BANDS, postureBandForScore, postureBandRange, postureSeverityBa
 export type { PostureBand, SeverityBand } from './modules/finding-score/bands';
 export { partFigure } from './modules/finding-score/engine';
 export type { ScorePart, ScoreTermKey } from './modules/finding-score/engine';
-export { CVE_ID_PATTERN, TECHNIQUE_EXTERNAL_ID_PATTERN } from './modules/finding-score/vulnerability-filter';
+export { CVE_ID_MAX_LENGTH, CVE_ID_PATTERN, TECHNIQUE_EXTERNAL_ID_PATTERN } from './modules/finding-score/vulnerability-filter';
 export type { VulnerabilityFilter } from './modules/finding-score/vulnerability-filter';
 export { MAPPING_LANE_CONFIDENCE } from './modules/technique-mapping/constants';
 export type { AttackGroup, MappingConfidence, MappingLane, TechniqueClaimLane } from './modules/technique-mapping/constants';

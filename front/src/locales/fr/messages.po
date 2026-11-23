@@ -4311,6 +4311,9 @@ msgstr "ID CVE"
 msgid "CVE Information"
 msgstr "Informations CVE"
 
+msgid "CVE-YYYY-NNNN"
+msgstr "CVE-AAAA-NNNN"
+
 msgid "CVEs"
 msgstr "CVE"
 
@@ -5073,6 +5076,9 @@ msgstr "Efficacité moteur, sur les techniques testées"
 
 msgid "English"
 msgstr "Anglais"
+
+msgid "Enter a CVE ID in the CVE-YYYY-NNNN format"
+msgstr "Saisissez un identifiant de CVE au format CVE-AAAA-NNNN"
 
 msgid "Enter a maximum probability."
 msgstr "Saisissez une probabilité maximale."
@@ -7876,9 +7882,6 @@ msgstr "les pays ciblés par un acteur individuel"
 msgid "no country targeted by an intrusion set"
 msgstr "les pays ciblés par un mode opératoire"
 
-msgid "No CVE found"
-msgstr "Aucune CVE trouvée"
-
 msgid "No CVE matches."
 msgstr "Aucune CVE ne correspond."
 
@@ -9482,9 +9485,6 @@ msgstr "Plateformes"
 
 msgid "PLC"
 msgstr "Automate (PLC)"
-
-msgid "Please select a CVE from the list"
-msgstr "Veuillez sélectionner un CVE dans la liste"
 
 msgid "Point of sale"
 msgstr "Point de vente"
@@ -12964,6 +12964,9 @@ msgstr "Ce contrôle est équivalent aux exigences et contrôles listés ci-dess
 
 msgid "This CVE changed since the CVE values were last computed: a new threat signal, or new assets in the scenario. Recompute them to price its fix."
 msgstr "Cette CVE a changé depuis le dernier calcul de la valeur des CVE : nouveau signal de menace, ou nouveaux actifs dans le scénario. Recalculez-la pour chiffrer sa correction."
+
+msgid "This CVE is already attached to this asset"
+msgstr "Cette CVE est déjà associée à cet actif"
 
 msgid "This dependency was removed in the meantime."
 msgstr "Cette dépendance a été supprimée entre-temps."

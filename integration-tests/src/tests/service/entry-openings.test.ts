@@ -72,7 +72,7 @@ describe('Entry openings', () => {
 
   const writeFinding = async (supportingAssetId: string, cveRowId: string, origin: EventOrigin = adminOrigin) => {
     const id = uuidv7();
-    await services.withOrigin(origin).supportingAssets.createEvidence({ id, supportingAssetId, cveId: cveRowId, userId: adminUserId });
+    await services.withOrigin(origin).supportingAssets.createEvidence({ id, supportingAssetId, cve: { rowId: cveRowId }, userId: adminUserId });
     return id;
   };
 

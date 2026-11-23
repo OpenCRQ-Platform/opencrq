@@ -1,6 +1,7 @@
 import type { ConnectorAssetInput, JobHandler } from '@app/module';
 import { allServiceDefinitions, createServices, NonRetryableError } from '@app/module';
 import type { OpenaevAgent, OpenaevSyncPayload, OpenaevSyncState } from './openaev-types';
+import type { CveFindingsTransaction } from './cve-findings-transaction';
 import { config } from '../../config';
 import { dbEngine } from '../../engines/db';
 import { mapWithConcurrency } from '../../utils';
@@ -58,6 +59,8 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
 
   const origin = { type: 'connector' as const, serviceAccountId: ctx.payload.serviceAccountId, tenantId: ctx.tenantId, job: { jobKind: ctx.kind, interactive: ctx.interactive } };
   const svc = services.withOrigin(origin);
+  const inCveFindingsTransaction: CveFindingsTransaction = (work) =>
+    dbEngine.db.transaction((tx) => work(createServices([...allServiceDefinitions], tx).withOrigin(origin)));
   // Marking definitions are written by the security manager's policy, which no connector holds: the
   // mirror of the source's vocabulary runs as the platform, as the OpenCTI consumer's does.
   const systemServices = services.withOrigin({ type: 'system' } as const);
@@ -357,7 +360,7 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       const probedTenantId = openaevTenants[0].tenant_id;
       if (await legacyClient.probeSnapshotExport(probedTenantId) === 'unavailable') {
         logWarn('OpenAEV answers 404 on the snapshot routes, its BULK_SNAPSHOT_EXPORT preview feature is off: reading exercises and findings instead', { openaevTenantId: probedTenantId });
-        await runLegacySync({ ctx, svc, connectorId, client: legacyClient, openaevTenants, buildTenantInventory, syncTenantDescriptions });
+        await runLegacySync({ ctx, svc, inCveFindingsTransaction, connectorId, client: legacyClient, openaevTenants, buildTenantInventory, syncTenantDescriptions });
         return;
       }
     }
@@ -421,6 +424,7 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       const result = await syncObservationStreams({
         client,
         svc,
+        inCveFindingsTransaction,
         connectorId,
         openaevTenantId,
         runStartedAt,

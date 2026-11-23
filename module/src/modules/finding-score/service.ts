@@ -62,6 +62,7 @@ import { AGED_FINDING_DAYS, daysBefore, expectationTally, TECHNIQUE_POSTURE_CHAN
 import { resolveSeverityBand, SEVERITY_BANDS, truncateScore } from './bands';
 import { mapInYieldedChunks } from './yield-chunks';
 import { entryOpeningKey, findingOpenings, heldOpeningKey, holdWorstOpening, openingFigure, susceptibilityCell } from './technique-scores';
+import { UNIQUE_SCORE_HISTORY_RETENTION_DAYS } from './retention';
 
 /** Findings held in memory per round, which is what the pass costs. */
 const SCORE_BATCH_SIZE = 1000;
@@ -79,8 +80,6 @@ export const SCORE_HISTORY_RETENTION_DAYS = 365;
 
 /** The longest window an asset's posture card offers, twelve months. */
 export const POSTURE_HISTORY_RETENTION_DAYS = 365;
-
-export const UNIQUE_SCORE_HISTORY_RETENTION_DAYS = 365;
 
 /**
  * How many findings are scored back to back before the loop hands the event loop back.

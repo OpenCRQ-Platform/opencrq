@@ -35,7 +35,7 @@ describe('Evidence lists (HTTP/tRPC)', () => {
     const cveUuid = uuidv7();
     await db.insert(cve).values([{ id: cveUuid, tenantId, cveId: 'CVE-2021-44228', cveTitle: 'Log4Shell' }]);
     cveEvidenceId = uuidv7();
-    await scoped.supportingAssets.createEvidence({ id: cveEvidenceId, supportingAssetId, cveId: cveUuid, userId: adminId });
+    await scoped.supportingAssets.createEvidence({ id: cveEvidenceId, supportingAssetId, cve: { rowId: cveUuid }, userId: adminId });
     await db.insert(assetEvidence).values([{
       id: uuidv7(), supportingAssetId, tenantId, mitreTechniqueId: TECHNIQUE_T1003, expectationType: 'detection', securityPlatformType: 'SIEM',
     }]);

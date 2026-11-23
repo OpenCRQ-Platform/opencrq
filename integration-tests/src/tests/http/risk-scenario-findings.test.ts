@@ -113,7 +113,7 @@ describe('Risk scenario findings (HTTP/tRPC)', () => {
     }]);
     evidenceId = uuidv7();
     await scoped.supportingAssets.createEvidence({
-      id: evidenceId, supportingAssetId, cveId: cveUuid, userId: adminId,
+      id: evidenceId, supportingAssetId, cve: { rowId: cveUuid }, userId: adminId,
     });
 
     attackOutcomeId = deriveSeedId(tenantId, AttackOutcome_Ransomware);

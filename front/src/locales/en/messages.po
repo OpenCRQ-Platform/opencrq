@@ -4311,6 +4311,9 @@ msgstr "CVE ID"
 msgid "CVE Information"
 msgstr "CVE Information"
 
+msgid "CVE-YYYY-NNNN"
+msgstr "CVE-YYYY-NNNN"
+
 msgid "CVEs"
 msgstr "CVEs"
 
@@ -5073,6 +5076,9 @@ msgstr "Engine efficacy, on the tested techniques"
 
 msgid "English"
 msgstr "English"
+
+msgid "Enter a CVE ID in the CVE-YYYY-NNNN format"
+msgstr "Enter a CVE ID in the CVE-YYYY-NNNN format"
 
 msgid "Enter a maximum probability."
 msgstr "Enter a maximum probability."
@@ -7876,9 +7882,6 @@ msgstr "no country targeted by an individual threat actor"
 msgid "no country targeted by an intrusion set"
 msgstr "no country targeted by an intrusion set"
 
-msgid "No CVE found"
-msgstr "No CVE found"
-
 msgid "No CVE matches."
 msgstr "No CVE matches."
 
@@ -9482,9 +9485,6 @@ msgstr "Platforms"
 
 msgid "PLC"
 msgstr "PLC"
-
-msgid "Please select a CVE from the list"
-msgstr "Please select a CVE from the list"
 
 msgid "Point of sale"
 msgstr "Point of sale"
@@ -12964,6 +12964,9 @@ msgstr "This control is equivalent to the requirements and controls listed below
 
 msgid "This CVE changed since the CVE values were last computed: a new threat signal, or new assets in the scenario. Recompute them to price its fix."
 msgstr "This CVE changed since the CVE values were last computed: a new threat signal, or new assets in the scenario. Recompute them to price its fix."
+
+msgid "This CVE is already attached to this asset"
+msgstr "This CVE is already attached to this asset"
 
 msgid "This dependency was removed in the meantime."
 msgstr "This dependency was removed in the meantime."

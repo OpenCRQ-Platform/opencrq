@@ -3,10 +3,12 @@ import type { JobContext } from '@app/module';
 
 const mockPurgeExpiredRuns = vi.fn().mockResolvedValue({ runsDeleted: 0 });
 const mockPurgeExpiredCrqRuns = vi.fn().mockResolvedValue({ runsDeleted: 0 });
+const mockPurgeOutOfScope = vi.fn().mockResolvedValue(0);
 
 const mockWithOrigin = vi.fn().mockReturnValue({
   jobs: { purgeExpiredRuns: mockPurgeExpiredRuns },
   crqIndicators: { purgeExpiredRuns: mockPurgeExpiredCrqRuns },
+  cve: { purgeOutOfScope: mockPurgeOutOfScope },
 });
 
 vi.mock('@app/module', () => ({
@@ -53,6 +55,7 @@ describe('jobsRetentionHandler', () => {
     vi.setSystemTime(NOW);
     mockPurgeExpiredRuns.mockClear();
     mockPurgeExpiredCrqRuns.mockClear();
+    mockPurgeOutOfScope.mockClear();
     mockWithOrigin.mockClear();
   });
 
@@ -68,6 +71,7 @@ describe('jobsRetentionHandler', () => {
 
     expect(mockPurgeExpiredRuns).not.toHaveBeenCalled();
     expect(mockPurgeExpiredCrqRuns).not.toHaveBeenCalled();
+    expect(mockPurgeOutOfScope).not.toHaveBeenCalled();
   });
 
   it('purges the CRQ runs of the run tenant as of now', async () => {
@@ -76,6 +80,15 @@ describe('jobsRetentionHandler', () => {
     await jobsRetentionHandler(makeCtx());
 
     expect(mockPurgeExpiredCrqRuns).toHaveBeenCalledWith(new Date(NOW));
+  });
+
+  it('purges the CVEs out of the tenant\'s scope, handing the run\'s signal down', async () => {
+    mockConfig.mockReturnValue({ jobs: { enabled: true } });
+    const ctx = makeCtx();
+
+    await jobsRetentionHandler(ctx);
+
+    expect(mockPurgeOutOfScope).toHaveBeenCalledWith(ctx.signal);
   });
 
   it('computes the bound from the configured retention days', async () => {

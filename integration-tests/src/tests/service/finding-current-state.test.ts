@@ -56,7 +56,7 @@ describe('The stored current state of a finding', () => {
   const attached = async (): Promise<string> => {
     const id = uuidv7();
     await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-      id, supportingAssetId: assetId, cveId: await insertCve(), userId: adminUserId,
+      id, supportingAssetId: assetId, cve: { rowId: await insertCve() }, userId: adminUserId,
     });
     return id;
   };
@@ -406,7 +406,7 @@ describe('The stored current state of a finding', () => {
       for (let i = 0; i < FLAW_ASSETS; i += 1) {
         const id = uuidv7();
         await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-          id, supportingAssetId: await asset(), cveId: cveRef, userId: adminUserId,
+          id, supportingAssetId: await asset(), cve: { rowId: cveRef }, userId: adminUserId,
         });
         evidenceIds.push(id);
       }

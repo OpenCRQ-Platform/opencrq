@@ -293,7 +293,7 @@ describe('Finding Score Service', () => {
     const writeCveFinding = async (supportingAssetId: string, cveUuid: string): Promise<string> => {
       const id = uuidv7();
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id, supportingAssetId, cveId: cveUuid, userId: adminUserId,
+        id, supportingAssetId, cve: { rowId: cveUuid }, userId: adminUserId,
       });
       return id;
     };
@@ -368,7 +368,7 @@ describe('Finding Score Service', () => {
       const assetId = await createAsset(`Host ${exposure}`, { exposure, criticality: 'high' });
       const evidenceId = uuidv7();
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id: evidenceId, supportingAssetId: assetId, cveId: cveUuid, userId: adminUserId,
+        id: evidenceId, supportingAssetId: assetId, cve: { rowId: cveUuid }, userId: adminUserId,
       });
       return evidenceId;
     };
@@ -456,7 +456,7 @@ describe('Finding Score Service', () => {
       const assetId = await createAsset(`Log4shell ${category}`, { exposure: 'internet_facing', criticality: 'high', category });
       const evidenceId = uuidv7();
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id: evidenceId, supportingAssetId: assetId, cveId: cveUuid, userId: adminUserId,
+        id: evidenceId, supportingAssetId: assetId, cve: { rowId: cveUuid }, userId: adminUserId,
       });
       return evidenceId;
     };
@@ -579,7 +579,7 @@ describe('Finding Score Service', () => {
     const writeCveFinding = async (supportingAssetId: string, cveUuid: string): Promise<string> => {
       const id = uuidv7();
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id, supportingAssetId, cveId: cveUuid, userId: adminUserId,
+        id, supportingAssetId, cve: { rowId: cveUuid }, userId: adminUserId,
       });
       return id;
     };

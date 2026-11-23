@@ -12,6 +12,9 @@ export const CONNECTOR_SOURCES = [
 ] as const;
 export type ConnectorSource = (typeof CONNECTOR_SOURCES)[number];
 
+/** The feeds that enrich the CVEs a tenant holds, and never bring one into its scope. */
+export const CVE_FEED_SOURCES = ['nist', 'first', 'cisa'] as const satisfies ReadonlyArray<ConnectorSource>;
+
 export const CONNECTOR_DOMAINS = ['vulnerability', 'simulation', 'compliance', 'threat_intelligence'] as const;
 export type ConnectorDomain = (typeof CONNECTOR_DOMAINS)[number];
 
@@ -103,7 +106,7 @@ export const CONNECTOR_INVENTORY: Readonly<{
     maxRuntimeMs: 30 * 60 * 1000,
     maxAttempts: 5,
     runUnit: 'cves',
-    // NVD rate-limits its API, and a full crawl outlasts an hour.
+    // NVD rate-limits its API, and a walk of its whole catalogue outlasts an hour.
     defaultSchedule: DAILY_AT_0600_UTC,
     minIntervalHours: 6,
     loggerFeature: 'cve-nist',

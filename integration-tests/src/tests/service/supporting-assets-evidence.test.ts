@@ -63,7 +63,7 @@ describe('Supporting Assets Service', () => {
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: uuidv7(),
         supportingAssetId: assetId,
-        cveId: cveUuid,
+        cve: { rowId: cveUuid },
         userId: adminUserId,
       });
 
@@ -77,7 +77,7 @@ describe('Supporting Assets Service', () => {
       const otherTenantId = await createTenant(services, adminUserId);
       const foreignCveId = await insertCve(otherTenantId, 'CVE-2023-7777');
       const attach = (cveId: string) => services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id: uuidv7(), supportingAssetId: assetId, cveId, userId: adminUserId,
+        id: uuidv7(), supportingAssetId: assetId, cve: { rowId: cveId }, userId: adminUserId,
       });
 
       await expect(attach(foreignCveId)).rejects.toThrow('CVE not found');
@@ -93,13 +93,13 @@ describe('Supporting Assets Service', () => {
       const cveUuid = await insertCve(tenantId, 'CVE-2023-9999');
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: uuidv7(), supportingAssetId: assetId,
-        cveId: cveUuid, userId,
+        cve: { rowId: cveUuid }, userId,
       });
 
       await expect(
         services.withOrigin(adminOrigin).supportingAssets.createEvidence({
           id: uuidv7(), supportingAssetId: assetId,
-          cveId: cveUuid, userId,
+          cve: { rowId: cveUuid }, userId,
         }),
       ).rejects.toBeInstanceOf(EvidenceAlreadyExistsError);
     });
@@ -112,7 +112,7 @@ describe('Supporting Assets Service', () => {
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: uuidv7(),
         supportingAssetId: assetId,
-        cveId: cveUuid,
+        cve: { rowId: cveUuid },
         userId: adminUserId,
       });
 
@@ -120,7 +120,7 @@ describe('Supporting Assets Service', () => {
         services.withOrigin(secondUser.origin).supportingAssets.createEvidence({
           id: uuidv7(),
           supportingAssetId: assetId,
-          cveId: cveUuid,
+          cve: { rowId: cveUuid },
           userId: secondUser.userId,
         }),
       ).rejects.toBeInstanceOf(EvidenceAlreadyExistsError);
@@ -133,7 +133,7 @@ describe('Supporting Assets Service', () => {
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: evidenceId,
         supportingAssetId: assetId,
-        cveId: cveUuid,
+        cve: { rowId: cveUuid },
         userId: adminUserId,
         changedByUserId: adminUserId,
       });
@@ -196,7 +196,7 @@ describe('Supporting Assets Service', () => {
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: evidenceId,
         supportingAssetId: assetId,
-        cveId: cveUuid,
+        cve: { rowId: cveUuid },
         userId: adminUserId,
         changedByUserId: adminUserId,
       });
@@ -277,7 +277,7 @@ describe('Supporting Assets Service', () => {
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: evidenceId,
         supportingAssetId: assetId,
-        cveId: cveUuid,
+        cve: { rowId: cveUuid },
         userId: adminUserId,
         changedByUserId: adminUserId,
       });
@@ -312,7 +312,7 @@ describe('Supporting Assets Service', () => {
       await expect(
         services.withOrigin(adminOrigin).supportingAssets.createEvidence({
           id: uuidv7(), supportingAssetId: assetId,
-          cveId: cveUuid,
+          cve: { rowId: cveUuid },
           userId: null,
         }),
       ).rejects.toThrow();
@@ -900,7 +900,7 @@ describe('Supporting Assets Service', () => {
       const cveUuid = await insertCve(tenantId, 'CVE-2023-4242');
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: evidenceId, supportingAssetId: assetId,
-        cveId: cveUuid, userId,
+        cve: { rowId: cveUuid }, userId,
       });
 
       await services.withOrigin(adminOrigin).supportingAssets.dismissEvidence({
@@ -924,7 +924,7 @@ describe('Supporting Assets Service', () => {
       const cveUuid = await insertCve(tenantId, 'CVE-2023-7777');
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
         id: evidenceId, supportingAssetId: assetId,
-        cveId: cveUuid, userId,
+        cve: { rowId: cveUuid }, userId,
       });
       await services.withOrigin(adminOrigin).supportingAssets.dismissEvidence({
         evidenceId,
@@ -947,7 +947,7 @@ describe('Supporting Assets Service', () => {
       const reopenedId = uuidv7();
       for (const [id, cveName] of [[uuidv7(), 'CVE-2023-5001'], [dismissedId, 'CVE-2023-5002'], [reopenedId, 'CVE-2023-5003']]) {
         await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-          id, supportingAssetId: assetId, cveId: await insertCve(adminTenantId, cveName), userId: adminUserId,
+          id, supportingAssetId: assetId, cve: { rowId: await insertCve(adminTenantId, cveName) }, userId: adminUserId,
         });
       }
       for (const evidenceId of [dismissedId, reopenedId]) {
@@ -971,7 +971,7 @@ describe('Supporting Assets Service', () => {
       const evidenceId = uuidv7();
       const cveUuid = await insertCve(adminTenantId, 'CVE-2023-8181');
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id: evidenceId, supportingAssetId: assetId, cveId: cveUuid, userId: adminUserId,
+        id: evidenceId, supportingAssetId: assetId, cve: { rowId: cveUuid }, userId: adminUserId,
       });
 
       await services.withOrigin(adminOrigin).supportingAssets.dismissEvidence({
@@ -996,7 +996,7 @@ describe('Supporting Assets Service', () => {
       const evidenceId = uuidv7();
       const cveUuid = await insertCve(adminTenantId, 'CVE-2023-8282');
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id: evidenceId, supportingAssetId: assetId, cveId: cveUuid, userId: adminUserId,
+        id: evidenceId, supportingAssetId: assetId, cve: { rowId: cveUuid }, userId: adminUserId,
       });
 
       // `detection_error` is a false-positive code: an accepted risk claiming it would say the

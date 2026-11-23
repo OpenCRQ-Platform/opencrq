@@ -30,7 +30,7 @@ const PARENTS_DELETED_A_ROW_AT_A_TIME = new Set([
   'capabilities', 'compliance_framework_nodes', 'compliance_frameworks', 'control_capabilities', 'cwe_weaknesses',
   'mitre_tactics', 'mitre_techniques', 'platform_capabilities',
   // Never deleted but with their tenant.
-  'countries', 'cve', 'integration_settings', 'sectors', 'service_accounts',
+  'countries', 'integration_settings', 'sectors', 'service_accounts',
   // Deleted by a seed when the catalog it ships retires an entry.
   'attack_outcomes', 'business_value_categories', 'loss_categories', 'loss_drivers',
 ]);
@@ -90,7 +90,8 @@ describe('DB schema conventions', () => {
 
   // Deleting a parent looks its referencing rows up once per deleted row, so a parent deleted by a list
   // or a sweep scans every child no index serves once per row it loses. A key on `(x, tenant_id)` is
-  // served by an index led by `x`, or by `tenant_id` then `x`.
+  // served by an index led by `x`, or by `tenant_id` then `x`, partial on `x IS NOT NULL` or not: the
+  // lookup's `x = $1` implies it.
   it('every foreign key has an index serving its lookup, unless its parent is deleted a row at a time', async () => {
     const result = await db.execute<{ parent: string, foreign_key: string }>(sql`
       SELECT c.confrelid::regclass::text AS parent, c.conrelid::regclass::text || ': ' || c.conname AS foreign_key
@@ -101,7 +102,10 @@ describe('DB schema conventions', () => {
           FROM pg_index i
           CROSS JOIN generate_series(0, i.indnkeyatts - 1) AS pos
           JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = i.indkey[pos]
-          WHERE i.indrelid = c.conrelid AND i.indpred IS NULL AND i.indisvalid
+          WHERE i.indrelid = c.conrelid AND i.indisvalid
+            AND (i.indpred IS NULL OR pg_get_expr(i.indpred, i.indrelid) IN (
+              SELECT '(' || quote_ident(k.attname) || ' IS NOT NULL)' FROM pg_attribute k WHERE k.attrelid = c.conrelid AND k.attnum = ANY(c.conkey)
+            ))
             AND a.attnum = ANY(c.conkey) AND (a.attname <> 'tenant_id' OR cardinality(c.conkey) = 1)
             AND NOT EXISTS (SELECT 1 FROM generate_series(0, pos - 1) AS before WHERE NOT i.indkey[before] = ANY(c.conkey))
         )

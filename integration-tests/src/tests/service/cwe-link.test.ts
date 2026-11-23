@@ -48,7 +48,7 @@ describe('CWE technique link', () => {
     const cveRowId = uuidv7();
     await db.insert(cve).values([{ id: cveRowId, tenantId: origin.tenantId, cveId: CVE_ON_CWE_287, cwe: cweIds, cvssVector }]);
     const evidenceId = uuidv7();
-    await services.withOrigin(origin).supportingAssets.createEvidence({ id: evidenceId, supportingAssetId: assetId, cveId: cveRowId, userId: adminUserId });
+    await services.withOrigin(origin).supportingAssets.createEvidence({ id: evidenceId, supportingAssetId: assetId, cve: { rowId: cveRowId }, userId: adminUserId });
     return { cveRowId, evidenceId };
   };
 

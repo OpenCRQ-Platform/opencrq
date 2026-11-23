@@ -328,7 +328,7 @@ export const seedAttackRunScenario = async (
         throw new Error(`the scenario has no asset named ${assetName}`);
       }
       const evidenceId = uuidv7();
-      await scoped.supportingAssets.createEvidence({ id: evidenceId, supportingAssetId, cveId: cveRowId, userId });
+      await scoped.supportingAssets.createEvidence({ id: evidenceId, supportingAssetId, cve: { rowId: cveRowId }, userId });
       findingIdByKey.set(`${attached.cveId}@${assetName}`, evidenceId);
     }
   }

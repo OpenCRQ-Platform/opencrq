@@ -451,6 +451,8 @@ export const crqCveWhatIfResults = pgTable('crq_cve_what_if_results', {
 }, (table) => [
   // Serves the join of a run's rows to a list of CVEs.
   index('crq_cve_what_if_results_run_cve_idx').on(table.runId, table.cveId),
+  // The daily purge asks whether a CVE is still kept, and its delete cascades here, per CVE.
+  index('crq_cve_what_if_results_cve_idx').on(table.cveId),
 ]);
 
 defineSecurityPolicies(crqCveWhatIfResults, crqIndicatorRunTenantIsolationPolicy);

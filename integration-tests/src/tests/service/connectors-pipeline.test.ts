@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createTenant, createTenantWithAdmin } from '../../helpers/factories';
 import { db } from '../../setup/db';
 import { createTestServices, truncateAllTables } from '../../setup/test-context';
+import { heldCveFeeds } from '../../helpers/held-cve-feeds';
 
 const services = createTestServices(db);
 const SYSTEM_ORIGIN: EventOrigin = { type: 'system' };
@@ -62,7 +63,7 @@ describe('connectors pipeline reads', () => {
 
   describe('connectors.countIngestedRecords', () => {
     it('counts connector-written entity rows and excludes manual ones', async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2024-0001', epss: 0.05, date: '2024-01-15' },
         { cveId: 'CVE-2024-0002', epss: 0.10, date: '2024-01-15' },
       ]);
@@ -91,7 +92,7 @@ describe('connectors pipeline reads', () => {
         sourceFindingId: 'dev-1:CVE-2024-0001',
       }]);
       await services.withOrigin(adminOrigin).supportingAssets.createEvidence({
-        id: uuidv7(), supportingAssetId: connectorAssetId, cveId: secondCve!.id, userId: adminUserId,
+        id: uuidv7(), supportingAssetId: connectorAssetId, cve: { rowId: secondCve!.id }, userId: adminUserId,
       });
 
       const capabilities = await services.withOrigin(adminOrigin).controlCapabilities.getControlCapabilities();
@@ -128,7 +129,7 @@ describe('connectors pipeline reads', () => {
     });
 
     it("never counts another tenant's rows", async () => {
-      await services.withOrigin(adminOrigin).cve.upsertEpssScores([
+      await heldCveFeeds(services.withOrigin(adminOrigin).cve).upsertEpssScores([
         { cveId: 'CVE-2024-0001', epss: 0.05, date: '2024-01-15' },
       ]);
       const otherTenantId = await createTenant(services, adminUserId);
