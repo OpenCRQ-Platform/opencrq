@@ -6,8 +6,10 @@ import {
   familyRunOwnership,
   foldCrqSimulationPayload,
   FULL_RUN_PROFILE,
+  isRequestedCrqSimulation,
   mergeRunProfiles,
   PRICE_RUN_PROFILE,
+  runProfileCovers,
   runProfileTokens,
 } from './run-profile';
 
@@ -133,5 +135,35 @@ describe('the crq-simulation payload', () => {
       { riskScenarioId: 's', userId: 'u', profile: { techniques: false, cves: false, levers: ['b'], plans: [] } },
       { riskScenarioId: 's', profile: { techniques: false, cves: true, levers: [], plans: ['p'] } },
     )).toEqual({ riskScenarioId: 's', userId: 'u', profile: { techniques: false, cves: true, levers: ['b'], plans: ['p'] } });
+  });
+
+  it('reads a booking naming a person or a service account, or marked requested, as asked for', () => {
+    expect(isRequestedCrqSimulation({ riskScenarioId: 's', userId: 'u' })).toBe(true);
+    expect(isRequestedCrqSimulation({ riskScenarioId: 's', serviceAccountId: 'a' })).toBe(true);
+    expect(isRequestedCrqSimulation({ riskScenarioId: 's', requested: true })).toBe(true);
+    expect(isRequestedCrqSimulation({ riskScenarioId: 's' })).toBe(false);
+  });
+
+  it('keeps a request folding into an event booking asked for, and leaves two event asks unmarked', () => {
+    expect(isRequestedCrqSimulation(foldCrqSimulationPayload({ riskScenarioId: 's' }, { riskScenarioId: 's', userId: 'u' }))).toBe(true);
+    expect(foldCrqSimulationPayload({ riskScenarioId: 's' }, { riskScenarioId: 's' })).not.toHaveProperty('requested');
+    expect(foldCrqSimulationPayload({ riskScenarioId: 's', userId: 'u' }, { riskScenarioId: 's' })).not.toHaveProperty('requested');
+  });
+});
+
+describe('runProfileCovers', () => {
+  it('covers a booking every family of which the run computed, whole or by subject', () => {
+    const full = runProfileTokens(FULL_RUN_PROFILE);
+    expect(runProfileCovers(full, FULL_RUN_PROFILE)).toBe(true);
+    expect(runProfileCovers(full, { ...PRICE_RUN_PROFILE, levers: ['c'] })).toBe(true);
+    expect(runProfileCovers(['levers:c', 'levers:d'], { ...PRICE_RUN_PROFILE, levers: ['d', 'c'] })).toBe(true);
+    expect(runProfileCovers([], PRICE_RUN_PROFILE)).toBe(true);
+  });
+
+  it('does not cover a booking asking for a family or a subject the run left out', () => {
+    expect(runProfileCovers([], FULL_RUN_PROFILE)).toBe(false);
+    expect(runProfileCovers(['levers:c'], { ...PRICE_RUN_PROFILE, levers: 'all' })).toBe(false);
+    expect(runProfileCovers(['levers:c'], { ...PRICE_RUN_PROFILE, levers: ['d'] })).toBe(false);
+    expect(runProfileCovers(['techniques', 'levers', 'plans'], FULL_RUN_PROFILE)).toBe(false);
   });
 });
