@@ -74,6 +74,35 @@ describe('XtmPivotEmblems (single XTM One emblem, parity with opencti #20153)', 
     expect(opencti.compareDocumentPosition(openaev) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('draws the surface as a design system Paper, sections split by a Separator, no hand-rolled rule', async () => {
+    renderEmblems([MATCH]);
+    const { surface } = await openSurface();
+    expect(within(surface).getByTestId('xtm-surface-paper')).toBeTruthy();
+    expect(within(surface).getAllByTestId('xtm-surface-separator')).toHaveLength(within(surface).getAllByRole('region').length - 1);
+    expect(within(surface).queryByTestId('xtm-surface-separated')).toBeNull();
+  });
+
+  it('shows a cut object name whole in a tooltip, and a name that fits without one', async () => {
+    const scrollWidth = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(813);
+    const clientWidth = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(182);
+    try {
+      renderEmblems([MATCH]);
+      const { surface } = await openSurface();
+      const name = within(surface).getByTestId('xtm-object-name');
+      await waitFor(() => expect(name.getAttribute('data-cut')).toBe('true'));
+      expect(name.closest('[data-state]')).toBeTruthy();
+    } finally {
+      scrollWidth.mockRestore();
+      clientWidth.mockRestore();
+    }
+    cleanup();
+    renderEmblems([MATCH]);
+    const { surface } = await openSurface();
+    const name = within(surface).getByTestId('xtm-object-name');
+    expect(name.getAttribute('data-cut')).toBe('false');
+    expect(name.hasAttribute('data-state')).toBe(false);
+  });
+
   it('greys the emblem when no product holds the object, and says how it gets there', async () => {
     renderEmblems([], BOTH);
     const emblem = await screen.findByRole('button', { name: 'Not found across the XTM Platform' });
