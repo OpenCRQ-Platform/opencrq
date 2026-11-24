@@ -161,6 +161,18 @@ describe('QueuePage', () => {
     expect(headers.indexOf('Status')).toBe(headers.indexOf('Kind') + 1);
   });
 
+  // A kind cut by a narrow viewport gives its full value back on hover, as the dates and parameters do.
+  it('gives every kind cell its full value as a title', async () => {
+    renderQueuePage();
+
+    await waitFor(() => {
+      expect(within(sectionOf('Succeeded')).queryByText('kind-zulu-succeeded')).not.toBeNull();
+    });
+
+    expect(within(sectionOf('Succeeded')).getByText('kind-zulu-succeeded').getAttribute('title')).toBe('kind-zulu-succeeded');
+    expect(within(sectionOf('Failed')).getByText('kind-zulu-failed').getAttribute('title')).toBe('kind-zulu-failed');
+  });
+
   it('paginating the pending section does not repaginate the other three', async () => {
     const { lastQueueCall } = renderQueuePage();
 

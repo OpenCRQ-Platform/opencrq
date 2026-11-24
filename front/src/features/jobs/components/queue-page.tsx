@@ -33,8 +33,9 @@ const SUCCEEDED_TABLE_ID = 'settings-jobs-queue-succeeded';
 
 type QueueTableId = typeof PENDING_TABLE_ID | typeof RUNNING_TABLE_ID | typeof FAILED_TABLE_ID | typeof SUCCEEDED_TABLE_ID;
 
+// The title gives the full kind back when a narrow viewport cuts the cell.
 const kindCell = ({ row }: { row: { original: { kind: string } } }): ReactElement => (
-  <span className="font-content-code text-content-code">{row.original.kind}</span>
+  <span className="font-content-code text-content-code" title={row.original.kind}>{row.original.kind}</span>
 );
 
 const parametersCell = ({ row }: { row: { original: { payload: string | null } } }): ReactElement => {
@@ -53,10 +54,10 @@ const instantCell = (value: string | null): ReactElement => {
   return <span title={formatted}>{formatted}</span>;
 };
 
-const relatedToColumn = <T extends { payload: string | null }>(referencesFor: RunReferencesLookup['referencesFor']) => ({
+const relatedToColumn = <T extends { payload: string | null }>(referencesFor: RunReferencesLookup['referencesFor'], size = 150) => ({
   id: 'relatedTo',
   header: t`Related to`,
-  size: 150,
+  size,
   cell: ({ row }: { row: { original: T } }): ReactElement => <RunReferenceList references={referencesFor(row.original.payload)} />,
 });
 
@@ -172,28 +173,31 @@ export const QueuePage: FunctionComponent = () => {
     { id: 'claimedAt', accessorKey: 'claimedAt', header: t`Claimed at`, size: 90, cell: ({ row }): ReactElement => instantCell(row.original.claimedAt) },
   ];
 
+  // Kind and "Finished at" take their width from "Related to", so a 19-character kind and the full
+  // time read whole at 1080.
   const finishedColumns: Array<ColumnDefWithOptionsHeader<QueueRunRow, unknown>> = [
-    { id: 'kind', accessorKey: 'kind', header: t`Kind`, size: 110, cell: kindCell },
-    relatedToColumn<QueueRunRow>(referencesFor),
+    { id: 'kind', accessorKey: 'kind', header: t`Kind`, size: 150, cell: kindCell },
+    relatedToColumn<QueueRunRow>(referencesFor, 80),
     { id: 'payload', header: t`Parameters`, size: 70, cell: parametersCell },
-    { id: 'finishedAt', accessorKey: 'finishedAt', header: t`Finished at`, size: 90, cell: ({ row }): ReactElement => instantCell(row.original.finishedAt) },
+    { id: 'finishedAt', accessorKey: 'finishedAt', header: t`Finished at`, size: 150, cell: ({ row }): ReactElement => instantCell(row.original.finishedAt) },
   ];
 
   // The section lists partial segments with the runs that succeeded (#157): each row says which it is,
   // with the chip the Runs tab shows, so a partial segment never reads as a success. Status sits right
-  // after Kind, as on the Runs tab, sized to its chip so "Finished at" keeps the full time at 1080.
+  // after Kind, as on the Runs tab, wide enough for the "Succeeded" chip at 1080 (a cell of at least
+  // 120 px); Kind and Status take their width from "Related to", so "Finished at" keeps the full time.
   const succeededColumns: Array<ColumnDefWithOptionsHeader<QueueRunRow, unknown>> = [
-    { id: 'kind', accessorKey: 'kind', header: t`Kind`, size: 110, cell: kindCell },
+    { id: 'kind', accessorKey: 'kind', header: t`Kind`, size: 150, cell: kindCell },
     {
       id: 'status',
       accessorKey: 'status',
       header: t`Status`,
-      size: 60,
+      size: 90,
       cell: ({ row }): ReactElement => (
         <Chip severity={RUN_STATUS_SEVERITY[row.original.status]} label={runStatusLabel(row.original.status)} />
       ),
     },
-    relatedToColumn<QueueRunRow>(referencesFor),
+    relatedToColumn<QueueRunRow>(referencesFor, 80),
     { id: 'payload', header: t`Parameters`, size: 70, cell: parametersCell },
     { id: 'finishedAt', accessorKey: 'finishedAt', header: t`Finished at`, size: 150, cell: ({ row }): ReactElement => instantCell(row.original.finishedAt) },
   ];
