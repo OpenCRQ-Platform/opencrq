@@ -153,6 +153,16 @@ describe('createReaderMarkingsResolver', () => {
     expect(await issueOf(() => Promise.resolve(null))).toEqual({ issue: 'unavailable' });
   });
 
+  it('should call a token OpenCTI runs as nobody a missing account, and any other refusal an outage', async () => {
+    const issueOf = async (error: Record<string, unknown>) => createReaderMarkingsResolver(
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ errors: [error], data: null }), { status: 200 })),
+    ).resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+
+    expect(await issueOf({ message: 'You must be logged in to do this.', extensions: { code: 'AUTH_REQUIRED' } })).toEqual({ issue: 'no_account' });
+    expect(await issueOf({ message: 'denied', extensions: { code: 'FORBIDDEN_ACCESS' } })).toEqual({ issue: 'unavailable' });
+    expect(await issueOf({ message: 'boom' })).toEqual({ issue: 'unavailable' });
+  });
+
   it('should keep the issue with the cached answer and never carry the failure text', async () => {
     const resolver = createReaderMarkingsResolver(vi.fn());
     const refuse = vi.fn(() => Promise.reject(new ReaderTokenUnavailable('XTM One refused: reader@example.com', 'user')));

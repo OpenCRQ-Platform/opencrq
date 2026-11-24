@@ -15,7 +15,7 @@ const noticeText = (issue: ReaderAccessIssue): { title: string, description: str
     case 'no_account':
       return {
         title: t`Some threats are hidden because you have no OpenCTI account.`,
-        description: t`OpenCTI has no account for your email, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an OpenCTI administrator to create an account with the same email.`,
+        description: t`OpenCTI did not recognise you, most likely because it has no account for your email, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an OpenCTI administrator to create an account with the same email.`,
       };
     case 'unavailable':
       return {

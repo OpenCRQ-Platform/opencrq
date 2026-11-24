@@ -12,6 +12,7 @@ import { diffRows } from '../../db/row-diff';
 import { updatedAtOnDataChange } from '../../db/write-guards';
 import { inUuids } from '../../db/uuid-array';
 import { defineRepository } from '../../registry';
+import { mirroredThreatHiddenFromUnresolvedReader } from '../../security';
 import { techniqueSuccessorsOf } from '../mitre-attack/technique-successors';
 import { ACTIVITY_ANCHOR_CHUNK_SIZE, DEFAULT_RELATION_CONFIDENCE, OUTCOME_SCORE_UPSERT_CHUNK_SIZE } from './constants';
 import { OUTCOME_WEIGHT_THRESHOLD } from './outcome-counter/outcome-weight';
@@ -1021,6 +1022,15 @@ export const threatAnalysesRepository = defineRepository({
 
   hasAnyAnalysis: async ({ db, views }) =>
     (await db.select({ one: sql`1` }).from(views.threatAnalyses).limit(1)).length > 0,
+
+  /** Whether a mirrored threat the origin reads is one a reader OpenCTI did not answer for could not. */
+  hasThreatHiddenFromUnresolvedReader: async ({ db, views }) =>
+    (await db.select({ one: sql`1` }).from(views.threatAnalyses).where(mirroredThreatHiddenFromUnresolvedReader({
+      tenantId: views.threatAnalyses.tenantId,
+      stixId: views.threatAnalyses.stixId,
+      kind: views.threatAnalyses.kind,
+      markingRefs: views.threatAnalyses.markingRefs,
+    })).limit(1)).length > 0,
 
   analysisExists: async ({ db, views }, id: string) =>
     (await db.select({ one: sql`1` }).from(views.threatAnalyses).where(eq(views.threatAnalyses.id, id)).limit(1)).length > 0,

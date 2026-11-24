@@ -9201,8 +9201,8 @@ msgstr "OpenCTI"
 msgid "OpenCTI did not answer, so the filter of the stream in use could not be read."
 msgstr "OpenCTI n'a pas répondu, le filtre du flux utilisé n'a donc pas pu être lu."
 
-msgid "OpenCTI has no account for your email, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an OpenCTI administrator to create an account with the same email."
-msgstr "OpenCTI n'a pas de compte pour votre e-mail : OpenCRQ n'affiche donc les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur d'OpenCTI de créer un compte avec le même e-mail."
+msgid "OpenCTI did not recognise you, most likely because it has no account for your email, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an OpenCTI administrator to create an account with the same email."
+msgstr "OpenCTI ne vous a pas reconnu, probablement faute de compte pour votre e-mail : OpenCRQ n'affiche donc les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur d'OpenCTI de créer un compte avec le même e-mail."
 
 msgid "OpenCTI is not linked to this platform's XTM One, so OpenCRQ cannot tell what you are allowed to see there. It shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to link OpenCTI to XTM One, or to show every member what the connector reads."
 msgstr "OpenCTI n'est pas lié au XTM One de cette plateforme : OpenCRQ ne peut donc pas savoir ce que vous avez le droit d'y voir. Il n'affiche les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur de lier OpenCTI à XTM One, ou de montrer à tous les membres ce que lit le connecteur."

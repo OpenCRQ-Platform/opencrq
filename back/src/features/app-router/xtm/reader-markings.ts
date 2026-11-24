@@ -89,16 +89,27 @@ export const parseReaderScope = (answer: unknown): ReaderScope | null => {
   };
 };
 
-/** Why OpenCTI's answer holds no scope: GraphQL refuses with a 200 whose `errors` carry a code. */
-const unreadableAnswer = (answer: unknown): string => {
+/** The code of OpenCTI's refusal: GraphQL refuses with a 200 whose `errors` carry one. */
+const refusalCode = (answer: unknown): string | null => {
   const errors = isRecord(answer) && Array.isArray(answer.errors) ? answer.errors : [];
   const first: unknown = errors[0];
-  if (!isRecord(first)) {
-    return 'the answer lacks the reader scope fields';
-  }
-  const code = isRecord(first.extensions) ? logCategory(first.extensions.code) : null;
-  return `OpenCTI refused the query: ${code ?? 'no error code'}`;
+  return isRecord(first) && isRecord(first.extensions) ? logCategory(first.extensions.code) : null;
 };
+
+/** Why OpenCTI's answer holds no scope. */
+const unreadableAnswer = (answer: unknown): string => (
+  isRecord(answer) && Array.isArray(answer.errors) && isRecord(answer.errors[0])
+    ? `OpenCTI refused the query: ${refusalCode(answer) ?? 'no error code'}`
+    : 'the answer lacks the reader scope fields'
+);
+
+/**
+ * OpenCTI resolves a token XTM One signed to a user by the token's email and, with none to answer to
+ * it, runs the query as nobody: `AUTH_REQUIRED` (`authenticateUserFromRequest`). Any token it fails
+ * to resolve is refused alike, but this one was signed for the reader a moment ago, so an account
+ * that does not exist is by far the likeliest cause.
+ */
+const UNRECOGNISED_READER_CODE = 'AUTH_REQUIRED';
 
 /** `failure` is for the log only; `issue` is what a reader may be told. */
 type ScopeAnswer = { ok: true, scope: ReaderScope } | { ok: false, failure: string, issue: ReaderAccessIssue };
@@ -150,7 +161,11 @@ const fetchReaderScope = async (
     throw err;
   }
   const scope = parseReaderScope(answer);
-  return scope ? { ok: true, scope } : unavailable(unreadableAnswer(answer));
+  if (scope) {
+    return { ok: true, scope };
+  }
+  const failure = unreadableAnswer(answer);
+  return refusalCode(answer) === UNRECOGNISED_READER_CODE ? { ok: false, failure, issue: 'no_account' } : unavailable(failure);
 };
 
 /** What OpenCTI lets a reader read, or why that is unknown. */

@@ -275,3 +275,70 @@ describe('A threat hidden by the reader\'s OpenCTI rights, told from one that do
     expect(await exists(withoutReaderScope(member), importedId)).toBe(false);
   });
 });
+
+/**
+ * The notice that threats are hidden is told only to a reader OpenCTI did not answer for, and only
+ * while the tenant holds a mirrored threat that reader cannot read.
+ */
+describe('A mirrored threat hidden from a reader OpenCTI did not answer for', () => {
+  const OCTI_EXTENSION = 'extension-definition--ea279b3e-5c71-4632-ac08-831c66a786ba';
+  let adminOrigin: Extract<EventOrigin, { type: 'client' }>;
+  let tenantId: string;
+
+  const anyHidden = (origin: EventOrigin = adminOrigin) =>
+    services.withOrigin(withoutReaderScope(origin)).threatAnalyses.hasThreatHiddenFromUnresolvedReader();
+  const ingest = (threats: Array<ParsedThreatInput>, kind: 'connector' | 'stix-import' = 'connector') =>
+    services.withOrigin(adminOrigin).threatAnalyses.ingestBundle(threats, tenantId, kind);
+
+  beforeEach(async () => {
+    await truncateAllTables(db);
+    const setup = await createTenantWithAdmin(services);
+    adminOrigin = setup.origin;
+    tenantId = setup.tenantId;
+  });
+
+  it('should find none in a tenant that holds no threat yet', async () => {
+    expect(await anyHidden()).toBe(false);
+  });
+
+  it('should find none while every mirrored threat is unmarked and unrestricted', async () => {
+    await ingest([mirrored(UNMARKED_ID, 'Unmarked Actor', [])]);
+
+    expect(await anyHidden()).toBe(false);
+  });
+
+  it('should find a marked mirrored threat', async () => {
+    await ingest([mirrored(UNMARKED_ID, 'Unmarked Actor', []), mirrored(MARKED_ID, 'Marked Actor', [TLP_RED])]);
+
+    expect(await anyHidden()).toBe(true);
+  });
+
+  it('should find a mirrored threat whose body restricts it to members', async () => {
+    await ingest([mirrored(UNMARKED_ID, 'Unmarked Actor', [])]);
+    await db.insert(openctiStreamObjects).values({
+      id: uuidv7(),
+      tenantId,
+      stixId: UNMARKED_ID,
+      stixType: 'intrusion-set',
+      data: { id: UNMARKED_ID, type: 'intrusion-set', extensions: { [OCTI_EXTENSION]: { id: 'internal', type: 'Intrusion-Set', authorized_members: [{ id: 'group-1', access_right: 'view' }] } } },
+    });
+
+    expect(await anyHidden()).toBe(true);
+  });
+
+  it('should not count a marked import, which OpenCTI\'s rights never narrow', async () => {
+    await ingest([mirrored(MARKED_ID, 'Imported Actor', [TLP_RED])], 'stix-import');
+
+    expect(await anyHidden()).toBe(false);
+  });
+
+  it('should not count a marked mirrored threat of another tenant', async () => {
+    const other = await createTenantWithAdmin(services);
+    await services.withOrigin(other.origin).threatAnalyses.ingestBundle([
+      mirrored(MARKED_ID, 'Other Tenant Actor', [TLP_RED]),
+    ], other.tenantId, 'connector');
+
+    expect(await anyHidden()).toBe(false);
+    expect(await anyHidden(other.origin)).toBe(true);
+  });
+});

@@ -1,4 +1,5 @@
 import type { DrizzleDB, OpenctiThreatVisibility } from '@app/module';
+import { withoutReaderScope } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { AuthUser } from '../../../trpc';
@@ -195,8 +196,8 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
   // Why the member's reads of OpenCTI and OpenAEV may fall short, `null` when nothing does: the
   // threats the reader scope narrows, and the counterparts, always read as the member.
   readerAccess: procedure
-    // XTM One's answers decide it, and the only table it depends on, the tenant's threat visibility,
-    // is read by the tenant procedure.
+    // What the statements of the call do not read: XTM One's answers decide the category, and the
+    // tenant's threat visibility is read by the tenant procedure.
     .meta({ reads: [] })
     .output(z.object({
       threats: readerAccessIssueSchema,
@@ -210,7 +211,11 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
         connections: config().connectors,
         authorization: readerAuthorization(db, user),
       });
-      return { threats: readerAccessIssue, counterparts };
+      // A category only when the tenant holds a threat this reader cannot read: a tenant with
+      // nothing mirrored yet, or only unmarked threats, has nothing to be told.
+      const hidesThreats = readerAccessIssue !== null
+        && await services.withOrigin(withoutReaderScope(origin)).threatAnalyses.hasThreatHiddenFromUnresolvedReader();
+      return { threats: hidesThreats ? readerAccessIssue : null, counterparts };
     }),
 
   // bounded-by: MAX_COUNTERPART_KEYS keys per call, one batched read of one kind

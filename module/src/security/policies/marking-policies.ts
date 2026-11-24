@@ -126,6 +126,13 @@ const readableMirroredThreat = (row: ThreatColumns, markings: ReadonlyArray<stri
 };
 
 /**
+ * A mirrored row a reader OpenCTI did not answer for cannot read: the one the tenant procedure then
+ * narrows on, and the rows a notice that threats are hidden speaks of.
+ */
+export const mirroredThreatHiddenFromUnresolvedReader = (row: ThreatColumns): SQL =>
+  sql`(${row.kind} = 'connector' and not ${readableMirroredThreat(row, null, null)})`;
+
+/**
  * The markings of an imported row the tenant defines, as a SQL array: a STIX file names whatever
  * markings its producer used (the MITRE ATT&CK copyright statement on every MITRE object), and only
  * a marking the tenant defines, created here or synced from its OpenCTI, can be held by a group.

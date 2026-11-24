@@ -655,6 +655,12 @@ export const threatAnalysesService = defineService(
 
   hasAny: async ({ repo }) => repo.hasAnyAnalysis(),
 
+  /**
+   * Whether the tenant holds a mirrored threat a reader OpenCTI did not answer for cannot read. Asked
+   * of an origin without a reader scope, so only the tenant and the native clearance narrow it.
+   */
+  hasThreatHiddenFromUnresolvedReader: async ({ repo }) => repo.hasThreatHiddenFromUnresolvedReader(),
+
   /** Whether the origin reads the analysis, which holds nothing of it. */
   exists: async ({ repo }, id: string) => repo.analysisExists(id),
 
