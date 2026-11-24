@@ -11,9 +11,9 @@ const THREAT_VISIBILITY_LITERALS = sql.raw(OPENCTI_THREAT_VISIBILITIES.map((visi
 // Per-tenant OpenCTI Live Stream connector config. Credentials (`connectors.opencti.{url,token}`)
 // are deployment-wide (`config-schema.ts`). `serviceAccountId` lives here (not `integration_settings`)
 // since the background connector manager writes with an explicit `tenantId`, not an `eventOrigin`.
-// Configuration only, written when an administrator acts: the tenant middleware reads
-// `threatVisibility` on every call, so a column a checkpoint rewrites must not join it. The stream's
-// position is `openctiStreamState`.
+// Configuration and health, never a checkpoint: the tenant middleware reads `threatVisibility` on
+// every call, so a column a checkpoint rewrites must not join it. The stream's position is
+// `openctiStreamState`.
 export const openctiConnectorSettings = pgTable('opencti_connector_settings', {
   id: uuid('id').primaryKey(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
