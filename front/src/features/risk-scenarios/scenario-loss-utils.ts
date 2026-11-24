@@ -18,6 +18,32 @@ export interface RecommendationCell {
   businessValueCategoryName: string,
 }
 
+/** A requirement the scenario breaks, which opens the driver whatever the matrix says. */
+export interface RecommendationRequirement {
+  requirementId: string,
+  requirementName: string,
+}
+
+export interface DriverRecommendation {
+  lossDriverId: string,
+  viaCells: Array<RecommendationCell>,
+  viaRequirements: Array<RecommendationRequirement>,
+}
+
+export const hasDriverRecommendation = (recommendation: { compatibleCellCount: number, recommendations: ReadonlyArray<unknown> }): boolean =>
+  recommendation.compatibleCellCount > 0 || recommendation.recommendations.length > 0;
+
+/**
+ * A scenario whose outcome and resources meet nowhere in the matrix and that breaks no requirement
+ * recommends nothing: the whole catalog stands in rather than an empty screen.
+ */
+export const recommendationsOrCatalog = (
+  recommendation: { compatibleCellCount: number, recommendations: Array<DriverRecommendation> } | undefined,
+  rows: ReadonlyArray<{ lossDriverId: string }>,
+): Array<DriverRecommendation> => (recommendation !== undefined && hasDriverRecommendation(recommendation)
+  ? recommendation.recommendations
+  : rows.map((row) => ({ lossDriverId: row.lossDriverId, viaCells: [], viaRequirements: [] })));
+
 interface PartitionableRow {
   lossDriverId: string,
   minValue: string,
@@ -26,8 +52,8 @@ interface PartitionableRow {
 }
 
 export interface PartitionedRows<T> {
-  /** Drivers the matrix recommends, each carrying the cells that justify it. */
-  recommended: Array<T & { viaCells: Array<RecommendationCell> }>,
+  /** Drivers the matrix or a broken requirement recommends, each carrying what justifies it. */
+  recommended: Array<T & Omit<DriverRecommendation, 'lossDriverId'>>,
   /** Drivers carrying an estimate the matrix does not recommend for this scenario. */
   notRecommended: Array<T>,
   /** Everything else in the catalog: reachable, but never rendered as empty rows. */
@@ -45,17 +71,17 @@ const hasAnyValue = (row: PartitionableRow) =>
  */
 export const partitionEstimateRows = <T extends PartitionableRow>(
   rows: Array<T>,
-  recommendations: Array<{ lossDriverId: string, viaCells: Array<RecommendationCell> }>,
+  recommendations: Array<DriverRecommendation>,
   addedDriverIds: Array<string> = [],
 ): PartitionedRows<T> => {
-  const cellsByDriver = new Map(recommendations.map((entry) => [entry.lossDriverId, entry.viaCells]));
+  const byDriver = new Map(recommendations.map((entry) => [entry.lossDriverId, entry]));
   const added = new Set(addedDriverIds);
   const partitioned: PartitionedRows<T> = { recommended: [], notRecommended: [], rest: [] };
 
   for (const row of rows) {
-    const viaCells = cellsByDriver.get(row.lossDriverId);
-    if (viaCells) {
-      partitioned.recommended.push({ ...row, viaCells });
+    const recommendation = byDriver.get(row.lossDriverId);
+    if (recommendation) {
+      partitioned.recommended.push({ ...row, viaCells: recommendation.viaCells, viaRequirements: recommendation.viaRequirements });
     } else if (hasAnyValue(row) || added.has(row.lossDriverId)) {
       partitioned.notRecommended.push(row);
     } else {

@@ -26,6 +26,7 @@ const ScenarioDriverRecommendationSchema = z.object({
   recommendations: z.array(z.object({
     lossDriverId: z.uuid(),
     viaCells: z.array(RecommendationCellSchema),
+    viaRequirements: z.array(z.object({ requirementId: z.uuid(), requirementName: z.string() })),
   })),
 });
 

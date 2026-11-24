@@ -68,6 +68,7 @@ export const RiskScenarioOverview: FunctionComponent<RiskScenarioOverviewProps> 
       />
       {!noMappedAsset && <ScenarioLossExceedanceCard riskScenarioId={riskScenario.id} />}
       <DescriptionCard
+        riskScenarioId={riskScenario.id}
         description={riskScenario.description}
         primaryAssets={riskScenario.primaryAssets}
         attackOutcome={riskScenario.attackOutcome}

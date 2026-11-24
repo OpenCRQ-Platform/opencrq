@@ -150,7 +150,7 @@ describe('getScopeNavigationNodes', () => {
     const retail = nodes().find((node) => node.id === 'scope-retail');
     const entries = retail?.kind === 'scope' ? retail.entries : [];
 
-    expect(entries.map((scopeEntry) => scopeEntry.id)).toEqual(['overview', 'dashboards', 'risk-scenarios', 'treatment-plans', 'budget-reviews', 'primary-assets', 'assets', 'findings', 'threat-event-frequency', 'controls', 'details']);
+    expect(entries.map((scopeEntry) => scopeEntry.id)).toEqual(['overview', 'dashboards', 'risk-scenarios', 'treatment-plans', 'budget-reviews', 'primary-assets', 'requirements', 'assets', 'findings', 'threat-event-frequency', 'controls', 'details']);
     expect(entries.map(linkParams)).toEqual(entries.map(() => ({ tenantId: 'acme', organizationId: 'retail' })));
   });
 

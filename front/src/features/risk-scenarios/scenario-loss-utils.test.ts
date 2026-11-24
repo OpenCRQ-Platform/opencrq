@@ -5,12 +5,14 @@ import {
   getEffectiveValues,
   getRowPert,
   getRowValidationError,
+  hasDriverRecommendation,
   isRecomputeNoticeStanding,
   isRefusalPostureRow,
   isRowComplete,
   parseNum,
   partitionEstimateRows,
   planEstimatesSave,
+  recommendationsOrCatalog,
   reconcileDraftRows,
   sumEstimateTotals,
 } from './scenario-loss-utils';
@@ -122,7 +124,7 @@ describe('partitionEstimateRows', () => {
   };
 
   it('puts a recommended driver in the recommended group with the cells that justify it', () => {
-    const result = partitionEstimateRows([row('d1'), row('d2')], [{ lossDriverId: 'd1', viaCells: [cell] }]);
+    const result = partitionEstimateRows([row('d1'), row('d2')], [{ lossDriverId: 'd1', viaCells: [cell], viaRequirements: [] }]);
 
     expect(result.recommended.map((r) => r.lossDriverId)).toEqual(['d1']);
     expect(result.recommended[0].viaCells).toEqual([cell]);
@@ -133,7 +135,7 @@ describe('partitionEstimateRows', () => {
   it('surfaces a driver estimated outside the recommendation instead of hiding it', () => {
     const result = partitionEstimateRows(
       [row('d1'), row('d2', { likelyValue: '5000' })],
-      [{ lossDriverId: 'd1', viaCells: [cell] }],
+      [{ lossDriverId: 'd1', viaCells: [cell], viaRequirements: [] }],
     );
 
     expect(result.notRecommended.map((r) => r.lossDriverId)).toEqual(['d2']);
@@ -151,7 +153,7 @@ describe('partitionEstimateRows', () => {
   it('counts a driver both recommended and estimated once, as recommended', () => {
     const result = partitionEstimateRows(
       [row('d1', { minValue: '100', likelyValue: '200', maxValue: '300' })],
-      [{ lossDriverId: 'd1', viaCells: [cell] }],
+      [{ lossDriverId: 'd1', viaCells: [cell], viaRequirements: [] }],
     );
 
     expect(result.recommended.map((r) => r.lossDriverId)).toEqual(['d1']);
@@ -164,6 +166,29 @@ describe('partitionEstimateRows', () => {
 
     expect(result.notRecommended.map((r) => r.lossDriverId)).toEqual(['d2']);
     expect(result.rest.map((r) => r.lossDriverId)).toEqual(['d1']);
+  });
+
+  it('recommends a driver a broken requirement opens, naming the requirement', () => {
+    const requirement = { requirementId: 'r1', requirementName: 'Hosting SLA' };
+    const result = partitionEstimateRows([row('d1')], [{ lossDriverId: 'd1', viaCells: [], viaRequirements: [requirement] }]);
+
+    expect(result.recommended[0].viaRequirements).toEqual([requirement]);
+    expect(result.recommended[0].viaCells).toEqual([]);
+  });
+});
+
+describe('recommendationsOrCatalog', () => {
+  const rows = [{ lossDriverId: 'd1' }, { lossDriverId: 'd2' }];
+  const requirementOnly = [{ lossDriverId: 'd2', viaCells: [], viaRequirements: [{ requirementId: 'r1', requirementName: 'Hosting SLA' }] }];
+
+  it('stands the whole catalog in when neither the matrix nor a requirement recommends anything', () => {
+    expect(recommendationsOrCatalog({ compatibleCellCount: 0, recommendations: [] }, rows).map((entry) => entry.lossDriverId)).toEqual(['d1', 'd2']);
+    expect(hasDriverRecommendation({ compatibleCellCount: 0, recommendations: [] })).toBe(false);
+  });
+
+  it('keeps the drivers of a broken requirement alone when the matrix has no cell for the scenario', () => {
+    expect(recommendationsOrCatalog({ compatibleCellCount: 0, recommendations: requirementOnly }, rows)).toEqual(requirementOnly);
+    expect(hasDriverRecommendation({ compatibleCellCount: 0, recommendations: requirementOnly })).toBe(true);
   });
 });
 

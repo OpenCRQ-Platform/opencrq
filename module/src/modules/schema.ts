@@ -54,3 +54,4 @@ export * from './entry-openings/schema';
 export * from './treatment-plans/schema';
 export * from './budget-reviews/schema';
 export * from './compliance-assessments/schema';
+export * from './requirements/schema';

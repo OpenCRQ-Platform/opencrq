@@ -8,7 +8,7 @@ import type { FunctionComponent } from 'react';
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import type { LossCategoryGroup, LossEstimateRow, RecommendationCell } from '../scenario-loss-utils';
+import type { LossCategoryGroup, LossEstimateRow, RecommendationCell, RecommendationRequirement } from '../scenario-loss-utils';
 import type { MissingDataRow } from '../../../components/shared';
 import { QUESTION_LABELS } from '../../financial-profiles/financial-profile-questions';
 import {
@@ -24,9 +24,11 @@ import {
   buildLossEstimateRows,
   getRowPert,
   groupByLossCategory,
+  hasDriverRecommendation,
   isRecomputeNoticeStanding,
   isRowComplete,
   partitionEstimateRows,
+  recommendationsOrCatalog,
   sumEstimateTotals,
 } from '../scenario-loss-utils';
 import { InfoTooltip, MISSING_DATA_ACTION_CLASS, MissingDataAccordion, SectionCard, WarningDot } from '../../../components/shared';
@@ -95,12 +97,8 @@ export const ScenarioLossEstimatesPage: FunctionComponent<ScenarioLossEstimatesP
 
   const rows = lossDrivers && existingEstimates ? buildLossEstimateRows(lossDrivers, existingEstimates) : [];
 
-  const hasRecommendation = (recommendation?.compatibleCellCount ?? 0) > 0;
-  const { recommended, notRecommended } = partitionEstimateRows(
-    rows,
-    // No compatible cell: fall back to the whole catalog rather than an empty screen.
-    hasRecommendation ? (recommendation?.recommendations ?? []) : rows.map((row) => ({ lossDriverId: row.lossDriverId, viaCells: [] })),
-  );
+  const hasRecommendation = recommendation !== undefined && hasDriverRecommendation(recommendation);
+  const { recommended, notRecommended } = partitionEstimateRows(rows, recommendationsOrCatalog(recommendation, rows));
   const shownRows = [...recommended, ...notRecommended];
   const estimatedCount = shownRows.filter((row) => row.isPosture || isRowComplete(row)).length;
   const shownCount = shownRows.length;
@@ -259,7 +257,7 @@ const SummaryFigure: FunctionComponent<SummaryFigureProps> = ({ label, value, em
   </Paper>
 );
 
-type EstimateTableRow = LossEstimateRow & { viaCells?: Array<RecommendationCell> };
+type EstimateTableRow = LossEstimateRow & { viaCells?: Array<RecommendationCell>, viaRequirements?: Array<RecommendationRequirement> };
 
 interface EstimatesTableProps {
   groups: Array<LossCategoryGroup<EstimateTableRow>>,
@@ -323,7 +321,7 @@ const EstimateRowView: FunctionComponent<EstimateRowViewProps> = ({ row, onOpen 
         <div className="flex items-center gap-2">
           <button type="button" className="text-left hover:underline">{row.lossDriverName}</button>
           <span data-loss-driver-info className="inline-flex">
-            <LossDriverInfo lossDriverName={row.lossDriverName} description={row.lossDriverDescription} viaCells={row.viaCells ?? []} />
+            <LossDriverInfo lossDriverName={row.lossDriverName} description={row.lossDriverDescription} viaCells={row.viaCells ?? []} viaRequirements={row.viaRequirements ?? []} />
           </span>
         </div>
       </TableCell>

@@ -14,6 +14,7 @@ export const businessValueCategories = pgTable('business_value_categories', {
   displayOrder: integer('display_order').notNull(),
 }, (table) => [
   unique('business_value_categories_tenant_code_uq').on(table.tenantId, table.code),
+  unique('business_value_categories_id_tenant_id_uq').on(table.id, table.tenantId),
 ]);
 
 defineSecurityPolicies(businessValueCategories, tenantIsolationPolicy);
