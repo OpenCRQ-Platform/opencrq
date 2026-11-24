@@ -8340,6 +8340,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "not_applicable",
                   "low",
                   "medium",
                   "high",
@@ -8356,6 +8357,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "not_applicable",
                   "low",
                   "medium",
                   "high",
@@ -8372,6 +8374,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "not_applicable",
                   "low",
                   "medium",
                   "high",
@@ -8388,6 +8391,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "not_applicable",
                   "low",
                   "medium",
                   "high",
@@ -8565,6 +8569,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "not_applicable",
                   "low",
                   "medium",
                   "high",
@@ -8581,6 +8586,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "not_applicable",
                   "low",
                   "medium",
                   "high",
@@ -8597,6 +8603,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "not_applicable",
                   "low",
                   "medium",
                   "high",
@@ -8613,6 +8620,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "not_applicable",
                   "low",
                   "medium",
                   "high",
