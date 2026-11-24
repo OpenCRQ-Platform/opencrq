@@ -229,6 +229,47 @@ describe('Primary-to-primary links', () => {
     });
   });
 
+  describe('the links of a risk scope', () => {
+    const linksOfScope = (origin: EventOrigin, organization: string) =>
+      services.withOrigin(origin).assetDependencies.getPrimaryToPrimaryLinksOfOrganization(organization);
+
+    it('should read every link between the primary assets of the scope, with its strength and resource type', async () => {
+      const staffId = uuidv7();
+      await services.withOrigin(adminOrigin).assetDependencies.createDependencyResourceType({ id: staffId, name: 'Shared staff' });
+      const toOrders = uuidv7();
+      const toTreasury = uuidv7();
+      await services.withOrigin(adminOrigin).assetDependencies.createPrimaryToPrimaryLinks([
+        { id: toOrders, dependentAssetId: billingId, providerAssetId: ordersId, strength: 'critical', dependencyResourceTypeId: staffId },
+        { id: toTreasury, dependentAssetId: ordersId, providerAssetId: treasuryId },
+      ]);
+
+      expect(await linksOfScope(adminOrigin, organizationId)).toEqual([
+        { id: toOrders, dependentAssetId: billingId, providerAssetId: ordersId, strength: 'critical', dependencyResourceTypeId: staffId, dependencyResourceTypeName: 'Shared staff' },
+        { id: toTreasury, dependentAssetId: ordersId, providerAssetId: treasuryId, strength: 'unknown', dependencyResourceTypeId: null, dependencyResourceTypeName: null },
+      ]);
+    });
+
+    it('should leave out the links of another risk scope', async () => {
+      const otherOrganizationId = await createOrganization(adminOrigin, 'Subsidiary');
+      const payrollId = await createPrimaryAsset(adminOrigin, otherOrganizationId, 'Payroll');
+      const hrId = await createPrimaryAsset(adminOrigin, otherOrganizationId, 'HR management');
+      await services.withOrigin(adminOrigin).assetDependencies.createPrimaryToPrimaryLinks([
+        { id: uuidv7(), dependentAssetId: payrollId, providerAssetId: hrId },
+      ]);
+
+      expect(await linksOfScope(adminOrigin, organizationId)).toEqual([]);
+      expect(await linksOfScope(adminOrigin, otherOrganizationId)).toHaveLength(1);
+    });
+
+    it('should read none of another tenant\'s links', async () => {
+      await services.withOrigin(adminOrigin).assetDependencies.createPrimaryToPrimaryLinks([
+        { id: uuidv7(), dependentAssetId: billingId, providerAssetId: ordersId },
+      ]);
+
+      expect(await linksOfScope(await otherTenantOrigin(), organizationId)).toEqual([]);
+    });
+  });
+
   describe('database constraints', () => {
     it('should refuse a self-dependency in the database', async () => {
       await expect(

@@ -321,6 +321,19 @@ export const assetDependenciesRouter = (procedure: TenantProcedure) => router({
     .output(z.array(PRIMARY_TO_PRIMARY_LINK_ROW_SCHEMA))
     .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin)
       .assetDependencies.getPrimaryToPrimaryLinks(input.primaryAssetId)),
+  // eslint-disable-next-line app/no-unbounded-list-query -- grows with the links between the primary assets of one risk scope, 164 on a real business impact analysis
+  getPrimaryToPrimaryLinksOfOrganization: procedure
+    .input(z.object({ organizationId: z.uuid() }))
+    .output(z.array(z.object({
+      id: z.uuid(),
+      dependentAssetId: z.uuid(),
+      providerAssetId: z.uuid(),
+      strength: z.enum(PRIMARY_TO_PRIMARY_LINK_STRENGTHS),
+      dependencyResourceTypeId: z.uuid().nullable(),
+      dependencyResourceTypeName: z.string().nullable(),
+    })))
+    .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin)
+      .assetDependencies.getPrimaryToPrimaryLinksOfOrganization(input.organizationId)),
 
   // eslint-disable-next-line app/no-unbounded-list-query -- grows with the types an administrator writes by hand, a dozen
   listDependencyResourceTypes: procedure

@@ -3,26 +3,30 @@ import { SECURITY_NEED_LEVELS } from '@app/module/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@filigran/design-system';
 import type { ColumnDefWithOptionsHeader } from '../../../components/ui/data-table-types';
 import type { OverallLevelFilter } from '../primary-asset-fields-utils';
-import { EllipsisVertical } from 'lucide-react';
+import { EllipsisVertical, List, Network } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import type { FunctionComponent, ReactElement } from 'react';
 import { useState } from 'react';
 import { msg, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import type { IconButtonGroupItem } from '../../../components/ui/icon-button-group';
 import { DebouncedSearchField } from '../../../components/shared';
 import { DeleteConfirmDialog } from '../../../components/shared/delete-confirm-dialog';
 import { IconActions, IconActionsItem } from '../../../components/shared/icon-actions';
 import { BadgeGroup } from '../../../components/ui/badge-group';
 import { DataPageLayout } from '../../../components/ui/data-page-layout';
+import { DataPageToolbar } from '../../../components/ui/data-page-toolbar';
+import { IconButtonGroup } from '../../../components/ui/icon-button-group';
 import { EmptyValue } from '../../../components/ui/empty-value';
-import { useConfirmationDialog, useUrlListFilters } from '../../../hooks';
+import { useConfirmationDialog, usePersistedView, useUrlListFilters } from '../../../hooks';
 import { useTRPC } from '../../../lib';
 import { formatDuration, securityNeedLabel } from '../primary-asset-fields-labels';
 import { businessFunctionSuggestions, filterByNativeFields, overallSecurityNeed, resolveBusinessFunctionFilter, securityNeedRank } from '../primary-asset-fields-utils';
 import { businessResourceName } from '../../business-value-categories';
 import { primaryAssetsListSearchSchema } from '../primary-assets-list-search';
 import { filterPrimaryAssets } from '../primary-assets-utils';
+import { PrimaryAssetGraphCard } from '../../asset-dependencies/components/primary-asset-graph-card';
 import { PrimaryAssetCreateSheet } from './primary-asset-create-sheet';
 import { SecurityNeedChip } from './security-need-chip';
 
@@ -76,6 +80,7 @@ export const PrimaryAssetsDataTable: FunctionComponent<PrimaryAssetsDataTablePro
   const { confirm, requestConfirmation } = confirmationDialog;
 
   const { filters, setFilters } = useUrlListFilters(primaryAssetsListSearchSchema);
+  const { view, setView } = usePersistedView<'list' | 'graph'>('primaryAssets', 'list', ['list', 'graph']);
 
   const { data, isLoading } = useQuery(trpc.primaryAssets.getPrimaryAssets.queryOptions({ organizationId }));
   const functionOptions = data === undefined ? undefined : businessFunctionSuggestions(data);
@@ -199,64 +204,88 @@ export const PrimaryAssetsDataTable: FunctionComponent<PrimaryAssetsDataTablePro
     },
   ];
 
+  const filterControls = (
+    <>
+      <DebouncedSearchField
+        placeholder={t`Search primary assets...`}
+        value={filters.search}
+        onCommit={(search) => setFilters({ search })}
+        clearLabel={t`Clear search`}
+        className="w-80"
+      />
+      <Select
+        value={businessFunction === '' ? ALL_BUSINESS_FUNCTIONS : businessFunction}
+        onValueChange={(value) => setFilters({ businessFunction: value === ALL_BUSINESS_FUNCTIONS ? '' : value })}
+      >
+        <SelectTrigger className="w-56" aria-label={t`Filter by business function`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_BUSINESS_FUNCTIONS}><Trans>All business functions</Trans></SelectItem>
+          {(functionOptions ?? []).map((option) => (
+            <SelectItem key={option} value={option}>{option}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={filters.level}
+        onValueChange={(value) => setFilters({ level: OVERALL_LEVEL_FILTERS.find((level) => level === value) ?? 'all' })}
+      >
+        <SelectTrigger className="w-48" aria-label={t`Filter by overall level`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all"><Trans>All levels</Trans></SelectItem>
+          {[...SECURITY_NEED_LEVELS].reverse().map((level) => (
+            <SelectItem key={level} value={level}>{securityNeedLabel(level)}</SelectItem>
+          ))}
+          <SelectItem value="not_set"><Trans>Not set</Trans></SelectItem>
+        </SelectContent>
+      </Select>
+    </>
+  );
+
+  const viewItems: Array<IconButtonGroupItem<'list' | 'graph'>> = [
+    { value: 'list', icon: <List className="h-4 w-4" />, tooltip: t`List view` },
+    { value: 'graph', icon: <Network className="h-4 w-4" />, tooltip: t`Graph view` },
+  ];
+  const viewToggle = <IconButtonGroup items={viewItems} value={view} onChange={setView} />;
+
   return (
     <>
-      <DataPageLayout
-        data={rows}
-        columns={columns}
-        isLoading={isLoading}
-        storageKey="primaryAssets"
-        initialColumnVisibility={{ description: false }}
-        leftHeaderContent={(
-          <>
-            <DebouncedSearchField
-              placeholder={t`Search primary assets...`}
-              value={filters.search}
-              onCommit={(search) => setFilters({ search })}
-              clearLabel={t`Clear search`}
-              className="w-80"
-            />
-            <Select
-              value={businessFunction === '' ? ALL_BUSINESS_FUNCTIONS : businessFunction}
-              onValueChange={(value) => setFilters({ businessFunction: value === ALL_BUSINESS_FUNCTIONS ? '' : value })}
-            >
-              <SelectTrigger className="w-56" aria-label={t`Filter by business function`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_BUSINESS_FUNCTIONS}><Trans>All business functions</Trans></SelectItem>
-                {(functionOptions ?? []).map((option) => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.level}
-              onValueChange={(value) => setFilters({ level: OVERALL_LEVEL_FILTERS.find((level) => level === value) ?? 'all' })}
-            >
-              <SelectTrigger className="w-48" aria-label={t`Filter by overall level`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all"><Trans>All levels</Trans></SelectItem>
-                {[...SECURITY_NEED_LEVELS].reverse().map((level) => (
-                  <SelectItem key={level} value={level}>{securityNeedLabel(level)}</SelectItem>
-                ))}
-                <SelectItem value="not_set"><Trans>Not set</Trans></SelectItem>
-              </SelectContent>
-            </Select>
-          </>
-        )}
-        onCreate={() => setCreateSheetOpen(true)}
-        onClickRow={(row) => {
-          void navigate({
-            from: '/$tenantId/{-$organizationId}/primary-assets',
-            to: '$primaryAssetId',
-            params: { primaryAssetId: row.original.id },
-          })
-        }}
-        onDeleteItems={(ids) => deletePrimaryAssets.mutate(ids)}
-      />
+      {view === 'graph' ? (
+        <div className="flex flex-col gap-4">
+          <DataPageToolbar leftHeaderContent={filterControls} viewToggle={viewToggle} onCreate={() => setCreateSheetOpen(true)} />
+          <PrimaryAssetGraphCard
+            organizationId={organizationId}
+            assets={data}
+            keptIds={new Set(rows.map((row) => row.id))}
+            hiddenStrengths={filters.hiddenStrengths}
+            onHiddenStrengthsChange={(hiddenStrengths) => setFilters({ hiddenStrengths })}
+            resourceType={filters.resourceType}
+            onResourceTypeChange={(resourceType) => setFilters({ resourceType })}
+          />
+        </div>
+      ) : (
+        <DataPageLayout
+          data={rows}
+          columns={columns}
+          isLoading={isLoading}
+          storageKey="primaryAssets"
+          initialColumnVisibility={{ description: false }}
+          leftHeaderContent={filterControls}
+          viewToggle={viewToggle}
+          onCreate={() => setCreateSheetOpen(true)}
+          onClickRow={(row) => {
+            void navigate({
+              from: '/$tenantId/{-$organizationId}/primary-assets',
+              to: '$primaryAssetId',
+              params: { primaryAssetId: row.original.id },
+            })
+          }}
+          onDeleteItems={(ids) => deletePrimaryAssets.mutate(ids)}
+        />
+      )}
 
       <DeleteConfirmDialog
         open={confirmationDialog.isOpen}

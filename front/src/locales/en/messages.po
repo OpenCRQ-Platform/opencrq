@@ -217,6 +217,10 @@ msgstr "{0, plural, one {# threat actor} other {# threat actors}}"
 msgid "{0, plural, one {# unowned} other {# unowned}}"
 msgstr "{0, plural, one {# unowned} other {# unowned}}"
 
+#. placeholder {0}: model.unlinkedCount
+msgid "{0, plural, one {# without any link, not drawn} other {# without any link, not drawn}}"
+msgstr "{0, plural, one {# without any link, not drawn} other {# without any link, not drawn}}"
+
 #. placeholder {0}: dimensions.length
 msgid "{0, plural, one {carries} other {carry}}"
 msgstr "{0, plural, one {carries} other {carry}}"
@@ -676,6 +680,9 @@ msgstr "{declared} of {total} kinds declared"
 msgid "{deletedSince, plural, one {# asset deleted since is no longer listed.} other {# assets deleted since are no longer listed.}}"
 msgstr "{deletedSince, plural, one {# asset deleted since is no longer listed.} other {# assets deleted since are no longer listed.}}"
 
+msgid "{dependent} depends on {provider}: {strength}, runs through {resource}."
+msgstr "{dependent} depends on {provider}: {strength}, runs through {resource}."
+
 msgctxt "derived value"
 msgid "{derivedName} today"
 msgstr "{derivedName} today"
@@ -869,6 +876,9 @@ msgstr "{joinedDimensions} {verb} this threat."
 msgid "{kept, plural, one {# threat was not deleted: it is no longer an import, or it was already removed.} other {# threats were not deleted: they are no longer imports, or were already removed.}}"
 msgstr "{kept, plural, one {# threat was not deleted: it is no longer an import, or it was already removed.} other {# threats were not deleted: they are no longer imports, or were already removed.}}"
 
+msgid "{keptCount, plural, one {# primary asset linked} other {# primary assets linked}}"
+msgstr "{keptCount, plural, one {# primary asset linked} other {# primary assets linked}}"
+
 msgid "{kevCount} known exploited"
 msgstr "{kevCount} known exploited"
 
@@ -909,6 +919,9 @@ msgstr "{lineCount, plural, one {# line, {share} %} other {# lines, {share} %}}"
 
 msgid "{lineCount, plural, one {# line} other {# lines}}"
 msgstr "{lineCount, plural, one {# line} other {# lines}}"
+
+msgid "{linkCount, plural, one {# link} other {# links}}"
+msgstr "{linkCount, plural, one {# link} other {# links}}"
 
 msgid "{linkedCount, plural, one {Show linked · #} other {Show linked · #}}"
 msgstr "{linkedCount, plural, one {Show linked · #} other {Show linked · #}}"
@@ -1053,6 +1066,9 @@ msgstr "{name}, not inherited"
 msgid "{name}, one notch lower"
 msgstr "{name}, one notch lower"
 
+msgid "{name}, overall level {level}"
+msgstr "{name}, overall level {level}"
+
 msgid "{name}: {figure} out of 100 of defence left standing, {bandWord} band"
 msgstr "{name}: {figure} out of 100 of defence left standing, {bandWord} band"
 
@@ -1081,6 +1097,9 @@ msgstr "{name}: typed by hand, {likely} per year"
 
 msgid "{named} and {remaining} more"
 msgstr "{named} and {remaining} more"
+
+msgid "{neighbourCount, plural, one {# neighbour outside the filters} other {# neighbours outside the filters}}"
+msgstr "{neighbourCount, plural, one {# neighbour outside the filters} other {# neighbours outside the filters}}"
 
 msgid "{notApplicable, plural, one {# not applicable} other {# not applicable}}"
 msgstr "{notApplicable, plural, one {# not applicable} other {# not applicable}}"
@@ -1345,6 +1364,9 @@ msgstr "{step}, incremental read"
 
 msgid "{stopped, plural, one {Stops the technique # time out of 100 where the control is in place.} other {Stops the technique # times out of 100 where the control is in place.}}"
 msgstr "{stopped, plural, one {Stops the technique # time out of 100 where the control is in place.} other {Stops the technique # times out of 100 where the control is in place.}}"
+
+msgid "{strength}, runs through {resource}"
+msgstr "{strength}, runs through {resource}"
 
 msgid "{summary} {sentence} {source}."
 msgstr "{summary} {sentence} {source}."
@@ -4684,6 +4706,9 @@ msgstr "Department"
 msgid "Dependencies"
 msgstr "Dependencies"
 
+msgid "Dependency between primary assets"
+msgstr "Dependency between primary assets"
+
 msgid "Dependency deleted successfully."
 msgstr "Dependency deleted successfully."
 
@@ -4699,12 +4724,18 @@ msgstr "Dependency Rules"
 msgid "Dependency updated successfully."
 msgstr "Dependency updated successfully."
 
+msgid "depends on"
+msgstr "depends on"
+
 msgid "Depends on"
 msgstr "Depends on"
 
 #. js-lingui-explicit-id
 msgid "Depends on · {count}"
 msgstr "Depends on · {count}"
+
+msgid "Depends on {dependsOn}"
+msgstr "Depends on {dependsOn}"
 
 msgid "Deploy"
 msgstr "Deploy"
@@ -5572,6 +5603,9 @@ msgstr "Extortion payment will be recorded as zero across the board, rather than
 msgid "F · Funds and IP"
 msgstr "F · Funds and IP"
 
+msgid "Faded: directly linked, outside the filters."
+msgstr "Faded: directly linked, outside the filters."
+
 msgid "Failed"
 msgstr "Failed"
 
@@ -6118,6 +6152,9 @@ msgstr "Grain"
 
 msgid "Graph depth"
 msgstr "Graph depth"
+
+msgid "Graph of the dependencies between primary assets"
+msgstr "Graph of the dependencies between primary assets"
 
 msgid "Graph view"
 msgstr "Graph view"
@@ -8099,6 +8136,12 @@ msgstr "No declared control detects this technique."
 msgid "No declared control prevents this technique, so prevention holds nothing back here."
 msgstr "No declared control prevents this technique, so prevention holds nothing back here."
 
+msgid "No dependency between primary assets matches the filters."
+msgstr "No dependency between primary assets matches the filters."
+
+msgid "No dependency is declared between the primary assets of this risk scope."
+msgstr "No dependency is declared between the primary assets of this risk scope."
+
 msgid "No dependency is declared for {primaryAssetName}."
 msgstr "No dependency is declared for {primaryAssetName}."
 
@@ -9359,6 +9402,9 @@ msgstr "Outcome"
 
 msgid "Outcome and targets"
 msgstr "Outcome and targets"
+
+msgid "Outside the filters"
+msgstr "Outside the filters"
 
 msgid "Outside the perimeter"
 msgstr "Outside the perimeter"
@@ -11378,11 +11424,17 @@ msgstr "Selected asset"
 msgid "Selected changes · {total}"
 msgstr "Selected changes · {total}"
 
+msgid "Selected dependency"
+msgstr "Selected dependency"
+
 msgid "Selected link"
 msgstr "Selected link"
 
 msgid "Selected links"
 msgstr "Selected links"
+
+msgid "Selected primary asset"
+msgstr "Selected primary asset"
 
 #. js-lingui-explicit-id
 msgid "Selects by {keys}, and names no type."
@@ -11602,6 +11654,9 @@ msgstr "Show highlighted only"
 
 msgid "Show older events"
 msgstr "Show older events"
+
+msgid "Show the dependencies of each strength"
+msgstr "Show the dependencies of each strength"
 
 msgid "Show the graph full screen"
 msgstr "Show the graph full screen"
@@ -12129,6 +12184,9 @@ msgstr "supports"
 msgid "Supports"
 msgstr "Supports"
 
+msgid "Supports {supports}"
+msgstr "Supports {supports}"
+
 msgid "Supports availability"
 msgstr "Supports availability"
 
@@ -12445,6 +12503,9 @@ msgstr "The applicable findings trend could not be loaded."
 
 msgid "The application needs to reload to apply the new language."
 msgstr "The application needs to reload to apply the new language."
+
+msgid "The arrow points at the dependent, the way an outage travels."
+msgstr "The arrow points at the dependent, the way an outage travels."
 
 msgid "The asset's display name."
 msgstr "The asset's display name."

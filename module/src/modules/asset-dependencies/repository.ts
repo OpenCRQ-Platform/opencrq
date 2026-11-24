@@ -594,6 +594,24 @@ export const assetDependenciesRepository = defineRepository({
       .leftJoin(views.dependencyResourceTypes, eq(views.dependencyResourceTypes.id, views.primaryToPrimaryLinks.dependencyResourceTypeId))
       .where(eq(own, primaryAssetId));
   },
+  findPrimaryToPrimaryLinksOfOrganization: async ({ db, views }, organizationId: string) => {
+    const scoped = db.select({ id: views.primaryAssets.id }).from(views.primaryAssets)
+      .where(eq(views.primaryAssets.organizationId, organizationId));
+    return db.select({
+      id: views.primaryToPrimaryLinks.id,
+      dependentAssetId: views.primaryToPrimaryLinks.dependentAssetId,
+      providerAssetId: views.primaryToPrimaryLinks.providerAssetId,
+      strength: views.primaryToPrimaryLinks.strength,
+      dependencyResourceTypeId: views.primaryToPrimaryLinks.dependencyResourceTypeId,
+      dependencyResourceTypeName: views.dependencyResourceTypes.name,
+    }).from(views.primaryToPrimaryLinks)
+      .leftJoin(views.dependencyResourceTypes, eq(views.dependencyResourceTypes.id, views.primaryToPrimaryLinks.dependencyResourceTypeId))
+      .where(and(
+        inArray(views.primaryToPrimaryLinks.dependentAssetId, scoped),
+        inArray(views.primaryToPrimaryLinks.providerAssetId, scoped),
+      ))
+      .orderBy(views.primaryToPrimaryLinks.id);
+  },
 
   findDependencyResourceTypes: async ({ db, views }) => {
     const linkCount = db.select({ typeId: views.primaryToPrimaryLinks.dependencyResourceTypeId, linkCount: count().as('link_count') })

@@ -340,7 +340,7 @@ const pushInto = <T>(index: Map<string, Array<T>>, key: string, value: T): void 
   }
 };
 
-interface ColumnLink {
+export interface ColumnLink {
   source: string,
   target: string,
 }
@@ -350,7 +350,7 @@ interface ColumnLink {
  * assets of a mutual dependency are one unit sharing a column, since no order of the two is right,
  * and a longer stored cycle is cut at the link that closes it, in the order the roots reach it.
  */
-const layoutColumns = (
+export const layoutColumns = (
   rootIds: Array<string>,
   nodeIds: Array<string>,
   links: Array<ColumnLink>,
@@ -580,9 +580,9 @@ export interface DependencyFocus {
  * expanded one ring at a time rather than one after the other, so an asset a cycle puts on both
  * sides keeps its shortest distance; `provider` wins a tie, being the reading the tab is built on.
  */
-export const focusOnNode = (model: DependencyGraphModel, selectedId: string): DependencyFocus => {
-  const outgoing = new Map<string, Array<DependencyGraphEdge>>();
-  const incoming = new Map<string, Array<DependencyGraphEdge>>();
+export const focusOnNode = (model: { links: ReadonlyArray<ColumnLink & { id: string }> }, selectedId: string): DependencyFocus => {
+  const outgoing = new Map<string, Array<ColumnLink & { id: string }>>();
+  const incoming = new Map<string, Array<ColumnLink & { id: string }>>();
   for (const link of model.links) {
     pushInto(outgoing, link.source, link);
     pushInto(incoming, link.target, link);

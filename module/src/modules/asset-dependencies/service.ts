@@ -960,6 +960,9 @@ export const assetDependenciesService = defineService(
       ...dependedOnBy.map((link) => ({ ...link, direction: 'provides' as const })),
     ].sort((a, b) => a.relatedAssetName.localeCompare(b.relatedAssetName));
   },
+  /** Only the links whose two ends are primary assets of the risk scope the caller sees. */
+  getPrimaryToPrimaryLinksOfOrganization: async ({ repo }, organizationId: string) =>
+    await repo.findPrimaryToPrimaryLinksOfOrganization(organizationId),
 
   listDependencyResourceTypes: async ({ repo }) => repo.findDependencyResourceTypes(),
   createDependencyResourceType: async ({ atomic, eventOrigin }, type: { id: string, name: string }) => {
