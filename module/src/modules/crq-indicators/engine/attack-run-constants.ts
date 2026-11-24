@@ -45,7 +45,7 @@ export const ATTACK_RUN_CONSTANTS: AttackRunConstants = {
   // Judgment: the most detection opportunities a wave gets, kept apart from the visits so that
   // refitting those leaves the detection of the door where it is.
   populationDetectionCap: 7,
-  // Judgment: the top of NIST's very low band, scaled as FAIR reads threat capability.
+  // Judgment: the top of NIST's very low band, scaled by the class capability.
   unknownFlawFloorScale: 0.04,
   // Fitted by OpenCRQ's calibration, at the gain below and at the shipped efficacy rate.
   detectionScale: 0.0403,

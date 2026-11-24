@@ -57,7 +57,7 @@ export const crqIndicatorRuns = pgTable('crq_indicator_runs', {
   resultFingerprint: text('result_fingerprint'),
   /** Worlds drawn. */
   iterations: integer('iterations').notNull(),
-  /** The probability an attack lands an impact, mixture-weighted: the FAIR vulnerability node. */
+  /** The probability an attack lands an impact, mixture-weighted. */
   vulnerabilityP5: doublePrecision('vulnerability_p5').notNull(),
   vulnerabilityP50: doublePrecision('vulnerability_p50').notNull(),
   vulnerabilityP95: doublePrecision('vulnerability_p95').notNull(),
