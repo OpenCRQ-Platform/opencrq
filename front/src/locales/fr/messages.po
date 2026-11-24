@@ -8270,6 +8270,12 @@ msgstr "Aucun mois trouvé"
 msgid "No new notifications"
 msgstr "Aucune nouvelle notification"
 
+msgid "No NVD record"
+msgstr "Aucun enregistrement NVD"
+
+msgid "No NVD record: NVD has no record of this CVE, or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+msgstr "Aucun enregistrement NVD : la NVD n'a aucun enregistrement de cette CVE, ou l'a rejetée, donc aucun vecteur CVSS ne viendra de la NVD. Vérifiez que l'identifiant de la CVE est correct."
+
 msgid "No one found"
 msgstr "Aucune personne trouvée"
 
@@ -8870,6 +8876,9 @@ msgstr "Nombre d'employés"
 
 msgid "Number of iterations run per simulation. Higher values increase accuracy but slow down computation."
 msgstr "Nombre d'itérations exécutées par simulation. Des valeurs plus élevées augmentent la précision mais ralentissent le calcul."
+
+msgid "NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct."
+msgstr "La NVD n'a aucun enregistrement de cette CVE, ou l'a rejetée : elle ne la notera donc pas. Vérifiez que l'identifiant de la CVE est correct."
 
 msgid "Objective"
 msgstr "Objectif"
@@ -13242,6 +13251,9 @@ msgstr "Ce filtre n'admet pas tout ce que le connecteur lit. Il laisse de côté
 msgid "This filter uses conditions this platform does not evaluate, so it cannot say whether the stream carries threat actors. Read the filter and decide."
 msgstr "Ce filtre utilise des conditions que cette plateforme n'évalue pas : elle ne peut donc pas dire si le flux porte des acteurs. Lisez le filtre et décidez."
 
+msgid "This finding has no score: NVD has no record of its CVE, or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+msgstr "Ce finding n'a pas de score : la NVD n'a aucun enregistrement de sa CVE, ou l'a rejetée, donc aucun vecteur CVSS ne viendra de la NVD. Vérifiez que l'identifiant de la CVE est correct."
+
 msgid "This finding has not been scored yet. Its score appears once the next recompute has run."
 msgstr "Ce finding n'a pas encore été scoré. Son score apparaît après le prochain recalcul."
 
@@ -14514,6 +14526,9 @@ msgstr "Pourquoi changer le mode de ces axes ?"
 
 msgid "Why fixing it is worth nothing"
 msgstr "Pourquoi cette correction ne vaut rien"
+
+msgid "Why no NVD record"
+msgstr "Pourquoi aucun enregistrement NVD"
 
 msgid "Why pending vector"
 msgstr "Pourquoi en attente de vecteur"

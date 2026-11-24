@@ -37,6 +37,7 @@ const UniqueCveFindingOverviewTab = () => {
         band={finding.band}
         worstScore={finding.worstScore}
         pendingVector={finding.pendingVector}
+        nvdRecordMissing={cveInfo?.nvdRecord === 'none'}
         affectedAssetCount={finding.affectedAssetCount}
         composition={finding.composition}
         aside={(

@@ -17,3 +17,16 @@ export const PendingVectorMark: FunctionComponent = () => (
     <PendingVectorInfo />
   </span>
 );
+
+export const NoNvdRecordInfo: FunctionComponent = () => (
+  <InfoTooltip label={t`Why no NVD record`}>
+    {t`NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct.`}
+  </InfoTooltip>
+);
+
+export const NoNvdRecordMark: FunctionComponent = () => (
+  <span className="inline-flex items-center gap-1 whitespace-nowrap text-default-secondary">
+    {t`No NVD record`}
+    <NoNvdRecordInfo />
+  </span>
+);

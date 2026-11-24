@@ -1,5 +1,6 @@
 export * from './cisa-listing';
 export * from './list-sort';
+export * from './nvd-record';
 export * from './schema';
 export * from './repository';
 export * from './service';

@@ -15,7 +15,7 @@ import {
   TooltipHintProvider,
 } from '../../../components/shared';
 import { AssetName } from '../../../components/shared/asset-name';
-import { PendingVectorInfo, ScoreGaugeMark, severityBandLabel } from '../../finding-score';
+import { NoNvdRecordInfo, PendingVectorInfo, ScoreGaugeMark, severityBandLabel } from '../../finding-score';
 import { getAssetCategoryLabel } from '../../../utils';
 import { assetNameDisplay } from '../../../utils/asset-name-utils';
 import { EvidenceStateChip } from './finding-chips';
@@ -30,6 +30,8 @@ interface FindingHeaderPanelProps {
   scoreInfo?: ReactNode,
   band: SeverityBand | null,
   pendingVector: boolean,
+  /** An NVD pass read the CVE and found no record: the vector the score waits on will not come from NVD. */
+  nvdRecordMissing: boolean,
   supportingAssetId: string,
   assetName: AssetNameParts,
   assetCategoryId: AssetCategory,
@@ -66,6 +68,7 @@ export const FindingHeaderPanel: FunctionComponent<FindingHeaderPanelProps> = ({
   scoreInfo,
   band,
   pendingVector,
+  nvdRecordMissing,
   supportingAssetId,
   assetName,
   assetCategoryId,
@@ -139,7 +142,10 @@ export const FindingHeaderPanel: FunctionComponent<FindingHeaderPanelProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-y-3" style={{ columnGap: KPI_TILE_GUTTER }}>
-        {pendingVector && (
+        {pendingVector && nvdRecordMissing && (
+          <KpiTile icon="circle-alert" tone="neutral" caption={t`No NVD record`} captionAdornment={<NoNvdRecordInfo />} />
+        )}
+        {pendingVector && !nvdRecordMissing && (
           <KpiTile icon="clock" tone="neutral" caption={t`Pending vector`} captionAdornment={<PendingVectorInfo />} />
         )}
         {!pendingVector && (score === null || band === null) && (

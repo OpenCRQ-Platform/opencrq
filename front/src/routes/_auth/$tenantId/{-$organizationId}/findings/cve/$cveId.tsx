@@ -17,6 +17,7 @@ const UniqueCveFindingLayout = () => {
     { cveId, organizationId: organizationId ?? null },
     { initialData },
   ));
+  const { data: cveInfo } = useQuery(trpc.cve.getInfo.queryOptions({ cveId }));
 
   if (!finding) {
     return null;
@@ -41,6 +42,7 @@ const UniqueCveFindingLayout = () => {
         worstScore={finding.worstScore}
         worstBand={finding.worstBand}
         pendingVector={finding.pendingVector}
+        nvdRecordMissing={cveInfo?.nvdRecord === 'none'}
         affectedAssetCount={finding.affectedAssetCount}
         knownExploited={finding.knownExploited}
         epss={finding.epss}

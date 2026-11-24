@@ -318,6 +318,13 @@ export const cveRepository = defineRepository({
   findByCveId: async ({ db, views }, cveId: string) =>
     db.select().from(views.cve).where(eq(views.cve.cveId, cveId)).then((r) => r.at(0) ?? null),
 
+  hasSourceObservation: async ({ db, views }, cveRowId: string, source: CveSource) =>
+    db.select({ id: views.cveSourceObservations.id })
+      .from(views.cveSourceObservations)
+      .where(and(eq(views.cveSourceObservations.cveId, cveRowId), eq(views.cveSourceObservations.source, source)))
+      .limit(1)
+      .then((rows) => rows.length > 0),
+
   findByCveIds: async ({ db, views }, cveIds: Array<string>) => {
     if (cveIds.length === 0) {
       return [];

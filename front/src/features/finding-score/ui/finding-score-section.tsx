@@ -330,13 +330,27 @@ const ScoredFindingSection: FunctionComponent<{ tenantId: string, finding: Findi
   );
 };
 
-export const FindingScoreSection: FunctionComponent<{ tenantId: string, finding: FindingBreakdown }> = ({ tenantId, finding }) => (
+interface FindingScoreSectionProps {
+  tenantId: string,
+  finding: FindingBreakdown,
+  /** An NVD pass read the CVE and found no record: the vector a pending finding waits on will not come from NVD. */
+  nvdRecordMissing: boolean,
+}
+
+const UnscoredSentence: FunctionComponent<{ pendingVector: boolean, nvdRecordMissing: boolean }> = ({ pendingVector, nvdRecordMissing }) => {
+  if (!pendingVector) {
+    return <Trans>This finding has not been scored yet. Its score appears once the next recompute has run.</Trans>;
+  }
+  return nvdRecordMissing
+    ? <Trans>This finding has no score: NVD has no record of its CVE, or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct.</Trans>
+    : <Trans>This finding is pending a vector: its CVE has no usable CVSS vector yet. It is scored by the first recompute once one is available.</Trans>;
+};
+
+export const FindingScoreSection: FunctionComponent<FindingScoreSectionProps> = ({ tenantId, finding, nvdRecordMissing }) => (
   finding.score === null ? (
     <Paper elevation={1} padding={16}>
       <p className="font-content-base text-content-base text-default-secondary">
-        {finding.pendingVector
-          ? <Trans>This finding is pending a vector: its CVE has no usable CVSS vector yet. It is scored by the first recompute once one is available.</Trans>
-          : <Trans>This finding has not been scored yet. Its score appears once the next recompute has run.</Trans>}
+        <UnscoredSentence pendingVector={finding.pendingVector} nvdRecordMissing={nvdRecordMissing} />
       </p>
     </Paper>
   ) : <ScoredFindingSection tenantId={tenantId} finding={finding} />
