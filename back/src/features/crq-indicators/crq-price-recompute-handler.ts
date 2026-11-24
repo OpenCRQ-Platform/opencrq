@@ -1,4 +1,4 @@
-import type { JobHandler, ScenarioPricingPass } from '@app/module';
+import type { JobHandler, ScenarioAleMove, ScenarioPricingPass } from '@app/module';
 import { allServiceDefinitions, createServices } from '@app/module';
 import { newError } from '@app/utils';
 import { createLogger } from '../../utils/logger';
@@ -14,7 +14,7 @@ export const CRQ_PRICE_RECOMPUTE_JOB = 'crq-price-recompute';
  */
 export const CRQ_PRICE_PASS_BUDGET_MS = 5 * 60 * 1000;
 
-/** The moved scenarios a run names; `movedCount` keeps counting past it. */
+/** The moved scenarios a run names, in `moved` and `movedAle` alike; `movedCount` keeps counting past it. */
 export const CRQ_PRICE_MOVED_IDS_CAP = 100;
 
 /**
@@ -29,12 +29,18 @@ interface CrqPriceTotals {
   skipped: number,
   refused: number,
   moved: Array<string>,
+  /**
+   * The ALE mean before and after each scenario of `moved`, in the same order, and the delta. A
+   * chain resumed from a state written before it existed starts it empty.
+   */
+  movedAle: Array<ScenarioAleMove>,
   movedCount: number,
 }
 
 interface CrqPricePassState extends Record<string, unknown> {
   after?: string,
-  totals?: CrqPriceTotals,
+  // A continuation booked by an image from before `movedAle` carries totals without it.
+  totals?: Omit<CrqPriceTotals, 'movedAle'> & Partial<Pick<CrqPriceTotals, 'movedAle'>>,
 }
 
 /**
@@ -47,7 +53,7 @@ interface CrqPriceRunSummary extends CrqPriceTotals {
   complete: boolean,
 }
 
-const NO_TOTALS: CrqPriceTotals = { walked: 0, priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: 0, moved: [], movedCount: 0 };
+const NO_TOTALS: CrqPriceTotals = { walked: 0, priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: 0, moved: [], movedAle: [], movedCount: 0 };
 
 const addPassToTotals = (totals: CrqPriceTotals, pass: ScenarioPricingPass): CrqPriceTotals => ({
   walked: totals.walked + pass.walked,
@@ -57,6 +63,7 @@ const addPassToTotals = (totals: CrqPriceTotals, pass: ScenarioPricingPass): Crq
   skipped: totals.skipped + pass.skipped,
   refused: totals.refused + pass.refused.length,
   moved: [...totals.moved, ...pass.moved].slice(0, CRQ_PRICE_MOVED_IDS_CAP),
+  movedAle: [...totals.movedAle, ...pass.movedAle].slice(0, CRQ_PRICE_MOVED_IDS_CAP),
   movedCount: totals.movedCount + pass.moved.length,
 });
 
@@ -67,7 +74,8 @@ export const crqPriceRecomputeHandler: JobHandler<Record<string, unknown>, CrqPr
   if (!ctx.runDb) {
     throw newError('crq price recompute must run as an observed job', { kind: ctx.kind });
   }
-  const before = ctx.state?.totals ?? NO_TOTALS;
+  const carried = ctx.state?.totals;
+  const before: CrqPriceTotals = carried ? { ...carried, movedAle: carried.movedAle ?? [] } : NO_TOTALS;
   const services = createServices([...allServiceDefinitions], ctx.runDb)
     .withOrigin({ type: 'job', tenantId: ctx.tenantId, jobKind: ctx.kind, interactive: ctx.interactive });
   const pass = await services.crqIndicators.priceAllScenarios(ctx.tenantId, ctx.signal, ctx.jobId, {
