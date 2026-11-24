@@ -42,7 +42,7 @@ const stubJobsService = (): ExecutionJobsService => ({
 
 const runWith = async (
   handler: (ctx: JobContext) => Promise<JobRunResult | void>,
-  hooks: Pick<ExecuteJobOptions, 'onContinuation' | 'onAnswered'> = {},
+  hooks: Pick<ExecuteJobOptions, 'onContinuation' | 'onAnswered' | 'onJobSuccess'> = {},
 ): Promise<ExecutionJobsService> => {
   const jobsService = stubJobsService();
   const registry = new HandlerRegistry();
@@ -113,5 +113,21 @@ describe('executeJob continuation booking', () => {
 
     expect(onAnswered).toHaveBeenCalledWith('job-1', KIND, 'successor-1');
     expect(onContinuation).not.toHaveBeenCalled();
+  });
+
+  // The engine logs 'Job completed successfully' from onJobSuccess: a partial segment must say it
+  // continued, so its console never reads as a completed job (#157).
+  it('tells the success hook the segment continued when it booked a continuation', async () => {
+    const onJobSuccess = vi.fn();
+    await runWith(() => Promise.resolve({ continuation: true }), { onJobSuccess });
+
+    expect(onJobSuccess).toHaveBeenCalledWith('job-1', KIND, true);
+  });
+
+  it('tells the success hook the job completed when no continuation was asked for', async () => {
+    const onJobSuccess = vi.fn();
+    await runWith(() => Promise.resolve({ continuation: false }), { onJobSuccess });
+
+    expect(onJobSuccess).toHaveBeenCalledWith('job-1', KIND, false);
   });
 });

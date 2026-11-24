@@ -71,7 +71,10 @@ const RISK_SCENARIO_NAME = 'Ransomware on the billing system';
 
 const RUNNING_ROWS = [runRow({ id: 'running-1', kind: 'kind-zulu-running', status: 'running' }), runRow({ id: 'running-2', kind: 'kind-alpha-running', status: 'running' })];
 const FAILED_ROWS = [runRow({ id: 'failed-1', kind: 'kind-zulu-failed', status: 'dlq' })];
-const SUCCEEDED_ROWS = [runRow({ id: 'succeeded-1', kind: 'kind-zulu-succeeded', status: 'succeeded' })];
+const SUCCEEDED_ROWS = [
+  runRow({ id: 'succeeded-1', kind: 'kind-zulu-succeeded', status: 'succeeded' }),
+  runRow({ id: 'partial-1', kind: 'kind-yankee-partial', status: 'partial' }),
+];
 
 const page = <T extends { id: string }>(items: Array<T>, input: { page: number, limit: number }, total: number) => ({
   items, total, page: input.page, limit: input.limit,
@@ -137,6 +140,22 @@ describe('QueuePage', () => {
 
     expect(within(sectionOf('Failed')).getByText('kind-zulu-failed')).toBeDefined();
     expect(within(sectionOf('Succeeded')).getByText('kind-zulu-succeeded')).toBeDefined();
+  });
+
+  // The section lists partial segments with the runs that succeeded (#157): each row carries its own
+  // status chip, so a partial segment never reads as a success.
+  it('shows each finished run its own status in the Succeeded section, partial segments included', async () => {
+    renderQueuePage();
+
+    await waitFor(() => {
+      expect(within(sectionOf('Succeeded')).queryByText('kind-yankee-partial')).not.toBeNull();
+    });
+
+    const succeededSection = within(sectionOf('Succeeded'));
+    expect(succeededSection.getByRole('columnheader', { name: 'Status' })).toBeDefined();
+    expect(succeededSection.getByText('Partial')).toBeDefined();
+    // 'Succeeded' is also the section title: the chip is the second occurrence.
+    expect(succeededSection.getAllByText('Succeeded').length).toBeGreaterThanOrEqual(2);
   });
 
   it('paginating the pending section does not repaginate the other three', async () => {
