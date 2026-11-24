@@ -77,7 +77,7 @@ export const findingsTableColumns = <T extends FindingTableRow>(
       id: 'name',
       accessorFn: (row) => row.name,
       header: t`Finding`,
-      size: 280,
+      size: 260,
       cell: ({ row }): ReactElement => (
         row.original.name === ''
           ? <EmptyValue />
@@ -106,7 +106,7 @@ export const findingsTableColumns = <T extends FindingTableRow>(
       accessorFn: (row) => row.score ?? undefined,
       sortUndefined: 'last',
       header: t`Score`,
-      size: 110,
+      size: 130,
       cell: ({ row }): ReactElement => {
         const { score, band, pendingVector, nvdRecordMissing } = row.original;
         if (pendingVector) {

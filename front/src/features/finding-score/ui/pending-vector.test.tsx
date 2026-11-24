@@ -14,10 +14,11 @@ afterEach(() => {
 });
 
 describe('UnscoredMark', () => {
-  it('should say NVD holds no usable record once a pass found none', () => {
+  it('should say no vector will come once an NVD pass found no usable record', () => {
     render(<UnscoredMark nvdRecordMissing />);
 
-    expect(screen.getByText('No usable NVD record')).toBeTruthy();
+    expect(screen.getByText('No vector')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Why no usable NVD record' })).toBeTruthy();
     expect(screen.queryByText('Pending vector')).toBeNull();
   });
 
@@ -25,6 +26,6 @@ describe('UnscoredMark', () => {
     render(<UnscoredMark nvdRecordMissing={false} />);
 
     expect(screen.getByText('Pending vector')).toBeTruthy();
-    expect(screen.queryByText('No usable NVD record')).toBeNull();
+    expect(screen.queryByText('No vector')).toBeNull();
   });
 });

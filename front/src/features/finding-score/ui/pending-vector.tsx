@@ -34,7 +34,14 @@ export const NoNvdRecordMark: FunctionComponent = () => (
   </span>
 );
 
-/** A CVE finding with no score yet: why, once NVD is known to hold no usable record of the CVE. */
+/** A list cell's mark for a CVE finding with no score: kept short to fit the cell, its tooltip says why. */
 export const UnscoredMark: FunctionComponent<{ nvdRecordMissing: boolean }> = ({ nvdRecordMissing }) => (
-  nvdRecordMissing ? <NoNvdRecordMark /> : <PendingVectorMark />
+  nvdRecordMissing
+    ? (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-default-secondary">
+        {t`No vector`}
+        <NoNvdRecordInfo />
+      </span>
+    )
+    : <PendingVectorMark />
 );

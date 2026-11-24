@@ -8573,6 +8573,9 @@ msgstr "Aucun utilisateur trouvé"
 msgid "No value on this run"
 msgstr "Aucune valeur pour cette simulation"
 
+msgid "No vector"
+msgstr "Sans vecteur"
+
 msgid "No version range has been published for this CVE."
 msgstr "Aucune plage de version n'a été publiée pour cette CVE."
 
