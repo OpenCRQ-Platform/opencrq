@@ -21,8 +21,11 @@ afterEach(() => {
   cleanup();
 });
 
-const access = (threats: 'not_linked' | 'no_account' | 'unavailable' | null) => ({
-  'xtm.readerAccess': { threats, counterparts: { opencti: null, openaev: null } },
+const access = (
+  threats: 'not_linked' | 'no_account' | 'unavailable' | 'connector_unavailable' | null,
+  threatVisibility: 'per_member' | 'service_account' = 'per_member',
+) => ({
+  'xtm.readerAccess': { threats, threatVisibility, counterparts: { opencti: null, openaev: null } },
 });
 
 describe('HiddenThreatPage', () => {
@@ -41,11 +44,18 @@ describe('HiddenThreatPage', () => {
     expect(screen.queryByText('You cannot read this threat.')).toBeNull();
   });
 
-  it('names no cause when the access has no category to give, nor when the answer failed', async () => {
-    renderWithTrpc(<HiddenThreatPage />, { answers: access(null) });
+  it('says the reader\'s own OpenCTI rights hide it, and who can grant access, when those decide', async () => {
+    renderWithTrpc(<HiddenThreatPage />, { answers: access(null, 'per_member') });
+
+    expect(await screen.findByText('OpenCTI does not let you read this threat.')).toBeTruthy();
+    expect(screen.getByText(/ask an OpenCTI administrator for access/)).toBeTruthy();
+  });
+
+  it('names no cause in the connector\'s mode, where the reader\'s rights play no part, nor when the answer failed', async () => {
+    renderWithTrpc(<HiddenThreatPage />, { answers: access(null, 'service_account') });
     expect(await screen.findByText('You cannot read this threat.')).toBeTruthy();
     expect(screen.getByText(/ask an administrator/)).toBeTruthy();
-    expect(screen.queryByText(/OpenCTI/)).toBeNull();
+    expect(screen.queryByText(/OpenCTI does not let you/)).toBeNull();
     cleanup();
 
     renderWithTrpc(<HiddenThreatPage />, { answers: { 'xtm.readerAccess': FAILED } });
@@ -57,5 +67,11 @@ describe('HiddenThreatPage', () => {
 
     expect(await screen.findByText('Some threats are hidden because you have no OpenCTI account.')).toBeTruthy();
     expect(screen.queryByText('You cannot read this threat.')).toBeNull();
+  });
+
+  it('says the connector\'s own read failed in the connector\'s mode', async () => {
+    renderWithTrpc(<HiddenThreatPage />, { answers: access('connector_unavailable', 'service_account') });
+
+    expect(await screen.findByText(/could not read OpenCTI with the connector's access/)).toBeTruthy();
   });
 });

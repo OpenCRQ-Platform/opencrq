@@ -1,4 +1,4 @@
-import type { DrizzleDB } from '@app/module';
+import type { DrizzleDB, OpenctiThreatVisibility } from '@app/module';
 import { allServiceDefinitions, createServices, PlatformCapability_ManageUsers } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import type { PublicProcedure } from '../../trpc';
@@ -100,9 +100,9 @@ export const createTenantProcedure = (services: ReturnType<typeof instantiateSer
         readerScopeAuthorization(db, ctx.user, threatVisibility),
       );
       const { origin: markedOrigin, readerAccessIssue } = withReaderScope(origin, scope, threatVisibility);
-      return next({ ctx: { ...ctx, origin: markedOrigin, services, readerAccessIssue } });
+      return next({ ctx: { ...ctx, origin: markedOrigin, services, readerAccessIssue, threatVisibility } });
     }
-    return next({ ctx: { ...ctx, services, readerAccessIssue: null } });
+    return next({ ctx: { ...ctx, services, readerAccessIssue: null, threatVisibility: 'per_member' as OpenctiThreatVisibility } });
   });
 
 export type TenantProcedure = ReturnType<typeof createTenantProcedure>;

@@ -1,5 +1,5 @@
 import type { DrizzleDB, OpenctiThreatVisibility } from '@app/module';
-import { withoutReaderScope } from '@app/module';
+import { OPENCTI_THREAT_VISIBILITIES, withoutReaderScope } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { AuthUser } from '../../../trpc';
@@ -201,9 +201,11 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
     .meta({ reads: [] })
     .output(z.object({
       threats: z.enum(THREAT_ACCESS_ISSUES).nullable(),
+      // Whose OpenCTI rights decide what the member reads: a screen words a hidden threat by it.
+      threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES),
       counterparts: z.object({ opencti: readerAccessIssueSchema, openaev: readerAccessIssueSchema }),
     }))
-    .query(async ({ ctx: { services, origin, user, readerAccessIssue } }) => {
+    .query(async ({ ctx: { services, origin, user, readerAccessIssue, threatVisibility } }) => {
       const tenantId = await authorizedTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t));
       const counterparts = await readCounterpartIssues(counterpartAccess, {
         tenantId,
@@ -215,7 +217,7 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
       // nothing mirrored yet, or only unmarked threats, has nothing to be told.
       const hidesThreats = readerAccessIssue !== null
         && await services.withOrigin(withoutReaderScope(origin)).threatAnalyses.hasThreatHiddenFromUnresolvedReader();
-      return { threats: hidesThreats ? readerAccessIssue : null, counterparts };
+      return { threats: hidesThreats ? readerAccessIssue : null, threatVisibility, counterparts };
     }),
 
   // bounded-by: MAX_COUNTERPART_KEYS keys per call, one batched read of one kind

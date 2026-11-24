@@ -260,7 +260,9 @@ read failing, whatever the cause: the category is `connector_unavailable`, which
 the member and asks an administrator, never a member's `not_linked` or `no_account`. The rows hanging off a threat follow it, so the
 detail of a threat the member can read (hero, outcomes, CVE tab, techniques, relevance proof) is
 complete and carries no message, and a link to a threat they may not read opens a page saying it is
-hidden (`threats.isHidden`, the route's `notFoundComponent`), never "not found", unless that lookup fails. The counterparts of an object are always read as the member,
+hidden (`threats.isHidden`, the route's `notFoundComponent`), never "not found", unless that lookup fails. The page words why by `xtm.readerAccess`'s
+`threatVisibility`: the reader's own OpenCTI rights when those decide (`per_member`), no cause in the
+connector's mode or when the answer failed. The counterparts of an object are always read as the member,
 whatever the tenant's threat visibility: the emblem surface says per product why one is empty
 (`no-access` when it is not linked to XTM One or has no account for the reader, `unavailable` when
 its token exchange or its lookup failed, the latter reported by `xtm.counterparts` as `unavailable`).
