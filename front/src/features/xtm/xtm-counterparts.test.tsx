@@ -58,6 +58,15 @@ describe('XtmPivotEmblems (single XTM One emblem, parity with opencti #20153)', 
     expect(container.textContent).toBe('');
     expect(screen.getAllByTestId('xtm-emblem')).toHaveLength(1);
     expect(emblem.querySelector('[data-testid="xtm-mark"]')?.className).toContain('text-filigran-ia-primary');
+    // The outline is the XTM One purple (Sam, 24 Nov 2026).
+    expect(emblem.style.borderColor).toBe('var(--color-filigran-ia-primary)');
+  });
+
+  it('keeps the XTM One purple outline when nothing is found', async () => {
+    renderEmblems([], BOTH);
+    const emblem = await screen.findByRole('button', { name: 'Not found across the XTM Platform' });
+    expect(emblem.querySelector('[data-testid="xtm-mark"]')?.getAttribute('data-muted')).toBe('true');
+    expect(emblem.style.borderColor).toBe('var(--color-filigran-ia-primary)');
   });
 
   it('opens an anchored surface: the found product with its open button, a Connect entry for a configurer', async () => {
