@@ -38,8 +38,11 @@ export const OneLineChips: FunctionComponent<OneLineChipsProps> = ({ items }) =>
   const rest = hidden.map((item) => item.label).join(', ');
   const all = items.map((item) => item.label).join(', ');
   return (
+    // The two variants toggle `display` through arbitrary properties, never `hidden` / `flex`:
+    // `fds.css` ships those names unlayered, and an unlayered rule beats the layered `@container`
+    // variant, so `hidden @min-[96px]:flex` stays hidden at every width (UX round on #149, B1).
     <div className="@container w-full min-w-0">
-      <div data-chips="first-and-rest" className="hidden min-w-0 flex-nowrap items-center gap-1 @min-[96px]:flex">
+      <div data-chips="first-and-rest" className="[display:none] min-w-0 flex-nowrap items-center gap-1 @min-[96px]:[display:flex]">
         <Chip
           label={first.label}
           className={`min-w-[56px] max-w-full shrink ${first.className ?? ''}`}
@@ -50,7 +53,7 @@ export const OneLineChips: FunctionComponent<OneLineChipsProps> = ({ items }) =>
           </span>
         </TooltipHint>
       </div>
-      <div data-chips="count" className="flex items-center @min-[96px]:hidden">
+      <div data-chips="count" className="[display:flex] items-center @min-[96px]:[display:none]">
         <TooltipHint hint={all}>
           <span className="shrink-0" aria-label={all}>
             <Chip label={`${items.length}`} />
