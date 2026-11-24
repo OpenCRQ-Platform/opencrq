@@ -106,7 +106,7 @@ export const findingsTableColumns = <T extends FindingTableRow>(
       accessorFn: (row) => row.score ?? undefined,
       sortUndefined: 'last',
       header: t`Score`,
-      size: 90,
+      size: 110,
       cell: ({ row }): ReactElement => {
         const { score, band, pendingVector, nvdRecordMissing } = row.original;
         if (pendingVector) {
