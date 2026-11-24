@@ -407,3 +407,11 @@ export const complianceAnswerId = (assessmentIndex: number, requirementIndex: nu
 
 // === Declared Estate ===
 export const declaredEstateEventId = (index: number): string => seededRowId('0043', index);
+
+// === Requirements ===
+export const Requirement_TarnwickDelivery48h = '019edb28-0046-7000-8000-000000000001';
+export const Requirement_AcmeGdprCustomerData = '019edb28-0046-7000-8000-000000000002';
+export const Requirement_AcmeEuropeGdprCustomerData = '019edb28-0046-7000-8000-000000000003';
+export const RequirementTarget_TarnwickDeliveryPlanning = '019edb28-0046-7000-8000-000000000101';
+export const RequirementTarget_AcmeGdprCustomerAccounts = '019edb28-0046-7000-8000-000000000102';
+export const RequirementTarget_AcmeEuropeGdprCustomerData = '019edb28-0046-7000-8000-000000000103';
