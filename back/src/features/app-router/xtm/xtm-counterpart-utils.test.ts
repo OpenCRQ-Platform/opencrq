@@ -94,6 +94,50 @@ describe('resolveCounterparts', () => {
     expect(restricted.resolve).toHaveBeenCalledTimes(1);
   });
 
+  it('asks every product at once, so a slow one does not hold the others back, and answers in product order', async () => {
+    let answerSlow: (found: Array<XtmCounterpart>) => void = () => undefined;
+    const slow = provider({ resolve: vi.fn(() => new Promise<Array<XtmCounterpart>>((done) => {
+      answerSlow = done;
+    })) });
+    const fast = provider({ product: 'openaev', resolve: vi.fn(() => Promise.resolve([counterpart('T1059', 'openaev')])) });
+
+    const pending = resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [slow, fast]);
+    await Promise.resolve();
+    expect(fast.resolve).toHaveBeenCalledTimes(1);
+
+    answerSlow([counterpart('T1059')]);
+    expect((await pending).counterparts.map((c) => c.product)).toEqual(['opencti', 'openaev']);
+  });
+
+  it('answers without a product past its budget, names it unavailable, and does not cache it as a miss', async () => {
+    const stuck = provider({ resolve: vi.fn(() => new Promise<Array<XtmCounterpart>>(() => undefined)) });
+    const fast = provider({ product: 'openaev', resolve: vi.fn(() => Promise.resolve([counterpart('T1059', 'openaev')])) });
+
+    const found = await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [stuck, fast], Date.now, 10);
+    expect(found.counterparts.map((c) => c.product)).toEqual(['openaev']);
+    expect(found.unavailable).toEqual(['opencti']);
+
+    await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [stuck, fast], Date.now, 10);
+    expect(stuck.resolve).toHaveBeenCalledTimes(2);
+    expect(fast.resolve).toHaveBeenCalledTimes(1);
+  });
+
+  it('caches an answer that arrives past the budget, so the next page shows it without asking again', async () => {
+    let answerLate: (found: Array<XtmCounterpart>) => void = () => undefined;
+    const late = provider({ resolve: vi.fn(() => new Promise<Array<XtmCounterpart>>((done) => {
+      answerLate = done;
+    })) });
+
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059', 'T1003'], [late], Date.now, 10))
+      .toEqual({ counterparts: [], unavailable: ['opencti'] });
+    answerLate([counterpart('T1059')]);
+    await Promise.resolve();
+
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059', 'T1003'], [late], Date.now, 10))
+      .toMatchObject({ counterparts: [{ key: 'T1059', product: 'opencti' }], unavailable: [] });
+    expect(late.resolve).toHaveBeenCalledTimes(1);
+  });
+
   it('never calls a product with no valid key', async () => {
     const p = provider();
     expect(await resolveCounterparts(TENANT, READER, 'THREAT', ['apt28'], [p])).toEqual({ counterparts: [], unavailable: [] });
