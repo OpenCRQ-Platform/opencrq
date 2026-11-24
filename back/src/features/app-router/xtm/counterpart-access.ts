@@ -1,3 +1,4 @@
+import { READER_SCOPE_TTL_MS } from '@app/utils';
 import type { ReaderAccessIssue } from './reader-access-issue';
 import type { ProductConnection, ReaderAuthorization, ReaderProduct } from './xtm-providers';
 import { probeReaderIssue } from './reader-access-issue';
@@ -8,7 +9,6 @@ import { probeReaderIssue } from './reader-access-issue';
  * XTM One outage would make every call wait for it.
  */
 
-const COUNTERPART_ACCESS_TTL_MS = 60_000;
 const MAX_CACHED_ACCESS = 5_000;
 
 interface CachedAccess { issue: Promise<ReaderAccessIssue | null>, expiresAt: number }
@@ -25,7 +25,7 @@ export interface CounterpartAccess {
 
 export const createCounterpartAccess = (
   now: () => number = Date.now,
-  ttlMs: number = COUNTERPART_ACCESS_TTL_MS,
+  ttlMs: number = READER_SCOPE_TTL_MS,
 ): CounterpartAccess => {
   const cache = new Map<string, CachedAccess>();
   return {

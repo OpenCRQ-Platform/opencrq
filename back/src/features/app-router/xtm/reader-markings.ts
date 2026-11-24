@@ -1,4 +1,5 @@
 import type { EventOrigin, OpenCtiReaderAccess, OpenctiThreatVisibility } from '@app/module';
+import { READER_SCOPE_TTL_MS } from '@app/utils';
 import type { ReaderAccessIssue } from './reader-access-issue';
 import type { ProductConnection, ReaderAuthorization } from './xtm-providers';
 import { errorCategory, logCategory } from '../../../utils/error-category';
@@ -26,7 +27,6 @@ const { logWarn } = createLogger({ feature: 'reader-markings' });
  * and its answer kept a short while after, so a page's burst of reads asks OpenCTI once.
  */
 
-export const READER_MARKINGS_TTL_MS = 60_000;
 const READER_MARKINGS_TIMEOUT_MS = 5_000;
 const MAX_CACHED_READERS = 5_000;
 const BYPASS_CAPABILITY = 'BYPASS';
@@ -189,7 +189,7 @@ export interface ReaderMarkingsResolver {
 export const createReaderMarkingsResolver = (
   fetchImpl: FetchLike = fetch,
   now: () => number = Date.now,
-  ttlMs: number = READER_MARKINGS_TTL_MS,
+  ttlMs: number = READER_SCOPE_TTL_MS,
 ): ReaderMarkingsResolver => {
   const cache = new Map<string, CachedScope>();
   return {

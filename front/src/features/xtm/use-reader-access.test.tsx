@@ -1,8 +1,9 @@
 /** @vitest-environment jsdom */
 import { i18n } from '@lingui/core';
-import { cleanup, screen } from '@testing-library/react';
+import { READER_SCOPE_TTL_MS } from '@app/utils/reader-scope';
+import { act, cleanup, screen } from '@testing-library/react';
 import type { FunctionComponent } from 'react';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { FAILED, NEVER, renderWithTrpc } from '../../providers/trpc-test-harness';
 import { useReaderAccess } from './use-reader-access';
 
@@ -13,6 +14,7 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 const Probe: FunctionComponent = () => {
@@ -27,6 +29,17 @@ describe('useReaderAccess', () => {
     });
 
     expect(await screen.findByText('threats: not_linked, OpenCTI: no_account, OpenAEV: unavailable')).toBeTruthy();
+  });
+
+  it('asks again as often as the backend renews what it keeps of the reader, while the page stays mounted', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'setTimeout', 'clearInterval', 'clearTimeout'] });
+    const { calls } = renderWithTrpc(<Probe />, { answers: { 'xtm.readerAccess': { threats: null, counterparts: { opencti: null, openaev: null } } } });
+    const asked = () => calls.filter(({ path }) => path === 'xtm.readerAccess').length;
+    await act(() => vi.advanceTimersByTimeAsync(10));
+    expect(asked()).toBe(1);
+
+    await act(() => vi.advanceTimersByTimeAsync(READER_SCOPE_TTL_MS));
+    expect(asked()).toBe(2);
   });
 
   it('gives no issue while the answer is on its way', () => {

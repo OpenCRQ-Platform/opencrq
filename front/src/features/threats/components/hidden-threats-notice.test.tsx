@@ -2,6 +2,7 @@
 import { i18n } from '@lingui/core';
 import { I18nProvider } from '@lingui/react';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { renderWithTrpc } from '../../../providers/trpc-test-harness';
@@ -64,6 +65,14 @@ describe('HiddenThreatsHint', () => {
     renderWithTrpc(<p>12 <HiddenThreatsHint /></p>, { answers: access('unavailable') });
 
     expect(await screen.findByRole('button', { name: 'Some threats are hidden for now.' })).toBeTruthy();
+  });
+
+  it('shows its explanation when pressed, so a touch reader, who cannot hover, can read it', async () => {
+    renderWithTrpc(<p>12 <HiddenThreatsHint /></p>, { answers: access('no_account') });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Some threats are hidden because you have no OpenCTI account.' }));
+
+    expect((await screen.findAllByText(/Ask an OpenCTI administrator to create an account/)).length).toBeGreaterThan(0);
   });
 
   it('shows nothing while the reader misses no threat', async () => {

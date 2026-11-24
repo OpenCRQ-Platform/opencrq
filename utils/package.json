@@ -11,7 +11,8 @@
     "./decimals": "./src/decimals.ts",
     "./text-fold": "./src/text-fold.ts",
     "./xtm-sign-in": "./src/xtm-sign-in.ts",
-    "./service-account-token": "./src/service-account-token.ts"
+    "./service-account-token": "./src/service-account-token.ts",
+    "./reader-scope": "./src/reader-scope.ts"
   },
   "scripts": {
     "lint": "run lint:lint",

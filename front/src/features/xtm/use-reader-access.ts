@@ -1,4 +1,5 @@
 import type { TRPCRouter } from '@app/back/src/types/trpc-router';
+import { READER_SCOPE_TTL_MS } from '@app/utils/reader-scope';
 import { useQuery } from '@tanstack/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
 import { useTRPC } from '../../lib';
@@ -17,6 +18,11 @@ const NO_ISSUE: ReaderAccess = { threats: null, counterparts: { opencti: null, o
  */
 export const useReaderAccess = (): ReaderAccess & { isLoaded: boolean } => {
   const trpc = useTRPC();
-  const { data, isSuccess } = useQuery(trpc.xtm.readerAccess.queryOptions(undefined, { retry: false, meta: { skipErrorToast: true } }));
+  // The answer changes with what the backend keeps of the reader's rights, which rings no doorbell.
+  const { data, isSuccess } = useQuery(trpc.xtm.readerAccess.queryOptions(undefined, {
+    retry: false,
+    refetchInterval: READER_SCOPE_TTL_MS,
+    meta: { skipErrorToast: true },
+  }));
   return { ...(data ?? NO_ISSUE), isLoaded: isSuccess };
 };

@@ -50,6 +50,7 @@ export const HiddenThreatsHint: FunctionComponent = () => {
   return (
     <TooltipHintProvider>
       <TooltipHint
+        keepOpenOnPress
         hint={(
           <span className="flex max-w-72 flex-col gap-1">
             <span className="font-semibold">{title}</span>
