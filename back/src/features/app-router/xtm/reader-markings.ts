@@ -126,8 +126,7 @@ const fetchReaderScope = async (
     return {
       ok: false,
       failure: `no token could be signed for the reader: ${authorization.unsigned ?? 'no reason given'}`,
-      // Only a platform with no XTM One to sign through names a reason: no link can exist then.
-      issue: authorization.unsigned === undefined ? 'unavailable' : 'not_linked',
+      issue: 'unavailable',
     };
   }
   const res = await fetchImpl(`${base}/graphql`, {

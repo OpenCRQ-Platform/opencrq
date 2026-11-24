@@ -4,15 +4,16 @@ import { Link } from '@tanstack/react-router';
 import type { FunctionComponent } from 'react';
 import { DetailPageLayout } from '../../../components/shared/detail-page-layout';
 import { useReaderAccess } from '../../xtm/use-reader-access';
-import { HiddenThreatsNotice } from './hidden-threats-notice';
+import { ReaderAccessNotice } from './hidden-threats-notice';
 
 /**
  * What a link to a threat the reader's OpenCTI rights hide opens, in place of "not found": the
- * threat exists, which is all this page says of it. Once the reader's access is known, it says why
- * it is hidden: their rights, or what kept OpenCRQ from learning them.
+ * threat exists, which is all this page says of it. Once the reader's access is answered it says
+ * what kept OpenCRQ from reading the threat for them; with no category to give (the reader's rights
+ * play no part in the connector's mode, and a failed answer tells nothing) it names no cause.
  */
 export const HiddenThreatPage: FunctionComponent = () => {
-  const { threats, isLoaded } = useReaderAccess();
+  const { threats, isPending } = useReaderAccess();
   return (
     <DetailPageLayout
       title={t`This threat is hidden from you`}
@@ -24,13 +25,13 @@ export const HiddenThreatPage: FunctionComponent = () => {
         </Button>
       )}
     >
-      {isLoaded && (threats
-        ? <HiddenThreatsNotice issue={threats} />
+      {!isPending && (threats
+        ? <ReaderAccessNotice issue={threats} />
         : (
           <Alert
             severity="info"
-            title={t`OpenCTI does not let you read this threat.`}
-            description={t`This threat exists, but your rights in OpenCTI do not allow you to read it, so OpenCRQ does not show it. If you need it, ask an OpenCTI administrator for access.`}
+            title={t`You cannot read this threat.`}
+            description={t`This threat exists, but OpenCRQ does not show it to you. If you need it, ask an administrator.`}
           />
         ))}
     </DetailPageLayout>

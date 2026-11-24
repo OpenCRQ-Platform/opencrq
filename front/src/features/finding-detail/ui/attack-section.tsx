@@ -5,7 +5,7 @@ import type { FindingScoreBreakdown } from '../../finding-score';
 import type { AttackCoverage } from '../attack-groups-utils';
 import type { CitingThreat } from './threats-citing-card';
 import { useTRPC } from '../../../lib';
-import { HiddenThreatsAlert } from '../../threats/components/hidden-threats-notice';
+import { HiddenThreatsAlert } from '../../threats';
 import { countActiveThreats } from '../threat-signal-utils';
 import { AttackTechniquesCard } from './attack-techniques-card';
 import { CitationActivityCard } from './citation-activity-card';

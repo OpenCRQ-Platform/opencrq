@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { FunctionComponent } from 'react';
 import { SectionCard } from '../../../components/shared';
 import { useTRPC } from '../../../lib';
-import { HiddenThreatsAlert } from '../../threats/components/hidden-threats-notice';
+import { HiddenThreatsAlert } from '../../threats';
 import { AttackOutcomeTopThreats } from './attack-outcome-top-threats';
 import { ThreatDistributionBar } from './threat-distribution-bar';
 

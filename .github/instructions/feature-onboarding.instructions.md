@@ -288,7 +288,7 @@ add up, and all lead to the same status rule (any threat, section 4). No tile is
   (`default-threats`, `connector` for OpenCTI, `stix-import`), so OpenCTI's tile shows the threats
   it brought in, not the objects it mirrors. The header's total is `threats.list` with no kind, the
   tenant's real count, never the sum of the tiles' counters.
-- **A reader OpenCTI did not answer for** is shown the Threats page's `HiddenThreatsNotice` above the
+- **A reader OpenCTI did not answer for** is shown the Threats page's `ReaderAccessNotice` above the
   tiles, worded by the category `xtm.readerAccess` gives for the threats (`useReaderAccess`): their
   counts leave out every marked or shared threat from OpenCTI.
 - **The chip** is the connector's state from `connectors.listConnectors` for the OpenCRQ set and

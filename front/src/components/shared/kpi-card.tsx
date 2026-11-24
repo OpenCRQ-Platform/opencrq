@@ -16,8 +16,6 @@ interface KpiCardProps {
   /** What the figure is out of, under it: a scope's own estate is not something a tooltip may hide. */
   subtitle: ReactNode,
   tooltip: ReactNode,
-  /** Beside the figure, for a caveat a smaller number must not be read without. */
-  hint?: ReactNode,
   elevation?: 1 | 2 | 3,
 }
 
@@ -26,7 +24,7 @@ interface KpiCardProps {
  * honesty allows, a trend. It states, the list below is where the reader acts, so nothing here is
  * clickable.
  */
-export const KpiCard: FunctionComponent<KpiCardProps> = ({ label, icon, tone, figure, trend, subtitle, tooltip, hint, elevation }) => (
+export const KpiCard: FunctionComponent<KpiCardProps> = ({ label, icon, tone, figure, trend, subtitle, tooltip, elevation }) => (
   <Card elevation={elevation} gap={16} className="min-w-0">
     <div className="flex h-6 items-center gap-2">
       <Text as="span" variant="content-compact" className="truncate">{label}</Text>
@@ -39,10 +37,7 @@ export const KpiCard: FunctionComponent<KpiCardProps> = ({ label, icon, tone, fi
     </div>
     <div className="flex items-center justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
-        <div className="flex items-center gap-1">
-          <Text as="p" variant="title-2xl" className="tabular-nums">{figure}</Text>
-          {hint}
-        </div>
+        <Text as="p" variant="title-2xl" className="tabular-nums">{figure}</Text>
         {subtitle === null ? null : (
           <Text as="p" variant="content-compact" className="text-default-secondary">{subtitle}</Text>
         )}

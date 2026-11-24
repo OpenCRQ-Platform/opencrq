@@ -135,7 +135,7 @@ describe('createReaderMarkingsResolver', () => {
     const broken = createReaderMarkingsResolver(vi.fn().mockRejectedValue(new Error('timeout')));
     const unused = vi.fn();
 
-    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', CONNECTION, 'per_member', NO_SIGN)).toEqual({ issue: 'not_linked' });
+    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', CONNECTION, 'per_member', NO_SIGN)).toEqual({ issue: 'unavailable' });
     expect(unused).not.toHaveBeenCalled();
     expect(await refused.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)).toEqual({ issue: 'unavailable' });
     expect(await broken.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)).toEqual({ issue: 'unavailable' });

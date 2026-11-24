@@ -37,7 +37,7 @@ describe('probeReaderIssue', () => {
     expect(await probeReaderIssue(refused('audience'), 'opencti', CONNECTION)).toBe('not_linked');
     expect(await probeReaderIssue(refused('user'), 'opencti', CONNECTION)).toBe('no_account');
     expect(await probeReaderIssue(refused(null), 'opencti', CONNECTION)).toBe('unavailable');
-    expect(await probeReaderIssue(unsigned, 'opencti', CONNECTION)).toBe('not_linked');
+    expect(await probeReaderIssue(unsigned, 'opencti', CONNECTION)).toBe('unavailable');
     expect(unsigned).not.toHaveBeenCalled();
   });
 

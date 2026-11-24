@@ -17,6 +17,7 @@ import {
   ActivityGradeBadge,
   composeThreatScore,
   DimensionTags,
+  HiddenThreatsAlert,
   observedAtSortValue,
   RelevanceBand,
   RelevanceProofPanel,
@@ -24,7 +25,6 @@ import {
   threatScoreSortKey,
   ThreatTypeBadge,
 } from '../../threats';
-import { HiddenThreatsAlert } from '../../threats/components/hidden-threats-notice';
 import { useCounterparts, XtmRowMarks } from '../../xtm/xtm-counterparts';
 import { WeighingRuleSentence } from './weighing-rule-sentence';
 import { resolveRelevantThreatsEmptyState } from './risk-scenario-relevant-threats-utils';

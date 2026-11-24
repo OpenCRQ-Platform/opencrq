@@ -1,7 +1,7 @@
 import { t } from '@lingui/core/macro';
 import { useParams } from '@tanstack/react-router';
 import type { FunctionComponent } from 'react';
-import { HiddenThreatsNotice } from '../../threats/components/hidden-threats-notice';
+import { ReaderAccessNotice } from '../../threats';
 import { useReaderAccess } from '../../xtm/use-reader-access';
 import { useTenantThreats } from '../hooks/use-source-reads';
 import { threatsTotalLabel } from '../source-labels';
@@ -20,7 +20,7 @@ export const ThreatsStep: FunctionComponent = () => {
       stepKey="threats"
       why={t`The attacker groups that target your sector and your country, and their techniques, drive the simulated attacks. Without a threat source, no scenario can be computed.`}
     >
-      {readerAccessIssue && <HiddenThreatsNotice issue={readerAccessIssue} />}
+      {readerAccessIssue && <ReaderAccessNotice issue={readerAccessIssue} />}
       <SourcesSection
         title={t`Threat sources`}
         total={total === undefined ? undefined : threatsTotalLabel(total)}

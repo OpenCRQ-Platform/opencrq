@@ -136,8 +136,9 @@ describe('XtmPivotEmblems (single XTM One emblem, parity with opencti #20153)', 
 
   it('says a lookup that failed could not reach the product, never "not found"', async () => {
     renderEmblems(FAILED, BOTH);
-    const { surface } = await openSurface();
+    const { emblem, surface } = await openSurface();
     expect(within(surface).getByTestId('xtm-section-opencti').getAttribute('data-status')).toBe('unavailable');
+    expect(emblem.getAttribute('aria-label')).toBe('Some of the XTM Platform could not be read');
   });
 
   it('says why a connected product cannot be read as the reader, by category and per product, never "not found"', async () => {
@@ -148,12 +149,13 @@ describe('XtmPivotEmblems (single XTM One emblem, parity with opencti #20153)', 
         'xtm.readerAccess': { threats: null, counterparts: { opencti: 'not_linked', openaev: 'no_account' } },
       },
     });
-    const { surface } = await openSurface();
+    const { emblem, surface } = await openSurface();
 
     await waitFor(() => expect(within(surface).getByTestId('xtm-section-opencti').getAttribute('data-status')).toBe('no-access'));
     expect(within(surface).getByTestId('xtm-section-openaev').getAttribute('data-status')).toBe('no-access');
     expect(within(surface).getByText(/OpenCTI is not linked to this platform's XTM One/)).toBeTruthy();
-    expect(within(surface).getByText(/OpenAEV has no account for your email/)).toBeTruthy();
+    expect(within(surface).getByText(/OpenAEV has no account for your email.*Ask an administrator of OpenAEV to create one/)).toBeTruthy();
+    expect(emblem.getAttribute('aria-label')).toBe('Some of the XTM Platform could not be read');
   });
 
   it('says a lookup that failed for one product is unavailable there, and keeps what the other found', async () => {

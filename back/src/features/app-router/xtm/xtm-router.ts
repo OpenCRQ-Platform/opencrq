@@ -11,10 +11,10 @@ import { router } from '../../../trpc';
 import { authenticateXtmOneJwt } from '../../xtm-one/xtm-one-auth';
 import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
 import { buildXtmOneHeaders } from '../../xtm-one/xtm-one-headers';
-import { readerTokenExchange, ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
+import { readerTokenExchange } from '../../xtm-one/xtm-one-token-exchange';
 import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
 import { counterpartAccess, readCounterpartIssues } from './counterpart-access';
-import { READER_ACCESS_ISSUES } from './reader-access-issue';
+import { probeReaderIssue, READER_ACCESS_ISSUES } from './reader-access-issue';
 import { openctiPublicUrl } from './opencti-public-url';
 import { lookupXtmObjects,resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
@@ -75,14 +75,11 @@ export const probeReaderLink = async (
   authorization: ReaderAuthorization,
   connection: ProductConnection,
 ): Promise<typeof READER_LINKS[number]> => {
-  if (authorization.unsigned !== undefined) {
-    return 'unknown';
+  const issue = await probeReaderIssue(authorization, 'opencti', connection);
+  if (issue === null) {
+    return 'linked';
   }
-  try {
-    return (await authorization('opencti', connection)) ? 'linked' : 'unknown';
-  } catch (err) {
-    return err instanceof ReaderTokenUnavailable && err.refusal === 'audience' ? 'not_linked' : 'unknown';
-  }
+  return issue === 'not_linked' ? 'not_linked' : 'unknown';
 };
 
 /** No reader to sign for XTM One: its lookup reaches nothing. */

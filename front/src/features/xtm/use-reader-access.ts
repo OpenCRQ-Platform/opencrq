@@ -14,15 +14,15 @@ const NO_ISSUE: ReaderAccess = { threats: null, counterparts: { opencti: null, o
 /**
  * Why a reader may see fewer threats, and fewer counterparts, than their rights allow: no issue
  * while it loads or when it cannot be told, since a notice that is wrong is worse than none.
- * `isLoaded` is false until an answer arrived, for the screen that words what it says by it.
+ * `isPending` is true until the first answer or failure, for the screen that words what it says by it.
  */
-export const useReaderAccess = (): ReaderAccess & { isLoaded: boolean } => {
+export const useReaderAccess = (): ReaderAccess & { isPending: boolean } => {
   const trpc = useTRPC();
   // The answer changes with what the backend keeps of the reader's rights, which rings no doorbell.
-  const { data, isSuccess } = useQuery(trpc.xtm.readerAccess.queryOptions(undefined, {
+  const { data, isPending } = useQuery(trpc.xtm.readerAccess.queryOptions(undefined, {
     retry: false,
     refetchInterval: READER_SCOPE_TTL_MS,
     meta: { skipErrorToast: true },
   }));
-  return { ...(data ?? NO_ISSUE), isLoaded: isSuccess };
+  return { ...(data ?? NO_ISSUE), isPending };
 };

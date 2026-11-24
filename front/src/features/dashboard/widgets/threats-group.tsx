@@ -18,8 +18,7 @@ import { getDataTableI18nKey } from '../../../components/ui/data-table-i18n';
 import { useTRPC } from '../../../lib';
 import { cn, formatDollar, formatFractionAsPercent } from '../../../utils';
 import { formatPanelCount } from '../../findings-home/findings-panel-utils';
-import { ActivityGradeBadge, ThreatTypeBadge } from '../../threats';
-import { HiddenThreatsHint } from '../../threats/components/hidden-threats-notice';
+import { ActivityGradeBadge, HiddenThreatsHint, ThreatTypeBadge } from '../../threats';
 import { DashboardWidgetCard } from '../components/dashboard-widget-card';
 import {
   countGainingTechniques,
@@ -53,12 +52,15 @@ const ThreatCatalogCard: FunctionComponent = () => {
     <DashboardWidgetCard
       title={t`Threat catalog`}
       info={(
-        <MetricInfo
-          title={t`Threat catalog`}
-          what={<Trans>What the integrations have synced: the threats by type, how many of them are active, and the CVEs they are reported to target.</Trans>}
-          how={<Trans>A CVE several threats target counts once. A threat is active as on the Threats page, from how recently it was observed or reported.</Trans>}
-          caveat={<Trans>The whole tenant's catalog, whichever scope is selected: a threat is matched against a scope, it does not belong to one.</Trans>}
-        />
+        <>
+          <MetricInfo
+            title={t`Threat catalog`}
+            what={<Trans>What the integrations have synced: the threats by type, how many of them are active, and the CVEs they are reported to target.</Trans>}
+            how={<Trans>A CVE several threats target counts once. A threat is active as on the Threats page, from how recently it was observed or reported.</Trans>}
+            caveat={<Trans>The whole tenant's catalog, whichever scope is selected: a threat is matched against a scope, it does not belong to one.</Trans>}
+          />
+          <HiddenThreatsHint />
+        </>
       )}
     >
       {data === undefined
@@ -69,11 +71,11 @@ const ThreatCatalogCard: FunctionComponent = () => {
         )
         : (
           <div className={VOLUME_GRID}>
-            <KpiCard elevation={3} label={t`Threat actors`} icon="custom/threat-actor-individual" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.threatActors, locale)} subtitle={null} tooltip={null} />
-            <KpiCard elevation={3} label={t`Intrusion sets`} icon="custom/intrusion-set" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.intrusionSets, locale)} subtitle={null} tooltip={null} />
-            <KpiCard elevation={3} label={t`Campaigns`} icon="chess-knight" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.campaigns, locale)} subtitle={null} tooltip={null} />
-            <KpiCard elevation={3} label={t`Active threats`} icon="activity" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.active, locale)} subtitle={null} tooltip={null} />
-            <KpiCard elevation={3} label={t`Targeted CVEs`} icon="bug" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.citedCves, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Threat actors`} icon="custom/threat-actor-individual" tone="info" figure={formatPanelCount(data.threatActors, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Intrusion sets`} icon="custom/intrusion-set" tone="info" figure={formatPanelCount(data.intrusionSets, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Campaigns`} icon="chess-knight" tone="info" figure={formatPanelCount(data.campaigns, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Active threats`} icon="activity" tone="info" figure={formatPanelCount(data.active, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Targeted CVEs`} icon="bug" tone="info" figure={formatPanelCount(data.citedCves, locale)} subtitle={null} tooltip={null} />
           </div>
         )}
     </DashboardWidgetCard>

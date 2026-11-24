@@ -25,16 +25,16 @@ const noticeText = (issue: ReaderAccessIssue): { title: string, description: str
   }
 };
 
-/** Why the reader may miss threats from OpenCTI, worded for the one action that gets them back. */
-export const HiddenThreatsNotice: FunctionComponent<{ issue: ReaderAccessIssue }> = ({ issue }) => {
+/** The notice of one category, for a screen that already holds it; a screen that does not uses `HiddenThreatsAlert`. */
+export const ReaderAccessNotice: FunctionComponent<{ issue: ReaderAccessIssue }> = ({ issue }) => {
   const { title, description } = noticeText(issue);
   return <Alert severity="warning" title={title} description={description} />;
 };
 
-/** The notice of a screen that lists threats, shown only while the reader misses some. */
+/** The notice of a screen that lists threats: reads the reader's access itself, and shows only while they miss some. */
 export const HiddenThreatsAlert: FunctionComponent = () => {
   const { threats } = useReaderAccess();
-  return threats ? <HiddenThreatsNotice issue={threats} /> : null;
+  return threats ? <ReaderAccessNotice issue={threats} /> : null;
 };
 
 /**

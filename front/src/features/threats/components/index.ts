@@ -3,6 +3,7 @@ export * from './activity-utils';
 export * from './claim-item';
 export * from './claim-list';
 export * from './dimension-tags';
+export * from './hidden-threats-notice';
 export * from './threat-actions-menu';
 export * from './threat-analyses-data-table';
 export * from './threat-cve-findings-tab';

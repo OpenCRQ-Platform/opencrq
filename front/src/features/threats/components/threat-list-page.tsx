@@ -4,7 +4,7 @@ import type { FunctionComponent, ReactNode } from 'react';
 import type { ReaderAccessIssue } from '../../xtm/use-reader-access';
 import { DetailPageLayout } from '../../../components/shared/detail-page-layout';
 import { ImportProgressIndicator } from '../../../components/shared/import-progress-indicator';
-import { HiddenThreatsNotice } from './hidden-threats-notice';
+import { ReaderAccessNotice } from './hidden-threats-notice';
 
 const ThreatsProcessingIndicator: FunctionComponent<{ pending: number }> = ({ pending }) => (
   pending > 0
@@ -40,7 +40,7 @@ export const ThreatListPage: FunctionComponent<ThreatListPageProps> = ({
   backfillStatus,
   children,
 }) => {
-  const notice = readerAccessIssue ? <HiddenThreatsNotice issue={readerAccessIssue} /> : null;
+  const notice = readerAccessIssue ? <ReaderAccessNotice issue={readerAccessIssue} /> : null;
   // The empty card carries the upload action itself.
   const actions = (
     <div className="flex flex-wrap items-center justify-end gap-2">

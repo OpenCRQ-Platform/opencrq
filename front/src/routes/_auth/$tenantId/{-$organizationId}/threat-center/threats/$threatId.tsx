@@ -5,8 +5,10 @@ import { RouteNotFoundComponent } from '../../../../../../components/layout/rout
 import { RouteTabs } from '../../../../../../components/shared';
 import {
   HiddenThreatPage,
+  isHiddenThreat,
   matchedTechniques,
   ThreatHero,
+  threatNotFoundData,
   useLiveThreatDetail,
 } from '../../../../../../features';
 import { trpcClient } from '../../../../../../lib';
@@ -53,9 +55,7 @@ const ThreatDetailLayout = () => {
 };
 
 const ThreatNotFound = ({ data }: NotFoundRouteProps) => (
-  typeof data === 'object' && data !== null && 'hidden' in data && data.hidden === true
-    ? <HiddenThreatPage />
-    : <RouteNotFoundComponent />
+  isHiddenThreat(data) ? <HiddenThreatPage /> : <RouteNotFoundComponent />
 );
 
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/threat-center/threats/$threatId')({
@@ -63,7 +63,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/threat
     const detail = await trpcClient.threats.getDetail.query({ id: params.threatId });
     if (!detail) {
       // A threat the reader's OpenCTI rights hide is not an absent one.
-      throw notFound({ data: { hidden: await trpcClient.threats.isHidden.query({ id: params.threatId }) } });
+      throw notFound({ data: await threatNotFoundData(() => trpcClient.threats.isHidden.query({ id: params.threatId })) });
     }
     return { detail, crumb: detail.analysis.name };
   },

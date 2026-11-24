@@ -1016,7 +1016,7 @@ msgstr "{name} est injoignable. Réessayez plus tard."
 msgid "{name} depends on…"
 msgstr "{name} dépend de…"
 
-msgid "{name} has no account for your email, so OpenCRQ cannot look this object up there as you. Ask a {name} administrator to create one."
+msgid "{name} has no account for your email, so OpenCRQ cannot look this object up there as you. Ask an administrator of {name} to create one."
 msgstr "{name} n'a pas de compte pour votre e-mail : OpenCRQ ne peut donc pas y rechercher cet objet en votre nom. Demandez à un administrateur de {name} d'en créer un."
 
 msgid "{name} import progress"
@@ -9201,9 +9201,6 @@ msgstr "OpenCTI"
 msgid "OpenCTI did not answer, so the filter of the stream in use could not be read."
 msgstr "OpenCTI n'a pas répondu, le filtre du flux utilisé n'a donc pas pu être lu."
 
-msgid "OpenCTI does not let you read this threat."
-msgstr "OpenCTI ne vous autorise pas à lire cette menace."
-
 msgid "OpenCTI has no account for your email, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an OpenCTI administrator to create an account with the same email."
 msgstr "OpenCTI n'a pas de compte pour votre e-mail : OpenCRQ n'affiche donc les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur d'OpenCTI de créer un compte avec le même e-mail."
 
@@ -11691,6 +11688,9 @@ msgstr "Application Software-as-a-Service"
 msgid "Solid"
 msgstr "Solide"
 
+msgid "Some of the XTM Platform could not be read"
+msgstr "Une partie de la plateforme XTM n'a pas pu être lue"
+
 msgid "Some threats are hidden because you have no OpenCTI account."
 msgstr "Certaines menaces sont masquées, car vous n'avez pas de compte OpenCTI."
 
@@ -13443,8 +13443,8 @@ msgstr "Ce tenant n'est pas disponible."
 msgid "this threat"
 msgstr "cette menace"
 
-msgid "This threat exists, but your rights in OpenCTI do not allow you to read it, so OpenCRQ does not show it. If you need it, ask an OpenCTI administrator for access."
-msgstr "Cette menace existe, mais vos droits dans OpenCTI ne vous permettent pas de la lire : OpenCRQ ne l'affiche donc pas. Si vous en avez besoin, demandez l'accès à un administrateur d'OpenCTI."
+msgid "This threat exists, but OpenCRQ does not show it to you. If you need it, ask an administrator."
+msgstr "Cette menace existe, mais OpenCRQ ne vous l'affiche pas. Si vous en avez besoin, demandez à un administrateur."
 
 msgid "This threat is hidden from you"
 msgstr "Cette menace vous est masquée"
@@ -14725,6 +14725,9 @@ msgstr "Vous pouvez désormais ouvrir {tenantName}."
 #. js-lingui-explicit-id
 msgid "You can now open the platform administration."
 msgstr "Vous pouvez désormais ouvrir l'administration de la plateforme."
+
+msgid "You cannot read this threat."
+msgstr "Vous ne pouvez pas lire cette menace."
 
 msgid "You don't have access to OpenCRQ yet"
 msgstr "Vous n'avez pas encore accès à OpenCRQ"

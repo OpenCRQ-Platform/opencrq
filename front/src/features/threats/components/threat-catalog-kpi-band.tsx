@@ -10,7 +10,6 @@ import { KpiCard } from '../../../components/shared/kpi-card';
 import { useTRPC } from '../../../lib';
 import { formatPanelCount } from '../../findings-home/findings-panel-utils';
 import { formatFractionAsPercent } from '../../../utils/format-number';
-import { HiddenThreatsHint } from './hidden-threats-notice';
 import { threatCatalogTotal } from './threat-list-utils';
 
 const TOOLTIP_DELAY_MS = 150;
@@ -48,7 +47,6 @@ export const ThreatCatalogKpiBand: FunctionComponent = () => {
           label={t`Active threats`}
           icon="activity"
           tone="warning"
-          hint={<HiddenThreatsHint />}
           figure={formatPanelCount(data.active, locale)}
           subtitle={<Trans>{totalLabel}: {actorsLabel}, {intrusionSetsLabel}, {campaignsLabel}</Trans>}
           tooltip={<Trans>A threat is active when it was last observed less than {ACTIVITY_ACTIVE_WINDOW_DAYS} days ago.</Trans>}
@@ -57,7 +55,6 @@ export const ThreatCatalogKpiBand: FunctionComponent = () => {
           label={t`Strong match with your outcomes`}
           icon="custom/target"
           tone="warning"
-          hint={<HiddenThreatsHint />}
           figure={formatPanelCount(data.strongOutcomeMatches, locale)}
           subtitle={<Trans>at least {strongThreshold} with one of your attack outcomes</Trans>}
           tooltip={<Trans>Threats whose top attack outcome reaches {strongThreshold}, the level at which its chip turns red.</Trans>}
@@ -66,7 +63,6 @@ export const ThreatCatalogKpiBand: FunctionComponent = () => {
           label={t`Targeted CVEs`}
           icon="bug"
           tone="info"
-          hint={<HiddenThreatsHint />}
           figure={formatPanelCount(data.targetedCves, locale)}
           subtitle={onEstateLabel}
           tooltip={<Trans>A CVE several threats target counts once, among the claims that pass the confidence gate. It is on your estate when it is one of your unique findings, read on the whole estate whatever the risk scope.</Trans>}

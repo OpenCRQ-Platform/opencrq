@@ -29,9 +29,9 @@ export const probeReaderIssue = async (
   product: ReaderProduct,
   connection: ProductConnection,
 ): Promise<ReaderAccessIssue | null> => {
-  // Only a platform with no XTM One to sign through names a reason: no link can exist then.
+  // An authorization that signs nothing (no user, no XTM One) says nothing about OpenCTI's link.
   if (authorization.unsigned !== undefined) {
-    return 'not_linked';
+    return 'unavailable';
   }
   try {
     return (await authorization(product, connection)) ? null : 'unavailable';

@@ -33,29 +33,29 @@ describe('HiddenThreatPage', () => {
     expect(screen.getByRole('link', { name: 'See all threats' })).toBeTruthy();
   });
 
-  it('says nothing of the cause until the reader\'s access is known, nor when it cannot be known', async () => {
+  it('says nothing of the cause until the reader\'s access is answered', async () => {
     renderWithTrpc(<HiddenThreatPage />, { answers: { 'xtm.readerAccess': NEVER } });
+
     expect(await screen.findByRole('heading', { level: 1, name: 'This threat is hidden from you' })).toBeTruthy();
-    expect(screen.queryByText('OpenCTI does not let you read this threat.')).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText('You cannot read this threat.')).toBeNull();
+  });
+
+  it('names no cause when the access has no category to give, nor when the answer failed', async () => {
+    renderWithTrpc(<HiddenThreatPage />, { answers: access(null) });
+    expect(await screen.findByText('You cannot read this threat.')).toBeTruthy();
+    expect(screen.getByText(/ask an administrator/)).toBeTruthy();
+    expect(screen.queryByText(/OpenCTI/)).toBeNull();
     cleanup();
 
     renderWithTrpc(<HiddenThreatPage />, { answers: { 'xtm.readerAccess': FAILED } });
-    expect(await screen.findByRole('heading', { level: 1, name: 'This threat is hidden from you' })).toBeTruthy();
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.queryByText('OpenCTI does not let you read this threat.')).toBeNull();
-  });
-
-  it('says OpenCTI\'s own rights hide it when OpenCRQ knows what the reader may read there', async () => {
-    renderWithTrpc(<HiddenThreatPage />, { answers: access(null) });
-
-    expect(await screen.findByText('OpenCTI does not let you read this threat.')).toBeTruthy();
-    expect(screen.getByText(/ask an OpenCTI administrator for access/)).toBeTruthy();
+    expect(await screen.findByText('You cannot read this threat.')).toBeTruthy();
   });
 
   it('says why OpenCRQ could not tell what the reader may read, by the category, in place of that line', async () => {
     renderWithTrpc(<HiddenThreatPage />, { answers: access('no_account') });
 
     expect(await screen.findByText('Some threats are hidden because you have no OpenCTI account.')).toBeTruthy();
-    expect(screen.queryByText('OpenCTI does not let you read this threat.')).toBeNull();
+    expect(screen.queryByText('You cannot read this threat.')).toBeNull();
   });
 });

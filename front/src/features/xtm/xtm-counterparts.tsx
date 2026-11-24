@@ -332,7 +332,7 @@ export const visibleSurfaceSections = (
 const noAccessText = (issue: Exclude<ReaderAccessIssue, 'unavailable'>, name: string) => (
   issue === 'not_linked'
     ? t`${name} is not linked to this platform's XTM One, so OpenCRQ cannot look this object up there as you. Ask an administrator to link it.`
-    : t`${name} has no account for your email, so OpenCRQ cannot look this object up there as you. Ask a ${name} administrator to create one.`
+    : t`${name} has no account for your email, so OpenCRQ cannot look this object up there as you. Ask an administrator of ${name} to create one.`
 );
 
 const SurfaceSection: FunctionComponent<XtmSurfaceSection & { kind: CounterpartKind }> = ({ product, state, kind }) => {
@@ -440,7 +440,8 @@ export const XtmSurface: FunctionComponent<{ kind: CounterpartKind, sections: Re
     return null;
   }
   const found = sections.filter((s) => s.state.kind === 'found').length;
-  const label = found > 0 ? t`Across the XTM Platform` : t`Not found across the XTM Platform`;
+  const unreadable = sections.some(({ state }) => state.kind === 'unavailable' || state.kind === 'no-access');
+  const label = found > 0 ? t`Across the XTM Platform` : unreadable ? t`Some of the XTM Platform could not be read` : t`Not found across the XTM Platform`;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <TooltipHintProvider>

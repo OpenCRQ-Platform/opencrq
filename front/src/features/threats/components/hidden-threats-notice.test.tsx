@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { renderWithTrpc } from '../../../providers/trpc-test-harness';
-import { HiddenThreatsAlert, HiddenThreatsHint, HiddenThreatsNotice } from './hidden-threats-notice';
+import { HiddenThreatsAlert, HiddenThreatsHint, ReaderAccessNotice } from './hidden-threats-notice';
 
 beforeAll(() => {
   i18n.load('en', {});
@@ -19,23 +19,23 @@ afterEach(() => {
 
 const wrapper = ({ children }: { children: ReactNode }) => <I18nProvider i18n={i18n}>{children}</I18nProvider>;
 
-describe('HiddenThreatsNotice', () => {
+describe('ReaderAccessNotice', () => {
   it('tells an OpenCTI that is not linked to ask an administrator to link it', () => {
-    render(<HiddenThreatsNotice issue="not_linked" />, { wrapper });
+    render(<ReaderAccessNotice issue="not_linked" />, { wrapper });
 
     expect(screen.getByText('Some threats are hidden until OpenCTI is linked.')).toBeTruthy();
     expect(screen.getByText(/Ask an administrator to link OpenCTI to XTM One/)).toBeTruthy();
   });
 
   it('tells a member with no OpenCTI account to ask for one with the same email', () => {
-    render(<HiddenThreatsNotice issue="no_account" />, { wrapper });
+    render(<ReaderAccessNotice issue="no_account" />, { wrapper });
 
     expect(screen.getByText('Some threats are hidden because you have no OpenCTI account.')).toBeTruthy();
     expect(screen.getByText(/Ask an OpenCTI administrator to create an account with the same email/)).toBeTruthy();
   });
 
   it('says an outage is temporary and asks nobody to act unless it lasts', () => {
-    render(<HiddenThreatsNotice issue="unavailable" />, { wrapper });
+    render(<ReaderAccessNotice issue="unavailable" />, { wrapper });
 
     expect(screen.getByText('Some threats are hidden for now.')).toBeTruthy();
     expect(screen.getByText(/They come back once the answer does/)).toBeTruthy();

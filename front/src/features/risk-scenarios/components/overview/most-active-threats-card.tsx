@@ -5,8 +5,7 @@ import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import type { FunctionComponent } from 'react';
 import { SectionCard } from '../../../../components/shared';
-import { ActivityGradeBadge, ThreatTypeBadge } from '../../../threats';
-import { HiddenThreatsAlert } from '../../../threats/components/hidden-threats-notice';
+import { ActivityGradeBadge, HiddenThreatsAlert, ThreatTypeBadge } from '../../../threats';
 import { useTRPC } from '../../../../lib';
 import { rankMostActiveThreats } from './most-active-threats-utils';
 
