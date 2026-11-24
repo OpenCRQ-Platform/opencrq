@@ -79,7 +79,7 @@ const recordSourceReports = async (
     }
     await repo.upsertSourceObservations([...byCveId.values()].flatMap(({ cveId, ...fields }) => {
       const rowId = rowIdByCveId.get(cveId);
-      return rowId === undefined ? [] : [{ ...fields, id: uuidv7(), tenantId, cveId: rowId, source }];
+      return rowId === undefined ? [] : [{ ...fields, tenantId, cveId: rowId, source }];
     }));
 
     const observationsByRowId = Map.groupBy(await repo.findSourceObservations([...rowIdByCveId.values()]), (o) => o.cveId);

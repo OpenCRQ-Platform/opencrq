@@ -23,7 +23,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { z } from 'zod';
 import * as schema from '../src/modules/schema';
-import { runMigration } from '../src/db/run-migrations';
+import { IN_PLACE_UPDATE_FILLFACTOR, runMigration } from '../src/db/run-migrations';
 
 /** Loose, so a journal written back keeps the fields drizzle-kit put there. */
 const journalSchema = z.looseObject({ entries: z.array(z.looseObject({ when: z.number(), tag: z.string() })) });
@@ -131,9 +131,11 @@ const FINGERPRINT = `
     WHERE n.nspname = 'public'
   ) f ORDER BY line`;
 
-/** `runMigration` lowers every table's analyze threshold, which `migrate()` alone does not. */
+/** The storage parameters `runMigration` sets, which `migrate()` alone does not. */
+const RUN_MIGRATION_OPTIONS = new RegExp(`(autovacuum_analyze_threshold=0|fillfactor=${IN_PLACE_UPDATE_FILLFACTOR}),?`, 'g');
+
 const fingerprint = async (database: string): Promise<Array<string>> =>
-  (await query<{ line: string }>(database, FINGERPRINT)).map(({ line }) => line.replace(/autovacuum_analyze_threshold=0,?/, ''));
+  (await query<{ line: string }>(database, FINGERPRINT)).map(({ line }) => line.replace(RUN_MIGRATION_OPTIONS, ''));
 
 const ledger = async (database: string): Promise<Array<number>> =>
   (await query<{ created_at: string }>(database, 'SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at'))

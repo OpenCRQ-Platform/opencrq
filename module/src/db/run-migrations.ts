@@ -14,6 +14,52 @@ export const runMigration = async (db: DrizzleDB) => {
   await migrate(db, { migrationsFolder: migrationPath });
   await db.execute(sql`DELETE FROM drizzle.__drizzle_migrations WHERE created_at < ${squashedBefore}`);
   await lowerAnalyzeThresholds(db);
+  await reserveRoomForInPlaceUpdates(db);
+};
+
+/**
+ * The tables the syncs and the score recompute rewrite far more often than they insert into. An
+ * update stays on its page with no new index entry (HOT) only when the page has room, and a sync
+ * rewrites a page's rows in one transaction, before any old version can be reclaimed: on a replay of
+ * the syncs, 70 kept nearly all of them in place, where 90 still sent most to other pages.
+ */
+const IN_PLACE_UPDATE_TABLES = ['asset_evidence', 'asset_evidence_sources', 'cve', 'cve_source_observations', 'finding_scores', 'unique_finding_scores'];
+export const IN_PLACE_UPDATE_FILLFACTOR = 70;
+
+/**
+ * A storage parameter applies to the pages written after it, so the rows already stored move into
+ * the room as they are rewritten. Applied here rather than in a migration because the squash
+ * rebuilds the schema from `drizzle-kit`, which does not model it. A table that left the list loses
+ * the figure, so a migrated database keeps the storage a fresh one gets; any other figure is an
+ * operator's and is kept. The lock it takes conflicts with vacuum only, never with a read or a
+ * write, and a wait past `deadlock_timeout` cancels an autovacuum holding it.
+ */
+const reserveRoomForInPlaceUpdates = async (db: DrizzleDB) => {
+  // A DO block takes no bound parameter: the names and the figure are this file's constants.
+  const tables = sql.raw(IN_PLACE_UPDATE_TABLES.map((name) => `'${name}'`).join(', '));
+  const fillfactor = sql.raw(String(IN_PLACE_UPDATE_FILLFACTOR));
+  await db.execute(sql`
+    DO $$
+    DECLARE t regclass; listed boolean;
+    BEGIN
+      SET LOCAL lock_timeout = '2s';
+      FOR t, listed IN
+        SELECT c.oid::regclass, c.relname IN (${tables}) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'r' AND pg_has_role(c.relowner, 'USAGE')
+          AND (c.relname IN (${tables})) <> coalesce(c.reloptions, '{}') @> ARRAY['fillfactor=${fillfactor}']
+      LOOP
+        BEGIN
+          IF listed THEN
+            EXECUTE format('ALTER TABLE %s SET (fillfactor = ${fillfactor})', t);
+          ELSE
+            EXECUTE format('ALTER TABLE %s RESET (fillfactor)', t);
+          END IF;
+        EXCEPTION WHEN lock_not_available THEN
+          RAISE WARNING 'fillfactor left unchanged on %, locked by another session', t;
+        END;
+      END LOOP;
+    END $$
+  `);
 };
 
 /**
