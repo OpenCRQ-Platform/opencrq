@@ -126,7 +126,7 @@ A CTEM program finds more exposures than any team can fix. Severity scores rank 
 
 ## How it works
 
-OpenCRQ reads threats from an OpenCTI live stream and assets, verdicts and CVEs from OpenAEV, builds one risk scenario per attack outcome on a primary asset and runs a Monte Carlo simulation in the FAIR vocabulary: threat event frequency, attack runs across the supporting assets, loss priced through the loss drivers, and what-ifs on the same simulated worlds so the value of each lever carries no sampling noise.
+OpenCRQ reads threats from an OpenCTI live stream and assets, verdicts and CVEs from OpenAEV, builds one risk scenario per attack outcome on a primary asset and runs a Monte Carlo simulation: threat event frequency, attack runs across the supporting assets, loss priced through the loss drivers, and what-ifs on the same simulated worlds so the value of each lever carries no sampling noise.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./.github/img/readme/flow-dark.svg">

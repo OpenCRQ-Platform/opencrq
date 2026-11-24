@@ -26,7 +26,7 @@ ALE(w) = SUM_a  TEF(w) x share_a x magnitude(w) x pricedFraction(outcomes_a(w))
 | `outcomes_a(w)` | `blocked`, `evicted`, `impactDetected`, `impactUndetected`, summing to 1: the mixture of the paths an attack takes after the door, below |
 | `pricedFraction` | `evicted x RESPONSE_COST_FRACTION + impactDetected x DETECTED_MAGNITUDE_FACTOR + impactUndetected` |
 
-The FAIR vulnerability node is `impactDetected + impactUndetected`: the probability that one attack
+The vulnerability is `impactDetected + impactUndetected`: the probability that one attack
 lands an impact. `LEF = TEF x vulnerability`. `ALE` is therefore TEF x vulnerability x magnitude
 only when every impact is undetected; the price fractions are what make a detected impact and an
 eviction cheaper.
@@ -937,7 +937,7 @@ OpenCRQ's calibration chose it and a security officer is entitled to hear it nam
 | `LAYER_BLOCK_RATE` (`controls/capability/constants.ts`) | 0.47 | Swept: the sweep's one knob. A rung is that many layers of the same control, so `L1/L2/L3 = 1 - (1 - rate)^1..3`. It also sets what the **finding score and the controls screen** read for a rung: moving it moves both, so measure how many findings change band |
 | `visitQuota` | 16 | Swept, with no observed anchor: below the window the weakest classes are stopped on an estate that declares nothing, above it the stronger classes overrun their ceilings |
 | `populationDetectionCap` | 7 | Judgment; kept apart from `visitQuota` |
-| `unknownFlawFloorScale` | 0.04 | Judgment: the top of NIST's very low band, scaled as FAIR reads threat capability |
+| `unknownFlawFloorScale` | 0.04 | Judgment: the top of NIST's very low band, scaled by the class capability |
 | `detectionScale` | 0.0403 | Fitted, at the shipped gain and rate |
 | `signalGain` | 0.3 | Judgment: gain and scale are not separately identifiable, so the gain is decided and the scale fitted at it; each run reports its ALE with the accumulator off |
 | `execFloor` | 0.7 | Judgment: the share of an intrusion that runs without tooling its attacker had to establish, since many intrusions use no malware at all |

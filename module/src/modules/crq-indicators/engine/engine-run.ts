@@ -268,7 +268,7 @@ export interface AttackRunActorResult {
   /** Where this actor's attacks end up by the path they took, over the worlds. */
   readonly paths: AttackPathShares,
   readonly aleMean: number,
-  /** The probability an attack of this actor lands an impact, which is the FAIR vulnerability node. */
+  /** The probability an attack of this actor lands an impact. */
   readonly vulnerability: AttackRunSpread,
   /** Obstacles this actor's repertoire cannot play at all, named rather than shown as a silent zero. */
   readonly unplayableObstacleKeys: ReadonlyArray<string>,
