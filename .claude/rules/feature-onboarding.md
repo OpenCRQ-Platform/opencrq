@@ -265,9 +265,12 @@ comes first (`AssetSourceTiles`): it is the one source that needs no connector a
     the configuration form, Sync now and a link to Integrations.
   - *readonly*: the connector is enabled and the reader lacks `MANAGE_SECURITY`. The drawer says
     that an administrator configures it. The Configure button stays for every reader.
-- **The service account is picked from the existing list**, never created by the step: creating one
-  on the reader's behalf would be new security-sensitive backend behaviour. Listing service
-  accounts needs `MANAGE_SECURITY`, which is why a reader without it gets no form.
+- **The service account is created with the integration or picked from the existing list**
+  (`ServiceAccountChoiceFields`, shared with the Integrations drawers). "Create a new service
+  account" is the default when nothing is bound, prefilled "<Connector> connector": the account is
+  created in the tenant's Connectors group and bound in the same transaction, so a failed save
+  leaves no orphan account. Both need `MANAGE_SECURITY`, which is why a reader without it gets no
+  form.
 - **The configure form is the Integrations drawer's.** `useConfigureIntegration` and
   `ConfigureIntegrationFields` (`features/integrations/components/configure-integration-form.tsx`)
   hold the fields, the schedule and the two writes, and both Integrations' drawer and this one
@@ -324,7 +327,10 @@ add up, and all lead to the same status rule (any threat, section 4). No tile is
   (`features/integrations/components/opencti-configure-form.tsx`), shared with
   `OpenctiConfigureDrawer`, which keeps its own behaviour. When OpenCTI cannot list its Live
   Streams the drawer says so instead of showing the form. *Read-only* says that an administrator
-  configures the connector.
+  configures the connector. The form carries the same service account choice as the Assets step
+  (section 6). A connection the deployment provides is usually bound at start already, to the
+  "OpenCTI (deployment)" account and the "OpenCRQ threat feed" stream OpenCRQ manages
+  (`back/src/features/deployment-integrations/`), so the drawer opens on that binding.
 - **The progress line** is drawn only when the percentage is known: OpenCTI's
   `getBackfillProgress().progressPercent` while `isCatchingUp` and the stream can connect
   (`openctiImportPercent`, shared with the overview's `stepSync`), a job
@@ -480,7 +486,7 @@ shown.
 | OpenCTI drawer and OpenCRQ set action | `front/src/features/onboarding/components/opencti-source-drawer.tsx`, with `getDefaultThreatsCardMode`, `getDefaultThreatsTileAction`, the progress functions and the OpenCTI environment block in `onboarding-utils.ts` |
 | Overview row while a source imports | `front/src/features/onboarding/components/get-started-page.tsx`, `stepSync` in `onboarding-utils.ts`, `useStepSyncReads` and `useImportedCount` in `hooks/use-source-reads.ts`, `SourceProgressLine` from `source-tile.tsx` |
 | Status reads | `module/src/modules/onboarding-wizards/repository.ts` (`hasSupportingAsset`, `countDeclaredEstateKinds`, `hasThreat`, `countCapabilityAssessments`, `findFinancialProfile`, `hasPrimaryAsset`, `hasComputedRiskScenario`, and the join of `findFirstOnboardingWizard` for Tolerance), with the questionnaire's rule in `module/src/modules/financial-profiles/questionnaire-progress.ts` |
-| Configure forms shared with the Integrations drawers | `front/src/features/integrations/components/{configure-integration-form,configure-integration-drawer}.tsx` (Defender), `front/src/features/integrations/components/{opencti-configure-form,opencti-configure-drawer}.tsx` (OpenCTI) |
+| Configure forms shared with the Integrations drawers | `front/src/features/integrations/components/{configure-integration-form,configure-integration-drawer}.tsx` (Defender), `front/src/features/integrations/components/{opencti-configure-form,opencti-configure-drawer}.tsx` (OpenCTI), `front/src/features/integrations/components/service-account-choice-fields.tsx` and `front/src/features/integrations/service-account-choice-utils.ts` (the service account choice both carry) |
 | Seen marker | `front/src/stores/onboarding-seen-collection.ts` |
 | Navigation entry | `front/src/components/layout/main-layout/fds-navbar/{nav-model,nav-items,fds-navbar}.tsx` |
 | Shared pieces this feature extended | `front/src/components/shared/wizard-step-indicator.tsx` (`completedStepKeys`, `renderStepLink`, `syncingStepKeys`, `stepProgress`, wraps when its steps overflow) with `step-progress-ring.tsx`, `front/src/components/shared/unsaved-changes-dialog.tsx` (`title`, `description`, `discardLabel`, defaults unchanged), `front/src/features/organizations/components/revenue-band-select.tsx`, `front/src/features/integrations` (`ConnectorStateChip`, `DisableDefaultThreatsDialog`), `front/src/features/controls/capability/ui/strength-info.tsx` (the rung descriptions, shared with the Controls edit drawer) |
@@ -641,9 +647,8 @@ The overview's primary button reads "What you can do now" and leads there once t
 
 - **Finances and Tolerance, deferred**: pre-filling the answers from the sector and the country,
   and assigning a question to a colleague.
-- **Assets, deferred**: the Microsoft Defender service account created for the tenant by the step
-  instead of picked from the list, which needs a decision on a security-sensitive backend
-  behaviour, and a live list of the assets as the import brings them in, in place of the count.
+- **Assets, deferred**: a live list of the assets as the import brings them in, in place of the
+  count.
 - **Threats, deferred**: a live list of the threats as an import brings them in, in place of the
   OpenCTI count, like the Assets one.
 - **Lighter wizards** for risk scopes created after the first one. They attach to the scope through
