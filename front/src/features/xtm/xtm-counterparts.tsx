@@ -1,11 +1,11 @@
 import type { TRPCRouter } from '@app/back/src/types/trpc-router';
-import { Button, Chip, IconButton, Skeleton } from '@filigran/design-system';
+import { Button, Chip, IconButton, Paper, Separator, Skeleton } from '@filigran/design-system';
 import { Popover, PopoverContent, PopoverTrigger } from '@filigran/ui';
 import { t } from '@lingui/core/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import type { FunctionComponent, ReactElement } from 'react';
 import { TooltipHint, TooltipHintProvider } from '../../components/shared/tooltip-hint';
 import { useHasManageSecurity } from '../../hooks/utils/use-has-manage-security';
@@ -333,7 +333,7 @@ const SurfaceSection: FunctionComponent<XtmSurfaceSection & { kind: CounterpartK
           {(state.counterpart.objectType || state.counterpart.objectName) && (
             <span className="flex min-w-0 items-center gap-2">
               {state.counterpart.objectType && <Chip label={state.counterpart.objectType} />}
-              {state.counterpart.objectName && <span className="truncate">{state.counterpart.objectName}</span>}
+              {state.counterpart.objectName && <CutName value={state.counterpart.objectName} />}
             </span>
           )}
           {state.counterpart.facts.length > 0 && (
@@ -372,6 +372,21 @@ const SurfaceSection: FunctionComponent<XtmSurfaceSection & { kind: CounterpartK
       )}
     </section>
   );
+};
+
+/**
+ * The object's name on one line, cut with an ellipsis when wider than the surface; only a cut name
+ * carries the shared tooltip with the name in full.
+ */
+const CutName: FunctionComponent<{ value: string }> = ({ value }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [cut, setCut] = useState(false);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    setCut(element !== null && element.scrollWidth > element.clientWidth);
+  }, [value]);
+  const name = <span ref={ref} className="min-w-0 truncate" data-testid="xtm-object-name" data-cut={cut}>{value}</span>;
+  return cut ? <TooltipHint hint={value}>{name}</TooltipHint> : name;
 };
 
 /** A counterpart link is followed only when it is an http(s) address. */
@@ -415,18 +430,24 @@ export const XtmSurface: FunctionComponent<{ kind: CounterpartKind, sections: Re
           </PopoverTrigger>
         </TooltipHint>
       </TooltipHintProvider>
-      <PopoverContent align="end" className="w-80 p-4" aria-label={t`Across the XTM Platform`} data-testid="xtm-surface">
-        <div className="flex flex-col gap-4">
-          <span className="flex items-center gap-2">
-            <ProductMark product="xtmone" muted={found === 0} />
-            <span className="font-semibold">{t`Across the XTM Platform`}</span>
-          </span>
-          {sections.map((section, index) => (
-            <div key={section.product} className={index > 0 ? 'flex flex-col gap-4 border-t pt-4' : 'flex flex-col gap-4'} data-testid={index > 0 ? 'xtm-surface-separated' : undefined}>
-              <SurfaceSection {...section} kind={kind} />
+      {/* The popover only positions the surface: the design system Paper draws it (no shadow, the elevation's surface and border), as OpenCTI #20153. */}
+      <PopoverContent align="end" className="w-auto border-0 bg-transparent p-0 shadow-none" aria-label={t`Across the XTM Platform`} data-testid="xtm-surface">
+        <Paper elevation={2} padding={16} data-testid="xtm-surface-paper">
+          <TooltipHintProvider>
+            <div className="flex w-80 flex-col gap-4">
+              <span className="flex items-center gap-2">
+                <ProductMark product="xtmone" muted={found === 0} />
+                <span className="font-semibold">{t`Across the XTM Platform`}</span>
+              </span>
+              {sections.map((section, index) => (
+                <Fragment key={section.product}>
+                  {index > 0 && <Separator data-testid="xtm-surface-separator" />}
+                  <SurfaceSection {...section} kind={kind} />
+                </Fragment>
+              ))}
             </div>
-          ))}
-        </div>
+          </TooltipHintProvider>
+        </Paper>
       </PopoverContent>
     </Popover>
   );
