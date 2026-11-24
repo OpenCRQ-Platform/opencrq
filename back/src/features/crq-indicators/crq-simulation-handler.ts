@@ -1,5 +1,5 @@
 import type { JobHandler } from '@app/module';
-import { allServiceDefinitions, bookedRunProfile, createServices } from '@app/module';
+import { allServiceDefinitions, bookedRunProfile, createServices, isRequestedCrqSimulation } from '@app/module';
 import type { CrqBaselinePayload } from './crq-simulation-origin';
 import { dbEngine } from '../../engines/db';
 import { createLogger } from '../../utils/logger';
@@ -25,6 +25,9 @@ export const crqSimulationHandler: JobHandler<CrqBaselinePayload> = async (ctx) 
     {
       priceBudgetReviews: true,
       appVersion: imageVersion(),
+      // An event's ask over inputs the latest run already answered stores no duplicate run;
+      // a run someone asked for runs whatever its inputs.
+      skipAnswered: !isRequestedCrqSimulation(ctx.payload),
     },
   );
   if (outcome != null && 'skipped' in outcome) {

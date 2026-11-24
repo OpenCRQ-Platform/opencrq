@@ -67,7 +67,7 @@ import { compareCveScenarioGains } from './cve-scenario-gain-order';
 import { fingerprintOf } from './run-fingerprint';
 import { resultFingerprintOf } from './result-fingerprint';
 import { crqIndicatorsRepository } from './repository';
-import { computesSubject, familyRunOwnership, FULL_RUN_PROFILE, PRICE_RUN_PROFILE, runProfileTokens } from './run-profile';
+import { computesSubject, familyRunOwnership, FULL_RUN_PROFILE, PRICE_RUN_PROFILE, runProfileCovers, runProfileTokens } from './run-profile';
 import { summariseXtmExposure } from './xtm-exposure';
 
 type CrqRepo = InferRepository<typeof crqIndicatorsRepository>;
@@ -1008,6 +1008,25 @@ export interface ScenarioPricingPassOptions {
 }
 
 /**
+ * Whether the scenario's latest run already answers a booking: computed from the inputs this one
+ * read, with every figure family it asks for. A priced scenario's fingerprint leaves its plans out,
+ * so a booking naming plans there is never answered: the plan scope it re-prices is not in it.
+ */
+const latestRunAnswers = async (
+  repo: CrqRepo,
+  riskScenarioId: string,
+  inputsFingerprint: string,
+  computed: CrqRunProfile,
+  priceable: boolean,
+): Promise<boolean> => {
+  if (priceable && (computed.plans === 'all' || computed.plans.length > 0)) {
+    return false;
+  }
+  const latest = await repo.findLatestRunByScenarioId(riskScenarioId);
+  return latest?.inputsFingerprint === inputsFingerprint && runProfileCovers(latest.profile, computed);
+};
+
+/**
  * The attack run engine on a real tenant's scenario: it resolves the inputs, evaluates the law over
  * the drawn worlds and answers.
  *
@@ -1035,6 +1054,10 @@ export interface ScenarioPricingPassOptions {
  * run when the result equals the latest run's, a price run unless the scenario has no price: that
  * run takes this one's inputs fingerprint, so the next pass over the same inputs stops before the
  * engine, and keeps its moments, the result having held since them.
+ *
+ * `skipAnswered`, for a run an event booked, answers `unchanged` before the engine when the
+ * scenario's latest run was computed from the same inputs and covers every family this one asks
+ * for, so sequential event asks over unchanged inputs store no duplicate run.
  */
 const runAttackRunEngine = async (
   { repo, deps, atomic }: ServiceContext<CrqRepo, EngineDeps>,
@@ -1047,7 +1070,8 @@ const runAttackRunEngine = async (
     priceBudgetReviews = false,
     appVersion,
     skipUnchanged = false,
-  }: { priceBudgetReviews?: boolean, appVersion?: string, skipUnchanged?: boolean } = {},
+    skipAnswered = false,
+  }: { priceBudgetReviews?: boolean, appVersion?: string, skipUnchanged?: boolean, skipAnswered?: boolean } = {},
 ): Promise<AttackRunEngineRun | AttackRunEngineSkip | null> => {
   const readAt = new Date();
   const scenario = await deps.riskScenarios.getRiskScenarioPricingSubject(riskScenarioId);
@@ -1223,6 +1247,9 @@ const runAttackRunEngine = async (
     ...(priceable ? {} : { plans: planInputs, planScopeVersionById }),
   });
   if (skipUnchanged && (await repo.findLatestRunByScenarioId(riskScenarioId))?.inputsFingerprint === inputsFingerprint) {
+    return { skipped: 'unchanged' };
+  }
+  if (skipAnswered && await latestRunAnswers(repo, riskScenarioId, inputsFingerprint, computed, priceable)) {
     return { skipped: 'unchanged' };
   }
 

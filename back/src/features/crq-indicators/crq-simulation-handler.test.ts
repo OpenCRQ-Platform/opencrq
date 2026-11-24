@@ -16,6 +16,7 @@ vi.mock('@app/module', () => ({
   allServiceDefinitions: [],
   createServices: vi.fn().mockReturnValue({ withOrigin: mockWithOrigin }),
   bookedRunProfile: (payload: { profile?: unknown }) => payload.profile ?? FULL_RUN_PROFILE,
+  isRequestedCrqSimulation: (payload: object) => 'userId' in payload || 'serviceAccountId' in payload || 'requested' in payload,
 }));
 
 vi.mock('../../engines/db', () => ({
@@ -67,7 +68,7 @@ describe('crqSimulationHandler', () => {
     await crqSimulationHandler(ctx);
 
     expect(mockRunAttackRunEngine).toHaveBeenCalledOnce();
-    expect(mockRunAttackRunEngine).toHaveBeenCalledWith(SCENARIO_ID, TENANT_ID, ctx.signal, FULL_RUN_PROFILE, 'job-1', { priceBudgetReviews: true });
+    expect(mockRunAttackRunEngine).toHaveBeenCalledWith(SCENARIO_ID, TENANT_ID, ctx.signal, FULL_RUN_PROFILE, 'job-1', { priceBudgetReviews: true, skipAnswered: false });
   });
 
   it('runs the profile the booking carries', async () => {
@@ -76,7 +77,17 @@ describe('crqSimulationHandler', () => {
 
     await crqSimulationHandler(makeCtx({ payload: { riskScenarioId: SCENARIO_ID, profile } }));
 
-    expect(mockRunAttackRunEngine).toHaveBeenLastCalledWith(SCENARIO_ID, TENANT_ID, expect.anything(), profile, 'job-1', { priceBudgetReviews: true });
+    expect(mockRunAttackRunEngine).toHaveBeenLastCalledWith(SCENARIO_ID, TENANT_ID, expect.anything(), profile, 'job-1', { priceBudgetReviews: true, skipAnswered: true });
+  });
+
+  it('lets a run someone asked for run over unchanged inputs, and skips an event booking the latest run answers', async () => {
+    mockRunAttackRunEngine.mockResolvedValue(undefined);
+
+    await crqSimulationHandler(makeCtx({ payload: { riskScenarioId: SCENARIO_ID, serviceAccountId: 'sa-1' } }));
+    expect(mockRunAttackRunEngine).toHaveBeenLastCalledWith(SCENARIO_ID, TENANT_ID, expect.anything(), FULL_RUN_PROFILE, 'job-1', expect.objectContaining({ skipAnswered: false }));
+
+    await crqSimulationHandler(makeCtx({ payload: { riskScenarioId: SCENARIO_ID } }));
+    expect(mockRunAttackRunEngine).toHaveBeenLastCalledWith(SCENARIO_ID, TENANT_ID, expect.anything(), FULL_RUN_PROFILE, 'job-1', expect.objectContaining({ skipAnswered: true }));
   });
 
   it('logs a skip and ends without failing when the engine priced nothing', async () => {

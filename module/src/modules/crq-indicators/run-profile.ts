@@ -42,6 +42,21 @@ export const computesSubject = (subjects: 'all' | ReadonlyArray<string>, id: str
   subjects === 'all' || subjects.includes(id);
 
 /**
+ * Whether a run recorded under `tokens` computed every figure family `profile` asks for: a whole
+ * family by its own token, a named subject by its token or by its family's. A price run (no token)
+ * covers only a price booking.
+ */
+export const runProfileCovers = (tokens: ReadonlyArray<string>, profile: CrqRunProfile): boolean => {
+  const held = new Set(tokens);
+  const covers = (family: CrqRunFamily, subjects: 'all' | ReadonlyArray<string>): boolean =>
+    held.has(family) || (subjects !== 'all' && subjects.every((id) => held.has(`${family}:${id}`)));
+  return (!profile.techniques || held.has('techniques'))
+    && (!profile.cves || held.has('cves'))
+    && covers('levers', profile.levers)
+    && covers('plans', profile.plans);
+};
+
+/**
  * The profile as the run row records it: a family computed whole is its own token, a named subject
  * is `<family>:<id>`. A price run records no token.
  */
@@ -111,14 +126,32 @@ const SubjectsSchema = z.union([z.literal('all'), z.array(z.string())]);
 const BookedPayloadSchema = z.looseObject({
   /* A payload queued before runs had a `cves` family carries none, and asked for no CVE what-if. */
   profile: z.object({ techniques: z.boolean(), cves: z.boolean().default(false), levers: SubjectsSchema, plans: SubjectsSchema }).optional().catch(undefined),
+  /* Someone asked for this run from a screen or a service account: it runs whatever its inputs. */
+  requested: z.boolean().optional().catch(undefined),
 });
 
 /** What a `crq-simulation` booking computes. A payload without a profile was booked as a full run. */
 export const bookedRunProfile = (payload: unknown): CrqRunProfile =>
   BookedPayloadSchema.parse(payload).profile ?? FULL_RUN_PROFILE;
 
+/**
+ * Whether a `crq-simulation` booking was asked for by someone, so it runs even when the scenario's
+ * latest run already answers it. A payload naming a person or a service account was booked by a
+ * request, one queued before the `requested` mark included; an identityless one was booked by an
+ * event unless a request folded into it.
+ */
+export const isRequestedCrqSimulation = (payload: unknown): boolean => {
+  const parsed = BookedPayloadSchema.parse(payload);
+  return parsed.requested === true || 'userId' in parsed || 'serviceAccountId' in parsed;
+};
+
 /** The payload a `crq-simulation` booking carries once `asked` folds into it: the run computing both. */
 export const foldCrqSimulationPayload = (held: unknown, asked: unknown): Record<string, unknown> => {
   const parsed = BookedPayloadSchema.parse(held);
-  return { ...parsed, profile: mergeRunProfiles(parsed.profile ?? FULL_RUN_PROFILE, bookedRunProfile(asked)) };
+  return {
+    ...parsed,
+    profile: mergeRunProfiles(parsed.profile ?? FULL_RUN_PROFILE, bookedRunProfile(asked)),
+    // A request folding into an event booking keeps its right to run; the held identity is kept.
+    ...(!isRequestedCrqSimulation(held) && isRequestedCrqSimulation(asked) ? { requested: true } : {}),
+  };
 };
