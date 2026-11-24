@@ -156,6 +156,9 @@ describe('QueuePage', () => {
     expect(succeededSection.getByText('Partial')).toBeDefined();
     // 'Succeeded' is also the section title: the chip is the second occurrence.
     expect(succeededSection.getAllByText('Succeeded').length).toBeGreaterThanOrEqual(2);
+    // Status sits right after Kind, as on the Runs tab, so the date keeps its width.
+    const headers = succeededSection.getAllByRole('columnheader').map((el) => el.textContent?.trim());
+    expect(headers.indexOf('Status')).toBe(headers.indexOf('Kind') + 1);
   });
 
   it('paginating the pending section does not repaginate the other three', async () => {

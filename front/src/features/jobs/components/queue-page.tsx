@@ -44,9 +44,14 @@ const parametersCell = ({ row }: { row: { original: { payload: string | null } }
     : <span className="block max-w-[220px] truncate font-content-code text-content-code" title={payload}>{payload}</span>;
 };
 
-const instantCell = (value: string | null): ReactElement => (
-  value === null ? <EmptyValue /> : <span>{formatDateTime(value)}</span>
-);
+// The title gives the full time back when a narrow viewport cuts the cell.
+const instantCell = (value: string | null): ReactElement => {
+  if (value === null) {
+    return <EmptyValue />;
+  }
+  const formatted = formatDateTime(value);
+  return <span title={formatted}>{formatted}</span>;
+};
 
 const relatedToColumn = <T extends { payload: string | null }>(referencesFor: RunReferencesLookup['referencesFor']) => ({
   id: 'relatedTo',
@@ -175,18 +180,22 @@ export const QueuePage: FunctionComponent = () => {
   ];
 
   // The section lists partial segments with the runs that succeeded (#157): each row says which it is,
-  // with the chip the Runs tab shows, so a partial segment never reads as a success.
+  // with the chip the Runs tab shows, so a partial segment never reads as a success. Status sits right
+  // after Kind, as on the Runs tab, sized to its chip so "Finished at" keeps the full time at 1080.
   const succeededColumns: Array<ColumnDefWithOptionsHeader<QueueRunRow, unknown>> = [
-    ...finishedColumns,
+    { id: 'kind', accessorKey: 'kind', header: t`Kind`, size: 110, cell: kindCell },
     {
       id: 'status',
       accessorKey: 'status',
       header: t`Status`,
-      size: 110,
+      size: 60,
       cell: ({ row }): ReactElement => (
         <Chip severity={RUN_STATUS_SEVERITY[row.original.status]} label={runStatusLabel(row.original.status)} />
       ),
     },
+    relatedToColumn<QueueRunRow>(referencesFor),
+    { id: 'payload', header: t`Parameters`, size: 70, cell: parametersCell },
+    { id: 'finishedAt', accessorKey: 'finishedAt', header: t`Finished at`, size: 150, cell: ({ row }): ReactElement => instantCell(row.original.finishedAt) },
   ];
 
   return (
