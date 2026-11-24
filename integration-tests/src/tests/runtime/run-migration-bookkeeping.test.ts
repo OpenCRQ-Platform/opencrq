@@ -106,3 +106,49 @@ describe('runMigration analyze threshold', () => {
     expect(await reloptions()).toEqual(['autovacuum_analyze_threshold=0']);
   });
 });
+
+describe('runMigration fillfactor', () => {
+  // One of the tables the syncs rewrite, standing for all of them.
+  const table = 'cve';
+
+  const fillfactor = async (): Promise<string | undefined> => {
+    const { rows: [found] } = await pool.query<{ reloptions: Array<string> | null }>(
+      'SELECT reloptions FROM pg_class WHERE oid = $1::regclass',
+      [table],
+    );
+    return found.reloptions?.find((option) => option.startsWith('fillfactor='));
+  };
+
+  beforeEach(async () => {
+    await pool.query(`ALTER TABLE ${table} RESET (fillfactor)`);
+  });
+
+  afterEach(async () => {
+    await pool.query(`ALTER TABLE ${table} SET (fillfactor = 70)`);
+  });
+
+  it('should give a table the syncs rewrite its fillfactor back', async () => {
+    await runMigration(db);
+
+    expect(await fillfactor()).toBe('fillfactor=70');
+  });
+
+  it('should leave a table another session holds to the next run instead of failing the boot', async () => {
+    const holder = await pool.connect();
+    try {
+      await holder.query('BEGIN');
+      await holder.query(`LOCK TABLE ${table} IN SHARE UPDATE EXCLUSIVE MODE`);
+
+      await runMigration(db);
+
+      expect(await fillfactor()).toBeUndefined();
+    } finally {
+      await holder.query('ROLLBACK');
+      holder.release();
+    }
+
+    await runMigration(db);
+
+    expect(await fillfactor()).toBe('fillfactor=70');
+  });
+});

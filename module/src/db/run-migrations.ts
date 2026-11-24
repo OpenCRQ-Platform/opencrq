@@ -26,7 +26,7 @@ export const runMigration = async (db: DrizzleDB) => {
  * rewrites a page's rows in one transaction, before any old version can be reclaimed: on a replay of
  * the syncs, 70 kept nearly all of them in place, where 90 still sent most to other pages.
  */
-export const IN_PLACE_UPDATE_TABLES = [assetEvidence, assetEvidenceSources, cve, cveSourceObservations, findingScores, uniqueFindingScores]
+const IN_PLACE_UPDATE_TABLES = [assetEvidence, assetEvidenceSources, cve, cveSourceObservations, findingScores, uniqueFindingScores]
   .map((table) => getTableName(table));
 export const IN_PLACE_UPDATE_FILLFACTOR = 70;
 
