@@ -1270,7 +1270,7 @@ const runAttackRunEngine = async (
     await storeEngineRun(atomicRepo, rows, resultFingerprint);
     return { aleBefore: latest?.aleMean ?? null };
   });
-  return stored ? { runId, result, reach, ...stored, aleAfter: rows.run.aleMean } : { skipped: 'same-result' };
+  return stored ? { runId, result, reach, ...stored, aleAfter: rows.run.aleMean ?? null } : { skipped: 'same-result' };
 };
 
 // ─── Service ─────────────────────────────────────────────────────────────────
