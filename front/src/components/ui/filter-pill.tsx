@@ -64,7 +64,8 @@ export const FilterClearAll: FunctionComponent<FilterClearAllProps> = ({ count, 
     ? null
     : (
       <span className="flex shrink-0 items-center gap-2">
-        <span className="txt-sub-content text-muted-foreground">
+        {/* The foreground token: muted-foreground reads 3.79:1 on the light surface, under WCAG AA's 4.5:1. */}
+        <span className="txt-sub-content text-foreground" data-testid="filter-clear-all-count">
           {plural(count, { one: '# active filter', other: '# active filters' })}
         </span>
         <Button type="button" priority="tertiary" onClick={onClearAll}>

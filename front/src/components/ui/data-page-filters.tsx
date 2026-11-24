@@ -36,6 +36,8 @@ interface DataPageFiltersResult<T> {
   controls: ReactNode,
   /** Whether a search or a filter is set. */
   narrowed: boolean,
+  /** Lifts the search and every filter, for the no-results card under the table. */
+  clearAll: () => void,
 }
 
 const matchesFilter = <T extends object>(row: T, filter: DataPageFilter<T>, value: string): boolean => {
@@ -123,5 +125,5 @@ export const useDataPageFilters = <T extends object>(
       </>
     );
 
-  return { rows, controls, narrowed };
+  return { rows, controls, narrowed, clearAll };
 };

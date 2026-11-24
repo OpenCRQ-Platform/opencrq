@@ -21,6 +21,7 @@ import { cn } from '../../utils';
 import { DataPageToolbar } from './data-page-toolbar';
 import { useDataPageFilters } from './data-page-filters';
 import { HighlightFilterToggle } from './highlight-filter-toggle';
+import { ListNoResults } from './list-no-results';
 import { SegmentedCounts } from './segmented-counts';
 import { IconButtonGroup } from './icon-button-group';
 import { getDataTableI18nKey } from './data-table-i18n';
@@ -336,7 +337,7 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
   const pageIndex = controlledPageIndex ?? ownPageIndex;
   // A server-paginated list holds one page, so narrowing it here would hide rows of the others.
   const clientSide = total === undefined;
-  const { rows: data, controls: filterControls, narrowed } = useDataPageFilters(
+  const { rows: data, controls: filterControls, narrowed, clearAll: clearFilters } = useDataPageFilters(
     allData,
     clientSide ? search : undefined,
     clientSide ? filters : undefined,
@@ -578,7 +579,8 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
 
   // Only a list with no row at all is empty: a page can come back empty while `total` still counts rows
   // (past the last page, or read in another statement than its count).
-  // A search or a filter that matches nothing leaves the table up, with its controls to undo it.
+  // A search or a filter that matches nothing leaves the toolbar up, with its controls to undo it,
+  // and says so under it with the shared no-results card.
   if (emptyState && !isLoading && allData.length === 0 && (total ?? 0) === 0) {
     return (
       <div className="flex flex-col gap-4">
@@ -661,6 +663,11 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
         // toolbar. With no toolbar it is a gap under the card's title and under nothing else.
         // With `fillHeight` it carries the flex chain too, or the table would stop fitting.
         : <div className={cn('[&_.twp]:mt-0', fillHeight === true && 'flex min-h-0 flex-1 flex-col')}>{table}</div>}
+      {narrowed && !isLoading && data.length === 0 && (
+        <div className="mt-4" data-testid="data-page-no-results">
+          <ListNoResults onClearFilters={clearFilters} />
+        </div>
+      )}
       {pendingStatus}
       {unfolded.map((item) => (
         <SlottedRow key={item.id} rowKey={item.id} domId={subRowId(item.id)} onMounted={handleSubRowMounted}>

@@ -579,6 +579,30 @@ describe('DataPageLayout search and filters', () => {
     expect(screen.getByText('0 of 3 entities')).toBeTruthy();
   });
 
+  it('should say No results under the toolbar when nothing matches, and lift the search with Clear filters', () => {
+    renderSearchable();
+
+    typeSearch('nothing like it');
+
+    expect(screen.getByTestId('data-page-no-results')).toBeTruthy();
+    expect(screen.getByText('No results')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    advance(500);
+
+    expect(screen.queryByTestId('data-page-no-results')).toBeNull();
+    expect(rowNames()).toHaveLength(3);
+    expect(screen.getByText('3 entities')).toBeTruthy();
+  });
+
+  it('should not draw the no-results card while the search lets rows through', () => {
+    renderSearchable();
+
+    typeSearch('payment');
+
+    expect(screen.queryByTestId('data-page-no-results')).toBeNull();
+  });
+
   it('should lift the search with Clear all', () => {
     renderSearchable();
     typeSearch('payment');
