@@ -62,7 +62,27 @@ describe('CRQ price pass over unchanged inputs', () => {
       .toMatchObject({ priced: 1, moved: [riskScenarioId], walked: 1, total: 1 });
     expect(progress).toEqual([{ walked: 0, total: 1 }]);
 
-    expect(await pass()).toMatchObject({ priced: 0, unchanged: 1, moved: [], walked: 1, total: 1 });
+    expect(await pass()).toMatchObject({ priced: 0, unchanged: 1, moved: [], movedAle: [], walked: 1, total: 1 });
+  });
+
+  it('should report the ale before and after of each scenario it re-priced', async () => {
+    await seed();
+    const latestAle = async () => (await db.select({ aleMean: crqIndicatorRuns.aleMean }).from(crqIndicatorRuns)
+      .where(eq(crqIndicatorRuns.riskScenarioId, riskScenarioId))
+      .orderBy(desc(crqIndicatorRuns.createdAt), desc(crqIndicatorRuns.id))
+      .limit(1))[0]?.aleMean ?? null;
+
+    const first = await pass({ appVersion: 'image-a' });
+    const firstAle = await latestAle();
+    expect(firstAle).not.toBeNull();
+    expect(first?.movedAle).toEqual([{ riskScenarioId, aleBefore: null, aleAfter: firstAle, aleDelta: null }]);
+
+    // A new image stamps a new fingerprint, so the next pass stores a run over the same inputs.
+    const second = await pass({ appVersion: 'image-b' });
+    const secondAle = await latestAle();
+    expect(second?.movedAle).toEqual([{
+      riskScenarioId, aleBefore: firstAle, aleAfter: secondAle, aleDelta: (secondAle ?? 0) - (firstAle ?? 0),
+    }]);
   });
 
   it('should still write the run of a manual simulation over unchanged inputs', async () => {

@@ -39,7 +39,11 @@ const makeCtx = (state: State | null = null) => {
 };
 
 const passOf = (overrides: Partial<ScenarioPricingPass>): ScenarioPricingPass => ({
-  priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [], walked: 0, total: 0, resumeAfter: null, ...overrides,
+  priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [], movedAle: [], walked: 0, total: 0, resumeAfter: null, ...overrides,
+});
+
+const aleMove = (riskScenarioId: string, aleBefore: number | null, aleAfter: number | null) => ({
+  riskScenarioId, aleBefore, aleAfter, aleDelta: aleBefore === null || aleAfter === null ? null : aleAfter - aleBefore,
 });
 
 /** Answers `pass`, calling the handler's progress hook first as the service does. */
@@ -73,7 +77,7 @@ describe('crqPriceRecomputeHandler', () => {
   });
 
   it('reports the scenarios walked and names the one whose price moved', async () => {
-    answer(passOf({ priced: 1, unchanged: 2, moved: ['scenario-b'], walked: 3, total: 3 }));
+    answer(passOf({ priced: 1, unchanged: 2, moved: ['scenario-b'], movedAle: [aleMove('scenario-b', 1_000, 1_250)], walked: 3, total: 3 }));
     const { ctx, progress } = makeCtx();
 
     expect(await crqPriceRecomputeHandler(ctx)).toBeUndefined();
@@ -81,7 +85,16 @@ describe('crqPriceRecomputeHandler', () => {
     expect(progress[0]).toEqual({ processedTotal: 0, expectedTotal: 3 });
     expect(progress.at(-1)).toMatchObject({ processedTotal: 3, expectedTotal: 3 });
     expect(summaryOf(progress)).toEqual({
-      walked: 3, priced: 1, unchanged: 2, sameResult: 0, skipped: 0, refused: 0, moved: ['scenario-b'], movedCount: 1, complete: true,
+      walked: 3,
+      priced: 1,
+      unchanged: 2,
+      sameResult: 0,
+      skipped: 0,
+      refused: 0,
+      moved: ['scenario-b'],
+      movedAle: [{ riskScenarioId: 'scenario-b', aleBefore: 1_000, aleAfter: 1_250, aleDelta: 250 }],
+      movedCount: 1,
+      complete: true,
     });
   });
 
@@ -92,11 +105,11 @@ describe('crqPriceRecomputeHandler', () => {
     await crqPriceRecomputeHandler(ctx);
 
     expect(progress.at(-1)).toMatchObject({ processedTotal: 2 });
-    expect(summaryOf(progress)).toMatchObject({ priced: 0, moved: [], movedCount: 0, complete: true });
+    expect(summaryOf(progress)).toMatchObject({ priced: 0, moved: [], movedAle: [], movedCount: 0, complete: true });
   });
 
   it('carries its totals to the continuation, which reports the whole chain', async () => {
-    answer(passOf({ priced: 1, unchanged: 1, moved: ['scenario-a'], walked: 2, total: 5, resumeAfter: 'scenario-b' }));
+    answer(passOf({ priced: 1, unchanged: 1, moved: ['scenario-a'], movedAle: [aleMove('scenario-a', null, 400)], walked: 2, total: 5, resumeAfter: 'scenario-b' }));
     const first = makeCtx();
 
     const result = await crqPriceRecomputeHandler(first.ctx);
@@ -104,7 +117,7 @@ describe('crqPriceRecomputeHandler', () => {
     expect(summaryOf(first.progress)).toMatchObject({ walked: 2, moved: ['scenario-a'], complete: false });
     expect(result).toMatchObject({ continuation: true, state: { after: 'scenario-b' } });
 
-    answer(passOf({ priced: 1, refused: [{ riskScenarioId: 'scenario-d', reason: 'no scope' }], moved: ['scenario-c'], walked: 3, total: 3 }));
+    answer(passOf({ priced: 1, refused: [{ riskScenarioId: 'scenario-d', reason: 'no scope' }], moved: ['scenario-c'], movedAle: [aleMove('scenario-c', 900, 600)], walked: 3, total: 3 }));
     const second = makeCtx(result?.state ?? null);
 
     await crqPriceRecomputeHandler(second.ctx);
@@ -113,19 +126,49 @@ describe('crqPriceRecomputeHandler', () => {
     expect(second.progress[0]).toEqual({ processedTotal: 2, expectedTotal: 5 });
     expect(second.progress.at(-1)).toMatchObject({ processedTotal: 5, expectedTotal: 5 });
     expect(summaryOf(second.progress)).toEqual({
-      walked: 5, priced: 2, unchanged: 1, sameResult: 0, skipped: 0, refused: 1, moved: ['scenario-a', 'scenario-c'], movedCount: 2, complete: true,
+      walked: 5,
+      priced: 2,
+      unchanged: 1,
+      sameResult: 0,
+      skipped: 0,
+      refused: 1,
+      moved: ['scenario-a', 'scenario-c'],
+      movedAle: [
+        { riskScenarioId: 'scenario-a', aleBefore: null, aleAfter: 400, aleDelta: null },
+        { riskScenarioId: 'scenario-c', aleBefore: 900, aleAfter: 600, aleDelta: -300 },
+      ],
+      movedCount: 2,
+      complete: true,
+    });
+  });
+
+  it('resumes a chain whose carried totals predate the ale moves', async () => {
+    answer(passOf({ priced: 1, moved: ['scenario-c'], movedAle: [aleMove('scenario-c', 900, 600)], walked: 1, total: 1 }));
+    const { ctx, progress } = makeCtx({
+      after: 'scenario-b',
+      totals: { walked: 2, priced: 1, unchanged: 1, sameResult: 0, skipped: 0, refused: 0, moved: ['scenario-a'], movedCount: 1 },
+    });
+
+    await crqPriceRecomputeHandler(ctx);
+
+    expect(summaryOf(progress)).toMatchObject({
+      moved: ['scenario-a', 'scenario-c'],
+      movedAle: [{ riskScenarioId: 'scenario-c', aleBefore: 900, aleAfter: 600, aleDelta: -300 }],
+      movedCount: 2,
     });
   });
 
   it('names at most the cap of moved scenarios and keeps counting past it', async () => {
     const moved = Array.from({ length: CRQ_PRICE_MOVED_IDS_CAP + 5 }, (_, index) => `scenario-${index}`);
-    answer(passOf({ priced: moved.length, moved, walked: moved.length, total: moved.length }));
+    const movedAle = moved.map((id) => aleMove(id, 1, 2));
+    answer(passOf({ priced: moved.length, moved, movedAle, walked: moved.length, total: moved.length }));
     const { ctx, progress } = makeCtx();
 
     await crqPriceRecomputeHandler(ctx);
 
     const summary = summaryOf(progress);
     expect(summary.moved).toHaveLength(CRQ_PRICE_MOVED_IDS_CAP);
+    expect(summary.movedAle).toHaveLength(CRQ_PRICE_MOVED_IDS_CAP);
     expect(summary.movedCount).toBe(CRQ_PRICE_MOVED_IDS_CAP + 5);
   });
 });

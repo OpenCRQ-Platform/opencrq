@@ -617,6 +617,14 @@ export interface AttackRunEngineRun {
   runId: string,
   result: EngineRunResult,
   reach: AttackRunReachReport,
+  /**
+   * The ALE mean of the scenario's latest run before this one, read in the transaction that stored
+   * it; null when there was none or it was unpriced. Only a pass that compares (`skipUnchanged`)
+   * reads the latest run, so any other run answers null.
+   */
+  aleBefore: number | null,
+  /** The ALE mean this run stored: null on an unpriced scenario, as the stored column. */
+  aleAfter: number | null,
 }
 
 /** A scenario the engine deliberately did not price, and the answer a surface owes for it. */
@@ -940,12 +948,26 @@ export interface ScenarioPricingPass {
   refused: Array<{ riskScenarioId: string, reason: string }>,
   /** The scenarios this pass wrote a new run for, in the order it walked them: the ones `priced` counts. */
   moved: Array<string>,
+  /** The ALE of each scenario of `moved`, in the same order. */
+  movedAle: Array<ScenarioAleMove>,
   /** The scenarios this pass went through, refused ones included. */
   walked: number,
   /** The scenarios this pass had ahead of it when it started: everything after `after`. */
   total: number,
   /** The last scenario this pass went through when it stopped on its budget, null once it reached the end. */
   resumeAfter: string | null,
+}
+
+/**
+ * How far one re-priced scenario's ALE mean moved: `aleBefore` is its latest run before the pass,
+ * `aleAfter` the run the pass stored, each null when unpriced (or no run before), and `aleDelta`
+ * after minus before, null when either side is.
+ */
+export interface ScenarioAleMove {
+  riskScenarioId: string,
+  aleBefore: number | null,
+  aleAfter: number | null,
+  aleDelta: number | null,
 }
 
 export interface ScenarioPricingPassProgress {
@@ -1243,12 +1265,12 @@ const runAttackRunEngine = async (
     // families out, so it stands for this pass only once a price run already dates them older.
     if (latest !== undefined && latest.resultFingerprint === resultFingerprint && (!rows.priced || latest.profile.length === 0)) {
       await atomicRepo.updateRunInputsFingerprint(latest.id, inputsFingerprint);
-      return false;
+      return null;
     }
     await storeEngineRun(atomicRepo, rows, resultFingerprint);
-    return true;
+    return { aleBefore: latest?.aleMean ?? null };
   });
-  return stored ? { runId, result, reach } : { skipped: 'same-result' };
+  return stored ? { runId, result, reach, ...stored, aleAfter: rows.run.aleMean } : { skipped: 'same-result' };
 };
 
 // ─── Service ─────────────────────────────────────────────────────────────────
@@ -1325,7 +1347,7 @@ export const crqIndicatorsService = defineService(
     const startedAtMs = Date.now();
     const riskScenarioIds = await context.deps.riskScenarios.getAllRiskScenarioIds(after);
     const pass: ScenarioPricingPass = {
-      priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [], walked: 0, total: riskScenarioIds.length, resumeAfter: null,
+      priced: 0, unchanged: 0, sameResult: 0, skipped: 0, refused: [], moved: [], movedAle: [], walked: 0, total: riskScenarioIds.length, resumeAfter: null,
     };
     await onProgress?.({ walked: 0, total: pass.total });
     let previous: string | undefined;
@@ -1361,6 +1383,13 @@ export const crqIndicatorsService = defineService(
         } else {
           pass.priced += 1;
           pass.moved.push(riskScenarioId);
+          const { aleBefore, aleAfter } = outcome;
+          pass.movedAle.push({
+            riskScenarioId,
+            aleBefore,
+            aleAfter,
+            aleDelta: aleBefore === null || aleAfter === null ? null : aleAfter - aleBefore,
+          });
         }
       } catch (error) {
         if (!(error instanceof NonRetryableError)) {

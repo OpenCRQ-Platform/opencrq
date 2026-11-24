@@ -85,7 +85,19 @@ describe('jobs runs and queue (HTTP/tRPC)', () => {
     const { jobId } = await system().enqueueJob({ kind: 'crq-price-recompute', tenantId, payload: {} });
     const workerId = `worker-${jobId}`;
     await system().claimNext(workerId, ['crq-price-recompute'], 30_000);
-    const summary = { walked: 3, priced: 1, unchanged: 2, sameResult: 0, skipped: 0, refused: 0, moved: [uuidv7()], movedCount: 1, complete: true };
+    const movedId = uuidv7();
+    const summary = {
+      walked: 3,
+      priced: 1,
+      unchanged: 2,
+      sameResult: 0,
+      skipped: 0,
+      refused: 0,
+      moved: [movedId],
+      movedAle: [{ riskScenarioId: movedId, aleBefore: 1_000, aleAfter: 1_250, aleDelta: 250 }],
+      movedCount: 1,
+      complete: true,
+    };
     await system().updateProgress(jobId, workerId, { processedTotal: 3, expectedTotal: 3, message: JSON.stringify(summary) });
     await system().recordSuccess(jobId, workerId);
 
