@@ -7,9 +7,11 @@ import type { inferRouterOutputs } from '@trpc/server';
 import { Link } from '@tanstack/react-router';
 import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import type { FunctionComponent, ReactElement } from 'react';
+import type { ReaderAccessIssue } from './use-reader-access';
 import { TooltipHint, TooltipHintProvider } from '../../components/shared/tooltip-hint';
 import { useHasManageSecurity } from '../../hooks/utils/use-has-manage-security';
 import { useTRPC } from '../../lib';
+import { useReaderAccess } from './use-reader-access';
 
 type RouterOutputs = inferRouterOutputs<TRPCRouter>;
 
@@ -32,7 +34,7 @@ export type XtmProduct = 'opencti' | 'openaev';
 /** Every product an object is looked up in: XTM One and the siblings. */
 export type CounterpartProduct = 'xtmone' | XtmProduct;
 export type CounterpartKind = 'ASSET' | 'ATTACK_PATTERN' | 'VULNERABILITY' | 'THREAT';
-export type XtmCounterpart = RouterOutputs['xtm']['counterparts'][number];
+export type XtmCounterpart = RouterOutputs['xtm']['counterparts']['counterparts'][number];
 
 // eslint-disable-next-line lingui/no-unlocalized-strings -- product names, never translated
 const PRODUCT_NAMES: Record<CounterpartProduct, string> = { xtmone: 'XTM One', opencti: 'OpenCTI', openaev: 'OpenAEV' };
@@ -77,7 +79,7 @@ export const useCounterparts = (kind: CounterpartKind, keys: ReadonlyArray<strin
   const trpc = useTRPC();
   const { present, options } = lookupOptions(keys);
   const { data } = useQuery(trpc.xtm.counterparts.queryOptions({ kind, keys: present }, options));
-  return data ?? [];
+  return data?.counterparts ?? [];
 };
 
 /**
@@ -239,7 +241,9 @@ export type XtmEmblemState =
   | { kind: 'not-found' }
   | { kind: 'not-connected' }
   | { kind: 'checking' }
-  | { kind: 'unavailable' };
+  | { kind: 'unavailable' }
+  /** The product is connected but cannot be read as the reader: a link to make, or an account to create. */
+  | { kind: 'no-access', issue: Exclude<ReaderAccessIssue, 'unavailable'> };
 
 export interface XtmEmblemInput {
   /** `undefined` while the connections load. */
@@ -251,6 +255,8 @@ export interface XtmEmblemInput {
   counterparts: ReadonlyArray<XtmCounterpart> | undefined,
   lookupFailed: boolean,
   hasKey: boolean,
+  /** Why the reader cannot be read as themselves in this product, when they cannot. */
+  readerIssue?: ReaderAccessIssue | null,
 }
 
 /**
@@ -270,6 +276,12 @@ export const xtmEmblemState = (product: CounterpartProduct, input: XtmEmblemInpu
   }
   if (!input.connected) {
     return { kind: 'not-connected' };
+  }
+  if (input.readerIssue === 'unavailable') {
+    return { kind: 'unavailable' };
+  }
+  if (input.readerIssue) {
+    return { kind: 'no-access', issue: input.readerIssue };
   }
   if (!input.hasKey) {
     return { kind: 'not-found' };
@@ -317,6 +329,12 @@ export const visibleSurfaceSections = (
   return true;
 });
 
+const noAccessText = (issue: Exclude<ReaderAccessIssue, 'unavailable'>, name: string) => (
+  issue === 'not_linked'
+    ? t`${name} is not linked to this platform's XTM One, so OpenCRQ cannot look this object up there as you. Ask an administrator to link it.`
+    : t`${name} has no account for your email, so OpenCRQ cannot look this object up there as you. Ask a ${name} administrator to create one.`
+);
+
 const SurfaceSection: FunctionComponent<XtmSurfaceSection & { kind: CounterpartKind }> = ({ product, state, kind }) => {
   const name = productName(product);
   const labels = FACT_LABELS();
@@ -325,6 +343,7 @@ const SurfaceSection: FunctionComponent<XtmSurfaceSection & { kind: CounterpartK
     case 'found': chip = <Chip severity="info" label={t`Found`} />; break;
     case 'not-found': chip = <Chip label={t`Not found`} />; break;
     case 'unavailable': chip = <Chip severity="medium" label={t`Unavailable`} />; break;
+    case 'no-access': chip = <Chip severity="medium" label={t`No access`} />; break;
     case 'checking':
     case 'not-connected': chip = <Chip label={t`Not connected`} />; break;
   }
@@ -364,6 +383,7 @@ const SurfaceSection: FunctionComponent<XtmSurfaceSection & { kind: CounterpartK
       )}
       {state.kind === 'not-found' && <span className="text-default-secondary">{howItGetsThere(kind, product)}</span>}
       {state.kind === 'unavailable' && <span className="text-default-secondary">{t`${name} could not be reached. Try again later.`}</span>}
+      {state.kind === 'no-access' && <span className="text-default-secondary">{noAccessText(state.issue, name)}</span>}
       {state.kind === 'not-connected' && (
         <span>
           <Button asChild priority="secondary" size="sm">
@@ -470,6 +490,7 @@ export const XtmSurface: FunctionComponent<{ kind: CounterpartKind, sections: Re
 export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind, objectKey, objectKeys, sourced }) => {
   const trpc = useTRPC();
   const connections = useXtmConnections();
+  const { counterparts: readerAccess } = useReaderAccess();
   const canManageSecurity = useHasManageSecurity();
   const { present, options } = lookupOptions([objectKey, ...(objectKeys ?? [])]);
   const lookup = useQuery(trpc.xtm.counterparts.queryOptions({ kind, keys: present }, options));
@@ -479,9 +500,10 @@ export const XtmPivotEmblems: FunctionComponent<XtmPivotEmblemsProps> = ({ kind,
       connected: connections.data?.find((c) => c.product === product)?.connected ?? (connections.data ? false : undefined),
       connectionsFailed: connections.isError,
       sourced: product === 'xtmone' ? undefined : sourced?.[product],
-      counterparts: lookup.data,
-      lookupFailed: lookup.isError,
+      counterparts: lookup.data?.counterparts,
+      lookupFailed: lookup.isError || (lookup.data?.unavailable.includes(product) ?? false),
       hasKey: present.length > 0,
+      readerIssue: product === 'xtmone' ? null : readerAccess[product],
     }),
   }));
   return <XtmSurface kind={kind} sections={visibleSurfaceSections(sections, canManageSecurity)} />;

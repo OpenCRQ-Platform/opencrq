@@ -24,6 +24,7 @@ import {
   threatScoreSortKey,
   ThreatTypeBadge,
 } from '../../threats';
+import { HiddenThreatsAlert } from '../../threats/components/hidden-threats-notice';
 import { useCounterparts, XtmRowMarks } from '../../xtm/xtm-counterparts';
 import { WeighingRuleSentence } from './weighing-rule-sentence';
 import { resolveRelevantThreatsEmptyState } from './risk-scenario-relevant-threats-utils';
@@ -91,6 +92,7 @@ export const RiskScenarioRelevantThreats: FunctionComponent<RiskScenarioRelevant
   if (emptyState !== null) {
     return (
       <SectionCard title={t`Relevant Threats`}>
+        <HiddenThreatsAlert />
         <EmptyStatePanel>
           <div className="text-center">
             <p className="txt-subtitle font-medium">
@@ -203,6 +205,7 @@ export const RiskScenarioRelevantThreats: FunctionComponent<RiskScenarioRelevant
 
   return (
     <SectionCard title={t`Relevant Threats`}>
+      <HiddenThreatsAlert />
       <div ref={tableContainerRef} tabIndex={-1}>
         <DataPageLayout
           data={items}

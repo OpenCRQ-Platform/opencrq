@@ -1,8 +1,10 @@
-import type { OpenCtiReaderAccess, OpenctiThreatVisibility } from '@app/module';
+import type { EventOrigin, OpenCtiReaderAccess, OpenctiThreatVisibility } from '@app/module';
+import type { ReaderAccessIssue } from './reader-access-issue';
 import type { ProductConnection, ReaderAuthorization } from './xtm-providers';
 import { errorCategory, logCategory } from '../../../utils/error-category';
 import { createLogger } from '../../../utils/logger';
 import { ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
+import { issueOfTokenFailure } from './reader-access-issue';
 import { isRecord } from './xtm-counterpart-utils';
 
 const { logWarn } = createLogger({ feature: 'reader-markings' });
@@ -15,9 +17,10 @@ const { logWarn } = createLogger({ feature: 'reader-markings' });
  * tenant chose to show every member what the connector reads. A mirrored object is then read only when OpenCTI would show it to them: all its
  * markings are among theirs, and its organization sharing and authorized members admit them.
  *
- * `null` when the answer is unknown (no identity to sign for, a refusal, a timeout, a malformed
- * answer): the reader then holds no clearance and no membership, and sees only unmarked,
- * unrestricted mirrored objects (fail closed means seeing less, never nothing, as OpenAEV ADR-009).
+ * An `issue` instead of a scope when the answer is unknown (no identity to sign for, a refusal, a
+ * timeout, a malformed answer): the reader then holds no clearance and no membership, and sees only
+ * unmarked, unrestricted mirrored objects (fail closed means seeing less, never nothing, as OpenAEV
+ * ADR-009), and the issue says which category of failure it was.
  * `undefined` when the tenant has no OpenCTI connection: there is no OpenCTI to ask and nothing to
  * enforce, so nothing is narrowed. A lookup is shared per tenant and user from the moment it starts,
  * and its answer kept a short while after, so a page's burst of reads asks OpenCTI once.
@@ -97,7 +100,10 @@ const unreadableAnswer = (answer: unknown): string => {
   return `OpenCTI refused the query: ${code ?? 'no error code'}`;
 };
 
-type ScopeAnswer = { ok: true, scope: ReaderScope } | { ok: false, failure: string };
+/** `failure` is for the log only; `issue` is what a reader may be told. */
+type ScopeAnswer = { ok: true, scope: ReaderScope } | { ok: false, failure: string, issue: ReaderAccessIssue };
+
+const unavailable = (failure: string): ScopeAnswer => ({ ok: false, failure, issue: 'unavailable' });
 
 const fetchReaderScope = async (
   connection: ProductConnection,
@@ -110,10 +116,19 @@ const fetchReaderScope = async (
     bearer = await authorization('opencti', connection);
   } catch (err) {
     // Nothing has been sent to OpenCTI yet.
-    return { ok: false, failure: err instanceof ReaderTokenUnavailable ? err.failure : `obtaining the reader's token failed: ${errorCategory(err)}` };
+    return {
+      ok: false,
+      failure: err instanceof ReaderTokenUnavailable ? err.failure : `obtaining the reader's token failed: ${errorCategory(err)}`,
+      issue: issueOfTokenFailure(err),
+    };
   }
   if (!bearer) {
-    return { ok: false, failure: `no token could be signed for the reader: ${authorization.unsigned ?? 'no reason given'}` };
+    return {
+      ok: false,
+      failure: `no token could be signed for the reader: ${authorization.unsigned ?? 'no reason given'}`,
+      // Only a platform with no XTM One to sign through names a reason: no link can exist then.
+      issue: authorization.unsigned === undefined ? 'unavailable' : 'not_linked',
+    };
   }
   const res = await fetchImpl(`${base}/graphql`, {
     method: 'POST',
@@ -123,7 +138,7 @@ const fetchReaderScope = async (
     signal: AbortSignal.timeout(READER_MARKINGS_TIMEOUT_MS),
   });
   if (!res.ok) {
-    return { ok: false, failure: `OpenCTI answered HTTP ${res.status}` };
+    return unavailable(`OpenCTI answered HTTP ${res.status}`);
   }
   let answer: unknown;
   try {
@@ -131,31 +146,34 @@ const fetchReaderScope = async (
   } catch (err) {
     // A page answering for OpenCTI (a proxy, a wrong URL) is an answer, not a failed request.
     if (err instanceof SyntaxError) {
-      return { ok: false, failure: 'OpenCTI answered something other than JSON' };
+      return unavailable('OpenCTI answered something other than JSON');
     }
     throw err;
   }
   const scope = parseReaderScope(answer);
-  return scope ? { ok: true, scope } : { ok: false, failure: unreadableAnswer(answer) };
+  return scope ? { ok: true, scope } : unavailable(unreadableAnswer(answer));
 };
+
+/** What OpenCTI lets a reader read, or why that is unknown. */
+export type ReaderScopeAnswer = { scope: ReaderScope } | { issue: ReaderAccessIssue };
 
 const lookUpReaderScope = async (
   tenantId: string, userId: string, connection: ProductConnection, authorization: ReaderAuthorization, fetchImpl: FetchLike,
-): Promise<ReaderScope | null> => {
+): Promise<ReaderScopeAnswer> => {
   let answer: ScopeAnswer;
   try {
     answer = await fetchReaderScope(connection, authorization, fetchImpl);
   } catch (err) {
-    answer = { ok: false, failure: `the request failed: ${errorCategory(err)}` };
+    answer = unavailable(`the request failed: ${errorCategory(err)}`);
   }
   if (!answer.ok) {
     logWarn('OpenCTI reader scope unresolved', { tenantId, userId, reason: answer.failure });
-    return null;
+    return { issue: answer.issue };
   }
-  return answer.scope;
+  return { scope: answer.scope };
 };
 
-interface CachedScope { scope: Promise<ReaderScope | null>, expiresAt: number }
+interface CachedScope { scope: Promise<ReaderScopeAnswer>, expiresAt: number }
 
 export interface ReaderMarkingsResolver {
   resolve: (
@@ -164,7 +182,7 @@ export interface ReaderMarkingsResolver {
     connection: ProductConnection | undefined,
     threatVisibility: OpenctiThreatVisibility,
     authorization: ReaderAuthorization,
-  ) => Promise<ReaderScope | null | undefined>,
+  ) => Promise<ReaderScopeAnswer | undefined>,
   clear: () => void,
 }
 
@@ -198,6 +216,25 @@ export const createReaderMarkingsResolver = (
       return entry.scope;
     },
     clear: () => cache.clear(),
+  };
+};
+
+/**
+ * The person's origin narrowed by what OpenCTI answered for them, and what the screens may tell them
+ * of it. A tenant that shows every member what the connector reads has nothing to tell them.
+ */
+export const withReaderScope = (
+  origin: Extract<EventOrigin, { type: 'client' }>,
+  answer: ReaderScopeAnswer | undefined,
+  threatVisibility: OpenctiThreatVisibility,
+): { origin: Extract<EventOrigin, { type: 'client' }>, readerAccessIssue: ReaderAccessIssue | null } => {
+  if (answer === undefined) {
+    return { origin, readerAccessIssue: null };
+  }
+  const read = 'scope' in answer ? answer.scope : null;
+  return {
+    origin: { ...origin, markings: read?.markings ?? null, openctiAccess: read?.access ?? null },
+    readerAccessIssue: threatVisibility === 'per_member' && 'issue' in answer ? answer.issue : null,
   };
 };
 

@@ -27,6 +27,13 @@ export const originMarkingScope = (origin: EventOrigin): ReadonlyArray<string> |
 };
 
 /**
+ * The origin without the OpenCTI scope the tenant procedure resolved for it. Its tenant rules and its
+ * native clearance stay: only what OpenCTI's own rights hide from the person is no longer narrowed.
+ */
+export const withoutReaderScope = (origin: EventOrigin): EventOrigin =>
+  (origin.type === 'client' ? { ...origin, markings: undefined, openctiAccess: undefined } : origin);
+
+/**
  * Who the person is in OpenCTI (opencrq #35): `undefined` when the origin carries no marking scope or
  * no identity was resolved with it (nothing narrowed on organizations and members), `null` when
  * OpenCTI did not answer for them (they belong to no organization and no member list).

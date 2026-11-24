@@ -655,6 +655,9 @@ export const threatAnalysesService = defineService(
 
   hasAny: async ({ repo }) => repo.hasAnyAnalysis(),
 
+  /** Whether the origin reads the analysis, which holds nothing of it. */
+  exists: async ({ repo }, id: string) => repo.analysisExists(id),
+
   /** The tenant's whole ingested catalog: no scope narrows it, and no confidence gate either. */
   getCatalogVolumes: async ({ repo }) => {
     const [byType, citedCves] = await Promise.all([catalogByType(repo), repo.countCitedCves()]);

@@ -24,5 +24,6 @@ export * from './resource-level-value';
 export * from './targeted-countries-map';
 export * from './threat-targets-tab';
 export * from './threat-type-icon';
+export * from './hidden-threat-page';
 export * from './threat-hero';
 export * from './threat-hero-utils';

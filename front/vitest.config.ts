@@ -65,6 +65,7 @@ const ISOLATED_TESTS = [
   'src/features/supporting-assets/components/supporting-asset-ttps.test.tsx',
   'src/features/supporting-assets/components/technique-score-dialog.test.tsx',
   'src/features/threat-event-frequency/components/threat-event-frequency-page.test.tsx',
+  'src/features/threats/components/hidden-threat-page.test.tsx',
   'src/features/threats/components/matching-outcome-table.test.tsx',
   'src/features/threats/components/relevance-proof-panel.test.tsx',
   'src/features/threats/components/threat-attribution-graph.test.tsx',

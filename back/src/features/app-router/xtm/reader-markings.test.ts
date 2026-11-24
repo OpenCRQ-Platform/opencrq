@@ -7,7 +7,7 @@ vi.mock('../../../utils/logger', () => ({
   createLogger: vi.fn().mockReturnValue({ logWarn }),
 }));
 
-const { createReaderMarkingsResolver, parseAllowedMarkings, parseReaderScope, READER_MARKINGS_QUERY } = await import('./reader-markings');
+const { createReaderMarkingsResolver, parseAllowedMarkings, parseReaderScope, READER_MARKINGS_QUERY, withReaderScope } = await import('./reader-markings');
 const { ReaderTokenUnavailable } = await import('../../xtm-one/xtm-one-token-exchange');
 
 beforeEach(() => {
@@ -79,13 +79,43 @@ describe('parseReaderScope', () => {
   });
 });
 
+describe('withReaderScope', () => {
+  const ORIGIN = { type: 'client', userId: 'u-1', tenantId: 't-1' } as const;
+  const SCOPE = { markings: ['m-1'], access: { userId: 'octi-user', individualId: null, organizationIds: [], groupIds: [], bypass: false, platformOrganizationId: null } };
+
+  it('should leave the origin and tell nothing when the tenant has no OpenCTI connection', () => {
+    expect(withReaderScope(ORIGIN, undefined, 'per_member')).toEqual({ origin: ORIGIN, readerAccessIssue: null });
+  });
+
+  it('should narrow the origin by what OpenCTI answered, and tell nothing', () => {
+    expect(withReaderScope(ORIGIN, { scope: SCOPE }, 'per_member')).toEqual({
+      origin: { ...ORIGIN, markings: ['m-1'], openctiAccess: SCOPE.access },
+      readerAccessIssue: null,
+    });
+  });
+
+  it('should leave a reader OpenCTI did not answer for no clearance and tell why, in a tenant that reads per member', () => {
+    expect(withReaderScope(ORIGIN, { issue: 'no_account' }, 'per_member')).toEqual({
+      origin: { ...ORIGIN, markings: null, openctiAccess: null },
+      readerAccessIssue: 'no_account',
+    });
+  });
+
+  it('should tell nothing in a tenant that shows every member what the connector reads, whatever the issue', () => {
+    expect(withReaderScope(ORIGIN, { issue: 'unavailable' }, 'service_account')).toEqual({
+      origin: { ...ORIGIN, markings: null, openctiAccess: null },
+      readerAccessIssue: null,
+    });
+  });
+});
+
 describe('createReaderMarkingsResolver', () => {
   it('should ask OpenCTI as the reader, never with the connector token', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(answer(['m-1']));
     const resolver = createReaderMarkingsResolver(fetchImpl);
     const sign = vi.fn(SIGN);
 
-    expect((await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', sign))?.markings).toEqual(['m-1']);
+    expect(await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', sign)).toMatchObject({ scope: { markings: ['m-1'] } });
     expect(sign).toHaveBeenCalledWith('opencti', CONNECTION);
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe('https://opencti.example/graphql');
@@ -105,10 +135,34 @@ describe('createReaderMarkingsResolver', () => {
     const broken = createReaderMarkingsResolver(vi.fn().mockRejectedValue(new Error('timeout')));
     const unused = vi.fn();
 
-    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', CONNECTION, 'per_member', NO_SIGN)).toBeNull();
+    expect(await createReaderMarkingsResolver(unused).resolve('t-1', 'u-1', CONNECTION, 'per_member', NO_SIGN)).toEqual({ issue: 'not_linked' });
     expect(unused).not.toHaveBeenCalled();
-    expect(await refused.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)).toBeNull();
-    expect(await broken.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)).toBeNull();
+    expect(await refused.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)).toEqual({ issue: 'unavailable' });
+    expect(await broken.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)).toEqual({ issue: 'unavailable' });
+  });
+
+  it('should tell a reader whose OpenCTI is not linked, who has no account and who faces an outage apart', async () => {
+    const issueOf = async (sign: ReaderAuthorization) =>
+      createReaderMarkingsResolver(vi.fn().mockResolvedValue(answer([]))).resolve('t-1', 'u-1', CONNECTION, 'per_member', sign);
+    const refused = (refusal: 'audience' | 'user' | null) => () => Promise.reject(new ReaderTokenUnavailable('XTM One refused the token exchange', refusal));
+
+    expect(await issueOf(refused('audience'))).toEqual({ issue: 'not_linked' });
+    expect(await issueOf(refused('user'))).toEqual({ issue: 'no_account' });
+    expect(await issueOf(refused(null))).toEqual({ issue: 'unavailable' });
+    expect(await issueOf(() => Promise.reject(new Error('signing key missing')))).toEqual({ issue: 'unavailable' });
+    expect(await issueOf(() => Promise.resolve(null))).toEqual({ issue: 'unavailable' });
+  });
+
+  it('should keep the issue with the cached answer and never carry the failure text', async () => {
+    const resolver = createReaderMarkingsResolver(vi.fn());
+    const refuse = vi.fn(() => Promise.reject(new ReaderTokenUnavailable('XTM One refused: reader@example.com', 'user')));
+
+    const first = await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', refuse);
+    const second = await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', refuse);
+
+    expect(refuse).toHaveBeenCalledTimes(1);
+    expect(second).toEqual(first);
+    expect(JSON.stringify(second)).toBe('{"issue":"no_account"}');
   });
 
   it('should say why a reader has no scope, with the tenant and the user and never the token', async () => {
@@ -158,7 +212,7 @@ describe('createReaderMarkingsResolver', () => {
 
     const scopes = await Promise.all([1, 2, 3].map(() => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN)));
 
-    expect(scopes).toEqual([null, null, null]);
+    expect(scopes).toEqual([{ issue: 'unavailable' }, { issue: 'unavailable' }, { issue: 'unavailable' }]);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(logWarn).toHaveBeenCalledTimes(1);
   });

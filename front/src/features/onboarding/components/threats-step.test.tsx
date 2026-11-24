@@ -28,9 +28,10 @@ afterEach(() => {
 });
 
 // The tiles' own reads stay loading: this suite is about the tenant count and the warning above them.
-const renderStep = (readerScopeUnresolved: boolean) => renderWithTrpc(<ThreatsStep />, {
+const renderStep = (threats: 'not_linked' | 'no_account' | 'unavailable' | null) => renderWithTrpc(<ThreatsStep />, {
   answers: {
-    'threats.list': { items: [], total: 2, page: 1, limit: 1, pending: 0, readerScopeUnresolved },
+    'threats.list': { items: [], total: 2, page: 1, limit: 1, pending: 0 },
+    'xtm.readerAccess': { threats, counterparts: { opencti: null, openaev: null } },
     'onboardingWizard.getOnboardingWizard': NEVER,
     'connectors.listConnectors': NEVER,
     'opencti.getBackfillProgress': NEVER,
@@ -40,17 +41,17 @@ const renderStep = (readerScopeUnresolved: boolean) => renderWithTrpc(<ThreatsSt
 });
 
 describe('ThreatsStep', () => {
-  it('warns above the sources that threats may be hidden when OpenCTI left the reader scope unresolved', async () => {
-    renderStep(true);
+  it('says above the sources why threats are hidden, by the reader\'s issue', async () => {
+    renderStep('not_linked');
 
-    expect(await screen.findByText('Some threats may be hidden from you.')).toBeTruthy();
+    expect(await screen.findByText('Some threats are hidden until OpenCTI is linked.')).toBeTruthy();
   });
 
-  it('shows no warning once the reader scope is known', async () => {
-    renderStep(false);
+  it('shows no warning when the reader lacks no threat', async () => {
+    renderStep(null);
 
     expect(await screen.findByText('Threat sources')).toBeTruthy();
     await screen.findAllByText(/2 threats/);
-    expect(screen.queryByText('Some threats may be hidden from you.')).toBeNull();
+    expect(screen.queryByText(/Some threats are hidden/)).toBeNull();
   });
 });

@@ -13,6 +13,8 @@ import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
 import { buildXtmOneHeaders } from '../../xtm-one/xtm-one-headers';
 import { readerTokenExchange, ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
 import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
+import { counterpartAccess, readCounterpartIssues } from './counterpart-access';
+import { READER_ACCESS_ISSUES } from './reader-access-issue';
 import { openctiPublicUrl } from './opencti-public-url';
 import { lookupXtmObjects,resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
@@ -132,6 +134,8 @@ const counterpartSchema = z.object({
   facts: z.array(z.object({ key: z.string(), value: z.string() })),
 });
 
+const readerAccessIssueSchema = z.enum(READER_ACCESS_ISSUES).nullable();
+
 const lookupObjectSchema = z.object({
   object_key: z.string(),
   object_id: z.string(),
@@ -181,14 +185,35 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
       kind: z.enum(COUNTERPART_KINDS),
       keys: z.array(z.string().max(512)).max(MAX_COUNTERPART_KEYS),
     }))
-    .output(z.array(counterpartSchema))
+    .output(z.object({ counterparts: z.array(counterpartSchema), unavailable: z.array(z.enum(COUNTERPART_PRODUCTS)) }))
     .query(async ({ input, ctx: { services, origin, user } }) => {
       const tenantId = await authorizedTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t));
       if (!user) {
         // Only a person pivots, with their own rights in the sibling product.
-        return [];
+        return { counterparts: [], unavailable: [] };
       }
       return resolveCounterparts(tenantId, user.id, input.kind, input.keys, tenantProviders(tenantId, readerAuthorization(db, user), xtmOneReaderHeaders(db, user)));
+    }),
+
+  // Why the member's reads of OpenCTI and OpenAEV may fall short, `null` when nothing does: the
+  // threats the reader scope narrows, and the counterparts, always read as the member.
+  readerAccess: procedure
+    // XTM One's answers decide it, and the only table it depends on, the tenant's threat visibility,
+    // is read by the tenant procedure.
+    .meta({ reads: [] })
+    .output(z.object({
+      threats: readerAccessIssueSchema,
+      counterparts: z.object({ opencti: readerAccessIssueSchema, openaev: readerAccessIssueSchema }),
+    }))
+    .query(async ({ ctx: { services, origin, user, readerAccessIssue } }) => {
+      const tenantId = await authorizedTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t));
+      const counterparts = await readCounterpartIssues(counterpartAccess, {
+        tenantId,
+        userId: user?.id,
+        connections: config().connectors,
+        authorization: readerAuthorization(db, user),
+      });
+      return { threats: readerAccessIssue, counterparts };
     }),
 
   // bounded-by: MAX_COUNTERPART_KEYS keys per call, one batched read of one kind

@@ -5,6 +5,7 @@ import type { FindingScoreBreakdown } from '../../finding-score';
 import type { AttackCoverage } from '../attack-groups-utils';
 import type { CitingThreat } from './threats-citing-card';
 import { useTRPC } from '../../../lib';
+import { HiddenThreatsAlert } from '../../threats/components/hidden-threats-notice';
 import { countActiveThreats } from '../threat-signal-utils';
 import { AttackTechniquesCard } from './attack-techniques-card';
 import { CitationActivityCard } from './citation-activity-card';
@@ -51,6 +52,7 @@ export const AttackSection: FunctionComponent<AttackSectionProps> = ({ cveId, te
 
   return (
     <div className="flex flex-col gap-5">
+      <HiddenThreatsAlert />
       <ThreatSignalBanner
         citingCount={analyses.length}
         activeCount={countActiveThreats(analyses, new Date())}

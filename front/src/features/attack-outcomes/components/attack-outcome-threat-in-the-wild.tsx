@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { FunctionComponent } from 'react';
 import { SectionCard } from '../../../components/shared';
 import { useTRPC } from '../../../lib';
+import { HiddenThreatsAlert } from '../../threats/components/hidden-threats-notice';
 import { AttackOutcomeTopThreats } from './attack-outcome-top-threats';
 import { ThreatDistributionBar } from './threat-distribution-bar';
 
@@ -51,6 +52,7 @@ export const AttackOutcomeThreatInTheWild: FunctionComponent<AttackOutcomeThreat
   if (!data || data.matchingCount === 0) {
     return (
       <SectionCard title={t`Threat in the wild`}>
+        <HiddenThreatsAlert />
         <p className="txt-sub-content text-muted-foreground">
           <Trans>No threat matches this outcome yet.</Trans>
         </p>
@@ -62,6 +64,7 @@ export const AttackOutcomeThreatInTheWild: FunctionComponent<AttackOutcomeThreat
 
   return (
     <SectionCard title={t`Threat in the wild`}>
+      <HiddenThreatsAlert />
       <ThreatDistributionBar
         label={plural(matchingCount, {
           one: 'Resource level of the # matching set',

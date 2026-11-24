@@ -1016,11 +1016,17 @@ msgstr "{name} est injoignable. Réessayez plus tard."
 msgid "{name} depends on…"
 msgstr "{name} dépend de…"
 
+msgid "{name} has no account for your email, so OpenCRQ cannot look this object up there as you. Ask a {name} administrator to create one."
+msgstr "{name} n'a pas de compte pour votre e-mail : OpenCRQ ne peut donc pas y rechercher cet objet en votre nom. Demandez à un administrateur de {name} d'en créer un."
+
 msgid "{name} import progress"
 msgstr "Progression de l'import {name}"
 
 msgid "{name} is not connected"
 msgstr "{name} n'est pas connecté"
+
+msgid "{name} is not linked to this platform's XTM One, so OpenCRQ cannot look this object up there as you. Ask an administrator to link it."
+msgstr "{name} n'est pas lié au XTM One de cette plateforme : OpenCRQ ne peut donc pas y rechercher cet objet en votre nom. Demandez à un administrateur de le lier."
 
 msgid "{name} is supported by…"
 msgstr "{name} repose sur…"
@@ -7883,6 +7889,9 @@ msgstr "non"
 msgid "No"
 msgstr "Non"
 
+msgid "No access"
+msgstr "Pas d'accès"
+
 msgid "No access relation is known for {supportingAssetName}."
 msgstr "Aucune relation d'accès n'est connue pour {supportingAssetName}."
 
@@ -9152,9 +9161,6 @@ msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du 
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du déploiement n'a pas la capacité {capability}. Accordez-la à l'utilisateur de ce jeton et redémarrez OpenCRQ, ou utilisez Configurer pour choisir un flux en direct."
 
-msgid "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that it is registered with this platform's XTM One, and that your email has an account in both."
-msgstr "OpenCRQ n'a pas pu lire ce que vous avez le droit de voir dans OpenCTI : il n'affiche donc les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur de vérifier qu'OpenCTI est joignable, qu'il est enregistré auprès du XTM One de cette plateforme, et que votre e-mail a un compte dans les deux."
-
 msgid "OpenCRQ home"
 msgstr "Accueil OpenCRQ"
 
@@ -9194,6 +9200,18 @@ msgstr "OpenCTI"
 
 msgid "OpenCTI did not answer, so the filter of the stream in use could not be read."
 msgstr "OpenCTI n'a pas répondu, le filtre du flux utilisé n'a donc pas pu être lu."
+
+msgid "OpenCTI does not let you read this threat."
+msgstr "OpenCTI ne vous autorise pas à lire cette menace."
+
+msgid "OpenCTI has no account for your email, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an OpenCTI administrator to create an account with the same email."
+msgstr "OpenCTI n'a pas de compte pour votre e-mail : OpenCRQ n'affiche donc les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur d'OpenCTI de créer un compte avec le même e-mail."
+
+msgid "OpenCTI is not linked to this platform's XTM One, so OpenCRQ cannot tell what you are allowed to see there. It shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to link OpenCTI to XTM One, or to show every member what the connector reads."
+msgstr "OpenCTI n'est pas lié au XTM One de cette plateforme : OpenCRQ ne peut donc pas savoir ce que vous avez le droit d'y voir. Il n'affiche les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Demandez à un administrateur de lier OpenCTI à XTM One, ou de montrer à tous les membres ce que lit le connecteur."
+
+msgid "OpenCTI or XTM One did not answer, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once the answer does. If this lasts, tell an administrator."
+msgstr "OpenCTI ou XTM One n'a pas répondu : OpenCRQ n'affiche donc les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Elles reviennent dès que la réponse revient. Si cela dure, prévenez un administrateur."
 
 msgid "Opens the evidence behind this threat's score"
 msgstr "Ouvre les preuves derrière le score de cette menace"
@@ -11673,8 +11691,14 @@ msgstr "Application Software-as-a-Service"
 msgid "Solid"
 msgstr "Solide"
 
-msgid "Some threats may be hidden from you."
-msgstr "Certaines menaces peuvent vous être masquées."
+msgid "Some threats are hidden because you have no OpenCTI account."
+msgstr "Certaines menaces sont masquées, car vous n'avez pas de compte OpenCTI."
+
+msgid "Some threats are hidden for now."
+msgstr "Certaines menaces sont masquées pour le moment."
+
+msgid "Some threats are hidden until OpenCTI is linked."
+msgstr "Certaines menaces restent masquées tant qu'OpenCTI n'est pas lié."
 
 msgid "Someone is waiting on this run"
 msgstr "Quelqu'un attend cette exécution"
@@ -13418,6 +13442,12 @@ msgstr "Ce tenant n'est pas disponible."
 
 msgid "this threat"
 msgstr "cette menace"
+
+msgid "This threat exists, but your rights in OpenCTI do not allow you to read it, so OpenCRQ does not show it. If you need it, ask an OpenCTI administrator for access."
+msgstr "Cette menace existe, mais vos droits dans OpenCTI ne vous permettent pas de la lire : OpenCRQ ne l'affiche donc pas. Si vous en avez besoin, demandez l'accès à un administrateur d'OpenCTI."
+
+msgid "This threat is hidden from you"
+msgstr "Cette menace vous est masquée"
 
 msgid "This threat matches none of your attack outcomes."
 msgstr "Cette menace ne correspond à aucune de vos issues d'attaque."

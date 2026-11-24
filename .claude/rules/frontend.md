@@ -245,6 +245,20 @@ yields `NaN`, which passes `z.number()` and reaches the API. Use `NumberFormInpu
 `components/shared`, which maps a blank field to `undefined` and renders `undefined` / `NaN` as an
 empty input.
 
+## Screens that read threats
+
+A member reads the threats mirrored from OpenCTI only as far as their own OpenCTI rights allow, so
+every screen that lists or counts threats says why it may show fewer, by the category `xtm.readerAccess`
+gives (`useReaderAccess`): `HiddenThreatsAlert` above a list, `HiddenThreatsHint` beside a figure, a
+smaller number never read as a fact. Both render nothing while the reader misses no threat, and
+neither is fed a flag by the screen's own procedure. The rows hanging off a threat follow it, so the
+detail of a threat the member can read (hero, outcomes, CVE tab, techniques, relevance proof) is
+complete and carries no message, and a link to a threat they may not read opens a page saying it is
+hidden (`threats.isHidden`, the route's `notFoundComponent`), never "not found". The counterparts of an object are always read as the member,
+whatever the tenant's threat visibility: the emblem surface says per product why one is empty
+(`no-access` when it is not linked to XTM One or has no account for the reader, `unavailable` when
+its token exchange or its lookup failed, the latter reported by `xtm.counterparts` as `unavailable`).
+
 ## React Compiler Guidance
 
 - React Compiler is the default memoization strategy in `front`.

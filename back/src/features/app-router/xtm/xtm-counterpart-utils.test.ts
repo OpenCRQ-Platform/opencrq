@@ -55,15 +55,15 @@ describe('resolveCounterparts', () => {
     const p = provider({ resolve: vi.fn(() => Promise.resolve([counterpart('CVE-2024-3400')])) });
     const first = await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400', 'CVE-2023-1111'], [p]);
     const second = await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['cve-2024-3400', 'CVE-2023-1111'], [p]);
-    expect(first.map((c) => c.key)).toEqual(['CVE-2024-3400']);
-    expect(second.map((c) => c.key)).toEqual(['CVE-2024-3400']);
+    expect(first.counterparts.map((c) => c.key)).toEqual(['CVE-2024-3400']);
+    expect(second.counterparts.map((c) => c.key)).toEqual(['CVE-2024-3400']);
     expect(p.resolve).toHaveBeenCalledTimes(1);
   });
 
   it('skips a product that is not connected or does not hold the kind', async () => {
     const off = provider({ isConnected: false });
     const other = provider({ product: 'openaev', supports: () => false });
-    expect(await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400'], [off, other])).toEqual([]);
+    expect(await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400'], [off, other])).toEqual({ counterparts: [], unavailable: [] });
     expect(off.resolve).not.toHaveBeenCalled();
     expect(other.resolve).not.toHaveBeenCalled();
   });
@@ -71,26 +71,32 @@ describe('resolveCounterparts', () => {
   it('answers nothing for a failing product and does not cache the failure', async () => {
     const resolve = vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([counterpart('T1059')]);
     const p = provider({ resolve });
-    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual([]);
-    expect((await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).map((c) => c.key)).toEqual(['T1059']);
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual({ counterparts: [], unavailable: ['opencti'] });
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toMatchObject({ counterparts: [{ key: 'T1059' }], unavailable: [] });
+  });
+
+  it('names each product that failed, and only those, whatever the others answered', async () => {
+    const down = provider({ product: 'openaev', resolve: vi.fn().mockRejectedValue(new Error('timeout')) });
+    const up = provider({ resolve: vi.fn(() => Promise.resolve([counterpart('T1059')])) });
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [up, down])).toMatchObject({ counterparts: [{ key: 'T1059' }], unavailable: ['openaev'] });
   });
 
   it('drops a counterpart whose link is not http(s)', async () => {
     const p = provider({ resolve: vi.fn(() => Promise.resolve([{ ...counterpart('T1059'), objectUrl: 'javascript:alert(1)' }])) });
-    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual([]);
+    expect((await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).counterparts).toEqual([]);
   });
 
   it('never serves one reader the answer another reader got: the cache is per reader', async () => {
     const p = provider({ resolve: vi.fn(() => Promise.resolve([counterpart('CVE-2024-3400')])) });
     await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400'], [p]);
     const restricted = provider({ resolve: vi.fn(() => Promise.resolve([])) });
-    expect(await resolveCounterparts(TENANT, OTHER_READER, 'VULNERABILITY', ['CVE-2024-3400'], [restricted])).toEqual([]);
+    expect((await resolveCounterparts(TENANT, OTHER_READER, 'VULNERABILITY', ['CVE-2024-3400'], [restricted])).counterparts).toEqual([]);
     expect(restricted.resolve).toHaveBeenCalledTimes(1);
   });
 
   it('never calls a product with no valid key', async () => {
     const p = provider();
-    expect(await resolveCounterparts(TENANT, READER, 'THREAT', ['apt28'], [p])).toEqual([]);
+    expect(await resolveCounterparts(TENANT, READER, 'THREAT', ['apt28'], [p])).toEqual({ counterparts: [], unavailable: [] });
     expect(p.resolve).not.toHaveBeenCalled();
   });
 });

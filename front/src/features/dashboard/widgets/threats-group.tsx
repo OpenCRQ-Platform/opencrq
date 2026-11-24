@@ -19,6 +19,7 @@ import { useTRPC } from '../../../lib';
 import { cn, formatDollar, formatFractionAsPercent } from '../../../utils';
 import { formatPanelCount } from '../../findings-home/findings-panel-utils';
 import { ActivityGradeBadge, ThreatTypeBadge } from '../../threats';
+import { HiddenThreatsHint } from '../../threats/components/hidden-threats-notice';
 import { DashboardWidgetCard } from '../components/dashboard-widget-card';
 import {
   countGainingTechniques,
@@ -68,11 +69,11 @@ const ThreatCatalogCard: FunctionComponent = () => {
         )
         : (
           <div className={VOLUME_GRID}>
-            <KpiCard elevation={3} label={t`Threat actors`} icon="custom/threat-actor-individual" tone="info" figure={formatPanelCount(data.threatActors, locale)} subtitle={null} tooltip={null} />
-            <KpiCard elevation={3} label={t`Intrusion sets`} icon="custom/intrusion-set" tone="info" figure={formatPanelCount(data.intrusionSets, locale)} subtitle={null} tooltip={null} />
-            <KpiCard elevation={3} label={t`Campaigns`} icon="chess-knight" tone="info" figure={formatPanelCount(data.campaigns, locale)} subtitle={null} tooltip={null} />
-            <KpiCard elevation={3} label={t`Active threats`} icon="activity" tone="info" figure={formatPanelCount(data.active, locale)} subtitle={null} tooltip={null} />
-            <KpiCard elevation={3} label={t`Targeted CVEs`} icon="bug" tone="info" figure={formatPanelCount(data.citedCves, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Threat actors`} icon="custom/threat-actor-individual" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.threatActors, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Intrusion sets`} icon="custom/intrusion-set" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.intrusionSets, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Campaigns`} icon="chess-knight" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.campaigns, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Active threats`} icon="activity" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.active, locale)} subtitle={null} tooltip={null} />
+            <KpiCard elevation={3} label={t`Targeted CVEs`} icon="bug" tone="info" hint={<HiddenThreatsHint />} figure={formatPanelCount(data.citedCves, locale)} subtitle={null} tooltip={null} />
           </div>
         )}
     </DashboardWidgetCard>
@@ -148,18 +149,21 @@ const MostActiveThreatsTable: FunctionComponent<{ organizationId?: string }> = (
         <CardTitle
           as="h3"
           endAdornment={(
-            <MetricInfo
-              title={t`Most active threats`}
-              what={<Trans>The most active threats relevant to at least one of the scope's risk scenarios.</Trans>}
-              how={(
-                <Trans>
-                  A threat is relevant to a scenario as on the scenario's overview: OpenCRQ's internal model gives
-                  it a probability above {thresholdLabel} of leading to the scenario's attack outcome. It counts
-                  once however many scenarios it is relevant to, and the Scenarios column says how many. Ties on
-                  activity go to the threat relevant to more scenarios.
-                </Trans>
-              )}
-            />
+            <>
+              <MetricInfo
+                title={t`Most active threats`}
+                what={<Trans>The most active threats relevant to at least one of the scope's risk scenarios.</Trans>}
+                how={(
+                  <Trans>
+                    A threat is relevant to a scenario as on the scenario's overview: OpenCRQ's internal model gives
+                    it a probability above {thresholdLabel} of leading to the scenario's attack outcome. It counts
+                    once however many scenarios it is relevant to, and the Scenarios column says how many. Ties on
+                    activity go to the threat relevant to more scenarios.
+                  </Trans>
+                )}
+              />
+              <HiddenThreatsHint />
+            </>
           )}
         >
           {t`Most active threats`}

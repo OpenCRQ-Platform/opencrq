@@ -1022,6 +1022,9 @@ export const threatAnalysesRepository = defineRepository({
   hasAnyAnalysis: async ({ db, views }) =>
     (await db.select({ one: sql`1` }).from(views.threatAnalyses).limit(1)).length > 0,
 
+  analysisExists: async ({ db, views }, id: string) =>
+    (await db.select({ one: sql`1` }).from(views.threatAnalyses).where(eq(views.threatAnalyses.id, id)).limit(1)).length > 0,
+
   countCatalogByType: async ({ db, views }, params: { activeSince: Date }) =>
     db.select({
       entityType: views.threatAnalyses.entityType,
