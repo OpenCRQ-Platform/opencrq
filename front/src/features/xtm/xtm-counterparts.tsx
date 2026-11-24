@@ -90,6 +90,13 @@ export const useCounterparts = (kind: CounterpartKind, keys: ReadonlyArray<strin
  */
 const foundInk = (product: CounterpartProduct) => (product === 'xtmone' ? 'text-filigran-ia-primary' : 'text-icon-highlight');
 
+/**
+ * The outline of the single XTM One emblem button: the XTM One purple in every state, found or not,
+ * hover and focus included (Sam, 24 Nov 2026), the same token in OpenCTI, OpenAEV and OpenCRQ. The
+ * design system's hover fill and focus ring are kept.
+ */
+export const EMBLEM_OUTLINE = 'var(--color-filigran-ia-primary)';
+
 const ProductMark: FunctionComponent<{ product: CounterpartProduct, size?: number, muted?: boolean }> = ({ product, size, muted }) => {
   const px = size ?? 16;
   // eslint-disable-next-line lingui/no-unlocalized-strings -- CSS mask value, not copy
@@ -425,6 +432,7 @@ export const XtmSurface: FunctionComponent<{ kind: CounterpartKind, sections: Re
               aria-label={label}
               data-testid="xtm-emblem"
               data-found={found}
+              style={{ borderColor: EMBLEM_OUTLINE }}
               icon={<ProductMark product="xtmone" size={20} muted={found === 0} />}
             />
           </PopoverTrigger>
