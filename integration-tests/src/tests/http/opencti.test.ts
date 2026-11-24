@@ -198,7 +198,12 @@ describe('OpenCTI connector (HTTP/tRPC)', () => {
 
       expect(res.status).toBe(200);
       expect((await client.query('opencti.getThreatVisibility', undefined, { tenantId })).json.result.data).toEqual({ threatVisibility: 'service_account' });
-      expect((await client.query('opencti.getSettings', undefined, { tenantId })).json.result.data).toBeNull();
+      expect((await client.query('opencti.getSettings', undefined, { tenantId })).json.result.data).toMatchObject({
+        streamId: null,
+        enabled: false,
+        threatVisibility: 'service_account',
+        streamGeneration: 0,
+      });
     });
 
     it('should refuse a choice that is not one', async () => {

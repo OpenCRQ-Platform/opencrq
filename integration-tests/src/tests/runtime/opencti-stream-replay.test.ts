@@ -1,4 +1,4 @@
-import { openctiConnectorSettings, openctiStreamObjects, STREAM_LOG_SCOPE_KIND, threatAnalyses, threatAnalysisLocations, threatAnalysisTechniques } from '@app/module';
+import { openctiStreamObjects, openctiStreamState, STREAM_LOG_SCOPE_KIND, threatAnalyses, threatAnalysisLocations, threatAnalysisTechniques } from '@app/module';
 import { startAll, STREAM_TIMING, whenAllConsumersStopped } from '@app/back/src/features/opencti/opencti-connector-manager';
 import { captureLine, flushLogCapture, installLogCapture, uninstallLogCapture } from '@app/back/src/utils/log-capture';
 import { setLogSink } from '@app/back/src/utils/logger';
@@ -132,7 +132,7 @@ describe('OpenCTI Live Stream replay', () => {
     (await db.select().from(threatAnalyses).where(eq(threatAnalyses.tenantId, tenantId)))
       .map((row) => row.name)
       .sort();
-  const settings = async () => (await db.select().from(openctiConnectorSettings).where(eq(openctiConnectorSettings.tenantId, tenantId)))[0];
+  const settings = async () => (await db.select().from(openctiStreamState).where(eq(openctiStreamState.tenantId, tenantId)))[0];
 
   const analysisOfStixId = async (stixId: string) => {
     const [analysis] = await db.select().from(threatAnalyses)

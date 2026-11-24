@@ -155,6 +155,30 @@ describe('a doorbell names the query procedures a write made stale', () => {
     await waitFor(() => doorbells.some((doorbell) => doorbell.procedures.includes('groups.listGroups')));
   });
 
+  it('should name the readers of the threat visibility on a change of it, and spare them on a stream checkpoint', async () => {
+    const scoped = services.withOrigin(adminOrigin);
+    const serviceAccountId = uuidv7();
+    await scoped.serviceAccounts.createServiceAccount({ id: serviceAccountId, name: 'Doorbell bot' });
+    await scoped.openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-1');
+    await waitFor(() => doorbells.length >= 1);
+    await asProcedure('probe.threatVisibility', () => scoped.openctiConnector.getThreatVisibility(tenantId));
+    const reads = index.readsOf('probe.threatVisibility') ?? [];
+    expect(reads).toContain('opencti_connector_settings');
+    expect(reads).not.toContain('opencti_stream_state');
+    expect(reads).not.toContain('tenants');
+
+    await settle(300);
+    doorbells.length = 0;
+    await scoped.openctiConnector.updateCursor(tenantId, '1', new Date(), null, 5, 0);
+    await waitFor(() => doorbells.length >= 1);
+    await settle(300);
+    expect(doorbells.flatMap((doorbell) => doorbell.procedures)).not.toContain('probe.threatVisibility');
+
+    doorbells.length = 0;
+    await scoped.openctiConnector.setThreatVisibility('service_account');
+    await waitFor(() => doorbells.some((doorbell) => doorbell.procedures.includes('probe.threatVisibility')));
+  });
+
   it('should name the readers of the children a deleted parent silences', async () => {
     const organizationId = uuidv7();
     await services.withOrigin(adminOrigin).organizations.createOrganizations([{ id: organizationId, name: 'Parent to delete' }]);

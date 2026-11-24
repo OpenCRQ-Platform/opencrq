@@ -1,18 +1,44 @@
 import { sql } from 'drizzle-orm';
-import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import type { OpenctiThreatVisibility } from './threat-visibility';
 import { defineSecurityPolicies, reportRefMarkingPolicy, streamObjectMarkingPolicy, tenantIsolationPolicy } from '../../security';
 import { serviceAccounts } from '../service-accounts/schema';
 import { tenants } from '../tenants';
+import { OPENCTI_THREAT_VISIBILITIES } from './threat-visibility';
+
+const THREAT_VISIBILITY_LITERALS = sql.raw(OPENCTI_THREAT_VISIBILITIES.map((visibility) => `'${visibility}'`).join(', '));
 
 // Per-tenant OpenCTI Live Stream connector config. Credentials (`connectors.opencti.{url,token}`)
 // are deployment-wide (`config-schema.ts`). `serviceAccountId` lives here (not `integration_settings`)
 // since the background connector manager writes with an explicit `tenantId`, not an `eventOrigin`.
+// Configuration and health, never a checkpoint: the tenant middleware reads `threatVisibility` on
+// every call, so a column a checkpoint rewrites must not join it. The stream's position is
+// `openctiStreamState`.
 export const openctiConnectorSettings = pgTable('opencti_connector_settings', {
   id: uuid('id').primaryKey(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   serviceAccountId: uuid('service_account_id').references(() => serviceAccounts.id, { onDelete: 'set null' }),
   streamId: text('stream_id'),
   enabled: boolean('enabled').notNull().default(false),
+  threatVisibility: text('threat_visibility').notNull().default('per_member').$type<OpenctiThreatVisibility>(),
+  // Set on a 401/403 from OpenCTI (forces `enabled=false` too); cleared on reconfigure or `setEnabled`.
+  authFailedAt: timestamp('auth_failed_at', { withTimezone: true, mode: 'date' }),
+  // The OpenCTI capability the deployment's token lacks to create the Live Stream OpenCRQ manages, set
+  // at boot for a tenant with nothing bound; cleared once a stream is bound, by the boot or by Configure.
+  streamMissingCapability: text('stream_missing_capability'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('opencti_connector_settings_tenantid_idx').on(table.tenantId),
+  check('opencti_connector_settings_threat_visibility_ck', sql`${table.threatVisibility} IN (${THREAT_VISIBILITY_LITERALS})`),
+]);
+
+defineSecurityPolicies(openctiConnectorSettings, tenantIsolationPolicy);
+
+// Where the tenant's Live Stream consumer stands, one row per settings row, created with it by the
+// `opencti_connector_settings_create_stream_state` trigger. Every checkpoint rewrites it.
+export const openctiStreamState = pgTable('opencti_stream_state', {
+  tenantId: uuid('tenant_id').primaryKey().references(() => tenants.id, { onDelete: 'cascade' }),
   // Last SSE event id, used to resume via `from`/`Last-Event-ID` on reconnect.
   cursor: text('cursor'),
   // Highest event date seen so far (monotonic high-water mark, not processing time) — event ids
@@ -31,21 +57,12 @@ export const openctiConnectorSettings = pgTable('opencti_connector_settings', {
   // Objects taken off the stream, kept or dropped alike. Folded into the cursor write, so the ingestion
   // path gains no statement of its own.
   objectsRead: bigint('objects_read', { mode: 'number' }).notNull().default(0),
-  // When `objectsRead` last moved, which is the rate's denominator: a configuration write bumps
-  // `updated_at` without reading anything and must not register as progress.
+  // When `objectsRead` last moved, which is the rate's denominator: a configuration write does not
+  // read anything and must not register as progress.
   objectsReadAt: timestamp('objects_read_at', { withTimezone: true, mode: 'date' }),
-  // Set on a 401/403 from OpenCTI (forces `enabled=false` too); cleared on reconfigure or `setEnabled`.
-  authFailedAt: timestamp('auth_failed_at', { withTimezone: true, mode: 'date' }),
-  // The OpenCTI capability the deployment's token lacks to create the Live Stream OpenCRQ manages, set
-  // at boot for a tenant with nothing bound; cleared once a stream is bound, by the boot or by Configure.
-  streamMissingCapability: text('stream_missing_capability'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
-}, (table) => [
-  uniqueIndex('opencti_connector_settings_tenantid_idx').on(table.tenantId),
-]);
+});
 
-defineSecurityPolicies(openctiConnectorSettings, tenantIsolationPolicy);
+defineSecurityPolicies(openctiStreamState, tenantIsolationPolicy);
 
 // Per-tenant resolve cache of STIX objects/relationships seen on the Live Stream — looked up by id,
 // by source/target ref, or by producer, never bulk-reloaded. `sourceRef`/`targetRef`/`relationshipType`

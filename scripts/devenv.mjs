@@ -1143,10 +1143,13 @@ const psql = (layout, target, database, statements) => compose(
  * This runs against the schema the dump carries, before the backend's next boot migrates it forward,
  * so every table and column is checked rather than assumed: a snapshot taken between the migration
  * that created the connector table and the one that added its read counters has the first and not
- * the second. A position that does not exist has nothing to throw away.
+ * the second, and the position sits on the settings table in a dump older than the one that gave it
+ * `opencti_stream_state`. A position that does not exist has nothing to throw away.
  */
 const RESET_CURSORS = `
 DO $$
+DECLARE
+  position_table text;
 BEGIN
   IF to_regclass('integration_settings') IS NOT NULL THEN
     -- Built as text: a dump taken before the column was renamed still carries last_synced_at.
@@ -1156,21 +1159,29 @@ BEGIN
     ));
   END IF;
 
-  IF to_regclass('opencti_connector_settings') IS NULL THEN
+  IF to_regclass('opencti_stream_state') IS NOT NULL THEN
+    position_table := 'opencti_stream_state';
+  ELSIF to_regclass('opencti_connector_settings') IS NOT NULL THEN
+    position_table := 'opencti_connector_settings';
+  ELSE
     RETURN;
   END IF;
 
-  UPDATE opencti_connector_settings SET
-    "cursor" = NULL, last_event_at = NULL, history_start_at = NULL,
-    backfill_target_at = NULL, reached_live_tail_at = NULL;
+  -- Built as text so a schema never has to parse the table or the columns it does not carry.
+  EXECUTE format(
+    'UPDATE %I SET "cursor" = NULL, last_event_at = NULL, history_start_at = NULL,'
+    || ' backfill_target_at = NULL, reached_live_tail_at = NULL',
+    position_table
+  );
 
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'opencti_connector_settings' AND column_name = 'stream_generation'
+    WHERE table_name = position_table AND column_name = 'stream_generation'
   ) THEN
-    -- Built as text so an older schema never has to parse column names it does not carry.
-    EXECUTE 'UPDATE opencti_connector_settings SET objects_read = 0, objects_read_at = NULL,'
-      || ' stream_generation = stream_generation + 1';
+    EXECUTE format(
+      'UPDATE %I SET objects_read = 0, objects_read_at = NULL, stream_generation = stream_generation + 1',
+      position_table
+    );
   END IF;
 END $$;
 `;

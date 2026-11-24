@@ -2,7 +2,10 @@ import { newError } from '@app/utils';
 import { uuidv7 } from 'uuidv7';
 import type { ParsedThreatInput } from '../threat-analyses';
 import type { PendingMark } from './pending-batch';
+import type { OpenctiThreatVisibility } from './threat-visibility';
 import { defineService } from '../../registry';
+import { requireClientTenantId } from '../../security';
+import { capabilitiesService } from '../capabilities/service';
 import { serviceAccountsService } from '../service-accounts/service';
 import { threatAnalysesService } from '../threat-analyses';
 import { isThreatEntityType } from '../threat-analyses/entity-types';
@@ -50,7 +53,7 @@ export type BuildEntriesFromMirror = (
 export const openctiConnectorService = defineService(
   'openctiConnector',
   openctiConnectorRepository,
-).dependsOn(() => [threatAnalysesService, serviceAccountsService]).implement({
+).dependsOn(() => [capabilitiesService, threatAnalysesService, serviceAccountsService]).implement({
   getSettings: async ({ repo }, tenantId: string) => repo.findByTenant(tenantId),
 
   // Cross-tenant — used by the worker's connector manager at boot/reconcile to know which
@@ -62,9 +65,25 @@ export const openctiConnectorService = defineService(
     return repo.findAllEnabled();
   },
 
-  // Always resets `cursor`/`lastEventAt` and enables the connector — see `repository.ts#upsertConfig`.
-  configure: async ({ repo }, tenantId: string, serviceAccountId: string, streamId: string) => {
-    await repo.upsertConfig(tenantId, uuidv7(), serviceAccountId, streamId);
+  // Always resets the stream state and enables the connector — see `repository.ts#upsertConfig`.
+  configure: async ({ atomic }, tenantId: string, serviceAccountId: string, streamId: string) => {
+    await atomic(async ({ repo }) => {
+      await repo.upsertConfig(tenantId, uuidv7(), serviceAccountId, streamId);
+    });
+  },
+
+  /** Answers `per_member` for a tenant nobody configured. Read on every call of a tenant: it observes the settings alone. */
+  getThreatVisibility: async ({ repo }, tenantId: string): Promise<OpenctiThreatVisibility> =>
+    repo.findThreatVisibility(tenantId),
+
+  // The settings row is tenant-isolated only, so the capability is checked here: the choice decides
+  // what every member of the tenant reads.
+  setThreatVisibility: async ({ repo, deps, eventOrigin }, threatVisibility: OpenctiThreatVisibility) => {
+    const tenantId = requireClientTenantId(eventOrigin);
+    if (!await deps.capabilities.hasManageSecurity()) {
+      throw newError('Setting the threat visibility requires the MANAGE_SECURITY capability', { tenantId });
+    }
+    await repo.setThreatVisibility(tenantId, uuidv7(), threatVisibility);
   },
 
   /**

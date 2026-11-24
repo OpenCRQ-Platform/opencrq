@@ -1,14 +1,16 @@
 import type { SQL } from 'drizzle-orm';
-import { aliasedTable, and, eq, exists, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { aliasedTable, and, eq, exists, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import type { PendingMark, PendingStreamObject } from './pending-batch';
+import type { OpenctiThreatVisibility } from './threat-visibility';
 import type { RepositoryContext } from '../../registry';
 import { LATERAL_ON } from '../../db/lateral';
 import { diffRows } from '../../db/row-diff';
+import { valuesChange } from '../../db/write-guards';
 import { defineRepository } from '../../registry';
 import { serviceAccounts } from '../service-accounts/schema';
 import { THREAT_ENTITY_TYPES } from '../threat-analyses/entity-types';
 import { MAX_COUNTER_REPORTS } from '../threat-analyses/outcome-counter/counter-record';
-import { openctiConnectorSettings, openctiStreamObjects, openctiStreamReportRefs } from './schema';
+import { openctiConnectorSettings, openctiStreamObjects, openctiStreamReportRefs, openctiStreamState } from './schema';
 
 /**
  * Marks the mirror rows `reached` selects, already marked or not, and returns how many: counted rather
@@ -41,7 +43,18 @@ const ISO_TIMESTAMP = String.raw`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|
 /** The next generation, read off the row itself so two callers cannot land on the same one. */
 const nextGeneration = () =>
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast for an integer column
-  sql`${openctiConnectorSettings.streamGeneration} + 1` as unknown as number;
+  sql`${openctiStreamState.streamGeneration} + 1` as unknown as number;
+
+/** No position and nothing read, the generation aside. */
+const STREAM_STATE_RESET = {
+  cursor: null,
+  lastEventAt: null,
+  historyStartAt: null,
+  backfillTargetAt: null,
+  reachedLiveTailAt: null,
+  objectsRead: 0,
+  objectsReadAt: null,
+};
 
 /** Namespaces the rebuild's advisory locks, so its tenant keys cannot collide with another user's. */
 const MIRROR_REBUILD_LOCK_CLASS = 1566;
@@ -52,11 +65,61 @@ const getString = (obj: Record<string, unknown>, key: string): string | null => 
 };
 
 export const openctiConnectorRepository = defineRepository({
+  /**
+   * The settings with the stream's position folded in, for the pages that show both. A read made on
+   * every call must not use it: it observes the stream state, which every checkpoint rewrites. Every
+   * settings row has a state row (a trigger creates it), so the join drops none.
+   */
   findByTenant: async ({ db, views }, tenantId: string) => {
-    const result = await db.select().from(views.openctiConnectorSettings)
+    const settings = views.openctiConnectorSettings;
+    const state = views.openctiStreamState;
+    const [row] = await db.select({
+      id: settings.id,
+      tenantId: settings.tenantId,
+      serviceAccountId: settings.serviceAccountId,
+      streamId: settings.streamId,
+      enabled: settings.enabled,
+      threatVisibility: settings.threatVisibility,
+      authFailedAt: settings.authFailedAt,
+      streamMissingCapability: settings.streamMissingCapability,
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt,
+      cursor: state.cursor,
+      lastEventAt: state.lastEventAt,
+      historyStartAt: state.historyStartAt,
+      backfillTargetAt: state.backfillTargetAt,
+      reachedLiveTailAt: state.reachedLiveTailAt,
+      streamGeneration: state.streamGeneration,
+      objectsRead: state.objectsRead,
+      objectsReadAt: state.objectsReadAt,
+    })
+      .from(settings)
+      .innerJoin(state, eq(state.tenantId, settings.tenantId))
+      .where(eq(settings.tenantId, tenantId))
+      .limit(1);
+    return row ?? null;
+  },
+
+  /** Answers `per_member` for a tenant with no settings row. Reads the settings alone, never the stream state. */
+  findThreatVisibility: async ({ db, views }, tenantId: string): Promise<OpenctiThreatVisibility> => {
+    const [row] = await db.select({ threatVisibility: views.openctiConnectorSettings.threatVisibility })
+      .from(views.openctiConnectorSettings)
       .where(eq(views.openctiConnectorSettings.tenantId, tenantId))
       .limit(1);
-    return result[0] ?? null;
+    return row?.threatVisibility ?? 'per_member';
+  },
+
+  /** Leaves the row alone, `updatedAt` included, when the choice is the one it holds. */
+  setThreatVisibility: async ({ db }, tenantId: string, id: string, threatVisibility: OpenctiThreatVisibility) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
+    const updatedAt = sql`now()` as unknown as Date;
+    return db.insert(openctiConnectorSettings)
+      .values([{ id, tenantId, threatVisibility }])
+      .onConflictDoUpdate({
+        target: openctiConnectorSettings.tenantId,
+        set: { threatVisibility, updatedAt },
+        setWhere: ne(openctiConnectorSettings.threatVisibility, threatVisibility),
+      });
   },
 
   /**
@@ -78,15 +141,24 @@ export const openctiConnectorRepository = defineRepository({
     db.select().from(views.openctiConnectorSettings)
       .where(eq(views.openctiConnectorSettings.enabled, true)),
 
-  // Always resets `cursor`/`lastEventAt` — a `streamId` change makes any previously persisted
-  // `cursor` meaningless (OpenCTI event ids are scoped to one stream). Always enables the
-  // connector — a user completing the Configure form expects the stream to start immediately.
+  // Always resets the stream state — a `streamId` change makes any previously persisted `cursor`
+  // meaningless (OpenCTI event ids are scoped to one stream), and the totals belong to the stream that
+  // produced them. Always enables the connector — a user completing the Configure form expects the
+  // stream to start immediately. The state goes first: the trigger that gives a new settings row its
+  // state row would otherwise create it at generation 0 for this call to bump to 1. Two statements: the
+  // caller runs it in a transaction.
   upsertConfig: async (
     { db }, tenantId: string, id: string, serviceAccountId: string, streamId: string,
   ) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
     const updatedAt = sql`now()` as unknown as Date;
-    return db.insert(openctiConnectorSettings)
+    await db.insert(openctiStreamState)
+      .values([{ tenantId }])
+      .onConflictDoUpdate({
+        target: openctiStreamState.tenantId,
+        set: { ...STREAM_STATE_RESET, streamGeneration: nextGeneration() },
+      });
+    await db.insert(openctiConnectorSettings)
       .values([{ id, tenantId, serviceAccountId, streamId, enabled: true }])
       .onConflictDoUpdate({
         target: openctiConnectorSettings.tenantId,
@@ -94,17 +166,8 @@ export const openctiConnectorRepository = defineRepository({
           serviceAccountId,
           streamId,
           enabled: true,
-          cursor: null,
-          lastEventAt: null,
-          historyStartAt: null,
-          backfillTargetAt: null,
-          reachedLiveTailAt: null,
           authFailedAt: null,
           streamMissingCapability: null,
-          // The totals belong to the stream that produced them, and this may be binding another one.
-          objectsRead: 0,
-          objectsReadAt: null,
-          streamGeneration: nextGeneration(),
           updatedAt,
         },
       });
@@ -129,7 +192,11 @@ export const openctiConnectorRepository = defineRepository({
     return configured.length > 0;
   },
 
-  /** Records the capability the deployment's token lacks, or clears it with null; leaves every other column alone. */
+  /**
+   * Records the capability the deployment's token lacks, or clears it with null; leaves every other
+   * column alone, and the row itself, `updatedAt` included, when it already holds that capability: the
+   * boot repeats this on every start.
+   */
   setStreamMissingCapability: async ({ db }, tenantId: string, id: string, capability: string | null) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
     const updatedAt = sql`now()` as unknown as Date;
@@ -138,6 +205,7 @@ export const openctiConnectorRepository = defineRepository({
       .onConflictDoUpdate({
         target: openctiConnectorSettings.tenantId,
         set: { streamMissingCapability: capability, updatedAt },
+        setWhere: valuesChange(openctiConnectorSettings, { streamMissingCapability: capability }),
       });
   },
 
@@ -182,24 +250,22 @@ export const openctiConnectorRepository = defineRepository({
     { db }, tenantId: string, cursor: string, lastEventAt: Date, reachedLiveTailCandidate: Date | null, objectsRead: number, generation: number,
   ) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
-    const updatedAt = sql`now()` as unknown as Date;
+    const monotonicLastEventAt = sql`greatest(coalesce(${openctiStreamState.lastEventAt}, ${lastEventAt}), ${lastEventAt})` as unknown as Date;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
-    const monotonicLastEventAt = sql`greatest(coalesce(${openctiConnectorSettings.lastEventAt}, ${lastEventAt}), ${lastEventAt})` as unknown as Date;
+    const historyStartAt = sql`coalesce(${openctiStreamState.historyStartAt}, case when ${openctiStreamState.reachedLiveTailAt} is null then ${lastEventAt}::timestamptz end)` as unknown as Date;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
-    const historyStartAt = sql`coalesce(${openctiConnectorSettings.historyStartAt}, case when ${openctiConnectorSettings.reachedLiveTailAt} is null then ${lastEventAt}::timestamptz end)` as unknown as Date;
+    const backfillTargetAt = sql`coalesce(${openctiStreamState.backfillTargetAt}, case when ${openctiStreamState.reachedLiveTailAt} is null then now() end)` as unknown as Date;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
-    const backfillTargetAt = sql`coalesce(${openctiConnectorSettings.backfillTargetAt}, case when ${openctiConnectorSettings.reachedLiveTailAt} is null then now() end)` as unknown as Date;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
-    const reachedLiveTailAt = sql`coalesce(${openctiConnectorSettings.reachedLiveTailAt}, ${reachedLiveTailCandidate})` as unknown as Date;
+    const reachedLiveTailAt = sql`coalesce(${openctiStreamState.reachedLiveTailAt}, ${reachedLiveTailCandidate})` as unknown as Date;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast for timestamp/counter columns
-    const objectsReadTotal = sql`${openctiConnectorSettings.objectsRead} + ${objectsRead}` as unknown as number;
+    const objectsReadTotal = sql`${openctiStreamState.objectsRead} + ${objectsRead}` as unknown as number;
     // The instant only moves when something was actually read, so a flush that carried no object leaves
     // the rate's denominator alone rather than reading as a burst of zero.
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast for timestamp/counter columns
-    const objectsReadAt = sql`case when ${objectsRead} > 0 then now() else ${openctiConnectorSettings.objectsReadAt} end` as unknown as Date;
+    const objectsReadAt = sql`case when ${objectsRead} > 0 then now() else ${openctiStreamState.objectsReadAt} end` as unknown as Date;
     // A consumer being replaced still runs a final flush, and the generation guard is what refuses the
     // position it was holding.
-    return db.update(openctiConnectorSettings)
+    return db.update(openctiStreamState)
       .set({
         cursor,
         lastEventAt: monotonicLastEventAt,
@@ -208,11 +274,10 @@ export const openctiConnectorRepository = defineRepository({
         reachedLiveTailAt,
         objectsRead: objectsReadTotal,
         objectsReadAt,
-        updatedAt,
       })
       .where(and(
-        eq(openctiConnectorSettings.tenantId, tenantId),
-        eq(openctiConnectorSettings.streamGeneration, generation),
+        eq(openctiStreamState.tenantId, tenantId),
+        eq(openctiStreamState.streamGeneration, generation),
       ))
       .returning();
   },
@@ -221,40 +286,24 @@ export const openctiConnectorRepository = defineRepository({
   // the abandoned backfill is never replayed.
   reconnectAtLiveTail: async ({ db }, tenantId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
-    const updatedAt = sql`now()` as unknown as Date;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
-    const reachedLiveTailAt = sql`coalesce(${openctiConnectorSettings.reachedLiveTailAt}, now())` as unknown as Date;
-    return db.update(openctiConnectorSettings)
+    const reachedLiveTailAt = sql`coalesce(${openctiStreamState.reachedLiveTailAt}, now())` as unknown as Date;
+    return db.update(openctiStreamState)
       .set({
         cursor: null,
         historyStartAt: null,
         backfillTargetAt: null,
         reachedLiveTailAt,
         streamGeneration: nextGeneration(),
-        updatedAt,
       })
-      .where(eq(openctiConnectorSettings.tenantId, tenantId));
+      .where(eq(openctiStreamState.tenantId, tenantId));
   },
 
   // Clears the live-tail latch too, so the next connection requests the stream from its origin rather
   // than its edge. Mirrored objects stay: a reset replays the stream, it does not un-import it.
-  resetStreamState: async ({ db }, tenantId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
-    const updatedAt = sql`now()` as unknown as Date;
-    return db.update(openctiConnectorSettings)
-      .set({
-        cursor: null,
-        lastEventAt: null,
-        historyStartAt: null,
-        backfillTargetAt: null,
-        reachedLiveTailAt: null,
-        objectsRead: 0,
-        objectsReadAt: null,
-        streamGeneration: nextGeneration(),
-        updatedAt,
-      })
-      .where(eq(openctiConnectorSettings.tenantId, tenantId));
-  },
+  resetStreamState: async ({ db }, tenantId: string) =>
+    db.update(openctiStreamState)
+      .set({ ...STREAM_STATE_RESET, streamGeneration: nextGeneration() })
+      .where(eq(openctiStreamState.tenantId, tenantId)),
 
   /**
    * `setWhere` is what keeps the stream's re-serving of an unchanged object free: an identical

@@ -1,9 +1,9 @@
 import type { EventOrigin } from '@app/module';
-import { openctiConnectorRepository, openctiConnectorSettings, openctiStreamObjects, openctiStreamReportRefs } from '@app/module';
+import { openctiConnectorRepository, openctiConnectorSettings, openctiStreamObjects, openctiStreamReportRefs, openctiStreamState } from '@app/module';
 import { and, eq, isNull } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createTenant, createTenantWithAdmin } from '../../helpers/factories';
+import { createTenant, createTenantUser, createTenantWithAdmin } from '../../helpers/factories';
 import { db } from '../../setup/db';
 import { createTestServices, repositoryContextOf, truncateAllTables } from '../../setup/test-context';
 
@@ -32,6 +32,9 @@ describe('OpenCTI Connector Service', () => {
   const getSettingsRow = (tid: string) =>
     db.select().from(openctiConnectorSettings).where(eq(openctiConnectorSettings.tenantId, tid));
 
+  const getStateRow = (tid: string) =>
+    db.select().from(openctiStreamState).where(eq(openctiStreamState.tenantId, tid));
+
   const getStreamObjectRows = (tid: string) =>
     db.select().from(openctiStreamObjects).where(eq(openctiStreamObjects.tenantId, tid));
 
@@ -52,7 +55,28 @@ describe('OpenCTI Connector Service', () => {
 
       const rows = await getSettingsRow(tenantId);
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toMatchObject({ streamId: 'live-stream-1', serviceAccountId, enabled: true, cursor: null });
+      expect(rows[0]).toMatchObject({ streamId: 'live-stream-1', serviceAccountId, enabled: true, threatVisibility: 'per_member' });
+      const state = await getStateRow(tenantId);
+      expect(state).toHaveLength(1);
+      expect(state[0]).toMatchObject({ cursor: null, streamGeneration: 0, objectsRead: 0 });
+    });
+
+    it('should bump the generation of the stream state on every reconfiguration, in place', async () => {
+      await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-1');
+      await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-2');
+
+      const state = await getStateRow(tenantId);
+      expect(state).toHaveLength(1);
+      expect(state[0].streamGeneration).toBe(1);
+    });
+
+    it('should leave the settings row alone when a checkpoint is written', async () => {
+      await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-1');
+      const before = (await getSettingsRow(tenantId))[0];
+
+      await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '1', new Date(), null, 3, 0);
+
+      expect((await getSettingsRow(tenantId))[0]).toEqual(before);
     });
 
     it('should update the existing row without creating a duplicate', async () => {
@@ -68,14 +92,14 @@ describe('OpenCTI Connector Service', () => {
       await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-1');
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '1620249512318-0', new Date(), null, 0, 0);
 
-      let rows = await getSettingsRow(tenantId);
+      let rows = await getStateRow(tenantId);
       expect(rows[0].cursor).toBe('1620249512318-0');
 
       // Reconfiguring (e.g. picking a different stream) must null out the stale cursor: a
       // previous stream's event id is meaningless for a different stream.
       await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-2');
 
-      rows = await getSettingsRow(tenantId);
+      rows = await getStateRow(tenantId);
       expect(rows[0].cursor).toBeNull();
       expect(rows[0].lastEventAt).toBeNull();
       expect(rows[0].historyStartAt).toBeNull();
@@ -101,12 +125,12 @@ describe('OpenCTI Connector Service', () => {
       const firstEventAt = new Date('2025-01-30T00:00:00.000Z');
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '1', firstEventAt, null, 0, 0);
 
-      let rows = await getSettingsRow(tenantId);
+      let rows = await getStateRow(tenantId);
       expect(rows[0].historyStartAt).toEqual(firstEventAt);
 
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '2', new Date('2025-06-01T00:00:00.000Z'), null, 0, 0);
 
-      rows = await getSettingsRow(tenantId);
+      rows = await getStateRow(tenantId);
       expect(rows[0].historyStartAt).toEqual(firstEventAt);
     });
 
@@ -114,13 +138,13 @@ describe('OpenCTI Connector Service', () => {
       await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-1');
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '1', new Date('2025-01-30T00:00:00.000Z'), null, 0, 0);
 
-      let rows = await getSettingsRow(tenantId);
+      let rows = await getStateRow(tenantId);
       const firstBackfillTargetAt = rows[0].backfillTargetAt;
       expect(firstBackfillTargetAt).not.toBeNull();
 
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '2', new Date('2025-06-01T00:00:00.000Z'), null, 0, 0);
 
-      rows = await getSettingsRow(tenantId);
+      rows = await getStateRow(tenantId);
       expect(rows[0].backfillTargetAt).toEqual(firstBackfillTargetAt);
     });
 
@@ -131,7 +155,7 @@ describe('OpenCTI Connector Service', () => {
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '1', laterDate, null, 0, 0);
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '2', earlierDate, null, 0, 0);
 
-      const rows = await getSettingsRow(tenantId);
+      const rows = await getStateRow(tenantId);
       // Cursor (id) still advances, but the timeline date stays at the max ever seen.
       expect(rows[0].cursor).toBe('2');
       expect(rows[0].lastEventAt).toEqual(laterDate);
@@ -142,13 +166,13 @@ describe('OpenCTI Connector Service', () => {
       const reachedAt = new Date('2026-07-30T10:00:00.000Z');
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '1', new Date(), reachedAt, 0, 0);
 
-      let rows = await getSettingsRow(tenantId);
+      let rows = await getStateRow(tenantId);
       expect(rows[0].reachedLiveTailAt).toEqual(reachedAt);
 
       // A later flush with no candidate (e.g. a quiet period) must not clear the latch.
       await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '2', new Date(), null, 0, 0);
 
-      rows = await getSettingsRow(tenantId);
+      rows = await getStateRow(tenantId);
       expect(rows[0].reachedLiveTailAt).toEqual(reachedAt);
     });
 
@@ -169,7 +193,7 @@ describe('OpenCTI Connector Service', () => {
       const persisted = await services.withOrigin(adminOrigin).openctiConnector.updateCursor(tenantId, '1', new Date(), new Date(), 1, 0);
 
       expect(persisted).toBeNull();
-      expect((await getSettingsRow(tenantId))[0].cursor).toBeNull();
+      expect((await getStateRow(tenantId))[0].cursor).toBeNull();
     });
 
     it('should not write to another tenant', async () => {
@@ -211,7 +235,8 @@ describe('OpenCTI Connector Service', () => {
 
       const rows = await getSettingsRow(tenantId);
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toMatchObject({ streamId: 'live-stream-1', enabled: true, cursor: null });
+      expect(rows[0]).toMatchObject({ streamId: 'live-stream-1', enabled: true });
+      expect((await getStateRow(tenantId))[0].cursor).toBeNull();
     });
 
     it('should leave another tenant mirrored objects untouched on write attempts', async () => {
@@ -229,9 +254,8 @@ describe('OpenCTI Connector Service', () => {
 
       await services.withOrigin(adminOrigin).openctiConnector.setEnabled(tenantId, false);
 
-      const rows = await getSettingsRow(tenantId);
-      expect(rows[0].enabled).toBe(false);
-      expect(rows[0].cursor).toBe('1620249512318-0');
+      expect((await getSettingsRow(tenantId))[0].enabled).toBe(false);
+      expect((await getStateRow(tenantId))[0].cursor).toBe('1620249512318-0');
     });
 
     it('should clear a previously set authFailedAt, whichever direction it is called', async () => {
@@ -272,6 +296,149 @@ describe('OpenCTI Connector Service', () => {
     it('should return null when no settings row exists', async () => {
       const settings = await services.withOrigin(adminOrigin).openctiConnector.getSettings(tenantId);
       expect(settings).toBeNull();
+    });
+  });
+
+  describe('threat visibility', () => {
+    const connector = () => services.withOrigin(adminOrigin).openctiConnector;
+
+    it('should answer per_member for a tenant with no settings row', async () => {
+      expect(await connector().getThreatVisibility(tenantId)).toBe('per_member');
+    });
+
+    it('should store the choice of a tenant with no stream bound, as a row of its own', async () => {
+      await connector().setThreatVisibility('service_account');
+
+      expect(await connector().getThreatVisibility(tenantId)).toBe('service_account');
+      expect(await getSettingsRow(tenantId)).toHaveLength(1);
+    });
+
+    it('should keep the choice when the stream is reconfigured', async () => {
+      await connector().setThreatVisibility('service_account');
+
+      await connector().configure(tenantId, serviceAccountId, 'live-stream-1');
+      await connector().configure(tenantId, serviceAccountId, 'live-stream-2');
+
+      expect(await connector().getThreatVisibility(tenantId)).toBe('service_account');
+    });
+
+    it('should not rewrite the row when the choice is the one it holds', async () => {
+      await connector().setThreatVisibility('service_account');
+      const before = (await getSettingsRow(tenantId))[0];
+
+      await connector().setThreatVisibility('service_account');
+
+      expect((await getSettingsRow(tenantId))[0]).toEqual(before);
+    });
+
+    it('should refuse a member who cannot manage security, and leave the choice as it was', async () => {
+      const member = await createTenantUser(services, db, adminOrigin);
+
+      await expect(services.withOrigin(member.origin).openctiConnector.setThreatVisibility('service_account')).rejects.toThrow('MANAGE_SECURITY');
+
+      expect(await connector().getThreatVisibility(tenantId)).toBe('per_member');
+      expect(await getSettingsRow(tenantId)).toHaveLength(0);
+    });
+
+    it('should not carry the choice of one tenant to another', async () => {
+      await connector().setThreatVisibility('service_account');
+
+      const tenantBId = await createTenant(services, adminUserId);
+      const tenantBOrigin: EventOrigin = { type: 'client', userId: adminUserId, tenantId: tenantBId };
+
+      expect(await services.withOrigin(tenantBOrigin).openctiConnector.getThreatVisibility(tenantBId)).toBe('per_member');
+    });
+  });
+
+  describe('the stream state of a settings row', () => {
+    const connector = () => services.withOrigin(adminOrigin).openctiConnector;
+    const system = () => services.withOrigin({ type: 'system' }).openctiConnector;
+
+    const writers: Array<[string, () => Promise<unknown>]> = [
+      ['setEnabled', () => connector().setEnabled(tenantId, true)],
+      ['markAuthFailed', () => connector().markAuthFailed(tenantId)],
+      ['setThreatVisibility', () => connector().setThreatVisibility('service_account')],
+      ['recordStreamMissingCapability', () => system().recordStreamMissingCapability(tenantId, 'SETINGESTION')],
+    ];
+
+    it.each(writers)('should exist from the first write of the settings, whichever path made it (%s)', async (_name, write) => {
+      await write();
+
+      expect(await getSettingsRow(tenantId)).toHaveLength(1);
+      expect(await getStateRow(tenantId)).toEqual([expect.objectContaining({ tenantId, streamGeneration: 0, objectsRead: 0, cursor: null })]);
+    });
+
+    it('should let a stream bound after such a write persist its first checkpoint', async () => {
+      await connector().setEnabled(tenantId, false);
+
+      await connector().configure(tenantId, serviceAccountId, 'live-stream-1');
+
+      const generation = (await connector().getSettings(tenantId))?.streamGeneration ?? -1;
+      const persisted = await connector().updateCursor(tenantId, '1', new Date(), null, 2, generation);
+      expect(persisted).toEqual({ reachedLiveTailAt: null, objectsRead: 2 });
+    });
+
+    it('should answer the position in getSettings for a row that never bound a stream', async () => {
+      await connector().setEnabled(tenantId, false);
+
+      expect(await connector().getSettings(tenantId)).toMatchObject({ streamId: null, cursor: null, streamGeneration: 0, objectsRead: 0 });
+    });
+  });
+
+  describe('recordStreamMissingCapability (system origin)', () => {
+    const system = () => services.withOrigin({ type: 'system' }).openctiConnector;
+
+    it('should not rewrite the row when the capability is the one it holds, as every boot repeats it', async () => {
+      await system().recordStreamMissingCapability(tenantId, 'SETINGESTION');
+      const before = (await getSettingsRow(tenantId))[0];
+
+      await system().recordStreamMissingCapability(tenantId, 'SETINGESTION');
+
+      expect((await getSettingsRow(tenantId))[0]).toEqual(before);
+    });
+
+    it('should not rewrite a row that holds none when it is cleared', async () => {
+      await system().recordStreamMissingCapability(tenantId, null);
+      const before = (await getSettingsRow(tenantId))[0];
+
+      await system().recordStreamMissingCapability(tenantId, null);
+
+      expect((await getSettingsRow(tenantId))[0]).toEqual(before);
+    });
+
+    it('should record a change of the capability, and clear it', async () => {
+      await system().recordStreamMissingCapability(tenantId, 'SETINGESTION');
+      const first = (await getSettingsRow(tenantId))[0];
+
+      await system().recordStreamMissingCapability(tenantId, 'SETCOLLECTIONS');
+      const second = (await getSettingsRow(tenantId))[0];
+      expect(second.streamMissingCapability).toBe('SETCOLLECTIONS');
+      expect(second.updatedAt.getTime()).toBeGreaterThan(first.updatedAt.getTime());
+
+      await system().recordStreamMissingCapability(tenantId, null);
+      expect((await getSettingsRow(tenantId))[0].streamMissingCapability).toBeNull();
+    });
+  });
+
+  describe('configureDeploymentStream (system origin)', () => {
+    const system = () => services.withOrigin({ type: 'system' }).openctiConnector;
+
+    it('should bind the stream with a state row, so its first checkpoint is persisted', async () => {
+      expect(await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-1')).toBe(true);
+
+      expect(await getStateRow(tenantId)).toHaveLength(1);
+      const persisted = await system().updateCursor(tenantId, '1', new Date(), null, 2, 0);
+      expect(persisted).toEqual({ reachedLiveTailAt: null, objectsRead: 2 });
+    });
+
+    it('should leave the position of a tenant already configured alone', async () => {
+      await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-1');
+      await system().updateCursor(tenantId, '1620249512318-0', new Date(), null, 5, 0);
+
+      expect(await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-2')).toBe(false);
+
+      expect((await getStateRow(tenantId))[0]).toMatchObject({ cursor: '1620249512318-0', objectsRead: 5, streamGeneration: 0 });
+      expect((await getSettingsRow(tenantId))[0].streamId).toBe('live-stream-1');
     });
   });
 
