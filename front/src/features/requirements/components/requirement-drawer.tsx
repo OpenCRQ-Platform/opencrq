@@ -48,24 +48,27 @@ const RequirementCreateForm: FunctionComponent<{ organizationId: string }> = ({ 
   );
 };
 
-const RequirementUpdateForm: FunctionComponent<{ requirementId: string, organizationId: string }> = ({ requirementId, organizationId }) => {
+/**
+ * Mounted once the requirement is loaded: a form built before it would render its fields with no
+ * value. `values` then follows a refetch, which a cached copy opened right after a save is waiting on.
+ */
+const RequirementUpdateFormFields: FunctionComponent<{ requirementId: string, organizationId: string, stored: RequirementFormValues }> = ({
+  requirementId, organizationId, stored,
+}) => {
   const trpc = useTRPC();
   const { closeDrawer } = useFormDrawerContext();
   const options = useRequirementOptions(organizationId);
-  const { data: requirement } = useQuery(trpc.requirements.getRequirement.queryOptions({ id: requirementId }));
   const form = useForm<RequirementFormValues>({
     resolver: zodResolver(requirementFormSchema),
-    values: requirement ? requirementFormValuesFrom(requirement) : undefined,
+    defaultValues: stored,
+    values: stored,
+    resetOptions: { keepDirtyValues: true },
   });
 
   const updateRequirement = useMutation(trpc.requirements.updateRequirement.mutationOptions({
     meta: { successMessage: msg`Requirement updated successfully.` },
     onSuccess: () => closeDrawer(),
   }));
-
-  if (!requirement) {
-    return null;
-  }
 
   return (
     <DrawerForm
@@ -75,6 +78,21 @@ const RequirementUpdateForm: FunctionComponent<{ requirementId: string, organiza
     >
       <RequirementFormFields control={form.control} {...options} />
     </DrawerForm>
+  );
+};
+
+const RequirementUpdateForm: FunctionComponent<{ requirementId: string, organizationId: string }> = ({ requirementId, organizationId }) => {
+  const trpc = useTRPC();
+  const { data: requirement } = useQuery(trpc.requirements.getRequirement.queryOptions({ id: requirementId }));
+  if (!requirement) {
+    return null;
+  }
+  return (
+    <RequirementUpdateFormFields
+      requirementId={requirementId}
+      organizationId={organizationId}
+      stored={requirementFormValuesFrom(requirement)}
+    />
   );
 };
 
