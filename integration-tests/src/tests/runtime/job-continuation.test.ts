@@ -58,10 +58,24 @@ describe('a run that leaves work behind its own bound', () => {
     await runOnce(() => Promise.resolve({ continuation: true }));
 
     const rows = await rowsOfKind();
-    expect(rows.find((row) => row.id === jobId)?.status).toBe('succeeded');
+    expect(rows.find((row) => row.id === jobId)?.status).toBe('partial');
     const queued = rows.filter((row) => row.status === 'queued');
     expect(queued).toHaveLength(1);
     expect(queued[0].id).not.toBe(jobId);
+  });
+
+  // An interrupted segment read as succeeded tells the operator the pass is over while its follow-up
+  // still has the rest to do. Only the segment that ends the pass is a success.
+  it('should end the segment that handed work on as partial and the one that ends the pass as succeeded', async () => {
+    const { jobId } = await system().jobs.enqueueJob({ kind: KIND, tenantId, payload: {} });
+    await runOnce(() => Promise.resolve({ continuation: true, state: { startIndex: 59_500 } }));
+    const [queued] = (await rowsOfKind()).filter((row) => row.status === 'queued');
+
+    await runOnce(() => Promise.resolve());
+
+    const rows = await rowsOfKind();
+    expect(rows.find((row) => row.id === jobId)?.status).toBe('partial');
+    expect(rows.find((row) => row.id === queued.id)?.status).toBe('succeeded');
   });
 
   it('should swallow an enqueue the handler makes for itself and still queue the runtime continuation', async () => {

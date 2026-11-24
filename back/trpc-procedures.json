@@ -6382,6 +6382,7 @@
                     "queued",
                     "running",
                     "succeeded",
+                    "partial",
                     "cancelled",
                     "dlq"
                   ]

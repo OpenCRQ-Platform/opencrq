@@ -3,12 +3,17 @@ import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, unique
 import { defineSecurityPolicies, jobChildTenantIsolationPolicy, tenantIsolationPolicy } from '../../security';
 import { tenants } from '../tenants';
 
-export const JOB_STATUSES = ['queued', 'running', 'succeeded', 'cancelled', 'dlq'] as const;
+/**
+ * `partial` is a run that stopped at its own bound and handed the rest of its pass to a continuation:
+ * it did its share without failing, but the pass it belongs to is not finished, so it never reads as
+ * `succeeded`.
+ */
+export const JOB_STATUSES = ['queued', 'running', 'succeeded', 'partial', 'cancelled', 'dlq'] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
 /** The two groups partition `JOB_STATUSES`: a status added there belongs to one of them. */
 export const ACTIVE_JOB_STATUSES = ['queued', 'running'] as const;
-export const TERMINAL_JOB_STATUSES = ['succeeded', 'cancelled', 'dlq'] as const;
+export const TERMINAL_JOB_STATUSES = ['succeeded', 'partial', 'cancelled', 'dlq'] as const;
 /** The statuses a run can hold once it has stopped. A run still queued or running has none. */
 export type TerminalRunStatus = (typeof TERMINAL_JOB_STATUSES)[number];
 

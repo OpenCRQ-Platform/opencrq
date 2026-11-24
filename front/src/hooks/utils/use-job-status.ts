@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTRPC } from '../../lib';
 
-const TERMINAL_STATUSES = ['succeeded', 'dlq', 'cancelled'] as const;
+const TERMINAL_STATUSES = ['succeeded', 'partial', 'dlq', 'cancelled'] as const;
 type TerminalStatus = (typeof TERMINAL_STATUSES)[number];
 
 const isTerminal = (status: string | null | undefined): status is TerminalStatus =>
@@ -11,7 +11,7 @@ const isTerminal = (status: string | null | undefined): status is TerminalStatus
 interface UseJobStatusOptions {
   /** The job ID to watch. Pass `null` to disable. */
   jobId: string | null,
-  /** Called once when the job reaches `succeeded`. */
+  /** Called once when the job reaches `succeeded`, or `partial`: its row ended without failing. */
   onSuccess?: () => void,
   /** Called once when the job reaches `dlq` or `cancelled`. */
   onFailed?: () => void,
@@ -58,7 +58,7 @@ export const useJobStatus = ({
       return;
     }
     hasCalledRef.current = true;
-    if (status === 'succeeded') {
+    if (status === 'succeeded' || status === 'partial') {
       onSuccessRef.current?.();
     } else {
       onFailedRef.current?.();

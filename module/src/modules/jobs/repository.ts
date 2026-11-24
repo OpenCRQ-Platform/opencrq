@@ -765,10 +765,11 @@ export const jobsRepository = defineRepository({
     return rows.map((r) => ({ id: r.id }));
   },
 
-  markSuccess: async ({ db }, jobId: string, workerId: string): Promise<ReadonlyArray<SettledJob>> => {
+  /** `continued`: the run booked a continuation, so it ends `partial` rather than `succeeded`. */
+  markSuccess: async ({ db }, jobId: string, workerId: string, continued = false): Promise<ReadonlyArray<SettledJob>> => {
     const rows = await db.update(jobs)
       .set({
-        status: 'succeeded',
+        status: continued ? 'partial' : 'succeeded',
         finishedAt: sqlAsDate(sql`now()`),
         errorMessage: null,
         leasedUntil: null,

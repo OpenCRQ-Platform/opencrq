@@ -3,9 +3,9 @@ import type { RunDateField, RunsUrlFilters } from './runs-list-search';
 import { formatUrlList, parseUrlList } from '../../utils';
 import { RUN_DATE_FIELDS } from './runs-list-search';
 
-/** The five run statuses, for the status filter's option list — kept in sync by hand with
+/** The six run statuses, for the status filter's option list — kept in sync by hand with
  * `RUN_STATUS_SEVERITY` and `runStatusLabel` in `run-vocabulary.ts`. */
-export const RUN_STATUSES: ReadonlyArray<JobStatus> = ['queued', 'running', 'succeeded', 'cancelled', 'dlq'];
+export const RUN_STATUSES: ReadonlyArray<JobStatus> = ['queued', 'running', 'succeeded', 'partial', 'cancelled', 'dlq'];
 
 /** Every trigger, for the "triggered by" filter's option list — kept in sync by hand with
  * `triggeredByLabel` in `job-vocabulary.ts`. */
