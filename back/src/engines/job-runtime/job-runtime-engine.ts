@@ -143,9 +143,13 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
       onRenewError: (err, jobId) => {
         logFromError(err, 'renewLease transient error', { jobId, kind: claimed.kind });
       },
-      onJobSuccess: (jobId, kind) => {
+      onJobSuccess: (jobId, kind, continued) => {
         succeeded = true;
-        logTrace('Job completed successfully', { jobId, kind, attempt: claimed.attempt });
+        // A segment that handed the rest of its pass to a continuation did not complete the job:
+        // onContinuation logs its own line, so the console of a partial segment never reads as a success.
+        if (!continued) {
+          logTrace('Job completed successfully', { jobId, kind, attempt: claimed.attempt });
+        }
       },
       onTerminal: async (job) => {
         try {
@@ -156,7 +160,8 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
         }
       },
       onContinuation: (jobId, kind, continuationJobId) => {
-        logTrace('Run booked its own continuation', { jobId, kind, continuationJobId });
+        const next = continuationJobId === undefined ? 'the continuation already booked' : `run ${continuationJobId}`;
+        logTrace(`Segment ended partial: the rest of the pass continues in ${next}`, { jobId, kind, continuationJobId });
       },
       onAnswered: (jobId, kind, answeringJobId) => {
         logTrace('Run booked the answer to an ask it absorbed', { jobId, kind, answeringJobId });

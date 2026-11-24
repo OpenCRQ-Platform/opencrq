@@ -52,7 +52,8 @@ export interface ExecuteJobOptions {
   onLostRace?: (jobId: string, reason: string) => void,
   onRenewError?: (err: unknown, jobId: string) => void,
   onStarted?: (job: ClaimedJob) => void,
-  onJobSuccess?: (jobId: string, kind: string) => void,
+  /** `continued` is true when the run booked its own continuation: the segment ended partial. */
+  onJobSuccess?: (jobId: string, kind: string, continued?: boolean) => void,
   onJobFailure?: (jobId: string, kind: string, err: unknown, outcome: 'retry' | 'dlq', nextAttemptAt: Date | null) => void,
   /**
    * Fired once, when the handler promise settles or when it never ran at all. An abort ends the
@@ -251,7 +252,7 @@ const recordOutcome = async (opts: ExecuteJobOptions, outcome: RaceOutcome): Pro
       opts.onLostRace?.(job.id, 'success-after-lease-lost');
       return false;
     }
-    opts.onJobSuccess?.(job.id, job.kind);
+    opts.onJobSuccess?.(job.id, job.kind, continuation !== undefined);
     if (continuation) {
       opts.onContinuation?.(job.id, job.kind, bookedJobId);
     } else if (bookedJobId !== undefined) {

@@ -16,7 +16,7 @@ import { usePersistedPageSize } from '../../../hooks';
 import { useTRPC } from '../../../lib';
 import { formatDateTime } from '../../../utils';
 import { useRunReferences } from '../use-run-references';
-import { CLAIMABILITY_SEVERITY, claimabilityHint, claimabilityLabel } from '../run-vocabulary';
+import { CLAIMABILITY_SEVERITY, claimabilityHint, claimabilityLabel, RUN_STATUS_SEVERITY, runStatusLabel } from '../run-vocabulary';
 import { RunReferenceList } from './run-reference-list';
 
 type RouterOutputs = inferRouterOutputs<TRPCRouter>;
@@ -174,6 +174,21 @@ export const QueuePage: FunctionComponent = () => {
     { id: 'finishedAt', accessorKey: 'finishedAt', header: t`Finished at`, size: 90, cell: ({ row }): ReactElement => instantCell(row.original.finishedAt) },
   ];
 
+  // The section lists partial segments with the runs that succeeded (#157): each row says which it is,
+  // with the chip the Runs tab shows, so a partial segment never reads as a success.
+  const succeededColumns: Array<ColumnDefWithOptionsHeader<QueueRunRow, unknown>> = [
+    ...finishedColumns,
+    {
+      id: 'status',
+      accessorKey: 'status',
+      header: t`Status`,
+      size: 110,
+      cell: ({ row }): ReactElement => (
+        <Chip severity={RUN_STATUS_SEVERITY[row.original.status]} label={runStatusLabel(row.original.status)} />
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-8">
       <QueueTable
@@ -220,7 +235,7 @@ export const QueuePage: FunctionComponent = () => {
         title={t`Succeeded`}
         rows={succeeded}
         total={data?.succeeded.total}
-        columns={finishedColumns}
+        columns={succeededColumns}
         isLoading={isLoading}
         isPlaceholderData={isPlaceholderData && pagedTableId === SUCCEEDED_TABLE_ID}
         isFetching={isFetching}
