@@ -109,9 +109,10 @@ describe('runMigration analyze threshold', () => {
 
 describe('runMigration fillfactor', () => {
   // One of the tables the syncs rewrite, standing for all of them.
-  const table = 'cve';
+  const listed = 'cve';
+  const unlisted = 'left_the_sync_tables';
 
-  const fillfactor = async (): Promise<string | undefined> => {
+  const fillfactor = async (table: string): Promise<string | undefined> => {
     const { rows: [found] } = await pool.query<{ reloptions: Array<string> | null }>(
       'SELECT reloptions FROM pg_class WHERE oid = $1::regclass',
       [table],
@@ -120,28 +121,46 @@ describe('runMigration fillfactor', () => {
   };
 
   beforeEach(async () => {
-    await pool.query(`ALTER TABLE ${table} RESET (fillfactor)`);
+    await pool.query(`ALTER TABLE ${listed} RESET (fillfactor)`);
+    await pool.query(`CREATE TABLE ${unlisted} (id uuid PRIMARY KEY)`);
   });
 
   afterEach(async () => {
-    await pool.query(`ALTER TABLE ${table} SET (fillfactor = 70)`);
+    await pool.query(`ALTER TABLE ${listed} SET (fillfactor = 70)`);
+    await pool.query(`DROP TABLE ${unlisted}`);
   });
 
   it('should give a table the syncs rewrite its fillfactor back', async () => {
     await runMigration(db);
 
-    expect(await fillfactor()).toBe('fillfactor=70');
+    expect(await fillfactor(listed)).toBe('fillfactor=70');
+  });
+
+  it('should take the fillfactor back from a table the syncs no longer rewrite', async () => {
+    await pool.query(`ALTER TABLE ${unlisted} SET (fillfactor = 70)`);
+
+    await runMigration(db);
+
+    expect(await fillfactor(unlisted)).toBeUndefined();
+  });
+
+  it('should keep a fillfactor an operator set on another table', async () => {
+    await pool.query(`ALTER TABLE ${unlisted} SET (fillfactor = 80)`);
+
+    await runMigration(db);
+
+    expect(await fillfactor(unlisted)).toBe('fillfactor=80');
   });
 
   it('should leave a table another session holds to the next run instead of failing the boot', async () => {
     const holder = await pool.connect();
     try {
       await holder.query('BEGIN');
-      await holder.query(`LOCK TABLE ${table} IN SHARE UPDATE EXCLUSIVE MODE`);
+      await holder.query(`LOCK TABLE ${listed} IN SHARE UPDATE EXCLUSIVE MODE`);
 
       await runMigration(db);
 
-      expect(await fillfactor()).toBeUndefined();
+      expect(await fillfactor(listed)).toBeUndefined();
     } finally {
       await holder.query('ROLLBACK');
       holder.release();
@@ -149,6 +168,6 @@ describe('runMigration fillfactor', () => {
 
     await runMigration(db);
 
-    expect(await fillfactor()).toBe('fillfactor=70');
+    expect(await fillfactor(listed)).toBe('fillfactor=70');
   });
 });
