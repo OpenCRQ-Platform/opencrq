@@ -91,11 +91,11 @@ export const openctiConnectorService = defineService(
    * configured: binds `serviceAccountId` and `streamId` and enables the connector. Never overwrites an
    * admin's choice. System origin only. Answers whether it configured.
    */
-  configureDeploymentStream: async ({ atomic, eventOrigin }, tenantId: string, serviceAccountId: string, streamId: string): Promise<boolean> => {
+  configureDeploymentStream: async ({ repo, eventOrigin }, tenantId: string, serviceAccountId: string, streamId: string): Promise<boolean> => {
     if (eventOrigin.type !== 'system') {
       throw newError('System origin required');
     }
-    return atomic(({ repo }) => repo.configureIfUnconfigured(tenantId, uuidv7(), serviceAccountId, streamId));
+    return repo.configureIfUnconfigured(tenantId, uuidv7(), serviceAccountId, streamId);
   },
 
   /** What the boot found missing on the deployment's token, shown on the connector page. System origin only. */

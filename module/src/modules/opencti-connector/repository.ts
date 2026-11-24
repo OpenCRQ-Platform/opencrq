@@ -5,6 +5,7 @@ import type { OpenctiThreatVisibility } from './threat-visibility';
 import type { RepositoryContext } from '../../registry';
 import { LATERAL_ON } from '../../db/lateral';
 import { diffRows } from '../../db/row-diff';
+import { valuesChange } from '../../db/write-guards';
 import { defineRepository } from '../../registry';
 import { serviceAccounts } from '../service-accounts/schema';
 import { THREAT_ENTITY_TYPES } from '../threat-analyses/entity-types';
@@ -66,7 +67,8 @@ const getString = (obj: Record<string, unknown>, key: string): string | null => 
 export const openctiConnectorRepository = defineRepository({
   /**
    * The settings with the stream's position folded in, for the pages that show both. A read made on
-   * every call must not use it: it observes the stream state, which every checkpoint rewrites.
+   * every call must not use it: it observes the stream state, which every checkpoint rewrites. Every
+   * settings row has a state row (a trigger creates it), so the join drops none.
    */
   findByTenant: async ({ db, views }, tenantId: string) => {
     const settings = views.openctiConnectorSettings;
@@ -92,11 +94,10 @@ export const openctiConnectorRepository = defineRepository({
       objectsReadAt: state.objectsReadAt,
     })
       .from(settings)
-      .leftJoin(state, eq(state.tenantId, settings.tenantId))
+      .innerJoin(state, eq(state.tenantId, settings.tenantId))
       .where(eq(settings.tenantId, tenantId))
       .limit(1);
-    // A binding creates the state row; a tenant that never bound a stream has none.
-    return row ? { ...row, streamGeneration: row.streamGeneration ?? 0, objectsRead: row.objectsRead ?? 0 } : null;
+    return row ?? null;
   },
 
   /** Answers `per_member` for a tenant with no settings row. Reads the settings alone, never the stream state. */
@@ -143,12 +144,20 @@ export const openctiConnectorRepository = defineRepository({
   // Always resets the stream state — a `streamId` change makes any previously persisted `cursor`
   // meaningless (OpenCTI event ids are scoped to one stream), and the totals belong to the stream that
   // produced them. Always enables the connector — a user completing the Configure form expects the
-  // stream to start immediately. Two statements: the caller runs it in a transaction.
+  // stream to start immediately. The state goes first: the trigger that gives a new settings row its
+  // state row would otherwise create it at generation 0 for this call to bump to 1. Two statements: the
+  // caller runs it in a transaction.
   upsertConfig: async (
     { db }, tenantId: string, id: string, serviceAccountId: string, streamId: string,
   ) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
     const updatedAt = sql`now()` as unknown as Date;
+    await db.insert(openctiStreamState)
+      .values([{ tenantId }])
+      .onConflictDoUpdate({
+        target: openctiStreamState.tenantId,
+        set: { ...STREAM_STATE_RESET, streamGeneration: nextGeneration() },
+      });
     await db.insert(openctiConnectorSettings)
       .values([{ id, tenantId, serviceAccountId, streamId, enabled: true }])
       .onConflictDoUpdate({
@@ -162,19 +171,12 @@ export const openctiConnectorRepository = defineRepository({
           updatedAt,
         },
       });
-    await db.insert(openctiStreamState)
-      .values([{ tenantId }])
-      .onConflictDoUpdate({
-        target: openctiStreamState.tenantId,
-        set: { ...STREAM_STATE_RESET, streamGeneration: nextGeneration() },
-      });
   },
 
   /**
    * `upsertConfig` for the stream the deployment provides, applied only to a tenant nobody configured
    * (no row, or a row with neither account nor stream): an admin's choice, a disabled connector
-   * included, is never overwritten. Answers whether it configured. Two statements: the caller runs it
-   * in a transaction.
+   * included, is never overwritten. Answers whether it configured.
    */
   configureIfUnconfigured: async ({ db }, tenantId: string, id: string, serviceAccountId: string, streamId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
@@ -187,14 +189,14 @@ export const openctiConnectorRepository = defineRepository({
         setWhere: and(isNull(openctiConnectorSettings.serviceAccountId), isNull(openctiConnectorSettings.streamId)),
       })
       .returning();
-    if (configured.length === 0) {
-      return false;
-    }
-    await db.insert(openctiStreamState).values([{ tenantId }]).onConflictDoNothing();
-    return true;
+    return configured.length > 0;
   },
 
-  /** Records the capability the deployment's token lacks, or clears it with null; leaves every other column alone. */
+  /**
+   * Records the capability the deployment's token lacks, or clears it with null; leaves every other
+   * column alone, and the row itself, `updatedAt` included, when it already holds that capability: the
+   * boot repeats this on every start.
+   */
   setStreamMissingCapability: async ({ db }, tenantId: string, id: string, capability: string | null) => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
     const updatedAt = sql`now()` as unknown as Date;
@@ -203,6 +205,7 @@ export const openctiConnectorRepository = defineRepository({
       .onConflictDoUpdate({
         target: openctiConnectorSettings.tenantId,
         set: { streamMissingCapability: capability, updatedAt },
+        setWhere: valuesChange(openctiConnectorSettings, { streamMissingCapability: capability }),
       });
   },
 

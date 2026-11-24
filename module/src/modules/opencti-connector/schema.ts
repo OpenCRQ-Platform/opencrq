@@ -35,8 +35,8 @@ export const openctiConnectorSettings = pgTable('opencti_connector_settings', {
 
 defineSecurityPolicies(openctiConnectorSettings, tenantIsolationPolicy);
 
-// Where the tenant's Live Stream consumer stands, one row per tenant bound to a stream, created by
-// the binding. Every checkpoint rewrites it.
+// Where the tenant's Live Stream consumer stands, one row per settings row, created with it by the
+// `opencti_connector_settings_create_stream_state` trigger. Every checkpoint rewrites it.
 export const openctiStreamState = pgTable('opencti_stream_state', {
   tenantId: uuid('tenant_id').primaryKey().references(() => tenants.id, { onDelete: 'cascade' }),
   // Last SSE event id, used to resume via `from`/`Last-Event-ID` on reconnect.

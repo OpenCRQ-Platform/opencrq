@@ -311,7 +311,6 @@ describe('OpenCTI Connector Service', () => {
 
       expect(await connector().getThreatVisibility(tenantId)).toBe('service_account');
       expect(await getSettingsRow(tenantId)).toHaveLength(1);
-      expect(await getStateRow(tenantId)).toHaveLength(0);
     });
 
     it('should keep the choice when the stream is reconfigured', async () => {
@@ -348,6 +347,76 @@ describe('OpenCTI Connector Service', () => {
       const tenantBOrigin: EventOrigin = { type: 'client', userId: adminUserId, tenantId: tenantBId };
 
       expect(await services.withOrigin(tenantBOrigin).openctiConnector.getThreatVisibility(tenantBId)).toBe('per_member');
+    });
+  });
+
+  describe('the stream state of a settings row', () => {
+    const connector = () => services.withOrigin(adminOrigin).openctiConnector;
+    const system = () => services.withOrigin({ type: 'system' }).openctiConnector;
+
+    const writers: Array<[string, () => Promise<unknown>]> = [
+      ['setEnabled', () => connector().setEnabled(tenantId, true)],
+      ['markAuthFailed', () => connector().markAuthFailed(tenantId)],
+      ['setThreatVisibility', () => connector().setThreatVisibility('service_account')],
+      ['recordStreamMissingCapability', () => system().recordStreamMissingCapability(tenantId, 'SETINGESTION')],
+    ];
+
+    it.each(writers)('should exist from the first write of the settings, whichever path made it (%s)', async (_name, write) => {
+      await write();
+
+      expect(await getSettingsRow(tenantId)).toHaveLength(1);
+      expect(await getStateRow(tenantId)).toEqual([expect.objectContaining({ tenantId, streamGeneration: 0, objectsRead: 0, cursor: null })]);
+    });
+
+    it('should let a stream bound after such a write persist its first checkpoint', async () => {
+      await connector().setEnabled(tenantId, false);
+
+      await connector().configure(tenantId, serviceAccountId, 'live-stream-1');
+
+      const generation = (await connector().getSettings(tenantId))?.streamGeneration ?? -1;
+      const persisted = await connector().updateCursor(tenantId, '1', new Date(), null, 2, generation);
+      expect(persisted).toEqual({ reachedLiveTailAt: null, objectsRead: 2 });
+    });
+
+    it('should answer the position in getSettings for a row that never bound a stream', async () => {
+      await connector().setEnabled(tenantId, false);
+
+      expect(await connector().getSettings(tenantId)).toMatchObject({ streamId: null, cursor: null, streamGeneration: 0, objectsRead: 0 });
+    });
+  });
+
+  describe('recordStreamMissingCapability (system origin)', () => {
+    const system = () => services.withOrigin({ type: 'system' }).openctiConnector;
+
+    it('should not rewrite the row when the capability is the one it holds, as every boot repeats it', async () => {
+      await system().recordStreamMissingCapability(tenantId, 'SETINGESTION');
+      const before = (await getSettingsRow(tenantId))[0];
+
+      await system().recordStreamMissingCapability(tenantId, 'SETINGESTION');
+
+      expect((await getSettingsRow(tenantId))[0]).toEqual(before);
+    });
+
+    it('should not rewrite a row that holds none when it is cleared', async () => {
+      await system().recordStreamMissingCapability(tenantId, null);
+      const before = (await getSettingsRow(tenantId))[0];
+
+      await system().recordStreamMissingCapability(tenantId, null);
+
+      expect((await getSettingsRow(tenantId))[0]).toEqual(before);
+    });
+
+    it('should record a change of the capability, and clear it', async () => {
+      await system().recordStreamMissingCapability(tenantId, 'SETINGESTION');
+      const first = (await getSettingsRow(tenantId))[0];
+
+      await system().recordStreamMissingCapability(tenantId, 'SETCOLLECTIONS');
+      const second = (await getSettingsRow(tenantId))[0];
+      expect(second.streamMissingCapability).toBe('SETCOLLECTIONS');
+      expect(second.updatedAt.getTime()).toBeGreaterThan(first.updatedAt.getTime());
+
+      await system().recordStreamMissingCapability(tenantId, null);
+      expect((await getSettingsRow(tenantId))[0].streamMissingCapability).toBeNull();
     });
   });
 
