@@ -1,7 +1,7 @@
 import { plural, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import type { FunctionComponent, ReactNode } from 'react';
-import type { ReaderAccessIssue } from '../../xtm/use-reader-access';
+import type { ThreatAccessIssue } from '../../xtm/use-reader-access';
 import { DetailPageLayout } from '../../../components/shared/detail-page-layout';
 import { ImportProgressIndicator } from '../../../components/shared/import-progress-indicator';
 import { ReaderAccessNotice } from './hidden-threats-notice';
@@ -21,7 +21,7 @@ interface ThreatListPageProps {
   /** Threats the list admits before their outcome probability, CVEs and techniques are computed. */
   pending: number,
   /** Why the list may lack threats the reader can read in OpenCTI; null when it lacks none. */
-  readerAccessIssue: ReaderAccessIssue | null,
+  readerAccessIssue: ThreatAccessIssue | null,
   catalogEmpty: boolean,
   emptyState: ReactNode,
   kpiBand: ReactNode,

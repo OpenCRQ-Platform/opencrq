@@ -1,11 +1,11 @@
 import { Alert, Icon, IconButton } from '@filigran/design-system';
 import { t } from '@lingui/core/macro';
 import type { FunctionComponent } from 'react';
-import type { ReaderAccessIssue } from '../../xtm/use-reader-access';
+import type { ThreatAccessIssue } from '../../xtm/use-reader-access';
 import { TooltipHint, TooltipHintProvider } from '../../../components/shared/tooltip-hint';
 import { useReaderAccess } from '../../xtm/use-reader-access';
 
-const noticeText = (issue: ReaderAccessIssue): { title: string, description: string } => {
+const noticeText = (issue: ThreatAccessIssue): { title: string, description: string } => {
   switch (issue) {
     case 'not_linked':
       return {
@@ -22,11 +22,16 @@ const noticeText = (issue: ReaderAccessIssue): { title: string, description: str
         title: t`Some threats are hidden for now.`,
         description: t`OpenCTI or XTM One did not answer, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once the answer does. If this lasts, tell an administrator.`,
       };
+    case 'connector_unavailable':
+      return {
+        title: t`Some threats are hidden for now.`,
+        description: t`OpenCRQ could not read OpenCTI with the connector's access, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once OpenCTI answers. If this lasts, tell an administrator.`,
+      };
   }
 };
 
 /** The notice of one category, for a screen that already holds it; a screen that does not uses `HiddenThreatsAlert`. */
-export const ReaderAccessNotice: FunctionComponent<{ issue: ReaderAccessIssue }> = ({ issue }) => {
+export const ReaderAccessNotice: FunctionComponent<{ issue: ThreatAccessIssue }> = ({ issue }) => {
   const { title, description } = noticeText(issue);
   return <Alert severity="warning" title={title} description={description} />;
 };

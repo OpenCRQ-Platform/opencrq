@@ -101,11 +101,14 @@ describe('withReaderScope', () => {
     });
   });
 
-  it('should tell nothing in a tenant that shows every member what the connector reads, whatever the issue', () => {
-    expect(withReaderScope(ORIGIN, { issue: 'unavailable' }, 'service_account')).toEqual({
-      origin: { ...ORIGIN, markings: null, openctiAccess: null },
-      readerAccessIssue: null,
-    });
+  it('should name the connector, never the member, in a tenant that shows every member what the connector reads', () => {
+    for (const issue of ['unavailable', 'no_account', 'not_linked'] as const) {
+      expect(withReaderScope(ORIGIN, { issue }, 'service_account')).toEqual({
+        origin: { ...ORIGIN, markings: null, openctiAccess: null },
+        readerAccessIssue: 'connector_unavailable',
+      });
+    }
+    expect(withReaderScope(ORIGIN, { scope: SCOPE }, 'service_account').readerAccessIssue).toBeNull();
   });
 });
 

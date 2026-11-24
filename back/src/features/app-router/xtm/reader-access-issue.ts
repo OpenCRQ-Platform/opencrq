@@ -10,6 +10,14 @@ import { ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
 export const READER_ACCESS_ISSUES = ['not_linked', 'no_account', 'unavailable'] as const;
 export type ReaderAccessIssue = typeof READER_ACCESS_ISSUES[number];
 
+/**
+ * What the threats screens may say: a member's own category, or `connector_unavailable` in a tenant
+ * that shows every member what the connector reads, where nothing about the member can be wrong and
+ * the connector's own read of OpenCTI failed.
+ */
+export const THREAT_ACCESS_ISSUES = [...READER_ACCESS_ISSUES, 'connector_unavailable'] as const;
+export type ThreatAccessIssue = typeof THREAT_ACCESS_ISSUES[number];
+
 /** The category of a failed attempt to obtain the member's token for a sibling product. */
 export const issueOfTokenFailure = (err: unknown): ReaderAccessIssue => {
   if (err instanceof ReaderTokenUnavailable) {

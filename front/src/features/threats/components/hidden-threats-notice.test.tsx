@@ -40,9 +40,17 @@ describe('ReaderAccessNotice', () => {
     expect(screen.getByText('Some threats are hidden for now.')).toBeTruthy();
     expect(screen.getByText(/They come back once the answer does/)).toBeTruthy();
   });
+
+  it('blames the connector\'s own read, never the member\'s', () => {
+    render(<ReaderAccessNotice issue="connector_unavailable" />, { wrapper });
+
+    expect(screen.getByText('Some threats are hidden for now.')).toBeTruthy();
+    expect(screen.getByText(/could not read OpenCTI with the connector's access/)).toBeTruthy();
+    expect(screen.queryByText(/XTM One|your email|account/)).toBeNull();
+  });
 });
 
-const access = (threats: 'not_linked' | 'no_account' | 'unavailable' | null) => ({
+const access = (threats: 'not_linked' | 'no_account' | 'unavailable' | 'connector_unavailable' | null) => ({
   'xtm.readerAccess': { threats, counterparts: { opencti: null, openaev: null } },
 });
 

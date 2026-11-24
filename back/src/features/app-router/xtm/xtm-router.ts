@@ -15,7 +15,7 @@ import { buildXtmOneHeaders } from '../../xtm-one/xtm-one-headers';
 import { readerTokenExchange } from '../../xtm-one/xtm-one-token-exchange';
 import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
 import { counterpartAccess, readCounterpartIssues } from './counterpart-access';
-import { probeReaderIssue, READER_ACCESS_ISSUES } from './reader-access-issue';
+import { probeReaderIssue, READER_ACCESS_ISSUES, THREAT_ACCESS_ISSUES } from './reader-access-issue';
 import { openctiPublicUrl } from './opencti-public-url';
 import { lookupXtmObjects,resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
@@ -200,7 +200,7 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
     // tenant's threat visibility is read by the tenant procedure.
     .meta({ reads: [] })
     .output(z.object({
-      threats: readerAccessIssueSchema,
+      threats: z.enum(THREAT_ACCESS_ISSUES).nullable(),
       counterparts: z.object({ opencti: readerAccessIssueSchema, openaev: readerAccessIssueSchema }),
     }))
     .query(async ({ ctx: { services, origin, user, readerAccessIssue } }) => {

@@ -7,7 +7,10 @@ import { useTRPC } from '../../lib';
 type ReaderAccess = inferRouterOutputs<TRPCRouter>['xtm']['readerAccess'];
 
 /** Why the reader's own rights in OpenCTI or OpenAEV fall short of what they could read there. */
-export type ReaderAccessIssue = NonNullable<ReaderAccess['threats']>;
+export type ReaderAccessIssue = NonNullable<ReaderAccess['counterparts']['opencti']>;
+
+/** What the threats screens say: a reader's own category, or that the connector's own read failed. */
+export type ThreatAccessIssue = NonNullable<ReaderAccess['threats']>;
 
 const NO_ISSUE: ReaderAccess = { threats: null, counterparts: { opencti: null, openaev: null } };
 

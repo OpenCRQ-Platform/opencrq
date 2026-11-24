@@ -1,6 +1,6 @@
 import type { EventOrigin, OpenCtiReaderAccess, OpenctiThreatVisibility } from '@app/module';
 import { READER_SCOPE_TTL_MS } from '@app/utils';
-import type { ReaderAccessIssue } from './reader-access-issue';
+import type { ReaderAccessIssue, ThreatAccessIssue } from './reader-access-issue';
 import type { ProductConnection, ReaderAuthorization } from './xtm-providers';
 import { errorCategory, logCategory } from '../../../utils/error-category';
 import { createLogger } from '../../../utils/logger';
@@ -235,20 +235,23 @@ export const createReaderMarkingsResolver = (
 
 /**
  * The person's origin narrowed by what OpenCTI answered for them, and what the screens may tell them
- * of it. A tenant that shows every member what the connector reads has nothing to tell them.
+ * of it. A tenant that shows every member what the connector reads can only tell them that the
+ * connector's own read failed.
  */
 export const withReaderScope = (
   origin: Extract<EventOrigin, { type: 'client' }>,
   answer: ReaderScopeAnswer | undefined,
   threatVisibility: OpenctiThreatVisibility,
-): { origin: Extract<EventOrigin, { type: 'client' }>, readerAccessIssue: ReaderAccessIssue | null } => {
+): { origin: Extract<EventOrigin, { type: 'client' }>, readerAccessIssue: ThreatAccessIssue | null } => {
   if (answer === undefined) {
     return { origin, readerAccessIssue: null };
   }
   const read = 'scope' in answer ? answer.scope : null;
+  const issue = 'issue' in answer ? answer.issue : null;
   return {
     origin: { ...origin, markings: read?.markings ?? null, openctiAccess: read?.access ?? null },
-    readerAccessIssue: threatVisibility === 'per_member' && 'issue' in answer ? answer.issue : null,
+    // The connector's token is not the member's: whatever failed, nothing is the member's to fix.
+    readerAccessIssue: issue !== null && threatVisibility === 'service_account' ? 'connector_unavailable' : issue,
   };
 };
 

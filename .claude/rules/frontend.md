@@ -256,7 +256,10 @@ neither is fed a flag by the screen's own procedure: the backend names a categor
 tenant holds a mirrored threat the reader cannot read (`hasThreatHiddenFromUnresolvedReader`), so a
 tenant with nothing mirrored yet, or only unmarked threats, is told nothing. An OpenCTI that runs a
 token XTM One signed for the reader as nobody (`AUTH_REQUIRED`) is `no_account`: it cannot tell a
-missing account from another way of not recognising the token, and the former is far likelier. The rows hanging off a threat follow it, so the
+missing account from another way of not recognising the token, and the former is far likelier. In a
+tenant that shows every member what the connector reads, an unresolved scope is the connector's own
+read failing, whatever the cause: the category is `connector_unavailable`, which words no cause in
+the member and asks an administrator, never a member's `not_linked` or `no_account`. The rows hanging off a threat follow it, so the
 detail of a threat the member can read (hero, outcomes, CVE tab, techniques, relevance proof) is
 complete and carries no message, and a link to a threat they may not read opens a page saying it is
 hidden (`threats.isHidden`, the route's `notFoundComponent`), never "not found", unless that lookup fails. The counterparts of an object are always read as the member,

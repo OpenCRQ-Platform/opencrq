@@ -9161,6 +9161,9 @@ msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du 
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 msgstr "OpenCRQ n'a pas pu créer son flux en direct dans OpenCTI : le jeton du déploiement n'a pas la capacité {capability}. Accordez-la à l'utilisateur de ce jeton et redémarrez OpenCRQ, ou utilisez Configurer pour choisir un flux en direct."
 
+msgid "OpenCRQ could not read OpenCTI with the connector's access, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once OpenCTI answers. If this lasts, tell an administrator."
+msgstr "OpenCRQ n'a pas pu lire OpenCTI avec l'accès du connecteur : il n'affiche donc les menaces provenant d'OpenCTI que si elles ne portent aucun marquage ni restriction de partage. Elles reviennent dès qu'OpenCTI répond. Si cela dure, prévenez un administrateur."
+
 msgid "OpenCRQ home"
 msgstr "Accueil OpenCRQ"
 

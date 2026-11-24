@@ -9161,6 +9161,9 @@ msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's to
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 
+msgid "OpenCRQ could not read OpenCTI with the connector's access, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once OpenCTI answers. If this lasts, tell an administrator."
+msgstr "OpenCRQ could not read OpenCTI with the connector's access, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once OpenCTI answers. If this lasts, tell an administrator."
+
 msgid "OpenCRQ home"
 msgstr "OpenCRQ home"
 
