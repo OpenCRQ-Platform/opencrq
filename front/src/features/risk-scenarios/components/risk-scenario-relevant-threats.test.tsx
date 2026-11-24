@@ -15,6 +15,7 @@ vi.mock('../../threats', async () => {
     observedAtSortValue: () => undefined,
     ActivityGradeBadge: () => null,
     DimensionTags: () => null,
+    HiddenThreatsAlert: () => null,
     RelevanceBand: () => null,
     RelevanceProofPanel: () => null,
     ResourceLevelValue: () => null,
