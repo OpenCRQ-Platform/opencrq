@@ -572,7 +572,8 @@ export const jobsService = defineService(
         return { items: await withErrorCounts(repo, runs), total };
       })(),
       (async () => {
-        const q = queueSectionQuery(query.tenantId, 'succeeded', 'finishedAt', true, query.succeeded);
+        // A partial segment ended without failing, so it is listed with the runs that did.
+        const q = { ...queueSectionQuery(query.tenantId, 'succeeded', 'finishedAt', true, query.succeeded), statuses: ['succeeded', 'partial'] as const };
         const [runs, total] = await Promise.all([repo.findRuns(q), repo.countRuns(q)]);
         return { items: await withErrorCounts(repo, runs), total };
       })(),
@@ -641,7 +642,7 @@ export const jobsService = defineService(
   ): Promise<RecordSuccessResult> => {
     requireSystemOrigin(eventOrigin, 'recordSuccess');
     return atomic(async ({ repo: atomicRepo }) => {
-      const [settled] = await atomicRepo.markSuccess(jobId, workerId);
+      const [settled] = await atomicRepo.markSuccess(jobId, workerId, continuation !== undefined);
       if (!settled) {
         return { recorded: false };
       }

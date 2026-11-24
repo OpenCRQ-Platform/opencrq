@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useJobStatus } from '../../../hooks';
 import { useTRPC } from '../../../lib';
 
-const TERMINAL_STATUSES = ['succeeded', 'dlq', 'cancelled'];
+const TERMINAL_STATUSES = ['succeeded', 'partial', 'dlq', 'cancelled'];
 
 const uploadJobResponseSchema = z.object({ jobId: z.string() });
 

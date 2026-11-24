@@ -18,6 +18,7 @@ export const runStatusLabel = (status: JobStatus): string => {
     case 'queued': return t`Queued`;
     case 'running': return t`Running`;
     case 'succeeded': return t`Succeeded`;
+    case 'partial': return t`Partial`;
     case 'cancelled': return t`Cancelled`;
     case 'dlq': return t`Dead-letter queue`;
   }
@@ -27,12 +28,14 @@ export const runStatusLabel = (status: JobStatus): string => {
  * A cancelled run did none of its work, so it is neither the green of a succeeded run beside it nor
  * the red of a failed one. The health chip reads a cancellation as healthy, which is a statement
  * about what to do next rather than about the run. An absorbed ask reads the same way: it is not a
- * failure either.
+ * failure either. A partial run did its share and handed the rest to a continuation: neither the
+ * green of a finished pass nor a failure.
  */
 export const RUN_STATUS_SEVERITY: Record<JobStatus, ChipSeverity> = {
   queued: 'neutral',
   running: 'info',
   succeeded: 'low',
+  partial: 'medium',
   cancelled: 'neutral',
   dlq: 'critical',
 };
@@ -42,6 +45,7 @@ export const RUN_STATUS_TEXT_CLASS: Record<JobStatus, string> = {
   queued: 'text-default-secondary',
   running: 'text-feedback-info-primary',
   succeeded: 'text-feedback-success-primary',
+  partial: 'text-feedback-warning-primary',
   cancelled: 'text-default-secondary',
   dlq: 'text-feedback-error-primary',
 };
@@ -58,6 +62,7 @@ export const RUN_PROGRESS_TONE: Record<JobStatus, ProgressBarTone> = {
   queued: 'default',
   running: 'default',
   succeeded: 'success',
+  partial: 'default',
   cancelled: 'default',
   dlq: 'error',
 };

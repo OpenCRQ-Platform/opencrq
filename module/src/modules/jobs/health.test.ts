@@ -18,6 +18,10 @@ describe('deriveJobHealth', () => {
     expect(deriveJobHealth({ activeRunStatus: null, lastTerminalRunStatus: 'succeeded' })).toBe('healthy');
   });
 
+  it('reads healthy when the last run ended partial, having handed the rest to a continuation', () => {
+    expect(deriveJobHealth({ activeRunStatus: null, lastTerminalRunStatus: 'partial' })).toBe('healthy');
+  });
+
   it('reads failing when the last run reached the dead-letter queue', () => {
     expect(deriveJobHealth({ activeRunStatus: null, lastTerminalRunStatus: 'dlq' })).toBe('failing');
   });
