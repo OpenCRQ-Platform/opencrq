@@ -632,4 +632,61 @@ describe('DataPageLayout search and filters', () => {
     expect(screen.queryByPlaceholderText('Search rules')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Status' })).toBeNull();
   });
+
+  it('should say No results when a server list narrowed by its caller answers no row, and lift the caller filters', () => {
+    const onClearAll = vi.fn();
+    render(
+      <DataPageLayout
+        data={[]}
+        total={0}
+        pageIndex={0}
+        isFetching={false}
+        columns={RULE_COLUMNS}
+        storageKey="data-page-layout-caller-filters"
+        emptyState={<p>No rules yet.</p>}
+        callerFilters={{ active: true, onClearAll }}
+      />,
+      { wrapper: ({ children }) => <I18nProvider i18n={i18n}>{children}</I18nProvider> },
+    );
+
+    expect(screen.queryByText('No rules yet.')).toBeNull();
+    expect(screen.getByTestId('data-page-no-results')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(onClearAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not say No results for a server page that comes back empty while the count still holds rows', () => {
+    render(
+      <DataPageLayout
+        data={[]}
+        total={51}
+        pageIndex={1}
+        isFetching={false}
+        columns={RULE_COLUMNS}
+        storageKey="data-page-layout-caller-filters-past"
+        callerFilters={{ active: true, onClearAll: vi.fn() }}
+      />,
+      { wrapper: ({ children }) => <I18nProvider i18n={i18n}>{children}</I18nProvider> },
+    );
+
+    expect(screen.queryByTestId('data-page-no-results')).toBeNull();
+  });
+
+  it('should keep the empty state, and no No results card, while the caller has no filter set', () => {
+    render(
+      <DataPageLayout
+        data={[]}
+        columns={RULE_COLUMNS}
+        storageKey="data-page-layout-caller-filters-none"
+        emptyState={<p>No rules yet.</p>}
+        callerFilters={{ active: false, onClearAll: vi.fn() }}
+      />,
+      { wrapper: ({ children }) => <I18nProvider i18n={i18n}>{children}</I18nProvider> },
+    );
+
+    expect(screen.getByText('No rules yet.')).toBeTruthy();
+    expect(screen.queryByTestId('data-page-no-results')).toBeNull();
+  });
 });

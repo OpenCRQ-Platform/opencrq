@@ -19,7 +19,6 @@ const PENDING: Record<string, number> = {
   'features/primary-assets/components/primary-assets-data-table.tsx': 2,
   'features/risk-scenarios/components/risk-scenario-findings.tsx': 2,
   'features/supporting-assets/components/supporting-asset-findings-section.tsx': 1,
-  'features/supporting-assets/components/tags-data-table.tsx': 1,
   'features/threats/components/threat-cve-findings-tab.tsx': 1,
   'features/threats/components/threat-targets-tab.tsx': 1,
   'features/threats/components/threat-techniques-view.tsx': 1,

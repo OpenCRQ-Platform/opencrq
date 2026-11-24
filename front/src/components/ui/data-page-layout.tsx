@@ -274,6 +274,13 @@ interface BaseDataPageLayoutProps<T extends { id: string }, G extends string> {
   search?: DataPageSearch<T>,
   /** Typed filters drawn as filter pills after the search, with the active-filter count and Clear all; same scope as `search`. */
   filters?: ReadonlyArray<DataPageFilter<T>>,
+  /**
+   * For a list the caller narrows itself, a server-paginated table or rows filtered before they come in:
+   * whether a search or a filter of its own is set, and how to lift them all. When nothing comes back
+   * while one is set, the no-results card shows under the toolbar, wired to `onClearAll` (Design
+   * standards s.3), as it does for the `search` and `filters` this layout holds.
+   */
+  callerFilters?: { active: boolean, onClearAll: () => void },
 }
 
 /**
@@ -329,6 +336,7 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
   rowGroups,
   search,
   filters,
+  callerFilters,
 }: DataPageLayoutProps<T, G>): ReactNode => {
   const defaultPageSize = initialPageSize ?? 50;
   const isSortingEnabled = enableSorting ?? true;
@@ -581,7 +589,7 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
   // (past the last page, or read in another statement than its count).
   // A search or a filter that matches nothing leaves the toolbar up, with its controls to undo it,
   // and says so under it with the shared no-results card.
-  if (emptyState && !isLoading && allData.length === 0 && (total ?? 0) === 0) {
+  if (emptyState && !isLoading && allData.length === 0 && (total ?? 0) === 0 && callerFilters?.active !== true) {
     return (
       <div className="flex flex-col gap-4">
         {showToolbar && (
@@ -654,6 +662,18 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
   const pendingStatus = isPlaceholderData !== undefined && <span role="status" className="sr-only">{showPending ? t`Loading` : ''}</span>;
 
   const Host = fillHeight === true ? FillHeightHost : Fragment;
+  // A server-paginated page can come back empty while `total` still counts rows (past the last page):
+  // only a list that holds no row at all under a set search or filter has no result.
+  const callerNarrowed = callerFilters?.active === true && (total ?? 0) === 0;
+  const noResults = (narrowed || callerNarrowed) && !isLoading && data.length === 0;
+  const clearAllFilters = (): void => {
+    if (narrowed) {
+      clearFilters();
+    }
+    if (callerFilters?.active === true) {
+      callerFilters.onClearAll();
+    }
+  };
 
   return (
     <Host>
@@ -663,9 +683,9 @@ export const DataPageLayout = <T extends { id: string }, G extends string = stri
         // toolbar. With no toolbar it is a gap under the card's title and under nothing else.
         // With `fillHeight` it carries the flex chain too, or the table would stop fitting.
         : <div className={cn('[&_.twp]:mt-0', fillHeight === true && 'flex min-h-0 flex-1 flex-col')}>{table}</div>}
-      {narrowed && !isLoading && data.length === 0 && (
+      {noResults && (
         <div className="mt-4" data-testid="data-page-no-results">
-          <ListNoResults onClearFilters={clearFilters} />
+          <ListNoResults onClearFilters={clearAllFilters} />
         </div>
       )}
       {pendingStatus}

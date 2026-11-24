@@ -12,12 +12,12 @@ import { DeleteConfirmDialog } from '../../../components/shared/delete-confirm-d
 import { IconActions, IconActionsItem } from '../../../components/shared/icon-actions';
 import { DataPageLayout } from '../../../components/ui/data-page-layout';
 import { EmptyValue } from '../../../components/ui/empty-value';
+import { FilterClearAll, FilterPill, FilterPillItem } from '../../../components/ui/filter-pill';
 import { ListEmptyCard } from '../../../components/ui/list-empty-card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { useConfirmationDialog, useUrlListFilters } from '../../../hooks';
 import { useTRPC } from '../../../lib';
 import { formatList, resolveOptionFilter } from '../../../utils';
-import { tagsListSearchSchema } from '../tags-list-search';
+import { TAGS_LIST_SEARCH_DEFAULTS, tagsListSearchSchema } from '../tags-list-search';
 import { AssetTagChip } from './asset-chips';
 import { TagMergeDialog } from './tag-merge-dialog';
 import { TAG_COLUMN_SIZES, TAG_NAME_CHIP_CLASS } from './tags-table-columns';
@@ -38,6 +38,9 @@ export const TagsDataTable: FunctionComponent = () => {
   const sourceOptions = tags === undefined ? undefined : tagSourceOptions(tags);
   const resolvedSource = resolveOptionFilter(filters.source, sourceOptions, 'all');
   const rows = buildTagRows(tags ?? [], { search: filters.search, source: resolvedSource });
+  // The search counts as a filter: Clear all lifts it with the source, as Clear filters does.
+  const activeFilterCount = [filters.search.trim() !== '', resolvedSource !== 'all'].filter(Boolean).length;
+  const clearAllFilters = () => setFilters(TAGS_LIST_SEARCH_DEFAULTS);
 
   const [action, setAction] = useState<TagAction | null>(null);
   const actionRow = action === null
@@ -172,6 +175,7 @@ export const TagsDataTable: FunctionComponent = () => {
             />
           )
           : undefined}
+        callerFilters={{ active: activeFilterCount > 0, onClearAll: clearAllFilters }}
         leftHeaderContent={(
           <div className="flex flex-wrap items-center gap-3">
             <DebouncedSearchField
@@ -181,17 +185,24 @@ export const TagsDataTable: FunctionComponent = () => {
               clearLabel={t`Clear search`}
               className="w-80"
             />
-            <Select value={resolvedSource} onValueChange={(source) => setFilters({ source: tagsListSearchSchema.shape.source.parse(source) })}>
-              <SelectTrigger className="w-56" aria-label={t`Filter by source`}>
-                <SelectValue placeholder={t`Source: All sources`} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all"><Trans>All sources</Trans></SelectItem>
-                {(sourceOptions ?? []).map((source) => (
-                  <SelectItem key={source} value={source}>{sourceLabel(source)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterPill
+              label={t`Source`}
+              valueLabel={resolvedSource === 'all' ? undefined : sourceLabel(resolvedSource)}
+            >
+              <FilterPillItem selected={resolvedSource === 'all'} onSelect={() => setFilters({ source: 'all' })}>
+                <Trans>All sources</Trans>
+              </FilterPillItem>
+              {(sourceOptions ?? []).map((source) => (
+                <FilterPillItem
+                  key={source}
+                  selected={resolvedSource === source}
+                  onSelect={() => setFilters({ source: tagsListSearchSchema.shape.source.parse(source) })}
+                >
+                  {sourceLabel(source)}
+                </FilterPillItem>
+              ))}
+            </FilterPill>
+            <FilterClearAll count={activeFilterCount} onClearAll={clearAllFilters} />
           </div>
         )}
       />
