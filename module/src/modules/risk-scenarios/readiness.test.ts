@@ -60,6 +60,36 @@ describe('computeScenarioReadiness', () => {
     })).toEqual({ status: 'stale', missing: [], outdated: ['tef'] });
   });
 
+  it('should not report an auto-mode frequency with no stored estimate yet as missing', () => {
+    expect(computeScenarioReadiness({
+      noMappedAsset: false,
+      lastRunAt: null,
+      tefUpdatedAt: null,
+      lossDriversUpdatedAt: BEFORE_RUN,
+      tefDerivedOnRead: true,
+    })).toEqual({ status: 'not-simulated', missing: [], outdated: [] });
+  });
+
+  it('should still read a stored auto-mode estimate newer than the run as outdated', () => {
+    expect(computeScenarioReadiness({
+      noMappedAsset: false,
+      lastRunAt: RUN_AT,
+      tefUpdatedAt: AFTER_RUN,
+      lossDriversUpdatedAt: BEFORE_RUN,
+      tefDerivedOnRead: true,
+    })).toEqual({ status: 'stale', missing: [], outdated: ['tef'] });
+  });
+
+  it('should keep reporting missing loss drivers when only the frequency is derived on read', () => {
+    expect(computeScenarioReadiness({
+      noMappedAsset: false,
+      lastRunAt: null,
+      tefUpdatedAt: null,
+      lossDriversUpdatedAt: null,
+      tefDerivedOnRead: true,
+    })).toEqual({ status: 'incomplete', missing: ['loss-drivers'], outdated: [] });
+  });
+
   it('should prefer no-mapped-asset over every other status', () => {
     expect(computeScenarioReadiness({
       noMappedAsset: true,

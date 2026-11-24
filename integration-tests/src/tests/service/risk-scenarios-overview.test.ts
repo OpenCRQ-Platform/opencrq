@@ -1,5 +1,5 @@
 import type { EventOrigin, ScenarioReadiness } from '@app/module';
-import { crqIndicatorRuns, deriveSeedId, LIFELINE_SAMPLES, LossDriver_ForensicsIncidentManagement, SCENARIO_READINESS_STATUSES, scenarioLossEstimates, tefEstimates } from '@app/module';
+import { crqIndicatorRuns, deriveSeedId, LIFELINE_SAMPLES, LossDriver_ForensicsIncidentManagement, riskScenarios, SCENARIO_READINESS_STATUSES, scenarioLossEstimates, tefEstimates } from '@app/module';
 import { eq } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -302,12 +302,28 @@ describe('Risk Scenarios Service', () => {
 
     it('should report incomplete while an input has never been filled in', async () => {
       const scenarioId = await createScenarioNamed('Missing both inputs');
+      // Manual mode with no triplet typed: the frequency really was never filled in. Set on the row,
+      // since `setTefMode` hands the analyst the estimate's triplet on the way to manual.
+      await db.update(riskScenarios).set({ tefMode: 'manual' }).where(eq(riskScenarios.id, scenarioId));
       await insertRun(scenarioId, daysAgo(1), 100_000);
 
       const [row] = await services.withOrigin(adminOrigin).riskScenarios.getRiskScenariosOverview();
 
       expect(row.readiness.status).toBe('incomplete');
       expect(row.readiness.missing).toEqual(expect.arrayContaining(['tef', 'loss-drivers']));
+    });
+
+    // The automatic estimate is written on the first read of the TEF or at the first run: a
+    // scenario nobody has read yet still has a frequency, so only the loss drivers are missing.
+    it('should not report an auto-mode frequency as missing before its estimate is first stored', async () => {
+      const scenarioId = await createScenarioNamed('Auto, never read');
+      await insertRun(scenarioId, daysAgo(1), 100_000);
+
+      const [row] = await services.withOrigin(adminOrigin).riskScenarios.getRiskScenariosOverview();
+
+      expect(row.readiness.status).toBe('incomplete');
+      expect(row.readiness.missing).toEqual(['loss-drivers']);
+      expect(row.readiness.outdated).not.toContain('tef');
 
       await services.withOrigin(adminOrigin).crqIndicators.resolveAutoTef(scenarioId, adminTenantId);
 
@@ -321,7 +337,7 @@ describe('Risk Scenarios Service', () => {
       await fillLossDrivers(scenarioId);
 
       const [beforeEstimate] = await services.withOrigin(adminOrigin).riskScenarios.getRiskScenariosOverview();
-      expect(beforeEstimate.readiness.missing).toEqual(['tef']);
+      expect(beforeEstimate.readiness).toEqual({ status: 'not-simulated', missing: [], outdated: [] });
 
       await services.withOrigin(adminOrigin).crqIndicators.resolveAutoTef(scenarioId, adminTenantId);
 
