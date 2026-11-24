@@ -321,6 +321,7 @@ const ThreatCveFindingSchema = z.object({
   worstScore: z.number().int().nullable(),
   worstBand: z.enum(SEVERITY_BANDS).nullable(),
   pendingVector: z.boolean(),
+  nvdRecordMissing: z.boolean(),
   affectedAssetCount: z.number().int(),
   sources: z.array(z.string()),
   firstSeenAt: z.date().nullable(),

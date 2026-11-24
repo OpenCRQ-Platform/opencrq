@@ -28,6 +28,7 @@ const CVE_ROW: UniqueFindingTableRow = {
   worstScore: 85,
   worstBand: 'critical',
   pendingVector: false,
+  nvdRecordMissing: false,
   affectedAssetCount: 3,
   knownExploited: true,
   epssPercent: 94,

@@ -123,11 +123,17 @@ export const cveService = defineService(
 
   getCveByCveId: async ({ repo }, cveId: string) => {
     const row = await repo.findByCveId(cveId);
+    return row === null ? null : withCisaListing(row);
+  },
+
+  /** The CVE as a reader sees it, with what NVD is known to hold on it. */
+  getCveInfo: async ({ repo }, cveId: string) => {
+    const row = await repo.findInfoByCveId(cveId);
     if (row === null) {
       return null;
     }
-    const hasNvdObservation = await repo.hasSourceObservation(row.id, 'nvd');
-    return { ...withCisaListing(row), nvdRecord: nvdRecordState(row.remediationReadAt, hasNvdObservation) };
+    const { hasNvdObservation, ...cveRow } = row;
+    return { ...withCisaListing(cveRow), nvdRecord: nvdRecordState(cveRow.remediationReadAt, hasNvdObservation) };
   },
 
   getCvesByCveIds: async ({ repo }, cveIds: Array<string>) =>

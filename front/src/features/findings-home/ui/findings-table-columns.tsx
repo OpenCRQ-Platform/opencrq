@@ -7,7 +7,7 @@ import { EmptyValue } from '../../../components/ui/empty-value';
 import { SourceStack } from '../../../components/shared';
 import { AssetName } from '../../../components/shared/asset-name';
 import { EvidenceStateChip } from '../../finding-detail';
-import { PendingVectorMark, ScoreGaugeMark, severityBandLabel } from '../../finding-score';
+import { ScoreGaugeMark, severityBandLabel, UnscoredMark } from '../../finding-score';
 import { formatDate, getAssetCategoryLabel } from '../../../utils';
 import { assetNameText } from '../../../utils/asset-name-utils';
 
@@ -108,9 +108,9 @@ export const findingsTableColumns = <T extends FindingTableRow>(
       header: t`Score`,
       size: 90,
       cell: ({ row }): ReactElement => {
-        const { score, band, pendingVector } = row.original;
+        const { score, band, pendingVector, nvdRecordMissing } = row.original;
         if (pendingVector) {
-          return <PendingVectorMark />;
+          return <UnscoredMark nvdRecordMissing={nvdRecordMissing} />;
         }
         if (score === null || band === null) {
           return <EmptyValue />;

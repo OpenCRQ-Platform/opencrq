@@ -1,5 +1,5 @@
 import type { EventOrigin } from '@app/module';
-import { assetEvidenceSources, assetPostures, cve, findingScoreHistory, findingScores } from '@app/module';
+import { assetEvidenceSources, assetPostures, cve, cveSourceObservations, findingScoreHistory, findingScores } from '@app/module';
 import { asc, eq } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -171,5 +171,39 @@ describe('A finding pending a vector', () => {
 
     expect(items.map((item) => [item.cveId, item.score, item.pendingVector])).toEqual([[cveRow.cveId, null, true]]);
     expect(unique).toMatchObject({ score: null, pendingVector: true });
+  });
+
+  describe('once an NVD pass has read its CVE', () => {
+    const readByNvd = async (cveRowId: string, reported: boolean) => {
+      await db.update(cve).set({ remediationReadAt: new Date() }).where(eq(cve.id, cveRowId));
+      if (reported) {
+        await db.insert(cveSourceObservations).values([{ id: uuidv7(), tenantId: admin.tenantId, cveId: cveRowId, source: 'nvd' }]);
+      }
+    };
+    const cveIdOf = async (cveRowId: string) => (await db.select({ cveId: cve.cveId }).from(cve).where(eq(cve.id, cveRowId)))[0].cveId;
+
+    it('should tell the lists and the unique finding apart from a vector still to come when NVD holds no record', async () => {
+      const unread = await findingOn();
+      const noRecord = await findingOn();
+      const reported = await findingOn();
+      await readByNvd(noRecord.cveRowId, false);
+      await readByNvd(reported.cveRowId, true);
+      await read().recomputeFindingScores();
+
+      const { items } = await read().listScoredFindings({
+        page: 1, limit: 50, state: 'applicable', source: null, mappedToOrganizationId: null, sortBy: 'name', sortDesc: false,
+      });
+      const unique = await read().listUniqueFindings({
+        page: 1, limit: 50, source: null, mappedToOrganizationId: null, sortBy: 'name', sortDesc: false,
+      });
+      const uniqueNoRecord = await read().getUniqueCveFinding({ cveId: await cveIdOf(noRecord.cveRowId), mappedToOrganizationId: null });
+
+      const missingByEvidence = new Map(items.map((item) => [item.evidenceId, item.nvdRecordMissing]));
+      expect([unread, noRecord, reported].map(({ evidenceId }) => missingByEvidence.get(evidenceId))).toEqual([false, true, false]);
+      const missingByCve = new Map(unique.items.map((item) => [item.cveId, item.nvdRecordMissing]));
+      expect(await Promise.all([unread, noRecord, reported].map(async ({ cveRowId }) => missingByCve.get(await cveIdOf(cveRowId)))))
+        .toEqual([false, true, false]);
+      expect(uniqueNoRecord).toMatchObject({ pendingVector: true, nvdRecordMissing: true });
+    });
   });
 });

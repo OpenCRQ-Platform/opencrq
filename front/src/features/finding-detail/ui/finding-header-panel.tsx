@@ -142,12 +142,9 @@ export const FindingHeaderPanel: FunctionComponent<FindingHeaderPanelProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-y-3" style={{ columnGap: KPI_TILE_GUTTER }}>
-        {pendingVector && nvdRecordMissing && (
-          <KpiTile icon="circle-alert" tone="neutral" caption={t`No NVD record`} captionAdornment={<NoNvdRecordInfo />} />
-        )}
-        {pendingVector && !nvdRecordMissing && (
-          <KpiTile icon="clock" tone="neutral" caption={t`Pending vector`} captionAdornment={<PendingVectorInfo />} />
-        )}
+        {pendingVector && (nvdRecordMissing
+          ? <KpiTile icon="circle-alert" tone="neutral" caption={t`No usable NVD record`} captionAdornment={<NoNvdRecordInfo />} />
+          : <KpiTile icon="clock" tone="neutral" caption={t`Pending vector`} captionAdornment={<PendingVectorInfo />} />)}
         {!pendingVector && (score === null || band === null) && (
           <KpiTile icon="clock" tone="neutral" caption={t`Not scored yet`} />
         )}

@@ -401,6 +401,7 @@ const FindingListRowSchema = z.object({
   score: z.number().nullable(),
   band: z.enum(SEVERITY_BANDS).nullable(),
   pendingVector: z.boolean(),
+  nvdRecordMissing: z.boolean(),
   currentState: z.enum(EVIDENCE_STATE_VALUES),
   /** Of the latest history row, null on a finding that has none. */
   stateOrigin: z.enum(EVIDENCE_HISTORY_ORIGINS).nullable(),
@@ -457,6 +458,7 @@ const UniqueCveFindingSchema = z.object({
   worstScore: z.number().int().nullable(),
   worstBand: z.enum(SEVERITY_BANDS).nullable(),
   pendingVector: z.boolean(),
+  nvdRecordMissing: z.boolean(),
   affectedAssetCount: z.number().int(),
   sources: z.array(z.string()),
   firstSeenAt: z.date().nullable(),

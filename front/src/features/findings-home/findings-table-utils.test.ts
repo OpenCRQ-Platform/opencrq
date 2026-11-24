@@ -15,6 +15,7 @@ const source = (overrides: Partial<FindingTableSource>): FindingTableSource => (
   score: null,
   band: null,
   pendingVector: false,
+  nvdRecordMissing: false,
   assetName: null,
   assetDerivedName: null,
   assetCategoryId: null,

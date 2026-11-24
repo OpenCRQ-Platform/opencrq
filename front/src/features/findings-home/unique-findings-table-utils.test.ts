@@ -18,6 +18,7 @@ const group = (overrides: Partial<UniqueFindingTableSource>): UniqueFindingTable
   worstScore: null,
   worstBand: null,
   pendingVector: false,
+  nvdRecordMissing: false,
   affectedAssetCount: 1,
   sources: [],
   firstSeenAt: NOW,

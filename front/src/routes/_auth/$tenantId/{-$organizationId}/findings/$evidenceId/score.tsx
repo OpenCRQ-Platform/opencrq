@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { t } from '@lingui/core/macro';
 import { useQuery } from '@tanstack/react-query';
-import { FindingScoreSection } from '../../../../../../features/finding-score';
+import { FindingScoreSection, isNvdRecordMissing } from '../../../../../../features/finding-score';
 import { useTRPC } from '../../../../../../lib';
 
 const FindingScoreTab = () => {
@@ -17,7 +17,7 @@ const FindingScoreTab = () => {
     return null;
   }
 
-  return <FindingScoreSection tenantId={tenantId} finding={scored} nvdRecordMissing={cveInfo?.nvdRecord === 'none'} />;
+  return <FindingScoreSection tenantId={tenantId} finding={scored} nvdRecordMissing={isNvdRecordMissing(cveInfo)} />;
 };
 
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/findings/$evidenceId/score')({

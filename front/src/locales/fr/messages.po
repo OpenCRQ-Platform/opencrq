@@ -4073,8 +4073,8 @@ msgstr "le nombre"
 msgid "Count"
 msgstr "Nombre"
 
-msgid "Counted in no band: their CVE has no usable CVSS vector yet."
-msgstr "Comptés dans aucune tranche : leur CVE n'a pas encore de vecteur CVSS utilisable."
+msgid "Counted in no band: their CVE has no usable CVSS vector, either not scored by NVD yet or with no usable NVD record. The list shows which."
+msgstr "Comptés dans aucune tranche : leur CVE n'a pas de vecteur CVSS utilisable, soit pas encore scorée par la NVD, soit sans enregistrement NVD exploitable. La liste précise lequel des deux."
 
 msgid "Countries"
 msgstr "Pays"
@@ -8270,12 +8270,6 @@ msgstr "Aucun mois trouvé"
 msgid "No new notifications"
 msgstr "Aucune nouvelle notification"
 
-msgid "No NVD record"
-msgstr "Aucun enregistrement NVD"
-
-msgid "No NVD record: NVD has no record of this CVE, or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
-msgstr "Aucun enregistrement NVD : la NVD n'a aucun enregistrement de cette CVE, ou l'a rejetée, donc aucun vecteur CVSS ne viendra de la NVD. Vérifiez que l'identifiant de la CVE est correct."
-
 msgid "No one found"
 msgstr "Aucune personne trouvée"
 
@@ -8566,6 +8560,12 @@ msgstr "Aucun score du finding unique enregistré sur cette période."
 
 msgid "No usable CVSS vector for this CVE yet."
 msgstr "Aucun vecteur CVSS utilisable pour cette CVE pour l'instant."
+
+msgid "No usable NVD record"
+msgstr "Aucun enregistrement NVD exploitable"
+
+msgid "No usable NVD record: NVD does not know this CVE or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+msgstr "Aucun enregistrement NVD exploitable : la NVD ne connaît pas cette CVE ou l'a rejetée, donc aucun vecteur CVSS ne viendra de la NVD. Vérifiez que l'identifiant de la CVE est correct."
 
 msgid "No users found"
 msgstr "Aucun utilisateur trouvé"
@@ -8878,7 +8878,7 @@ msgid "Number of iterations run per simulation. Higher values increase accuracy 
 msgstr "Nombre d'itérations exécutées par simulation. Des valeurs plus élevées augmentent la précision mais ralentissent le calcul."
 
 msgid "NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct."
-msgstr "La NVD n'a aucun enregistrement de cette CVE, ou l'a rejetée : elle ne la notera donc pas. Vérifiez que l'identifiant de la CVE est correct."
+msgstr "La NVD n'a aucun enregistrement de cette CVE, ou l'a rejetée : elle ne la scorera donc pas. Vérifiez que l'identifiant de la CVE est correct."
 
 msgid "Objective"
 msgstr "Objectif"
@@ -12744,7 +12744,7 @@ msgid "The next sync will re-read everything this connector can see, instead of 
 msgstr "La prochaine synchronisation relira tout ce que ce connecteur peut voir, au lieu des seules modifications depuis la dernière exécution. Rien de ce qui a déjà été importé n'est supprimé."
 
 msgid "The NVD facilitates automated vulnerability management, security measurement, and compliance processes by providing comprehensive databases. CVE provides a standardized dictionary of publicly disclosed cybersecurity vulnerabilities and exposures, serving as a universal reference system for the security community."
-msgstr "Le NVD facilite la gestion automatisée des vulnérabilités, la mesure de la sécurité et les processus de conformité grâce à des bases de données exhaustives. CVE fournit un dictionnaire normalisé des vulnérabilités et expositions de cybersécurité divulguées publiquement, servant de système de référence universel pour la communauté de la sécurité."
+msgstr "La NVD facilite la gestion automatisée des vulnérabilités, la mesure de la sécurité et les processus de conformité grâce à des bases de données exhaustives. CVE fournit un dictionnaire normalisé des vulnérabilités et expositions de cybersécurité divulguées publiquement, servant de système de référence universel pour la communauté de la sécurité."
 
 msgid "The observed anchor half-life must not exceed the authored anchor half-life."
 msgstr "La demi-vie des ancrages observés ne peut pas dépasser celle des ancrages déclarés."
@@ -13251,8 +13251,8 @@ msgstr "Ce filtre n'admet pas tout ce que le connecteur lit. Il laisse de côté
 msgid "This filter uses conditions this platform does not evaluate, so it cannot say whether the stream carries threat actors. Read the filter and decide."
 msgstr "Ce filtre utilise des conditions que cette plateforme n'évalue pas : elle ne peut donc pas dire si le flux porte des acteurs. Lisez le filtre et décidez."
 
-msgid "This finding has no score: NVD has no record of its CVE, or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
-msgstr "Ce finding n'a pas de score : la NVD n'a aucun enregistrement de sa CVE, ou l'a rejetée, donc aucun vecteur CVSS ne viendra de la NVD. Vérifiez que l'identifiant de la CVE est correct."
+msgid "This finding has no score: NVD holds no usable record of its CVE, which it does not know or rejected, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+msgstr "Ce finding n'a pas de score : la NVD n'a aucun enregistrement exploitable de sa CVE, qu'elle ne connaît pas ou a rejetée, donc aucun vecteur CVSS ne viendra de la NVD. Vérifiez que l'identifiant de la CVE est correct."
 
 msgid "This finding has not been scored yet. Its score appears once the next recompute has run."
 msgstr "Ce finding n'a pas encore été scoré. Son score apparaît après le prochain recalcul."
@@ -14527,8 +14527,8 @@ msgstr "Pourquoi changer le mode de ces axes ?"
 msgid "Why fixing it is worth nothing"
 msgstr "Pourquoi cette correction ne vaut rien"
 
-msgid "Why no NVD record"
-msgstr "Pourquoi aucun enregistrement NVD"
+msgid "Why no usable NVD record"
+msgstr "Pourquoi aucun enregistrement NVD exploitable"
 
 msgid "Why pending vector"
 msgstr "Pourquoi en attente de vecteur"

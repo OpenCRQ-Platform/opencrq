@@ -14,6 +14,7 @@ import { defineRepository } from '../../registry';
 import { UNIQUE_SCORE_HISTORY_RETENTION_DAYS } from '../finding-score/retention';
 import { cisaListedSql } from './cisa-listing';
 import { affectedVersionKey, referenceKey } from './enrichment-keys';
+import { cveHasNvdObservation } from './nvd-record-sql';
 import { cve, cveAffectedVersions, cveReferences, cveSourceObservations } from './schema';
 
 const asDate = (value: string): Date => new Date(value);
@@ -318,12 +319,11 @@ export const cveRepository = defineRepository({
   findByCveId: async ({ db, views }, cveId: string) =>
     db.select().from(views.cve).where(eq(views.cve.cveId, cveId)).then((r) => r.at(0) ?? null),
 
-  hasSourceObservation: async ({ db, views }, cveRowId: string, source: CveSource) =>
-    db.select({ id: views.cveSourceObservations.id })
-      .from(views.cveSourceObservations)
-      .where(and(eq(views.cveSourceObservations.cveId, cveRowId), eq(views.cveSourceObservations.source, source)))
-      .limit(1)
-      .then((rows) => rows.length > 0),
+  findInfoByCveId: async ({ db, views }, cveId: string) =>
+    db.select({ ...views.cve._.selectedFields, hasNvdObservation: cveHasNvdObservation({ db, views }) })
+      .from(views.cve)
+      .where(eq(views.cve.cveId, cveId))
+      .then((r) => r.at(0) ?? null),
 
   findByCveIds: async ({ db, views }, cveIds: Array<string>) => {
     if (cveIds.length === 0) {

@@ -19,14 +19,22 @@ export const PendingVectorMark: FunctionComponent = () => (
 );
 
 export const NoNvdRecordInfo: FunctionComponent = () => (
-  <InfoTooltip label={t`Why no NVD record`}>
-    {t`NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct.`}
-  </InfoTooltip>
+  // A list row opens on click: the tooltip's own click must not reach it.
+  <span className="inline-flex" onClick={(event) => event.stopPropagation()}>
+    <InfoTooltip label={t`Why no usable NVD record`}>
+      {t`NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct.`}
+    </InfoTooltip>
+  </span>
 );
 
 export const NoNvdRecordMark: FunctionComponent = () => (
   <span className="inline-flex items-center gap-1 whitespace-nowrap text-default-secondary">
-    {t`No NVD record`}
+    {t`No usable NVD record`}
     <NoNvdRecordInfo />
   </span>
+);
+
+/** A CVE finding with no score yet: why, once NVD is known to hold no usable record of the CVE. */
+export const UnscoredMark: FunctionComponent<{ nvdRecordMissing: boolean }> = ({ nvdRecordMissing }) => (
+  nvdRecordMissing ? <NoNvdRecordMark /> : <PendingVectorMark />
 );
