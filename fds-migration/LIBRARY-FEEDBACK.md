@@ -36,6 +36,8 @@ vocabulary and the sizes do not offer yet:
   `custom/attack-pattern` in `front/src/components/shared/taxonomies-toolbar-menu.tsx` and
   `front/src/routes/_auth/$tenantId/{-$organizationId}/settings/engine/route.tsx`. Ask: add the four
   Lucide glyphs to the generated registry.
+- **No `pause` glyph.** Disable on a Dependency Rules row needs `pause`; stopgap `circle-stop` in
+  `front/src/features/asset-dependencies/components/dependency-rules-data-table.tsx`. Ask: add `pause`.
 - **18px size.** The OpenAEV scope switch draws its icons at 18px; `<Icon>` allows 16, 20 and 24 only.
   Stopgap: 20px in `front/src/components/layout/settings-layout/scope-switcher.tsx`. Ask: an 18px size, or
   a stated FDS size for the scope switch tile.
