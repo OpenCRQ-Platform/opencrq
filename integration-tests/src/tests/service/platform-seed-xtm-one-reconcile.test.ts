@@ -47,7 +47,8 @@ describe('Platform Seed - tying an already-seeded database to the stack\'s XTM O
     expect(await subjectOf('charlie@example.com')).toBe('old-charlie@example.com');
     expect(await subjectOf(TEST_ADMIN_EMAIL)).toBe('old-admin@test.com');
     expect(await subjectOf(outsiderEmail)).toBeNull();
-  });
+    // The full seed runs inside this test: platform-seed.test.ts gives the same seed 180 s.
+  }, 180_000);
 
   it('should ask XTM One nothing on a database the seed never ran on', async () => {
     const knownIds = vi.fn(() => Promise.resolve(new Set<string>()));
