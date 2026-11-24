@@ -1156,6 +1156,9 @@ msgstr "{pending, plural, one {# threat being processed} other {# threats being 
 msgid "{pendingCount, plural, one {Show pending changes · #} other {Show pending changes · #}}"
 msgstr "{pendingCount, plural, one {Show pending changes · #} other {Show pending changes · #}}"
 
+msgid "{pendingLinkCount, plural, one {The dependency running through it stays, with no type.} other {The # dependencies running through it stay, with no type.}}"
+msgstr "{pendingLinkCount, plural, one {The dependency running through it stays, with no type.} other {The # dependencies running through it stay, with no type.}}"
+
 msgid "{percent}% ready"
 msgstr "{percent}% ready"
 
@@ -2370,6 +2373,9 @@ msgstr "All owners"
 
 msgid "All platform families"
 msgstr "All platform families"
+
+msgid "All resource types"
+msgstr "All resource types"
 
 msgid "All results"
 msgstr "All results"
@@ -4215,6 +4221,9 @@ msgstr "Create a new supporting asset"
 msgid "Create a new tenant"
 msgstr "Create a new tenant"
 
+msgid "Create a resource type"
+msgstr "Create a resource type"
+
 msgid "Create a risk scenario for {outcomeName}"
 msgstr "Create a risk scenario for {outcomeName}"
 
@@ -4279,6 +4288,10 @@ msgctxt "severity of findings, in a sentence"
 msgid "critical"
 msgstr "critical"
 
+msgid "Critical"
+msgstr "Critical"
+
+msgctxt "strength of a dependency"
 msgid "Critical"
 msgstr "Critical"
 
@@ -4635,6 +4648,9 @@ msgstr "Delete the assessment?"
 msgid "Delete the link: {from} supports {to}"
 msgstr "Delete the link: {from} supports {to}"
 
+msgid "Delete the resource type “{pendingName}”"
+msgstr "Delete the resource type “{pendingName}”"
+
 msgid "Delete the rule “{pendingName}”"
 msgstr "Delete the rule “{pendingName}”"
 
@@ -4665,11 +4681,17 @@ msgstr "Delivers threat actors"
 msgid "Department"
 msgstr "Department"
 
+msgid "Dependencies"
+msgstr "Dependencies"
+
 msgid "Dependency deleted successfully."
 msgstr "Dependency deleted successfully."
 
 msgid "Dependency graph"
 msgstr "Dependency graph"
+
+msgid "Dependency Resource Types"
+msgstr "Dependency Resource Types"
 
 msgid "Dependency Rules"
 msgstr "Dependency Rules"
@@ -6456,6 +6478,10 @@ msgstr "Import simulation results from OpenAEV. Syncs detection and prevention o
 msgid "Import your compliance posture from Drata. Syncs your security frameworks (ISO 27001, SOC 2) with their requirements and control readiness, providing evidence to assess your security capabilities."
 msgstr "Import your compliance posture from Drata. Syncs your security frameworks (ISO 27001, SOC 2) with their requirements and control readiness, providing evidence to assess your security capabilities."
 
+msgctxt "strength of a dependency"
+msgid "Important"
+msgstr "Important"
+
 msgid "improbable (0)"
 msgstr "improbable (0)"
 
@@ -7559,6 +7585,10 @@ msgstr "Min must be ≤ Most Likely"
 msgid "Minimum"
 msgstr "Minimum"
 
+msgctxt "strength of a dependency"
+msgid "Minor"
+msgstr "Minor"
+
 msgid "minutes"
 msgstr "minutes"
 
@@ -8081,6 +8111,9 @@ msgstr "No dependency is declared for the primary assets of this scenario."
 msgid "No dependency rules yet"
 msgstr "No dependency rules yet"
 
+msgid "No dependency runs through this type."
+msgstr "No dependency runs through this type."
+
 msgid "No description has been ingested for this CVE."
 msgstr "No description has been ingested for this CVE."
 
@@ -8542,6 +8575,9 @@ msgstr "No treatment plan found"
 
 msgid "No TTPs associated with this scenario."
 msgstr "No TTPs associated with this scenario."
+
+msgid "No type"
+msgstr "No type"
 
 msgid "No unique finding currently sits in the critical band · score {range}"
 msgstr "No unique finding currently sits in the critical band · score {range}"
@@ -9819,6 +9855,9 @@ msgstr "Primary impact"
 msgid "Primary motivation"
 msgstr "Primary motivation"
 
+msgid "Primary-to-Primary Dependencies"
+msgstr "Primary-to-Primary Dependencies"
+
 msgid "Printer / peripheral"
 msgstr "Printer / peripheral"
 
@@ -10375,6 +10414,9 @@ msgstr "Rename"
 msgid "Rename the assessment"
 msgstr "Rename the assessment"
 
+msgid "Rename the resource type"
+msgstr "Rename the resource type"
+
 msgid "Rename the tag"
 msgstr "Rename the tag"
 
@@ -10470,6 +10512,15 @@ msgstr "Resolves domain names to addresses"
 
 msgid "Resource level"
 msgstr "Resource level"
+
+msgid "Resource type created successfully."
+msgstr "Resource type created successfully."
+
+msgid "Resource type deleted successfully."
+msgstr "Resource type deleted successfully."
+
+msgid "Resource type renamed successfully."
+msgstr "Resource type renamed successfully."
 
 msgid "Resources limited to the average individual; the threat acts independently."
 msgstr "Resources limited to the average individual; the threat acts independently."
@@ -10814,6 +10865,9 @@ msgstr "Running now"
 msgid "Runs"
 msgstr "Runs"
 
+msgid "Runs through"
+msgstr "Runs through"
+
 msgid "SaaS application"
 msgstr "SaaS application"
 
@@ -11023,6 +11077,9 @@ msgstr "Search primary assets..."
 
 msgid "Search requirements..."
 msgstr "Search requirements..."
+
+msgid "Search resource types..."
+msgstr "Search resource types..."
 
 msgid "Search risk scenarios..."
 msgstr "Search risk scenarios..."
@@ -11890,6 +11947,10 @@ msgstr "Stream throughput"
 msgid "Strength"
 msgstr "Strength"
 
+msgctxt "of a dependency"
+msgid "Strength"
+msgstr "Strength"
+
 msgid "strength {strength}, coverage {coverage} : efficacy {efficacy}"
 msgstr "strength {strength}, coverage {coverage} : efficacy {efficacy}"
 
@@ -12064,6 +12125,9 @@ msgstr "supports"
 msgctxt "a supporting asset ... a primary asset"
 msgid "supports"
 msgstr "supports"
+
+msgid "Supports"
+msgstr "Supports"
 
 msgid "Supports availability"
 msgstr "Supports availability"
@@ -13878,6 +13942,10 @@ msgid "Unknown"
 msgstr "Unknown"
 
 msgctxt "role of a dependency"
+msgid "Unknown"
+msgstr "Unknown"
+
+msgctxt "strength of a dependency"
 msgid "Unknown"
 msgstr "Unknown"
 

@@ -2,6 +2,7 @@ import {
   APPLICABLE_TECHNIQUES,
   attackSurfaceMitreTechniques,
   attackSurfaces,
+  dependencyResourceTypes,
   mitreTechniques,
   mitreTechniquesData,
   seed,
@@ -94,5 +95,18 @@ describe('Reference seed', () => {
       .where(and(eq(attackSurfaces.tenantId, tenantId), eq(attackSurfaceMitreTechniques.mitreTechniqueId, TECHNIQUE_T1698)));
     expect(linked.map((row) => row.categoryId).toSorted())
       .toEqual(categoriesCiting('T1698'));
+  });
+
+  it('should not bring back a dependency resource type a tenant deleted', async () => {
+    const { tenantId } = await createTenantWithAdmin(createTestServices(db));
+    await db.delete(dependencyResourceTypes)
+      .where(and(eq(dependencyResourceTypes.tenantId, tenantId), eq(dependencyResourceTypes.name, 'Transport')));
+
+    await seed(db);
+
+    const names = await db.select({ name: dependencyResourceTypes.name }).from(dependencyResourceTypes)
+      .where(eq(dependencyResourceTypes.tenantId, tenantId));
+    expect(names.map((row) => row.name)).not.toContain('Transport');
+    expect(names).toHaveLength(7);
   });
 });

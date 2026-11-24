@@ -169,6 +169,7 @@ import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesBusi
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCountriesRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/countries/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cve/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cwe/route'
+import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesSectorsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/sectors/route'
@@ -211,6 +212,7 @@ import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveI
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveCveIdRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cve/$cveId'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cwe/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweCweIdRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cwe/$cweId'
+import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversLossDriverIdRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/$lossDriverId'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack/index'
@@ -1508,6 +1510,15 @@ const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRoute =
         AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesRouteRoute,
     } as any,
   )
+const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRoute =
+  AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteImport.update(
+    {
+      id: '/dependency-resource-types',
+      path: '/dependency-resource-types',
+      getParentRoute: () =>
+        AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesRouteRoute,
+    } as any,
+  )
 const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRoute =
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRouteImport.update(
     {
@@ -1884,6 +1895,15 @@ const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweCweIdRoute =
       path: '/$cweId',
       getParentRoute: () =>
         AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRoute,
+    } as any,
+  )
+const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRoute =
+  AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRouteImport.update(
+    {
+      id: '/',
+      path: '/',
+      getParentRoute: () =>
+        AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRoute,
     } as any,
   )
 const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversIndexRoute =
@@ -2324,6 +2344,7 @@ export interface FileRoutesByFullPath {
   '/$tenantId/{-$organizationId}/settings/taxonomies/countries': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCountriesRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/settings/taxonomies/cve': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/settings/taxonomies/cwe': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRouteWithChildren
+  '/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/settings/taxonomies/sectors': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesSectorsRouteRouteWithChildren
@@ -2432,6 +2453,7 @@ export interface FileRoutesByFullPath {
   '/$tenantId/{-$organizationId}/settings/taxonomies/countries/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCountriesIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/cve/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/cwe/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweIndexRoute
+  '/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/sectors/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesSectorsIndexRoute
@@ -2605,6 +2627,7 @@ export interface FileRoutesByTo {
   '/$tenantId/{-$organizationId}/settings/taxonomies/countries': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCountriesIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/cve': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/cwe': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweIndexRoute
+  '/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackIndexRoute
   '/$tenantId/{-$organizationId}/settings/taxonomies/sectors': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesSectorsIndexRoute
@@ -2738,6 +2761,7 @@ export interface FileRoutesById {
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/countries': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCountriesRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cve': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cwe': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRouteWithChildren
+  '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/sectors': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesSectorsRouteRouteWithChildren
@@ -2846,6 +2870,7 @@ export interface FileRoutesById {
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/countries/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCountriesIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cve/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cwe/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweIndexRoute
+  '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/sectors/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesSectorsIndexRoute
@@ -2980,6 +3005,7 @@ export interface FileRouteTypes {
     | '/$tenantId/{-$organizationId}/settings/taxonomies/countries'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/cve'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/cwe'
+    | '/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/sectors'
@@ -3088,6 +3114,7 @@ export interface FileRouteTypes {
     | '/$tenantId/{-$organizationId}/settings/taxonomies/countries/'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/cve/'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/cwe/'
+    | '/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack/'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/sectors/'
@@ -3261,6 +3288,7 @@ export interface FileRouteTypes {
     | '/$tenantId/{-$organizationId}/settings/taxonomies/countries'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/cve'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/cwe'
+    | '/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack'
     | '/$tenantId/{-$organizationId}/settings/taxonomies/sectors'
@@ -3393,6 +3421,7 @@ export interface FileRouteTypes {
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/countries'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cve'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cwe'
+    | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/sectors'
@@ -3501,6 +3530,7 @@ export interface FileRouteTypes {
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/countries/'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cve/'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/cwe/'
+    | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack/'
     | '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/sectors/'
@@ -4658,6 +4688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRouteImport
       parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesRouteRoute
     }
+    '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types': {
+      id: '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types'
+      path: '/dependency-resource-types'
+      fullPath: '/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types'
+      preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteImport
+      parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesRouteRoute
+    }
     '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers': {
       id: '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers'
       path: '/loss-drivers'
@@ -4951,6 +4988,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$tenantId/{-$organizationId}/settings/taxonomies/cwe/$cweId'
       preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweCweIdRouteImport
       parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRoute
+    }
+    '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/': {
+      id: '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/'
+      path: '/'
+      fullPath: '/$tenantId/{-$organizationId}/settings/taxonomies/dependency-resource-types/'
+      preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRouteImport
+      parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRoute
     }
     '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/': {
       id: '/_auth/$tenantId/{-$organizationId}/settings/taxonomies/loss-drivers/'
@@ -6216,6 +6260,21 @@ const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRouteWit
     AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRouteChildren,
   )
 
+interface AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteChildren {
+  AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRoute
+}
+
+const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteChildren: AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteChildren =
+  {
+    AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRoute:
+      AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesIndexRoute,
+  }
+
+const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteWithChildren =
+  AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRoute._addFileChildren(
+    AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteChildren,
+  )
+
 interface AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRouteChildren {
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversLossDriverIdRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversLossDriverIdRoute
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversIndexRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversIndexRoute
@@ -6408,6 +6467,7 @@ interface AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesRouteRouteCh
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCountriesRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCountriesRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRouteWithChildren
+  AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesSectorsRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesSectorsRouteRouteWithChildren
@@ -6428,6 +6488,8 @@ const AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesRouteRouteChildr
       AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCveRouteRouteWithChildren,
     AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRoute:
       AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesCweRouteRouteWithChildren,
+    AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRoute:
+      AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesDependencyResourceTypesRouteRouteWithChildren,
     AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRoute:
       AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesLossDriversRouteRouteWithChildren,
     AuthTenantIdChar123OrganizationIdChar125SettingsTaxonomiesMitreAttackRouteRoute:

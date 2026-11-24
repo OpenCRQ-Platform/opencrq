@@ -16,6 +16,7 @@ describe('Asset dependency writes, input (HTTP/tRPC)', () => {
   let serverId: string;
   let databaseId: string;
   let adminId: string;
+  let organizationId: string;
 
   beforeEach(async () => {
     await truncateAllTables(db);
@@ -30,7 +31,7 @@ describe('Asset dependency writes, input (HTTP/tRPC)', () => {
       .tenants.createTenant({ id: tenantId, name: 'Tenant' }, adminId);
     const scoped = services.withOrigin({ type: 'client', userId: adminId, tenantId });
 
-    const organizationId = uuidv7();
+    organizationId = uuidv7();
     await scoped.organizations.createOrganizations([{ id: organizationId, name: 'Org' }]);
     primaryAssetId = uuidv7();
     await scoped.primaryAssets.createPrimaryAsset({
@@ -140,6 +141,36 @@ describe('Asset dependency writes, input (HTTP/tRPC)', () => {
     ], { tenantId });
 
     expect(res.json.error.data.code).toBe('BAD_REQUEST');
+  });
+
+  it('should refuse an update of a primary-to-primary link changing nothing', async () => {
+    const res = await client.mutation('assetDependencies.updatePrimaryToPrimaryLinks', [{ id: uuidv7() }], { tenantId });
+
+    expectBadRequest(res, 'A link update needs a strength or a dependency resource type');
+  });
+
+  it('should refuse a primary-to-primary link naming another tenant\'s resource type as a bad request', async () => {
+    const otherTenantId = uuidv7();
+    await services.withOrigin({ type: 'platform', userId: adminId })
+      .tenants.createTenant({ id: otherTenantId, name: 'Other tenant' }, adminId);
+    const [foreignType] = await services.withOrigin({ type: 'client', userId: adminId, tenantId: otherTenantId })
+      .assetDependencies.listDependencyResourceTypes();
+    const providerAssetId = uuidv7();
+    await services.withOrigin({ type: 'client', userId: adminId, tenantId }).primaryAssets.createPrimaryAsset({
+      id: providerAssetId, organizationId, name: 'Payments', description: null, ownerId: null, businessValueCategoryIds: [],
+    });
+
+    const res = await client.mutation('assetDependencies.createPrimaryToPrimaryLinks', [
+      { id: uuidv7(), dependentAssetId: primaryAssetId, providerAssetId, dependencyResourceTypeId: foreignType.id },
+    ], { tenantId });
+
+    expectBadRequest(res, 'A dependency resource type must be one of this tenant');
+  });
+
+  it('should refuse a dependency resource type name already taken as a conflict', async () => {
+    const res = await client.mutation('assetDependencies.createDependencyResourceType', { id: uuidv7(), name: 'SUPPLIER' }, { tenantId });
+
+    expect(res.json.error.data.code).toBe('CONFLICT');
   });
 
   it('should delete a link named twice in one delete', async () => {

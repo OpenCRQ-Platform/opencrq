@@ -5,10 +5,13 @@ import {
   DEPENDENCY_CANDIDATE_RELATIONS,
   DEPENDENCY_GRAPH_DEFAULT_DEPTH,
   DEPENDENCY_GRAPH_MAX_DEPTH,
+  DEPENDENCY_RESOURCE_TYPE_NAME_MAX_LENGTH,
   DEPENDENCY_RULE_NAME_MAX_LENGTH,
   DEPENDENCY_RULE_NAME_PATTERN_KINDS,
   DEPENDENCY_RULE_PATTERN_MAX_LENGTH,
   DEPENDENCY_RULE_PREVIEW_LIMIT,
+  DependencyResourceTypeNameTakenError,
+  DependencyResourceTypeNotFoundError,
   DependencyRuleNotFoundError,
   DependencyRuleRefusedError,
   INTEGRATION_SOURCES,
@@ -24,7 +27,7 @@ import { z } from 'zod';
 import type { TenantProcedure } from '../app-router-router';
 import { router } from '../../../trpc';
 import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, pagedOutput } from '../pagination';
-import { withBadRequestOn, withNotFoundOn } from '../structured-error-conflict';
+import { withBadRequestOn, withConflictOn, withNotFoundOn } from '../structured-error-conflict';
 
 const linkRolesSchema = z.array(z.enum(SUPPORT_TO_PRIMARY_LINK_ROLES))
   .refine(isStorableLinkRoleSet, 'A dependency needs at least one role, and Unknown cannot be combined with another role');
@@ -137,7 +140,11 @@ const PRIMARY_TO_PRIMARY_LINK_ROW_SCHEMA = z.object({
   relatedAssetId: z.uuid(),
   relatedAssetName: z.string(),
   strength: z.enum(PRIMARY_TO_PRIMARY_LINK_STRENGTHS),
+  dependencyResourceTypeId: z.uuid().nullable(),
+  dependencyResourceTypeName: z.string().nullable(),
 });
+
+const DEPENDENCY_RESOURCE_TYPE_NAME = z.string().trim().min(1).max(DEPENDENCY_RESOURCE_TYPE_NAME_MAX_LENGTH);
 
 export const assetDependenciesRouter = (procedure: TenantProcedure) => router({
   /**
@@ -284,6 +291,7 @@ export const assetDependenciesRouter = (procedure: TenantProcedure) => router({
       dependentAssetId: z.uuid(),
       providerAssetId: z.uuid(),
       strength: z.enum(PRIMARY_TO_PRIMARY_LINK_STRENGTHS).optional(),
+      dependencyResourceTypeId: z.uuid().nullable().optional(),
     }).refine((link) => link.dependentAssetId !== link.providerAssetId, 'A primary asset cannot depend on itself'))
       .max(MAX_DEPENDENCY_LINKS_PER_WRITE)
       .refine((links) => isUniqueBy(links, (link) => link.id), UNIQUE_LINK_IDS)
@@ -294,20 +302,46 @@ export const assetDependenciesRouter = (procedure: TenantProcedure) => router({
   updatePrimaryToPrimaryLinks: procedure
     .input(z.array(z.object({
       id: z.uuid(),
-      strength: z.enum(PRIMARY_TO_PRIMARY_LINK_STRENGTHS),
-    })).max(MAX_DEPENDENCY_LINKS_PER_WRITE)
+      strength: z.enum(PRIMARY_TO_PRIMARY_LINK_STRENGTHS).optional(),
+      /** Null clears the type, left out keeps it. */
+      dependencyResourceTypeId: z.uuid().nullable().optional(),
+    }).refine((link) => link.strength !== undefined || link.dependencyResourceTypeId !== undefined, 'A link update needs a strength or a dependency resource type'))
+      .max(MAX_DEPENDENCY_LINKS_PER_WRITE)
       .refine((links) => isUniqueBy(links, (link) => link.id), 'A link cannot be updated twice in one call'))
-    .mutation(async ({ input, ctx: { services, origin } }) => services.withOrigin(origin)
-      .assetDependencies.updatePrimaryToPrimaryLinks(input)),
+    .mutation(async ({ input, ctx: { services, origin } }) => withBadRequestOn(PrimaryToPrimaryLinkRefusedError, () => services.withOrigin(origin)
+      .assetDependencies.updatePrimaryToPrimaryLinks(input))),
   // eslint-disable-next-line app/no-unused-router-endpoint -- an import script writes these links by name; no screen calls it yet
   deletePrimaryToPrimaryLinks: procedure
     .input(z.array(z.uuid()).max(MAX_DEPENDENCY_LINKS_PER_WRITE))
     .mutation(async ({ input, ctx: { services, origin } }) => services.withOrigin(origin)
       .assetDependencies.deletePrimaryToPrimaryLinks(input)),
-  // eslint-disable-next-line app/no-unbounded-list-query, app/no-unused-router-endpoint -- grows with the primary assets linked to one primary asset, both ways; an import script reads it by name, no screen calls it yet
+  // eslint-disable-next-line app/no-unbounded-list-query -- grows with the primary assets linked to one primary asset, both ways
   getPrimaryToPrimaryLinks: procedure
     .input(z.object({ primaryAssetId: z.uuid() }))
     .output(z.array(PRIMARY_TO_PRIMARY_LINK_ROW_SCHEMA))
     .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin)
       .assetDependencies.getPrimaryToPrimaryLinks(input.primaryAssetId)),
+
+  // eslint-disable-next-line app/no-unbounded-list-query -- grows with the types an administrator writes by hand, a dozen
+  listDependencyResourceTypes: procedure
+    .output(z.array(z.object({
+      id: z.uuid(),
+      name: z.string(),
+      /** The primary-to-primary links naming the type. */
+      linkCount: z.number().int(),
+    })))
+    .query(({ ctx: { services, origin } }) => services.withOrigin(origin).assetDependencies.listDependencyResourceTypes()),
+  createDependencyResourceType: procedure
+    .input(z.object({ id: z.uuid(), name: DEPENDENCY_RESOURCE_TYPE_NAME }))
+    .mutation(({ input, ctx: { services, origin } }) => withConflictOn(DependencyResourceTypeNameTakenError, () =>
+      services.withOrigin(origin).assetDependencies.createDependencyResourceType(input))),
+  renameDependencyResourceType: procedure
+    .input(z.object({ id: z.uuid(), name: DEPENDENCY_RESOURCE_TYPE_NAME }))
+    .mutation(({ input, ctx: { services, origin } }) => withNotFoundOn(DependencyResourceTypeNotFoundError, () =>
+      withConflictOn(DependencyResourceTypeNameTakenError, () =>
+        services.withOrigin(origin).assetDependencies.renameDependencyResourceType(input.id, input.name)))),
+  deleteDependencyResourceType: procedure
+    .input(z.object({ id: z.uuid() }))
+    .mutation(({ input, ctx: { services, origin } }) => withNotFoundOn(DependencyResourceTypeNotFoundError, () =>
+      services.withOrigin(origin).assetDependencies.deleteDependencyResourceType(input.id))),
 });

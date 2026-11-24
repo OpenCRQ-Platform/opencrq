@@ -153,6 +153,13 @@
       "when": 1795533724987,
       "tag": "0021_spooky_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795540254362,
+      "tag": "0022_dependency_resource_types",
+      "breakpoints": true
     }
   ],
   "version": "7",
