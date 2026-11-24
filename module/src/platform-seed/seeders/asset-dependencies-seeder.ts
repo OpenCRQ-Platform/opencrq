@@ -111,8 +111,6 @@ registerPlatformSeed('asset-dependencies', async ({ db }) => {
     }
     return type.id;
   };
-  // Each provider reaches no supporting asset its dependent does not reach already, so the seeded
-  // reach, and every figure read from it, stays the same.
   await db.insert(primaryToPrimaryLinks).values([
     { id: PrimaryToPrimaryLink_PaymentOnCreditDecision, tenantId: Tenant_Acme, dependentAssetId: PrimaryAsset_InterbankPayment, providerAssetId: PrimaryAsset_CreditDecisionProcess, strength: 'important', dependencyResourceTypeId: acmeType('Finance') },
     { id: PrimaryToPrimaryLink_AccountDataOnCreditDecision, tenantId: Tenant_Acme, dependentAssetId: PrimaryAsset_CustomerAccountData, providerAssetId: PrimaryAsset_CreditDecisionProcess, strength: 'minor', dependencyResourceTypeId: acmeType('Information') },
