@@ -1,5 +1,5 @@
 import type { DrizzleDB } from '@app/module';
-import { OPENCTI_THREAT_VISIBILITIES, openctiConnectorSettings } from '@app/module';
+import { OPENCTI_THREAT_VISIBILITIES, openctiConnectorSettings, openctiStreamState } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import { createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -17,7 +17,8 @@ import { describeStreams, STREAM_RELATIONSHIPS, STREAM_VERDICTS, streamFilterGro
 
 const { logWarn } = createLogger({ feature: 'opencti' });
 
-const OpenctiConnectorSettingsSchema = createSelectSchema(openctiConnectorSettings);
+const OpenctiConnectorSettingsSchema = createSelectSchema(openctiConnectorSettings)
+  .extend(createSelectSchema(openctiStreamState).omit({ tenantId: true }).shape);
 
 const STREAM_COLLECTIONS_QUERY = `
   query StreamCollections {
@@ -198,7 +199,7 @@ export const openctiRouter = (procedure: TenantProcedure, db: DrizzleDB) => rout
       if (!origin.tenantId) {
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
-      return { threatVisibility: await services.withOrigin(origin).tenants.getThreatVisibility(origin.tenantId) };
+      return { threatVisibility: await services.withOrigin(origin).openctiConnector.getThreatVisibility(origin.tenantId) };
     }),
 
   setThreatVisibility: procedure
@@ -209,7 +210,7 @@ export const openctiRouter = (procedure: TenantProcedure, db: DrizzleDB) => rout
       if (!await scoped.capabilities.hasManageSecurity()) {
         throw new TRPCError({ code: 'FORBIDDEN' });
       }
-      await scoped.tenants.setThreatVisibility(input.threatVisibility);
+      await scoped.openctiConnector.setThreatVisibility(input.threatVisibility);
     }),
 
   setEnabled: procedure

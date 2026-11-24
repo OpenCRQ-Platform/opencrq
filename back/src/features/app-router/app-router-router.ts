@@ -89,9 +89,10 @@ export const createTenantProcedure = (services: ReturnType<typeof instantiateSer
       // (opencrq #31, #35): their markings and identity there, asked as them, ride on the origin
       // every view reads.
       // The visibility is read on every call, cached scope or not, so that its change refreshes
-      // every query of the tenant through the doorbell of `tenants`.
+      // every query of the tenant through the doorbell of `opencti_connector_settings`, which no
+      // checkpoint of the stream writes.
       const connection = config().connectors?.opencti?.[tenantId];
-      const threatVisibility = connection?.url ? await services.withOrigin(origin).tenants.getThreatVisibility(tenantId) : 'per_member';
+      const threatVisibility = connection?.url ? await services.withOrigin(origin).openctiConnector.getThreatVisibility(tenantId) : 'per_member';
       const scope = await readerMarkings.resolve(
         tenantId,
         origin.userId,
