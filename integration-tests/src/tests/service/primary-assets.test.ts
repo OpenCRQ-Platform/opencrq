@@ -247,6 +247,24 @@ describe('Primary Assets Service', () => {
 
       expect(await scoped.getPrimaryAsset(id)).toMatchObject({ reference: 'FIN-03', availability: null, rtoMinutes: 240 });
     });
+
+    it('should store not applicable on each need, apart from an empty one', async () => {
+      const id = uuidv7();
+      await create(id, { availability: 'not_applicable', integrity: 'not_applicable', confidentiality: 'not_applicable', traceability: 'not_applicable' });
+      const scoped = services.withOrigin(adminOrigin).primaryAssets;
+
+      await scoped.updatePrimaryAsset(id, { integrity: 'low', traceability: null });
+
+      expect(await scoped.getPrimaryAsset(id)).toMatchObject({
+        availability: 'not_applicable', integrity: 'low', confidentiality: 'not_applicable', traceability: null,
+      });
+    });
+
+    it.each(['availability', 'integrity', 'confidentiality', 'traceability'] as const)('should refuse a %s outside the five levels', async (criterion) => {
+      const rejection: unknown = await create(uuidv7(), { [criterion]: 'none' }).then(() => undefined, (error: unknown) => error);
+
+      expect(rejection).toMatchObject({ cause: { constraint: `primary_assets_${criterion}_ck` } });
+    });
   });
 
   describe('onboarding template', () => {

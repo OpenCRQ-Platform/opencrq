@@ -12,7 +12,7 @@ export interface DurationParts {
   unit: DurationUnit,
 }
 
-/** 0 for an unset level, so an unset one sorts below `low`. */
+/** 0 for an unset level, so an unset one sorts below `not_applicable`. */
 export const securityNeedRank = (level: SecurityNeedLevel | null): number =>
   (level === null ? 0 : SECURITY_NEED_LEVELS.indexOf(level) + 1);
 
