@@ -48,6 +48,9 @@ const readinessOf = (scenario: { tefMode: TefMode, noMappedAsset: boolean }, fig
     noMappedAsset: scenario.noMappedAsset,
     lastRunAt: figures.lastRunAt,
     tefUpdatedAt: tefUpdatedAt ?? null,
+    // An auto-mode estimate is stored lazily (first read of the TEF, or the first run): before that
+    // the frequency exists, it is just not written yet.
+    tefDerivedOnRead: scenario.tefMode === 'auto',
     lossDriversUpdatedAt: figures.lossExpectedValue != null && figures.lossExpectedValue > 0 ? figures.lossUpdatedAt ?? null : null,
   });
 };

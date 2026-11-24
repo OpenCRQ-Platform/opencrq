@@ -25,6 +25,12 @@ export interface ScenarioReadinessInput {
   /** Null means the input was never filled in. */
   tefUpdatedAt: Date | null,
   lossDriversUpdatedAt: Date | null,
+  /**
+   * The frequency is the platform's own estimate (auto mode) and none is stored yet: it is computed
+   * and stored on the first read of the scenario's TEF or at its first run, so it is neither
+   * missing nor outdated.
+   */
+  tefDerivedOnRead?: boolean,
 }
 
 /**
@@ -39,13 +45,14 @@ export const computeScenarioReadiness = ({
   lastRunAt,
   tefUpdatedAt,
   lossDriversUpdatedAt,
+  tefDerivedOnRead = false,
 }: ScenarioReadinessInput): ScenarioReadiness => {
-  const inputs: Array<{ kind: ScenarioInputKind, updatedAt: Date | null }> = [
-    { kind: 'tef', updatedAt: tefUpdatedAt },
-    { kind: 'loss-drivers', updatedAt: lossDriversUpdatedAt },
+  const inputs: Array<{ kind: ScenarioInputKind, updatedAt: Date | null, derivedOnRead: boolean }> = [
+    { kind: 'tef', updatedAt: tefUpdatedAt, derivedOnRead: tefDerivedOnRead && tefUpdatedAt === null },
+    { kind: 'loss-drivers', updatedAt: lossDriversUpdatedAt, derivedOnRead: false },
   ];
 
-  const missing = inputs.filter((input) => input.updatedAt === null).map((input) => input.kind);
+  const missing = inputs.filter((input) => input.updatedAt === null && !input.derivedOnRead).map((input) => input.kind);
   const outdated = lastRunAt === null
     ? []
     : inputs
