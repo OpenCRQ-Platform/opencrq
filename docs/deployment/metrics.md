@@ -50,7 +50,7 @@ Most per-process families are additive, and compose across processes by **sum**:
 
 When a panel spans more than one container, keep `instance` in the grouping (`sum by (instance) (...)`) unless a fleet-wide total is genuinely what you want — a bare `sum(...)` silently aggregates every scraped container together.
 
-The [database table](#database-tables-worker-process-opt-in) families are the exception: they describe the database, which every container of a deployment shares, so each container reports the same values. Only one process per container reports them, so no aggregation is needed within a container, but across containers aggregate by `max` (`max without (instance, process_name) (...)`), never `sum`, which would count the database once per replica.
+The [database table](#database-tables-worker-process-opt-in) families are the exception: they describe the database, which every container of a deployment shares, so each container reports the same values. Only one process per container reports them, so no aggregation is needed within a container, but across the containers of one deployment aggregate by `max`, never `sum`, which would count the database once per replica. Drop only the labels that tell those containers apart (`max without (instance) (...)`), and keep the one that tells deployments apart, their `job` or your own: two deployments have two databases, and folding them together reports neither.
 
 ## Database facts
 
@@ -166,14 +166,16 @@ The figures are PostgreSQL's own: `pg_stat_user_tables` and the size functions, 
 | `opencrq.db.table.vacuums` | `opencrq_db_table_vacuums_total` | Counter | `{vacuum}` | `db_table`, `kind`: `auto` (`autovacuum_count`) or `manual` (`vacuum_count`) | The vacuums of a table since the statistics were last reset. |
 | `opencrq.db.size` | `opencrq_db_size` | Gauge | `By` | none | The disk space the database uses (`pg_database_size`). |
 
-The share of a table's updates that stayed in place over a window, and the growth of its size:
+The share of a table's updates that stayed in place over a window, and the growth of its size, each per container and per table, every other label kept:
 
 ```promql
-  sum by (db_table) (rate(opencrq_db_table_updates_total{in_place="true"}[1h]))
-/ sum by (db_table) (rate(opencrq_db_table_updates_total[1h]))
+  rate(opencrq_db_table_updates_total{in_place="true"}[1h])
+/ ignoring (in_place) sum without (in_place) (rate(opencrq_db_table_updates_total[1h]))
 
-deriv((max without (instance, process_name) (opencrq_db_table_size))[1d:5m])
+deriv(opencrq_db_table_size[1d])
 ```
+
+The containers of one deployment read the same database, so they give the same ratio and the same slope. Never sum the update kinds by `db_table` alone: on a Prometheus that scrapes several deployments, that folds every database into one ratio per table name, and a healthy database hides a low ratio on another.
 
 The counters are reported as the cumulative values PostgreSQL keeps. Its statistics restart from zero after a crash or a `pg_stat_reset()`, which reaches Prometheus as an ordinary counter reset: `rate()` and `increase()` handle it, and no window shows a negative rate.
 
