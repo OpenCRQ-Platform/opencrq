@@ -12,6 +12,7 @@ import { runLegacySync } from './legacy/openaev-legacy-sync';
 import {
   assetToConnectorInput,
   enrichmentRouteOf,
+  isRetiredSourceAsset,
   linkedPersonNameOf,
   mergeAiTargetDetail,
   mergeMachineDetail,
@@ -138,9 +139,13 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
     const tagIdsBySourceAssetId = new Map<string, Array<string>>();
     const machineAssetIds: Array<string> = [];
     const overviewAssetIds: Array<string> = [];
+    // The assets OpenAEV still lists but whose source says they are archived or deleted (the GitHub
+    // collector's `github-state:*` tags): not upserted, and retired below with the unlisted ones.
+    const retiredSourceAssetIds: Array<string> = [];
 
     await ctx.updateProgress({ message: `Syncing OpenAEV tags for tenant ${openaevTenantId}` });
     const sourceTags = await client.listTags(openaevTenantId);
+    const tagNameBySourceTagId = new Map(sourceTags.map((t) => [t.tag_id, t.tag_name]));
     const tagIdBySourceTagId = sourceTags.length > 0
       ? await svc.supportingAssets.upsertTagVocabulary(
         connectorId,
@@ -183,6 +188,10 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
         },
       );
       for (const row of inventoryRows) {
+        if (isRetiredSourceAsset(row, tagNameBySourceTagId)) {
+          retiredSourceAssetIds.push(row.asset_id);
+          continue;
+        }
         const { input, tagIds } = assetToConnectorInput(row, connectorId, tagIdBySourceTagId, markingStixIdByOpenaevId);
         finalInputBySourceAssetId.set(input.sourceAssetId, input);
         tagIdsBySourceAssetId.set(input.sourceAssetId, tagIds);
@@ -203,13 +212,14 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       return sourceAssetIdToSupportingAssetId;
     }
     // A shifted offset skips an asset without a trace, and pruning would take it for deleted.
-    const listingComplete = listedTotal === finalInputBySourceAssetId.size;
+    const listedCount = finalInputBySourceAssetId.size + retiredSourceAssetIds.length;
+    const listingComplete = listedTotal === listedCount;
     if (!listingComplete) {
-      logWarn('OpenAEV asset inventory changed while it was read: no asset is unregistered in this run', {
-        openaevTenantId, listed: finalInputBySourceAssetId.size, reported: listedTotal,
+      logWarn('OpenAEV asset inventory changed while it was read: no unlisted asset is unregistered in this run', {
+        openaevTenantId, listed: listedCount, reported: listedTotal,
       });
     }
-    logTrace('OpenAEV asset inventory listed', { openaevTenantId, assets: finalInputBySourceAssetId.size });
+    logTrace('OpenAEV asset inventory listed', { openaevTenantId, assets: finalInputBySourceAssetId.size, retiredAtSource: retiredSourceAssetIds.length });
 
     if (machineAssetIds.length > 0) {
       await ctx.updateProgress({ message: `Enriching machine identities for OpenAEV tenant ${openaevTenantId}` });
@@ -334,26 +344,35 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
     // OpenAEV deletes an asset's vulnerability documents with the asset, so no stream will ever report
     // them again: the CVEs go first and the rows after, which a crash between the two redoes at the
     // next inventory. An inventory that listed nothing is no proof of anything.
+    // An asset its source says is archived or deleted is retired the same way, whatever the listing:
+    // the row that says so was read in this run.
+    const gone: Array<string> = [...retiredSourceAssetIds];
     if (!ctx.signal.aborted && !truncated && listingComplete && finalInputs.length > 0) {
       const unreported = await svc.openaevConnector.listUnreportedAssets({
         connectorId,
         openaevTenantId,
-        reportedSourceAssetIds: [...finalInputBySourceAssetId.keys()],
+        reportedSourceAssetIds: [...finalInputBySourceAssetId.keys(), ...retiredSourceAssetIds],
       });
       // A delete and an insert between two pages keep both counts equal while hiding a skipped asset,
       // so each unlisted one is asked for by id before it is taken for deleted.
-      const gone: Array<string> = [];
       await mapWithConcurrency(idBatchesOf(unreported), FETCH_CONCURRENCY, async (batchIds) => {
         const stillListed = await client.findListedAssetIds(openaevTenantId, batchIds);
         gone.push(...batchIds.filter((id) => !stillListed.has(id)));
       }, ctx.signal);
-      if (!ctx.signal.aborted && gone.length > 0) {
-        const pairs = await svc.supportingAssets.findCveScopePairsSince(connectorId, new Date(0), gone);
-        findingCounts.removed += await retireCveEvidence({ svc, connectorId, pairs, enumeratedAt: new Date() });
-        await svc.openaevConnector.pruneAssets({ connectorId, openaevTenantId, sourceAssetIds: gone });
-        inventoryCounts.removed += gone.length;
-        logTrace('OpenAEV assets no longer listed retired and unregistered', { openaevTenantId, assets: gone.length });
+    }
+    // The connector's observation of each goes too (`retireConnectorSources`): an asset nothing else
+    // stands behind leaves the scope instead of ageing into `expired` evidence, one another source
+    // still observes is re-derived, one a person invested in is kept.
+    if (!ctx.signal.aborted && gone.length > 0) {
+      const pairs = await svc.supportingAssets.findCveScopePairsSince(connectorId, new Date(0), gone);
+      findingCounts.removed += await retireCveEvidence({ svc, connectorId, pairs, enumeratedAt: new Date() });
+      await svc.openaevConnector.pruneAssets({ connectorId, openaevTenantId, sourceAssetIds: gone });
+      await svc.supportingAssets.retireConnectorSources({ connectorId, sourceAssetIds: gone });
+      for (const sourceAssetId of gone) {
+        sourceAssetIdToSupportingAssetId.delete(sourceAssetId);
       }
+      inventoryCounts.removed += gone.length;
+      logTrace('OpenAEV assets no longer listed or retired at their source unregistered', { openaevTenantId, assets: gone.length, retiredAtSource: retiredSourceAssetIds.length });
     }
 
     return sourceAssetIdToSupportingAssetId;
