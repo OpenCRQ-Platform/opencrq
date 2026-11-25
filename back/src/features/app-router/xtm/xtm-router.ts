@@ -17,6 +17,7 @@ import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveC
 import { counterpartAccess, readCounterpartIssues } from './counterpart-access';
 import { probeReaderIssue, READER_ACCESS_ISSUES, THREAT_ACCESS_ISSUES } from './reader-access-issue';
 import { openctiPublicUrl } from './opencti-public-url';
+import { publicProductUrls } from './public-product-urls';
 import { lookupXtmObjects,resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
 
@@ -111,7 +112,7 @@ export const tenantProviders = (
   const connectors = config().connectors;
   return [
     xtmOneProvider(getXtmOneSettings()?.url ?? null, xtmOneHeaders),
-    openctiProvider(connectors?.opencti?.[tenantId], authorization),
+    openctiProvider(connectors?.opencti?.[tenantId], authorization, fetch, (connection) => publicProductUrls.resolve('opencti', connection)),
     openaevProvider(connectors?.openaev?.[tenantId], authorization),
   ];
 };

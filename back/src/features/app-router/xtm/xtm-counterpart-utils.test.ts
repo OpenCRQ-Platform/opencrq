@@ -146,6 +146,21 @@ describe('providers', () => {
     expect(found).toEqual([{ key: STIX, product: 'opencti', objectId: 'abc', objectType: 'Intrusion-Set', objectName: 'APT28', objectUrl: 'https://opencti.example/dashboard/id/abc', facts: [] }]);
   });
 
+  it('asks OpenCTI on the connection\'s address but links to the object on the URL OpenCTI names itself', async () => {
+    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response(JSON.stringify({ data: { stixCoreObjects: { edges: [
+      { node: { id: 'abc', standard_id: STIX, entity_type: 'Intrusion-Set', representative: { main: 'APT28' } } },
+    ] } } }))));
+    const connection = { url: 'http://opencti:8080/', token: 'connector-token' };
+    const publicUrl = vi.fn((_connection: unknown) => Promise.resolve('https://opencti.example.com/'));
+    const p = openctiProvider(connection, () => Promise.resolve('reader-jwt'), fetchImpl, publicUrl);
+
+    const found = await p.resolve('THREAT', [STIX]);
+
+    expect(fetchImpl.mock.calls[0][0]).toBe('http://opencti:8080/graphql');
+    expect(publicUrl).toHaveBeenCalledWith(connection);
+    expect(found[0]?.objectUrl).toBe('https://opencti.example.com/dashboard/id/abc');
+  });
+
   it('never sends the connector token: no reader identity means no call and no counterpart', async () => {
     const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response('[]')));
     const connection = { url: 'https://product.example', token: 'connector-token' };

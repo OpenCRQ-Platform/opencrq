@@ -216,10 +216,14 @@ const openctiNodes = (answer: unknown): Array<Record<string, unknown>> => {
   return connection.edges.flatMap((edge: unknown) => (isRecord(edge) && isRecord(edge.node) ? [edge.node] : []));
 };
 
+/** The URL a browser opens the product on, which links to its objects are built from. */
+export type PublicProductUrl = (connection: ProductConnection) => Promise<string>;
+
 export const openctiProvider = (
   connection: ProductConnection | undefined,
   authorization: ReaderAuthorization,
   fetchImpl: FetchLike = fetch,
+  publicUrl: PublicProductUrl = (c) => Promise.resolve(trimSlash(c.url)),
 ): CounterpartProvider => ({
   product: 'opencti',
   url: connection ? trimSlash(connection.url) : null,
@@ -244,12 +248,14 @@ export const openctiProvider = (
       },
     });
     const nodes = openctiNodes(data);
+    // The calls above go to the connection's address; a link is opened from a browser.
+    const linkBase = nodes.length > 0 ? trimSlash(await publicUrl(connection)) : base;
     return toCounterparts('opencti', kind, keys, nodes.map((node) => ({
       object_key: lookup.keyOf(node),
       object_id: node.id,
       object_type: typeof node.entity_type === 'string' ? node.entity_type : undefined,
       object_name: representativeMain(node),
-      object_url: typeof node.id === 'string' ? `${base}/dashboard/id/${encodeURIComponent(node.id)}` : null,
+      object_url: typeof node.id === 'string' ? `${linkBase}/dashboard/id/${encodeURIComponent(node.id)}` : null,
     })));
   },
 });
