@@ -9,6 +9,14 @@ import path from 'node:path';
 
 const MAX_CONTEXT_BYTES = Number(process.env.MAX_CONTEXT_BYTES || 300000);
 
+// A page of the documentation site is read from its mirror, outside this
+// repository: the paths it names and links are the site's, never files here.
+const siteRoot = () => process.env.DOC_ROOT || '';
+
+const readDoc = (doc) => fs.readFileSync(path.join(siteRoot() || '.', doc), 'utf8');
+
+const docPaths = (doc) => (siteRoot() ? [] : namedPaths(doc, readDoc(doc)));
+
 export const parseMap = (text) => {
   const entries = [];
   for (const raw of text.split('\n')) {
@@ -288,7 +296,7 @@ const packContexts = (head, required, optional) => {
   return { contexts, omitted };
 };
 
-const documentSection = (doc) => `## Document \`${doc}\`\n\n${block(fs.readFileSync(doc, 'utf8'), 'markdown')}`;
+const documentSection = (doc) => `## Document \`${doc}\`\n\n${block(readDoc(doc), 'markdown')}`;
 
 /**
  * The contexts of one detection: the task, the document, the paths it names,
@@ -306,7 +314,7 @@ export const detectContexts = (pair, base) => {
   const head = [
     `## Task input\n\n${block(JSON.stringify({ doc, watches, changed: pair.changed || [] }, null, 2), 'json')}`,
     documentSection(doc),
-    ...namedPathsSection(namedPaths(doc, fs.readFileSync(doc, 'utf8'))),
+    ...namedPathsSection(docPaths(doc)),
     ...listing('Watched files', "Every file in this document's watches:", watched),
   ];
   const read = (file) => {
@@ -338,7 +346,7 @@ export const fixContext = (finding) => {
   const { doc } = finding;
   const watched = new Set(watchedFiles(watchesOf(doc)));
   const cited = [...new Set((finding.evidence || []).map((e) => String(e).replace(/[:#]\d.*$/, '')))];
-  const named = namedPaths(doc, fs.readFileSync(doc, 'utf8'));
+  const named = docPaths(doc);
   const parts = [
     `## Finding\n\n${block(JSON.stringify(finding, null, 2), 'json')}`,
     documentSection(doc),

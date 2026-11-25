@@ -1,0 +1,789 @@
+# The pages of the documentation site (filigran.io/docs) that describe OpenCRQ,
+# read from its public mirror, FiligranHQ/xtm-docs, and audited against the code
+# of the latest OpenCRQ release. Same format and same spirit as docs-map.yml:
+# few, high-signal watches, the code that decides a page's claims rather than
+# the code that draws them. A drift found here is reported to the mirror as an
+# issue, never fixed by this repository.
+#
+# Every page under docs/content/opencrq/ and every docs/content/deploy/*/opencrq.md
+# needs an entry; a shared deploy page is mapped when it has an OpenCRQ section.
+# The references under docs/content/reference/opencrq/ are generated from this
+# repository's code by the site itself and are left out. Check a change with
+# `node .github/docs-drift/scripts/dry-run.js --site <dir>`, <dir> holding the
+# mirror's docs/content.
+
+# OpenCRQ pages of the documentation site (docs/content/opencrq/), audited against the code that decides their claims.
+
+- doc: docs/content/opencrq/administer/background-jobs.md
+  watches:
+    - module/src/modules/jobs/**
+    - module/src/modules/job-logs/**
+    - module/src/modules/job-schedules/**
+    - module/src/modules/workers/**
+    - module/src/modules/default-threats/service.ts
+    - back/src/features/app-router/jobs/**
+    - back/src/engines/job-runtime/execution-loop.ts
+    - back/src/engines/job-runtime/job-runtime-engine.ts
+    - back/src/features/job-scheduler/index.ts
+    - back/src/features/job-scheduler/daily-schedule.ts
+    - back/src/features/job-scheduler/connector-schedule.ts
+    - back/src/features/jobs-retention/retention-handler.ts
+    - back/src/features/job-logs/index.ts
+    - back/src/features/xtm-one/xtm-one-registration.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/config-schema.ts
+    - front/src/features/integrations/components/integrations-hero.tsx
+
+- doc: docs/content/opencrq/administer/service-accounts.md
+  watches:
+    - module/src/modules/service-accounts/**
+    - module/src/modules/service-account-tokens/**
+    - back/src/features/app-router/service-accounts/**
+    - utils/src/service-account-token.ts
+    - back/src/trpc.ts
+    - back/src/features/app-router/user-session-only.ts
+    - back/src/features/app-router/integrations/new-service-account-input.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/features/deployment-integrations/deployment-integrations.ts
+    - front/src/features/service-accounts/**
+
+- doc: docs/content/opencrq/administer/tenants.md
+  watches:
+    - module/src/modules/tenants/**
+    - module/src/modules/onboarding-wizards/**
+    - back/src/features/app-router/tenants/**
+    - back/src/features/app-router/tenant-edition-utils.ts
+    - back/src/features/app-router/tenant-access-utils.ts
+    - back/src/features/edition/edition-state.ts
+    - back/src/features/edition/edition-gate.ts
+    - back/src/engines/db/initial-tenant.ts
+    - back/src/config-schema.ts
+    - back/src/features/deployment-integrations/deployment-integrations.ts
+    - back/src/features/deployment-integrations/opencti-managed-stream.ts
+    - front/src/providers/i18n-provider.tsx
+    - front/src/routes/_auth/$tenantId/route.tsx
+    - front/src/features/tenants/**
+
+- doc: docs/content/opencrq/administer/users-and-roles.md
+  watches:
+    - module/src/modules/roles/**
+    - module/src/modules/members/**
+    - module/src/modules/users/**
+    - module/src/modules/groups/**
+    - module/src/modules/platform-roles/**
+    - module/src/modules/platform-groups/**
+    - module/src/modules/capabilities/**
+    - module/src/modules/platform-capabilities/**
+    - module/src/modules/marking-definitions/**
+    - module/src/security/policies/marking-policies.ts
+    - module/src/security/policies/native-marking-policies.ts
+    - back/src/features/app-router/roles/**
+    - back/src/features/app-router/members/**
+    - back/src/features/app-router/groups/**
+    - back/src/features/app-router/users/**
+    - back/src/features/app-router/platform-roles/**
+    - back/src/features/app-router/platform-groups/**
+    - back/src/features/app-router/marking-definitions/**
+    - back/src/features/app-router/effective-permission.ts
+    - back/src/features/app-router/xtm/reader-markings.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in-routes.ts
+    - back/src/features/xtm-one/xtm-one-members.ts
+    - back/src/features/xtm-one/xtm-one-identity.ts
+    - back/src/features/opencti/opencti-marking-sync.ts
+    - front/src/features/members/**
+
+- doc: docs/content/opencrq/concepts/how-risk-is-quantified.md
+  watches:
+    - module/src/modules/crq-indicators/engine/attack-run-constants.ts
+    - module/src/modules/crq-indicators/engine/annual-loss.ts
+    - module/src/modules/attack-surfaces/entry-applicability.ts
+    - module/src/modules/attack-outcomes/data/attack-paths-data.ts
+    - module/src/modules/controls/capability/tested-efficacy.ts
+
+- doc: docs/content/opencrq/concepts/risk-scopes-and-assets.md
+  watches:
+    - module/src/modules/organizations/**
+    - module/src/modules/primary-assets/**
+    - module/src/modules/declared-estate/**
+    - module/src/modules/asset-dependencies/link-roles.ts
+    - module/src/modules/asset-dependencies/constants.ts
+    - module/src/modules/risk-scenarios/impact.ts
+    - module/src/modules/attack-outcomes/data/attack-outcomes-data.ts
+    - module/src/modules/business-value-categories/data/business-value-categories-data.ts
+    - module/src/modules/supporting-assets/constants.ts
+    - module/src/modules/attack-surfaces/entry-applicability.ts
+    - module/src/modules/tef-catalog/catalogue-lookup.ts
+    - module/src/modules/crq-indicators/declared-estate-completion.ts
+    - module/src/modules/crq-indicators/engine/engine-constants.ts
+
+- doc: docs/content/opencrq/configure/attack-and-vulnerability-catalogues.md
+  watches:
+    - module/src/modules/mitre-attack/*.ts
+    - module/src/modules/cwe/*.ts
+    - module/src/modules/controls/capability/tested-efficacy.ts
+    - module/src/modules/control-validation/technique-test-readings.ts
+    - module/src/modules/control-validation/service.ts
+    - back/src/features/app-router/mitre-attack/**
+    - back/src/features/app-router/cve/**
+    - back/src/features/app-router/cwe/**
+    - back/src/features/app-router/controls/capability/control-capabilities-router.ts
+    - back/src/features/app-router/control-validation/control-validation-router.ts
+    - back/src/features/app-router/user-session-only.ts
+
+- doc: docs/content/opencrq/configure/parameters.md
+  watches:
+    - module/src/modules/dashboard-settings/**
+    - module/src/modules/file-storage/**
+    - back/src/features/app-router/dashboard/dashboard-router.ts
+    - back/src/features/app-router/tenants/tenants-router.ts
+    - back/src/features/app-router/users/users-router.ts
+    - back/src/features/app-router/file-storage/**
+    - back/src/features/file-storage/**
+    - back/src/engines/db/initial-tenant.ts
+    - back/src/config-schema.ts
+    - front/src/routes/_auth/index.tsx
+    - front/src/routes/_auth/$tenantId/{-$organizationId}/settings/parameters/index.tsx
+    - front/src/features/platform-parameters/**
+
+- doc: docs/content/opencrq/configure/quantification-engine.md
+  watches:
+    - module/src/modules/threat-relevance-settings/**
+    - module/src/modules/crq-indicator-settings/**
+    - back/src/features/app-router/threat-relevance-settings/**
+    - back/src/features/app-router/crq-indicator-settings/**
+    - module/src/modules/threat-analyses/constants.ts
+    - module/src/modules/threat-analyses/outcome-counter/outcome-weight.ts
+    - module/src/modules/threat-analyses/technique-weighting.ts
+    - module/src/modules/attack-surfaces/phishing.ts
+    - module/src/modules/finding-score/engine.ts
+
+- doc: docs/content/opencrq/configure/risk-taxonomies.md
+  watches:
+    - module/src/modules/attack-outcomes/data/attack-outcomes-data.ts
+    - module/src/modules/attack-outcomes/service.ts
+    - back/src/features/app-router/attack-outcomes/**
+    - module/src/modules/business-value-categories/data/business-value-categories-data.ts
+    - module/src/modules/loss-drivers/data/loss-drivers-data.ts
+    - module/src/modules/loss-drivers/data/loss-activation-matrix.ts
+    - module/src/modules/sectors/data/sectors-data.ts
+    - module/src/modules/countries/data/countries-data.ts
+    - module/src/modules/supporting-assets/constants.ts
+    - module/src/modules/threat-analyses/outcome-counter/outcome-weight.ts
+    - module/src/modules/supporting-assets/tag-merge.ts
+    - module/src/modules/supporting-assets/tag-resolution.ts
+    - back/src/features/app-router/supporting-assets/supporting-assets-router.ts
+
+- doc: docs/content/opencrq/index.md
+  watches:
+    - module/src/modules/onboarding-wizards/service.ts
+    - front/src/features/onboarding/onboarding-steps.ts
+    - module/src/modules/crq-indicator-settings/service.ts
+
+- doc: docs/content/opencrq/use/attack-surface/assets.md
+  watches:
+    - module/src/modules/supporting-assets/schema.ts
+    - module/src/modules/supporting-assets/constants.ts
+    - module/src/modules/supporting-assets/attribute-resolution.ts
+    - module/src/modules/supporting-assets/source-authority.ts
+    - module/src/modules/supporting-assets/asset-group-resolution.ts
+    - module/src/modules/supporting-assets/tag-merge.ts
+    - module/src/modules/attack-surfaces/data/applicable-techniques-data.ts
+    - module/src/modules/crq-indicators/engine/asset-scalars.ts
+    - module/src/modules/crq-indicator-settings/schema.ts
+    - module/src/modules/asset-dependencies/schema.ts
+    - module/src/modules/asset-dependencies/link-roles.ts
+    - module/src/modules/asset-dependencies/reach.ts
+    - module/src/modules/asset-dependencies/attack-path-reach.ts
+    - module/src/modules/risk-scenarios/impact.ts
+    - module/src/modules/finding-score/bands.ts
+    - module/src/modules/finding-score/posture-cause.ts
+    - back/src/features/app-router/supporting-assets/supporting-assets-router.ts
+    - back/src/features/app-router/asset-dependencies/asset-dependencies-router.ts
+    - back/src/features/openaev-sync/openaev-group-phase.ts
+    - back/src/features/openaev-sync/openaev-attack-path-phase.ts
+    - back/src/features/app-router/xtm/xtm-router.ts
+    - back/src/features/app-router/xtm/xtm-counterpart-utils.ts
+    - back/src/features/app-router/xtm/xtm-lookup.ts
+    - back/src/features/app-router/xtm/counterpart-access.ts
+
+- doc: docs/content/opencrq/use/attack-surface/findings.md
+  watches:
+    - module/src/modules/finding-score/engine.ts
+    - module/src/modules/finding-score/constants.ts
+    - module/src/modules/finding-score/bands.ts
+    - module/src/modules/finding-score/unique-score.ts
+    - module/src/modules/finding-score/unique-score-composition.ts
+    - module/src/modules/finding-score/schema.ts
+    - module/src/modules/supporting-assets/finding-state.ts
+    - module/src/modules/supporting-assets/constants.ts
+    - module/src/modules/cve/cvss-vector.ts
+    - module/src/modules/cve/service.ts
+    - module/src/modules/threat-analyses/activity-grades.ts
+    - back/src/features/app-router/finding-score/finding-score-router.ts
+    - back/src/features/app-router/supporting-assets/supporting-assets-router.ts
+    - back/src/features/app-router/cve/cve-router.ts
+    - back/src/features/app-router/xtm/xtm-router.ts
+    - back/src/features/app-router/xtm/xtm-counterpart-utils.ts
+
+- doc: docs/content/opencrq/use/decide/budget-reviews.md
+  watches:
+    - module/src/modules/budget-reviews/**
+    - back/src/features/app-router/budget-reviews/**
+    - front/src/features/budget-reviews/budget-review-utils.ts
+    - back/src/features/crq-indicators/crq-simulation-handler.ts
+    - back/src/features/crq-indicators/crq-price-recompute-handler.ts
+    - module/src/modules/crq-indicators/engine/engine-run.ts
+
+- doc: docs/content/opencrq/use/decide/dashboards.md
+  watches:
+    - module/src/modules/dashboard/aggregation.ts
+    - module/src/modules/dashboard/repository.ts
+    - module/src/modules/dashboard/service.ts
+    - module/src/modules/dashboard/risk-treatment.ts
+    - module/src/modules/dashboard/loss-exceedance.ts
+    - module/src/modules/dashboard/remediation-pace.ts
+    - module/src/modules/dashboard/exposure-band.ts
+    - module/src/modules/dashboard/threat-aggregation.ts
+    - module/src/modules/dashboard-settings/**
+    - back/src/features/app-router/dashboard/**
+    - front/src/features/dashboard/dashboard-registry.tsx
+    - front/src/features/dashboard/dashboard-catalogue-utils.ts
+    - front/src/features/dashboard/aggregate-risk-utils.ts
+    - front/src/features/dashboard/tolerance-gap-utils.ts
+    - front/src/features/dashboard/components/home-dashboard-field.tsx
+    - front/src/features/dashboard/components/tenant-home-dashboard-field.tsx
+
+- doc: docs/content/opencrq/use/decide/treatment-plans.md
+  watches:
+    - module/src/modules/treatment-plans/**
+    - back/src/features/app-router/treatment-plans/**
+    - front/src/features/treatment-plans/treatment-plan-utils.ts
+    - front/src/features/treatment-plans/ui/gain-score.tsx
+    - front/src/features/treatment-plans/components/treatment-plans-kpi-band.tsx
+    - module/src/modules/crq-indicators/engine/engine-run.ts
+
+- doc: docs/content/opencrq/use/defenses/compliance.md
+  watches:
+    - module/src/modules/compliance-assessments/*.ts
+    - module/src/modules/compliance-assessments/data/nist-csf-2.0-control-mapping.json
+    - module/src/modules/compliance-assessments/data/oscal-mapping.ts
+    - module/src/modules/compliance-assessments/data/compliance-frameworks-seed.ts
+    - back/src/features/app-router/compliance-assessments/**
+    - module/src/modules/controls/capability/pooled-derivation.ts
+    - module/src/modules/drata/capability-derivation.ts
+    - back/src/features/capability-derivation/capability-derivation-handler.ts
+
+- doc: docs/content/opencrq/use/defenses/controls.md
+  watches:
+    - module/src/modules/controls/capability/constants.ts
+    - module/src/modules/controls/capability/schema.ts
+    - module/src/modules/controls/capability/scope-posture.ts
+    - module/src/modules/controls/capability/pooled-derivation.ts
+    - module/src/modules/controls/capability/tested-efficacy.ts
+    - module/src/modules/controls/capability/effective-coverage.ts
+    - module/src/modules/controls/capability/service.ts
+    - module/src/modules/controls/control-links-utils.ts
+    - module/src/modules/control-validation/engine.ts
+    - module/src/modules/control-validation/engine-reading.ts
+    - module/src/modules/control-validation/technique-test-readings.ts
+    - module/src/modules/control-validation/constants.ts
+    - module/src/modules/control-validation/service.ts
+    - back/src/features/app-router/controls/**
+    - back/src/features/app-router/control-validation/**
+    - front/src/features/controls/capability/utils/capability-effectiveness.ts
+
+- doc: docs/content/opencrq/use/get-started/assets.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/assets-step.tsx
+    - front/src/features/onboarding/components/asset-source-tiles.tsx
+    - front/src/features/onboarding/components/source-tile.tsx
+    - front/src/features/onboarding/components/declared-estate-source-drawer.tsx
+    - front/src/features/onboarding/components/defender-source-drawer.tsx
+    - front/src/features/onboarding/components/scheduled-source-drawer.tsx
+    - front/src/features/onboarding/components/connector-unavailable-body.tsx
+    - front/src/features/onboarding/onboarding-utils.ts
+    - front/src/features/onboarding/hooks/use-source-reads.ts
+    - front/src/features/onboarding/source-labels.ts
+    - front/src/features/declared-estate/**
+    - module/src/modules/declared-estate/**
+    - back/src/features/app-router/declared-estate/**
+    - module/src/modules/crq-indicators/declared-estate-completion.ts
+    - front/src/features/integrations/components/configure-integration-form.tsx
+    - front/src/features/integrations/components/service-account-choice-fields.tsx
+    - front/src/features/integrations/service-account-choice-utils.ts
+
+- doc: docs/content/opencrq/use/get-started/company.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/company-step.tsx
+    - front/src/features/onboarding/company-form.ts
+    - front/src/features/organizations/components/revenue-band-select.tsx
+    - module/src/modules/organizations/service.ts
+    - module/src/modules/organizations/schema.ts
+    - module/src/modules/organizations/constants.ts
+    - back/src/features/app-router/organizations/organizations-router.ts
+    - back/src/features/app-router/organizations/firmography-recompute.ts
+    - module/src/modules/tef-catalog/catalogue-lookup.ts
+    - module/src/modules/tef-catalog/catalogue-constants.ts
+    - module/src/modules/threat-analyses/outcome-counter/outcome-weight.ts
+    - module/src/modules/tenants/repository.ts
+
+- doc: docs/content/opencrq/use/get-started/defenses.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/defenses-step.tsx
+    - front/src/features/onboarding/components/defense-source-tiles.tsx
+    - front/src/features/onboarding/components/drata-source-drawer.tsx
+    - front/src/features/onboarding/components/self-assessment-drawer.tsx
+    - front/src/features/onboarding/components/scheduled-source-drawer.tsx
+    - front/src/features/onboarding/components/connector-unavailable-body.tsx
+    - front/src/features/onboarding/components/source-tile.tsx
+    - front/src/features/onboarding/defenses-utils.ts
+    - front/src/features/onboarding/onboarding-utils.ts
+    - front/src/features/onboarding/hooks/use-source-reads.ts
+    - front/src/features/controls/capability/ui/strength-info.tsx
+    - module/src/modules/controls/capability/service.ts
+    - module/src/modules/controls/capability/constants.ts
+    - back/src/features/app-router/controls/capability/control-capabilities-router.ts
+    - front/src/features/integrations/components/configure-integration-form.tsx
+    - front/src/features/integrations/components/service-account-choice-fields.tsx
+
+- doc: docs/content/opencrq/use/get-started/done.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/get-started-done.tsx
+    - front/src/features/onboarding/components/onboarding-stepper.tsx
+    - front/src/features/onboarding/onboarding-links.ts
+    - front/src/features/onboarding/onboarding-utils.ts
+    - front/src/features/onboarding/get-started-landing.ts
+    - front/src/stores/onboarding-seen-collection.ts
+    - front/src/routes/**/get-started/done.tsx
+
+- doc: docs/content/opencrq/use/get-started/finances.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/finances-step.tsx
+    - front/src/features/financial-profiles/**
+    - module/src/modules/financial-profiles/**
+    - back/src/features/app-router/financial-profiles/**
+    - back/src/features/app-router/organizations/firmography-recompute.ts
+
+- doc: docs/content/opencrq/use/get-started/index.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - back/src/features/app-router/onboarding-wizard/**
+    - module/src/modules/tenants/repository.ts
+    - back/src/engines/db/initial-tenant.ts
+    - front/src/features/onboarding/onboarding-steps.ts
+    - front/src/features/onboarding/onboarding-utils.ts
+    - front/src/features/onboarding/onboarding-links.ts
+    - front/src/features/onboarding/get-started-landing.ts
+    - front/src/features/onboarding/hooks/use-source-reads.ts
+    - front/src/features/onboarding/components/get-started-page.tsx
+    - front/src/features/onboarding/components/onboarding-stepper.tsx
+    - front/src/features/onboarding/components/onboarding-step-layout.tsx
+    - front/src/stores/onboarding-seen-collection.ts
+    - front/src/components/layout/main-layout/fds-navbar/nav-model.tsx
+    - front/src/components/layout/main-layout/fds-navbar/nav-items.tsx
+    - front/src/routes/**/get-started/route.tsx
+
+- doc: docs/content/opencrq/use/get-started/protect.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/protect-step.tsx
+    - front/src/features/onboarding/components/protect-templates.tsx
+    - front/src/features/onboarding/components/protect-assets-graph.tsx
+    - front/src/features/onboarding/protect-utils.ts
+    - front/src/features/onboarding/protect-labels.ts
+    - module/src/modules/primary-assets/**
+    - back/src/features/app-router/primary-assets/**
+    - module/src/modules/business-value-categories/data/business-value-categories-data.ts
+    - front/src/features/asset-dependencies/components/manage-dependencies-drawer.tsx
+
+- doc: docs/content/opencrq/use/get-started/scenarios.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/scenarios-step.tsx
+    - front/src/features/onboarding/components/scenario-cards.tsx
+    - front/src/features/onboarding/scenarios-utils.ts
+    - front/src/features/onboarding/scenarios-labels.ts
+    - front/src/features/onboarding/hooks/use-source-reads.ts
+    - module/src/modules/loss-drivers/data/loss-activation-matrix.ts
+    - module/src/modules/attack-outcomes/data/attack-outcomes-data.ts
+    - module/src/modules/crq-indicator-settings/service.ts
+    - module/src/modules/risk-scenarios/readiness.ts
+    - front/src/features/risk-scenarios/components/list/scenario-readiness-badge.tsx
+    - back/src/features/app-router/risk-scenarios/risk-scenarios-router.ts
+
+- doc: docs/content/opencrq/use/get-started/threats.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/threats-step.tsx
+    - front/src/features/onboarding/components/threat-source-tiles.tsx
+    - front/src/features/onboarding/components/opencti-source-drawer.tsx
+    - front/src/features/onboarding/components/source-tile.tsx
+    - front/src/features/onboarding/components/connector-unavailable-body.tsx
+    - front/src/features/onboarding/onboarding-utils.ts
+    - front/src/features/onboarding/hooks/use-source-reads.ts
+    - front/src/features/onboarding/source-labels.ts
+    - module/src/modules/default-threats/service.ts
+    - module/src/modules/default-threats/repository.ts
+    - module/src/modules/default-threats/schema.ts
+    - back/src/features/app-router/default-threats/**
+    - back/src/features/default-threats/**
+    - back/src/features/deployment-integrations/deployment-integrations.ts
+    - back/src/features/deployment-integrations/opencti-managed-stream.ts
+    - front/src/features/integrations/components/opencti-configure-form.tsx
+    - front/src/features/integrations/components/service-account-choice-fields.tsx
+    - front/src/features/integrations/components/default-threats-configure-drawer.tsx
+    - front/src/features/threats/components/threat-upload-button.tsx
+    - module/src/modules/tenants/repository.ts
+
+- doc: docs/content/opencrq/use/get-started/tolerance.md
+  watches:
+    - module/src/modules/onboarding-wizards/**
+    - front/src/features/onboarding/components/tolerance-step.tsx
+    - front/src/features/risk-tolerance/**
+    - module/src/modules/organizations/service.ts
+    - module/src/modules/organizations/constants.ts
+    - back/src/features/app-router/organizations/organizations-router.ts
+    - module/src/modules/dashboard/loss-exceedance.ts
+
+- doc: docs/content/opencrq/use/profile.md
+  watches:
+    - front/src/routes/**/profile.tsx
+    - front/src/components/layout/user-profile-menu.tsx
+    - front/src/lib/locale-utils.ts
+    - front/src/providers/theme-provider.tsx
+    - front/src/features/dashboard/components/home-dashboard-field.tsx
+    - front/src/features/xtm-one/components/xtm-one-mcp-card.tsx
+    - module/src/modules/users/**
+    - back/src/features/app-router/users/**
+    - module/src/modules/tenants/service.ts
+    - back/src/features/app-router/tenants/tenants-router.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in.ts
+    - module/src/modules/supporting-assets/owner-resolution.ts
+    - module/src/modules/members/service.ts
+    - module/src/modules/members/access-notice.ts
+    - module/src/modules/notifications/**
+    - back/src/features/app-router/notifications/**
+    - front/src/features/notifications/**
+
+- doc: docs/content/opencrq/use/quantify/loss-drivers.md
+  watches:
+    - module/src/modules/financial-profiles/**
+    - module/src/modules/loss-drivers/derive-estimates.ts
+    - module/src/modules/loss-drivers/derive-estimates-drivers.ts
+    - module/src/modules/loss-drivers/derive-estimates-coefficients.ts
+    - module/src/modules/loss-drivers/derive-estimates-helpers.ts
+    - module/src/modules/loss-drivers/derive-estimates-input-mapping-utils.ts
+    - module/src/modules/loss-drivers/service.ts
+    - module/src/modules/loss-drivers/schema.ts
+    - module/src/modules/loss-drivers/data/loss-drivers-data.ts
+    - module/src/modules/loss-drivers/data/loss-activation-matrix.ts
+    - module/src/modules/scenario-loss-estimates/**
+    - module/src/modules/onboarding-wizards/service.ts
+    - back/src/features/financial-estimates-recompute/**
+    - back/src/features/app-router/financial-profiles/**
+    - back/src/features/app-router/scenario-loss-estimates/**
+    - back/src/features/app-router/loss-drivers/**
+    - front/src/features/financial-profiles/financial-profile-utils.ts
+    - front/src/features/financial-profiles/financial-profile-questions.ts
+    - front/src/features/loss-drivers/loss-driver-activation-grid.ts
+    - front/src/features/risk-scenarios/components/loss-estimates-drawer.tsx
+    - front/src/features/risk-scenarios/components/scenario-loss-estimates-page.tsx
+
+- doc: docs/content/opencrq/use/quantify/risk-scenarios.md
+  watches:
+    - module/src/modules/risk-scenarios/service.ts
+    - module/src/modules/risk-scenarios/repository.ts
+    - module/src/modules/risk-scenarios/schema.ts
+    - module/src/modules/risk-scenarios/readiness.ts
+    - module/src/modules/risk-scenarios/readiness-probes.ts
+    - module/src/modules/crq-indicators/engine/attack-run-constants.ts
+    - module/src/modules/ale-change-explain/service.ts
+    - module/src/modules/ale-change-explain/categories/groups.ts
+    - back/src/features/app-router/risk-scenarios/**
+    - back/src/features/app-router/default-threats/**
+    - back/src/features/recompute-dispatcher/dispatcher-core.ts
+    - back/src/features/recompute-dispatcher/index.ts
+    - back/src/features/crq-indicators/index.ts
+    - back/src/features/crq-indicators/*-handler.ts
+    - back/src/features/crq-indicators/levers-recompute.ts
+    - front/src/features/risk-scenarios/components/risk-scenario-wizard.tsx
+    - front/src/features/risk-scenarios/components/crq-run-cards.tsx
+    - front/src/features/risk-scenarios/components/risk-scenario-simulate-action.tsx
+    - front/src/features/risk-scenarios/components/changes/run-changes-utils.ts
+    - front/src/features/risk-scenarios/components/list/scenario-readiness-labels.ts
+
+- doc: docs/content/opencrq/use/search.md
+  watches:
+    - module/src/modules/global-search/**
+    - back/src/features/app-router/global-search/**
+    - front/src/features/global-search/**
+    - front/src/routes/**/search.tsx
+    - front/src/components/layout/header-search.tsx
+    - module/src/db/fold-text.ts
+
+- doc: docs/content/opencrq/use/sources/drata.md
+  watches:
+    - back/src/features/drata-sync/**
+    - module/src/modules/drata/capability-derivation.ts
+    - module/src/modules/drata/repository.ts
+    - module/src/modules/drata/schema.ts
+    - module/src/modules/drata/service.ts
+    - back/src/features/capability-derivation/**
+    - module/src/modules/controls/capability/pooled-derivation.ts
+    - back/src/features/app-router/drata/**
+    - front/src/features/controls/capability/components/capability-drata-evidence.tsx
+    - module/src/modules/connectors/inventory.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/features/app-router/connectors/connectors-router.ts
+    - back/src/config-schema.ts
+
+- doc: docs/content/opencrq/use/sources/microsoft-defender.md
+  watches:
+    - back/src/features/microsoft-graph/graph-sync-handler.ts
+    - back/src/features/microsoft-graph/graph-identity-sync.ts
+    - back/src/features/microsoft-graph/graph-primary-users.ts
+    - back/src/features/microsoft-graph/graph-mapping-utils.ts
+    - back/src/features/microsoft-graph/graph-auth.ts
+    - back/src/features/microsoft-graph/device-criticality-rules.ts
+    - back/src/features/microsoft-graph/identity-criticality-rules.ts
+    - module/src/modules/connectors/inventory.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/features/app-router/connectors/connectors-router.ts
+    - back/src/config-schema.ts
+
+- doc: docs/content/opencrq/use/sources/openaev.md
+  watches:
+    - back/src/features/openaev-sync/index.ts
+    - back/src/features/openaev-sync/cve-findings-transaction.ts
+    - back/src/features/openaev-sync/openaev-api-client.ts
+    - back/src/features/openaev-sync/openaev-attack-path-phase.ts
+    - back/src/features/openaev-sync/openaev-description-phase.ts
+    - back/src/features/openaev-sync/openaev-group-phase.ts
+    - back/src/features/openaev-sync/openaev-mapping-utils.ts
+    - back/src/features/openaev-sync/openaev-marking-phase.ts
+    - back/src/features/openaev-sync/openaev-observation-phase.ts
+    - back/src/features/openaev-sync/openaev-reconciliation-scope.ts
+    - back/src/features/openaev-sync/openaev-retirement.ts
+    - back/src/features/openaev-sync/openaev-sync-handler.ts
+    - back/src/features/openaev-sync/openaev-types.ts
+    - back/src/features/openaev-sync/legacy/openaev-legacy-client.ts
+    - back/src/features/openaev-sync/legacy/openaev-legacy-mapping.ts
+    - back/src/features/openaev-sync/legacy/openaev-legacy-sync.ts
+    - back/src/features/openaev-sync/legacy/openaev-legacy-types.ts
+    - module/src/modules/openaev-connector/**
+    - back/src/features/deployment-integrations/deployment-integrations.ts
+    - back/src/features/deployment-integrations/index.ts
+    - module/src/modules/connectors/inventory.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/features/app-router/connectors/connectors-router.ts
+    - back/src/config-schema.ts
+
+- doc: docs/content/opencrq/use/sources/opencti.md
+  watches:
+    - back/src/features/opencti/index.ts
+    - back/src/features/opencti/opencti-connector-manager.ts
+    - back/src/features/opencti/opencti-marking-sync.ts
+    - back/src/features/opencti/opencti-sse-client.ts
+    - module/src/modules/opencti-connector/**
+    - back/src/features/app-router/opencti/opencti-router.ts
+    - back/src/features/app-router/opencti/opencti-stream-filter-utils.ts
+    - back/src/features/app-router/opencti/opencti-backfill-progress-utils.ts
+    - back/src/features/opencti-mirror-rebuild/opencti-mirror-rebuild-handler.ts
+    - back/src/features/deployment-integrations/deployment-integrations.ts
+    - back/src/features/deployment-integrations/index.ts
+    - back/src/features/deployment-integrations/opencti-managed-stream.ts
+    - back/src/features/app-router/default-threats/**
+    - back/src/features/default-threats/default-threats-dataset.ts
+    - back/src/features/default-threats/default-threats-sync-handler.ts
+    - back/src/features/app-router/xtm/xtm-lookup.ts
+    - back/src/features/app-router/xtm/xtm-providers.ts
+    - back/src/features/app-router/xtm/xtm-counterpart-utils.ts
+    - back/src/features/app-router/xtm/counterpart-access.ts
+    - module/src/modules/connectors/inventory.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/features/app-router/connectors/connectors-router.ts
+    - back/src/config-schema.ts
+
+- doc: docs/content/opencrq/use/sources/vulnerability-sources.md
+  watches:
+    - back/src/features/cve-nist/index.ts
+    - back/src/features/cve-nist/nist-sync-handler.ts
+    - back/src/features/cve-first/first-sync-handler.ts
+    - back/src/features/cve-cisa/cisa-sync-handler.ts
+    - back/src/features/cve-feeds-on-entry/**
+    - module/src/modules/cve/**
+    - module/src/modules/finding-score/engine.ts
+    - module/src/modules/finding-score/constants.ts
+    - module/src/modules/finding-score/technique-scores.ts
+    - module/src/modules/entry-openings/schema.ts
+    - front/src/features/integrations/components/nvd-notice.tsx
+    - module/src/modules/connectors/inventory.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/features/app-router/connectors/connectors-router.ts
+    - back/src/config-schema.ts
+
+- doc: docs/content/opencrq/use/threats/threat-center.md
+  watches:
+    - module/src/modules/threat-analyses/service.ts
+    - module/src/modules/threat-analyses/constants.ts
+    - module/src/modules/threat-analyses/activity-grades.ts
+    - module/src/modules/threat-analyses/activity-lineage.ts
+    - module/src/modules/threat-analyses/activity-scoring.ts
+    - module/src/modules/threat-analyses/actor-classes.ts
+    - module/src/modules/threat-analyses/aliases.ts
+    - module/src/modules/threat-analyses/canonical.ts
+    - module/src/modules/threat-analyses/outcome-selection.ts
+    - module/src/modules/threat-analyses/relevance-proof.ts
+    - module/src/modules/threat-analyses/technique-weighting.ts
+    - module/src/modules/threat-analyses/outcome-counter/outcome-counter.ts
+    - module/src/modules/threat-analyses/outcome-counter/outcome-weight.ts
+    - module/src/modules/threat-relevance-settings/**
+    - module/src/modules/default-threats/dataset.ts
+    - module/src/security/policies/marking-policies.ts
+    - back/src/features/app-router/threats/**
+    - back/src/features/app-router/default-threats/**
+    - back/src/features/app-router/xtm/reader-markings.ts
+    - utils/src/reader-scope.ts
+
+- doc: docs/content/opencrq/use/threats/threat-event-frequency.md
+  watches:
+    - module/src/modules/tef-catalog/*.ts
+    - module/src/modules/crq-indicators/service.ts
+    - back/src/features/app-router/crq-indicators/crq-indicators-router.ts
+    - back/src/features/app-router/organizations/firmography-recompute.ts
+    - back/src/features/crq-indicators/tef-recompute-handler.ts
+    - front/src/features/threat-event-frequency/threat-event-frequency-utils.ts
+    - front/src/features/threat-event-frequency/components/profile-frequency.tsx
+    - front/src/features/threat-event-frequency/components/profile-simulator.tsx
+    - front/src/features/threat-event-frequency/components/all-scopes-frequency.tsx
+    - front/src/features/threat-event-frequency/components/scenario-catalog-line.tsx
+    - front/src/features/threat-event-frequency/components/frequency-labels.ts
+    - front/src/features/risk-scenarios/components/crq-tef-input.tsx
+
+# Shared deployment pages: only their OpenCRQ sections are this repository's to check.
+
+- doc: docs/content/deploy/install/opencrq.md
+  watches:
+    - back/src/config-schema.ts
+    - back/config/default.json
+    - docker/prod.dockerfile
+    - back/src/index-pm.ts
+    - back/src/trpc.ts
+    - back/src/features/xtm-one/xtm-one-client.ts
+    - back/src/features/xtm-one/xtm-one-registration.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in-routes.ts
+    - back/src/engines/db/initial-tenant.ts
+    - module/src/modules/tenants/repository.ts
+    - back/src/features/deployment-integrations/**
+    - back/src/engines/filigran-telemetry/filigran-telemetry-engine.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - front/src/routes/login.tsx
+    - front/src/routes/_auth/index.tsx
+
+- doc: docs/content/deploy/configure/opencrq.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/config.ts
+    - back/config/default.json
+    - back/src/index-pm.ts
+    - back/src/boot/boot.ts
+    - back/src/utils/pg-connection.ts
+    - back/src/engines/db/db-engine.ts
+    - back/src/engines/db/db-reset.ts
+    - back/src/engines/db/initial-tenant.ts
+    - back/src/engines/http-server/http-server-engine.ts
+    - back/src/utils/trpc-telemetry.ts
+    - back/src/clients/file-storage/**
+    - front/src/features/threats/components/threat-upload-button.tsx
+    - back/src/features/xtm-one/xtm-one-client.ts
+    - back/src/features/xtm-one/xtm-one-registration.ts
+    - back/src/features/xtm-one/xtm-one-identity.ts
+    - back/src/features/xtm-one/xtm-one-check.ts
+    - back/src/features/xtm-one/xtm-one-reachability.ts
+    - back/src/features/edition/edition-state.ts
+    - back/src/features/edition/edition-license.ts
+    - back/src/features/edition/xtm-license.ts
+    - back/src/features/deployment-integrations/**
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/engines/filigran-telemetry/**
+
+- doc: docs/content/deploy/operate/metrics.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/index-pm.ts
+    - back/src/tracing.ts
+    - back/src/utils/process-profile.ts
+    - back/src/utils/metrics-ipc.ts
+    - back/src/utils/metrics-merge.ts
+    - back/src/utils/metrics-server.ts
+    - back/src/utils/metrics-snapshot.ts
+    - back/src/utils/metrics-views.ts
+    - back/src/utils/pm-metrics.ts
+    - back/src/utils/recompute-metrics.ts
+    - back/src/utils/trpc-telemetry.ts
+    - back/src/engines/db/db-metrics.ts
+    - back/src/features/events/doorbell-metrics.ts
+    - back/src/features/opencti-mirror-rebuild/mirror-rebuild-metrics.ts
+    - back/src/features/opencti-mirror-rebuild/opencti-mirror-rebuild-handler.ts
+
+- doc: docs/content/deploy/configure/connect-modules.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/features/xtm-one/xtm-one-client.ts
+    - back/src/features/xtm-one/xtm-one-registration.ts
+    - back/src/features/xtm-one/xtm-one-identity.ts
+    - back/src/features/xtm-one/xtm-one-jwt.ts
+    - back/src/features/deployment-integrations/**
+
+- doc: docs/content/deploy/plan/network.md
+  watches:
+    - back/src/config-schema.ts
+    - docker/prod.dockerfile
+    - back/src/engines/filigran-telemetry/filigran-telemetry-engine.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - back/src/features/cve-nist/nist-sync-handler.ts
+    - back/src/features/cve-first/first-sync-handler.ts
+    - back/src/features/cve-cisa/cisa-sync-handler.ts
+    - back/src/features/microsoft-graph/graph-auth.ts
+
+- doc: docs/content/deploy/configure/shared-services.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/clients/file-storage/object-storage-provider.ts
+
+- doc: docs/content/deploy/install/docker-compose.md
+  watches:
+    - back/src/config-schema.ts
+    - docker/prod.dockerfile
+
+- doc: docs/content/deploy/configure/first-access.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/features/xtm-peer-tokens/**
+    - back/src/features/xtm-sign-in/xtm-sign-in.ts
+    - front/src/routes/login.tsx
+
+- doc: docs/content/deploy/plan/architecture.md
+  watches:
+    - back/src/config-schema.ts
+    - docker/prod.dockerfile
+
+- doc: docs/content/deploy/plan/modules.md
+  watches:
+    - back/src/config-schema.ts
+    - docker/prod.dockerfile
+
+- doc: docs/content/deploy/install/modules.md
+  watches:
+    - back/src/config-schema.ts
+
+- doc: docs/content/deploy/operate/backup.md
+  watches:
+    - back/src/config-schema.ts

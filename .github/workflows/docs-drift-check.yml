@@ -13,6 +13,11 @@ name: Docs drift check
 #   must be opened by it rather than by GITHUB_TOKEN, which triggers no CI and
 #   would leave the required checks unreported and the pull request unmergeable.
 # - `DOCS_DRIFT_ISSUE_NUMBER`: repository variable, number of the tracking issue.
+# - The same GitHub App installed on FiligranHQ/xtm-docs, the public mirror of
+#   the documentation site, with "Issues: write" and "Metadata: read". A drift
+#   on a site page is reported there as an issue, since the mirror closes every
+#   pull request. Without that installation, the findings land on the tracking
+#   issue instead.
 
 on:
   schedule:
@@ -28,7 +33,7 @@ on:
           - deep
         default: incremental
       scope:
-        description: only audit docs whose path starts with one of these space-separated prefixes
+        description: only audit docs whose path starts with one of these space-separated prefixes (a site page's starts with docs/content/)
         type: string
         required: false
 
@@ -44,6 +49,11 @@ env:
   BRANCH_PREFIX: docs-drift/
   DOCS_DRIFT_AGENT: opencrq-docs-drift
   WINDOW_DAYS: '8'
+  SITE_MAP_FILE: .github/docs-drift/site-map.yml
+  SITE_REPO: FiligranHQ/xtm-docs
+  SITE_URL: https://filigran.io/docs
+  # Who opens the site's issues: the run reads its earlier ones to report a drift once.
+  SITE_REPORTER: docs-drift[bot]
 
 jobs:
   params:
@@ -190,51 +200,7 @@ jobs:
         if: steps.scope.outputs.count != '0'
         env:
           BASE: ${{ steps.range.outputs.base }}
-        run: |
-          # One call per document, several for one whose files do not fit a
-          # single context, and a file larger than a call goes in parts.
-          echo '{"findings":[]}' > "$RUNNER_TEMP/report.json"
-          failed='[]'
-          partial='[]'
-          mapfile -t pairs < <(jq -c '.[]' "$RUNNER_TEMP/pairs.json")
-          for p in "${pairs[@]}"; do
-            doc=$(jq -r '.doc' <<<"$p")
-            printf '%s' "$p" > "$RUNNER_TEMP/pair.json"
-            if node .github/docs-drift/scripts/ask-agent.js detect "$RUNNER_TEMP/pair.json" \
-              > "$RUNNER_TEMP/one.json" 2> "$RUNNER_TEMP/call.err"; then
-              jq -s '{findings: (.[0].findings + .[1].findings)}' \
-                "$RUNNER_TEMP/report.json" "$RUNNER_TEMP/one.json" > "$RUNNER_TEMP/merged.json"
-              mv "$RUNNER_TEMP/merged.json" "$RUNNER_TEMP/report.json"
-              partial=$(jq -c --arg doc "$doc" --slurpfile one "$RUNNER_TEMP/one.json" \
-                'if (($one[0].unaudited // []) + ($one[0].failedCalls // [])) == [] then .
-                 else . + [{doc: $doc, files: ($one[0].unaudited // []), calls: ($one[0].failedCalls // [])}] end' <<<"$partial")
-            else
-              failed=$(jq -c --arg doc "$doc" --arg why "$(tail -n 1 "$RUNNER_TEMP/call.err" | cut -c1-200)" \
-                '. + [{doc: $doc, why: $why}]' <<<"$failed")
-            fi
-            cat "$RUNNER_TEMP/call.err" >&2
-          done
-          printf '%s' "$failed" > "$RUNNER_TEMP/failed.json"
-          printf '%s' "$partial" > "$RUNNER_TEMP/partial.json"
-          {
-            echo "failed=$(jq length <<<"$failed")"
-            echo "partial=$(jq length <<<"$partial")"
-          } >> "$GITHUB_OUTPUT"
-          # A run that reached no agent must not report a clean bill of health.
-          if [ "$(jq length <<<"$failed")" -eq "${#pairs[@]}" ]; then
-            echo "blocked=Every agent call failed, the first with: $(jq -r '.[0].why' <<<"$failed")" >> "$GITHUB_OUTPUT"
-            echo "::error::Every agent call failed: $(jq -r '.[0].why' <<<"$failed")"
-            exit 1
-          fi
-          # A finding short of a field would fingerprint wrong or blow up the
-          # pull request body mid-loop, once earlier ones were already pushed.
-          raw=$(jq '.findings // [] | length' "$RUNNER_TEMP/report.json")
-          jq '{findings: [(.findings // [])[] | select(
-                (.doc | type) == "string" and (.doc_excerpt | type) == "string"
-                and (.evidence | type) == "array" and (.explanation | type) == "string")]}' \
-            "$RUNNER_TEMP/report.json" > "$RUNNER_TEMP/checked.json"
-          mv "$RUNNER_TEMP/checked.json" "$RUNNER_TEMP/report.json"
-          echo "malformed=$((raw - $(jq '.findings | length' "$RUNNER_TEMP/report.json")))" >> "$GITHUB_OUTPUT"
+        run: bash .github/docs-drift/scripts/detect.sh "$RUNNER_TEMP/pairs.json" "$RUNNER_TEMP"
 
       - name: Drop findings already raised as a pull request
         id: filter
@@ -482,11 +448,400 @@ jobs:
             --json number,title,headRefName,state > "$RUNNER_TEMP/drift-prs.json"
           bash .github/docs-drift/scripts/dashboard.sh "$ISSUE" "$RUNNER_TEMP/drift-prs.json" "$now" "$RANGE_MODE"
 
+  # The pages of the documentation site describe the latest release, so they
+  # are audited against that release's code, and a drift is reported to the
+  # site's mirror as an issue: the mirror accepts no pull request.
+  audit-site:
+    needs: params
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    # Like audit, it sends code to an external agent and holds no write token.
+    permissions:
+      contents: read
+    outputs:
+      release: ${{ steps.range.outputs.release }}
+      previous: ${{ steps.range.outputs.previous }}
+      mode: ${{ steps.range.outputs.mode }}
+      mirror: ${{ steps.site.outputs.mirror }}
+      count: ${{ steps.scope.outputs.count }}
+      new: ${{ steps.filter.outputs.new }}
+      known: ${{ steps.filter.outputs.known }}
+      unquoted: ${{ steps.filter.outputs.unquoted }}
+      malformed: ${{ steps.detect.outputs.malformed }}
+      failed: ${{ steps.detect.outputs.failed }}
+      partial: ${{ steps.detect.outputs.partial }}
+      blocked: ${{ steps.range.outputs.blocked || steps.detect.outputs.blocked }}
+    env:
+      DOCS_DRIFT_AGENT_MCP_URL: ${{ vars.DOCS_DRIFT_AGENT_MCP_URL }}
+      DOCS_DRIFT_AGENT_API_KEY: ${{ secrets.DOCS_DRIFT_AGENT_API_KEY }}
+      SCOPE: ${{ needs.params.outputs.scope }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve the release the site documents
+        id: range
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ needs.params.outputs.mode }}
+        run: |
+          releases=$(gh release list --exclude-drafts --exclude-pre-releases --limit 100 \
+            --json tagName,publishedAt,isLatest)
+          release=$(jq -r 'map(select(.isLatest)) | .[0].tagName // empty' <<<"$releases")
+          if [ -z "$release" ]; then
+            echo "blocked=No published release to audit the site against" >> "$GITHUB_OUTPUT"
+            echo "::error::No published release to audit the site against"
+            exit 1
+          fi
+          mode="$MODE"
+          previous=""
+          since=""
+          if [ "$mode" != "deep" ]; then
+            since=$(date -u -d "$WINDOW_DAYS days ago" +%Y-%m-%dT%H:%M:%SZ)
+            # The release the site described at the start of the window.
+            previous=$(jq -r --arg since "$since" \
+              '[.[] | select(.publishedAt < $since)] | sort_by(.publishedAt) | last | .tagName // empty' <<<"$releases")
+            if [ -z "$previous" ]; then
+              mode=deep
+            fi
+          fi
+          git worktree add --detach "$RUNNER_TEMP/code" "refs/tags/$release"
+          {
+            echo "release=$release"
+            echo "previous=$previous"
+            echo "since=$since"
+            echo "mode=$mode"
+          } >> "$GITHUB_OUTPUT"
+
+      # Partial and sparse: the history of every page, the content of the docs only.
+      - name: Fetch the site's pages
+        id: site
+        run: |
+          SITE="$RUNNER_TEMP/site"
+          git clone --quiet --filter=blob:none --no-checkout --single-branch "https://github.com/$SITE_REPO" "$SITE"
+          git -C "$SITE" sparse-checkout set docs/content
+          git -C "$SITE" checkout --quiet
+          echo "mirror=$(git -C "$SITE" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Scope pages to audit
+        id: scope
+        working-directory: ${{ runner.temp }}/code
+        env:
+          MAP: ${{ github.workspace }}/${{ env.SITE_MAP_FILE }}
+          RANGE_MODE: ${{ steps.range.outputs.mode }}
+          RELEASE: ${{ steps.range.outputs.release }}
+          PREVIOUS: ${{ steps.range.outputs.previous }}
+          SINCE: ${{ steps.range.outputs.since }}
+        run: |
+          SITE="$RUNNER_TEMP/site"
+          pairs='[]'
+          missing='[]'
+          n=$(yq 'length' "$MAP")
+          for i in $(seq 0 $((n - 1))); do
+            doc=$(yq ".[$i].doc" "$MAP")
+            if [ -n "$SCOPE" ]; then
+              keep=false
+              for prefix in $SCOPE; do
+                if [[ "$doc" == "$prefix"* ]]; then
+                  keep=true
+                  break
+                fi
+              done
+              if [ "$keep" = false ]; then
+                continue
+              fi
+            fi
+            if [ ! -f "$SITE/$doc" ]; then
+              missing=$(jq -c --arg doc "$doc" '. + [$doc]' <<<"$missing")
+              continue
+            fi
+            watches=$(yq -o=json -I0 ".[$i].watches" "$MAP")
+            specs=()
+            while IFS= read -r w; do specs+=(":(glob)$w"); done < <(jq -r '.[]' <<<"$watches")
+            if [ "$RANGE_MODE" = "deep" ]; then
+              changed=$(git ls-files -- "${specs[@]}")
+              changed_json='[]'
+            elif [ -n "$(git -C "$SITE" log --since="$SINCE" --format=%H -1 -- "$doc")" ]; then
+              # An edited page may make claims about any of its watched code,
+              # which an incremental audit sends only where room is left.
+              changed="$doc"
+              changed_json='[]'
+            else
+              changed=""
+              if [ "$PREVIOUS" != "$RELEASE" ]; then
+                changed=$(git diff --name-only "refs/tags/$PREVIOUS..HEAD" -- "${specs[@]}")
+              fi
+              changed_json=$(jq -c -R -s 'split("\n") | map(select(length > 0))' <<<"$changed")
+            fi
+            if [ -n "$changed" ]; then
+              pairs=$(jq -c --arg doc "$doc" --argjson watches "$watches" --argjson changed "$changed_json" \
+                '. + [{doc: $doc, watches: $watches, changed: $changed}]' <<<"$pairs")
+            fi
+          done
+          # A page the site added that no entry maps is never audited.
+          mapped=$(yq -o=json -I0 '[.[].doc]' "$MAP")
+          unmapped=$(cd "$SITE" && git ls-files -- ':(glob)docs/content/opencrq/**/*.md' ':(glob)docs/content/deploy/*/opencrq.md' \
+            | jq -c -R -s --argjson mapped "$mapped" 'split("\n") | map(select(length > 0 and (. as $d | $mapped | index($d) | not)))')
+          printf '%s' "$pairs" > "$RUNNER_TEMP/pairs.json"
+          printf '%s' "$missing" > "$RUNNER_TEMP/missing.json"
+          printf '%s' "$unmapped" > "$RUNNER_TEMP/unmapped.json"
+          echo "count=$(jq length <<<"$pairs")" >> "$GITHUB_OUTPUT"
+
+      - name: Detect drift
+        id: detect
+        if: steps.scope.outputs.count != '0'
+        working-directory: ${{ runner.temp }}/code
+        env:
+          BASE: ${{ steps.range.outputs.previous && format('refs/tags/{0}', steps.range.outputs.previous) || '' }}
+          DOC_ROOT: ${{ runner.temp }}/site
+          MAP_FILE: ${{ github.workspace }}/${{ env.SITE_MAP_FILE }}
+          PROMPTS_DIR: ${{ github.workspace }}/${{ env.PROMPTS_DIR }}
+          DETECT_PROMPT: detect-site
+        run: bash "$GITHUB_WORKSPACE/.github/docs-drift/scripts/detect.sh" "$RUNNER_TEMP/pairs.json" "$RUNNER_TEMP"
+
+      - name: Drop findings already reported to the site
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          todo='[]'
+          known='[]'
+          unquoted=0
+          if [ -f "$RUNNER_TEMP/report.json" ]; then
+            # Every state: an issue the documentation team closed while the
+            # passage still reads the same was dismissed, and dismissed is forever.
+            gh api --paginate -X GET "repos/$SITE_REPO/issues" -f state=all -f creator="$SITE_REPORTER" -f per_page=100 \
+              | jq -s -c '[.[][] | {number, state, url: .html_url, ids: [(.body // "") | scan("docs-drift:([0-9a-f]{12})") | .[0]]}]' \
+              > "$RUNNER_TEMP/reported.json"
+            mapfile -t items < <(jq -c '.findings // [] | .[]' "$RUNNER_TEMP/report.json")
+            for f in "${items[@]}"; do
+              doc=$(jq -r '.doc' <<<"$f")
+              excerpt=$(jq -r '.doc_excerpt' <<<"$f" | tr -s '[:space:]' ' ' | sed 's/^ *//; s/ *$//')
+              # The excerpt is published as a quote of the page: anything else
+              # the agent wrote there is dropped.
+              if [ -z "$excerpt" ] || ! tr -s '[:space:]' ' ' < "$RUNNER_TEMP/site/$doc" | grep -qF -- "$excerpt"; then
+                unquoted=$((unquoted + 1))
+                continue
+              fi
+              id=$(printf '%s|%s' "$doc" "$excerpt" | sha1sum | cut -c1-12)
+              seen=$(jq -c --arg id "$id" 'map(select(.ids | index($id))) | .[0] // empty' "$RUNNER_TEMP/reported.json")
+              if [ -n "$seen" ]; then
+                known=$(jq -c --arg doc "$doc" --argjson issue "$seen" \
+                  '. + [{doc: $doc, url: $issue.url, state: $issue.state}]' <<<"$known")
+              elif ! jq -e --arg id "$id" 'any(.[]; .id == $id)' <<<"$todo" >/dev/null; then
+                todo=$(jq -c --argjson f "$f" --arg id "$id" '. + [$f + {id: $id}]' <<<"$todo")
+              fi
+            done
+          fi
+          printf '%s' "$todo" > "$RUNNER_TEMP/todo.json"
+          printf '%s' "$known" > "$RUNNER_TEMP/known.json"
+          {
+            echo "new=$(jq length <<<"$todo")"
+            echo "known=$(jq length <<<"$known")"
+            echo "unquoted=$unquoted"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Hand the run over to publish-site
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs-drift-site-run
+          retention-days: 1
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/todo.json
+            ${{ runner.temp }}/known.json
+            ${{ runner.temp }}/failed.json
+            ${{ runner.temp }}/partial.json
+            ${{ runner.temp }}/missing.json
+            ${{ runner.temp }}/unmapped.json
+
+  publish-site:
+    needs: [params, audit-site]
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    env:
+      ISSUE: ${{ vars.DOCS_DRIFT_ISSUE_NUMBER }}
+      SCOPE: ${{ needs.params.outputs.scope }}
+      RELEASE: ${{ needs.audit-site.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: docs-drift-site-run
+          path: ${{ runner.temp }}
+
+      # Fails while the app is not installed on the mirror: the findings then
+      # go to the tracking issue rather than being lost.
+      - name: Mint the site token
+        id: site-token
+        if: needs.audit-site.outputs.new != '0' && needs.audit-site.outputs.new != ''
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DOCS_DRIFT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DOCS_DRIFT_APP_PRIVATE_KEY }}
+          owner: FiligranHQ
+          repositories: xtm-docs
+          permission-issues: write
+          permission-metadata: read
+
+      - name: Report to the site's mirror
+        id: report
+        if: steps.site-token.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.site-token.outputs.token }}
+        run: |
+          # What audit-site hands over was shaped by an external agent's answers,
+          # and this issue is public while the code it was read from is not: a
+          # finding whose text quotes code or names a file of this repository
+          # stays on the tracking issue.
+          mapped=$(yq -o=json -I0 '[.[].doc]' "$SITE_MAP_FILE")
+          top=$(git ls-files | cut -d/ -f1 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          jq -c --argjson mapped "$mapped" '
+            [.[] | select((.id | test("^[0-9a-f]{12}$")) and (.doc as $d | $mapped | index($d)))
+              | .suggested_fix = (if (.suggested_fix | type) == "string" then .suggested_fix else "" end)]' \
+            "$RUNNER_TEMP/todo.json" > "$RUNNER_TEMP/valid.json"
+          jq -c --argjson top "$top" '
+            def names_code: test("`{3}|\\.(tsx?|mjs|cjs|js|sql|json|ya?ml|sh)\\b")
+              or (. as $t | any($top[]; . as $d | $t | test("(^|[\\s`\"(])" + ($d | gsub("\\."; "\\.")) + "/")));
+            map(.public = (([.explanation, .suggested_fix] | join("\n")) | names_code | not))' \
+            "$RUNNER_TEMP/valid.json" > "$RUNNER_TEMP/checked.json"
+          jq -c 'map(select(.public | not) | .id)' "$RUNNER_TEMP/checked.json" > "$RUNNER_TEMP/held.json"
+          jq -c 'map(select(.public))' "$RUNNER_TEMP/checked.json" > "$RUNNER_TEMP/valid.json"
+          if [ "$(jq length "$RUNNER_TEMP/valid.json")" -eq 0 ]; then
+            exit 0
+          fi
+          jq -r --arg site "$SITE_URL" --arg release "$RELEASE" '
+            def url: $site + "/" + (sub("^docs/content/"; "") | sub("(/index)?\\.md$"; "")) + "/";
+            def quote: split("\n") | map("> " + .) | join("\n");
+            group_by(.doc) as $pages
+            | "**Pages:**\n\n" + ($pages | map("- " + (.[0].doc | url)) | join("\n"))
+            + "\n\n**Version:** OpenCRQ " + $release
+            + "\n\n### What should change?\n\nOpenCRQ'\''s documentation drift check compared these pages with the code of OpenCRQ "
+            + $release + " and found passages that code contradicts. Close this issue once they are fixed, or to dismiss"
+            + " them: a passage reported here is never reported again.\n\n"
+            + ($pages | map(
+                "#### " + (.[0].doc | url) + "\n\n"
+                + (map((.doc_excerpt | quote) + "\n\n" + .explanation
+                  + (if .suggested_fix != "" then "\n\n**Suggested fix:** " + .suggested_fix else "" end)
+                  + "\n\n<!-- docs-drift:" + .id + " -->") | join("\n\n"))
+              ) | join("\n\n"))
+          ' "$RUNNER_TEMP/valid.json" > "$RUNNER_TEMP/site-issue.md"
+          url=$(gh issue create --repo "$SITE_REPO" --label feedback \
+            --title "Feedback: OpenCRQ pages that no longer match OpenCRQ $RELEASE" \
+            --body-file "$RUNNER_TEMP/site-issue.md")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Mint the app token
+        id: app-token
+        if: env.ISSUE != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DOCS_DRIFT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DOCS_DRIFT_APP_PRIVATE_KEY }}
+          permission-issues: write
+          permission-metadata: read
+
+      - name: Report to tracking issue
+        if: env.ISSUE != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RANGE_MODE: ${{ needs.audit-site.outputs.mode }}
+          PREVIOUS: ${{ needs.audit-site.outputs.previous }}
+          MIRROR: ${{ needs.audit-site.outputs.mirror }}
+          COUNT: ${{ needs.audit-site.outputs.count }}
+          NEW: ${{ needs.audit-site.outputs.new }}
+          KNOWN: ${{ needs.audit-site.outputs.known }}
+          MALFORMED: ${{ needs.audit-site.outputs.malformed }}
+          UNQUOTED: ${{ needs.audit-site.outputs.unquoted }}
+          FAILED: ${{ needs.audit-site.outputs.failed }}
+          ACTOR: ${{ needs.params.outputs.actor }}
+          SITE_ISSUE: ${{ steps.report.outputs.url }}
+          TOKEN_OUTCOME: ${{ steps.site-token.outcome }}
+        run: |
+          now=$(date -u +'%Y-%m-%d %H:%M UTC')
+          if [ -n "$ACTOR" ]; then
+            trigger="@$ACTOR"
+          else
+            trigger="the weekly schedule"
+          fi
+          read_json() { cat "$RUNNER_TEMP/$1" 2>/dev/null || echo '[]'; }
+          todo=$(read_json todo.json)
+          known=$(read_json known.json)
+          failed=$(read_json failed.json)
+          partial=$(read_json partial.json)
+          missing=$(read_json missing.json)
+          unmapped=$(read_json unmapped.json)
+          held=$(read_json held.json)
+          {
+            echo "### Site drift check run, $now"
+            echo ""
+            echo "- Triggered by: $trigger"
+            echo "- Mode: \`$RANGE_MODE\`${SCOPE:+ (scope: \`$SCOPE\`)}, against OpenCRQ $RELEASE${PREVIOUS:+ (changes since $PREVIOUS)}"
+            echo "- Site mirror: [\`${MIRROR:0:12}\`](https://github.com/$SITE_REPO/commit/$MIRROR)"
+            echo "- Pages audited: ${COUNT:-0}"
+            echo "- New findings: ${NEW:-0}, already reported before: ${KNOWN:-0}"
+            if [ "${MALFORMED:-0}" -gt 0 ]; then
+              echo "- Dropped as malformed: ${MALFORMED} (a finding came back missing a required field)"
+            fi
+            if [ "${UNQUOTED:-0}" -gt 0 ]; then
+              echo "- Dropped as unquoted: ${UNQUOTED} (a finding's excerpt is not a passage of its page)"
+            fi
+            if [ "$(jq length <<<"$failed")" -gt 0 ]; then
+              echo "- Audits that failed: ${FAILED:-0} of ${COUNT:-0}"
+              jq -r '.[] | "  - `\(.doc)`: \(.why)"' <<<"$failed"
+            fi
+            if [ "$(jq length <<<"$partial")" -gt 0 ]; then
+              echo "- Audited in part:"
+              jq -r '.[] | "  - `\(.doc)`: " + ([
+                  (if (.files // []) == [] then empty else "not sent: " + (.files | map("`" + . + "`") | join(", ")) end),
+                  ((.calls // [])[] | "failed " + .)
+                ] | join("; "))' <<<"$partial"
+            fi
+            if [ -n "$SITE_ISSUE" ]; then
+              echo "- Reported on the site's mirror: $SITE_ISSUE"
+            elif [ "$(jq length <<<"$todo")" -gt 0 ]; then
+              if [ "$TOKEN_OUTCOME" = "failure" ]; then
+                echo "- Not reported on the site's mirror: no token could be minted for $SITE_REPO, where the app may not be installed."
+              else
+                echo "- Not reported on the site's mirror: no finding passed the checks, against the site map and for code in their text."
+              fi
+            fi
+            if [ "$(jq length <<<"$held")" -gt 0 ]; then
+              echo "- Kept off the site's mirror, their text quoting code or naming a file: $(jq length <<<"$held"), marked below."
+            fi
+            if [ "$(jq length <<<"$todo")" -gt 0 ]; then
+              echo "- New findings, with the code they rest on:"
+              jq -r --argjson held "$held" '.[] | "  - " + (if (.id as $id | $held | index($id)) then "**Kept off the mirror.** " else "" end)
+                + "`\(.doc)`: \(.doc_excerpt | gsub("\\s+"; " ") | .[0:200])\n    \(.explanation | gsub("\\s+"; " "))\n    Evidence: "
+                + (.evidence | map("`" + . + "`") | join(", "))' <<<"$todo"
+            fi
+            if [ "$(jq length <<<"$known")" -gt 0 ]; then
+              echo "- Skipped, already reported:"
+              jq -r '.[] | "  - `\(.doc)` via \(.url) (\(.state))"' <<<"$known"
+            fi
+            if [ "$(jq length <<<"$missing")" -gt 0 ]; then
+              echo "- Mapped pages the site no longer has, to remove from \`$SITE_MAP_FILE\`:"
+              jq -r '.[] | "  - `\(.)`"' <<<"$missing"
+            fi
+            if [ "$(jq length <<<"$unmapped")" -gt 0 ]; then
+              echo "- Site pages no entry of \`$SITE_MAP_FILE\` maps, never audited:"
+              jq -r '.[] | "  - `\(.)`"' <<<"$unmapped"
+            fi
+          } > "$RUNNER_TEMP/summary.md"
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/summary.md"
+
   # A failed audit skips publish and its report, and GitHub tells a scheduled
   # run's failure only to whoever last edited the cron line: say it where the
   # team reads.
   report-failure:
-    needs: [params, audit, publish]
+    needs: [params, audit, publish, audit-site, publish-site]
     if: failure() && vars.DOCS_DRIFT_ISSUE_NUMBER != ''
     runs-on: ubuntu-26.04
     permissions:
@@ -495,7 +850,7 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
           ISSUE: ${{ vars.DOCS_DRIFT_ISSUE_NUMBER }}
-          BLOCKED: ${{ needs.audit.outputs.blocked }}
+          BLOCKED: ${{ needs.audit.outputs.blocked || needs.audit-site.outputs.blocked }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           {
