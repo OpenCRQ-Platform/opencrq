@@ -14,7 +14,7 @@ import { fetchOpenCtiMarkingDefinitions, parseStreamMarking } from './opencti-ma
 import { consumeOpenCtiStream, OpenCtiAuthError, OpenCtiStreamFatalError } from './opencti-sse-client';
 
 const logger = createLogger({ feature: 'opencti' });
-const { logTrace, logFromError } = logger;
+const { logTrace, logWarnFromError, logFromError } = logger;
 
 export const STREAM_TIMING = {
   /** Quiet period after the last event that triggers a flush. */
@@ -22,6 +22,11 @@ export const STREAM_TIMING = {
   /** Reconnect backoff (mirrors `startPgListenLoop`), reset on `onConnected`. */
   initialReconnectDelayMs: 5_000,
   maxReconnectDelayMs: 60_000,
+  /**
+   * How long the stream may go without a frame before a failed reconnection alerts, longer than a
+   * redeploy of OpenCTI. Counted in time, not attempts: one attempt fails at once or after 90 s.
+   */
+  unreachableAlertMs: 10 * 60_000,
 } as const;
 
 // Every event re-arms the idle debounce, so a busy stream would never write its position without
@@ -120,7 +125,7 @@ const extractRetiredStixId = (eventData: unknown, survivorId: string): string | 
  * resolves no graph and holds nothing a crash could lose.
  */
 const consumeTenantStream = async (
-  tenantId: string, signal: AbortSignal, onConnected: () => void,
+  tenantId: string, signal: AbortSignal, onConnected: () => void, onFrame: () => void,
 ): Promise<void> => {
   const openctiConfig = config().connectors?.opencti?.[tenantId];
   if (!openctiConfig) {
@@ -157,7 +162,7 @@ const consumeTenantStream = async (
   try {
     await syncMarkings(await fetchOpenCtiMarkingDefinitions(openctiConfig.url, openctiConfig.token));
   } catch (err) {
-    logFromError(err, 'OpenCTI marking definitions sync failed', { tenantId });
+    logWarnFromError(err, 'OpenCTI marking definitions sync failed', { tenantId });
   }
 
   /**
@@ -265,7 +270,10 @@ const consumeTenantStream = async (
         continue;
       }
 
+      // Not on `connected`, which proves no more than an accepted socket: a proxy holding the line
+      // open sends one and nothing after it.
       if (event.event === 'heartbeat') {
+        onFrame();
         continue;
       }
 
@@ -333,6 +341,8 @@ const consumeTenantStream = async (
       } else {
         scheduleIdleFlush();
       }
+      // Only once the event is written: one that fails on every replay is no healthy stream.
+      onFrame();
     }
   } finally {
     await flush().catch((err) => logFromError(err, 'OpenCTI stream final flush failed', { tenantId }));
@@ -344,10 +354,15 @@ const runConsumerLoop = async (tenantId: string, signal: AbortSignal): Promise<v
   const onConnected = (): void => {
     currentReconnectDelayMs = STREAM_TIMING.initialReconnectDelayMs;
   };
+  // When the first failure since the stream last delivered a frame happened.
+  let unreachableSince: Date | null = null;
+  const onFrame = (): void => {
+    unreachableSince = null;
+  };
 
   while (!signal.aborted) {
     try {
-      await consumeTenantStream(tenantId, signal, onConnected);
+      await consumeTenantStream(tenantId, signal, onConnected, onFrame);
     } catch (err) {
       if (!signal.aborted) {
         // An invalid/disabled token never recovers on its own — persist the disable via `authFailedAt`.
@@ -362,7 +377,13 @@ const runConsumerLoop = async (tenantId: string, signal: AbortSignal): Promise<v
           logFromError(err, 'OpenCTI stream unrecoverable, disabling consumer', { tenantId });
           return;
         }
-        logFromError(err, 'OpenCTI stream connection error, reconnecting', { tenantId, delayMs: currentReconnectDelayMs });
+        unreachableSince ??= new Date();
+        const data = { tenantId, delayMs: currentReconnectDelayMs, unreachableSince: unreachableSince.toISOString() };
+        if (Date.now() - unreachableSince.getTime() >= STREAM_TIMING.unreachableAlertMs) {
+          logFromError(err, 'OpenCTI stream unreachable, reconnecting', data);
+        } else {
+          logWarnFromError(err, 'OpenCTI stream connection error, reconnecting', data);
+        }
       }
     }
     if (signal.aborted) {

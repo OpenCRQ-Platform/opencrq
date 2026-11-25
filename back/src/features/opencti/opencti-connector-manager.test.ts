@@ -1,5 +1,5 @@
 import { sanitizeStixNullBytes } from '@app/module/stix-sanitize';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type * as AppModule from '@app/module';
 import type * as MarkingSync from './opencti-marking-sync';
 
@@ -184,10 +184,13 @@ vi.mock('../../engines/db', () => ({
 }));
 
 const mockLogTrace = vi.fn();
+const mockLogWarnFromError = vi.fn();
+const mockLogFromError = vi.fn();
 vi.mock('../../utils/logger', () => ({
   createLogger: vi.fn().mockReturnValue({
     logTrace: mockLogTrace,
-    logFromError: vi.fn(),
+    logWarnFromError: mockLogWarnFromError,
+    logFromError: mockLogFromError,
   }),
 }));
 
@@ -226,7 +229,7 @@ vi.mock('./opencti-sse-client', () => ({
 // either genuinely waiting out the reconnect backoff or (if mocked to resolve instantly) spinning
 // an unbounded tight loop between test setup and assertions.
 
-const { startAll } = await import('./opencti-connector-manager');
+const { startAll, STREAM_TIMING } = await import('./opencti-connector-manager');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────────
 
@@ -383,6 +386,9 @@ describe('opencti-connector-manager', () => {
 
       await vi.waitFor(() => expect(mockConsumeOpenCtiStream).toHaveBeenCalled());
       expect(mockSyncMarkingDefinitions).not.toHaveBeenCalled();
+      // The tenant keeps the markings it holds, and the stream keeps them in step.
+      expect(mockLogWarnFromError).toHaveBeenCalledWith(expect.any(Error), 'OpenCTI marking definitions sync failed', { tenantId: 'tenant-a' });
+      expect(mockLogFromError).not.toHaveBeenCalled();
     });
 
     it('syncs a marking the stream creates and never mirrors it as a stream object', async () => {
@@ -1236,6 +1242,99 @@ describe('opencti-connector-manager', () => {
 
     await vi.advanceTimersByTimeAsync(3_000);
     expect(mockUpdateCursor).not.toHaveBeenCalled();
+  });
+
+  describe('the level a failed reconnection is logged at', () => {
+    const WARNING = 'OpenCTI stream connection error, reconnecting';
+    const ERROR = 'OpenCTI stream unreachable, reconnecting';
+    const warnings = (): Array<unknown> => mockLogWarnFromError.mock.calls.filter(([, message]) => message === WARNING);
+    const errors = (): Array<unknown> => mockLogFromError.mock.calls.filter(([, message]) => message === ERROR);
+    const connected = { id: '', event: 'connected', data: null };
+    const heartbeat = { id: '1620249512318-0', event: 'heartbeat', data: null };
+
+    /** A connection that delivers `frames`, then drops. */
+    const droppingStream = (frames: Array<FakeStreamEvent>) => (function* droppingStreamGenerator() {
+      for (const frame of frames) {
+        yield frame;
+      }
+      throw new Error('read ECONNRESET');
+    })();
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    it('logs a dropped connection as a warning, the consumer reconnecting on its own', async () => {
+      mockConsumeOpenCtiStream
+        .mockReturnValueOnce(droppingStream([connected, heartbeat]))
+        .mockReturnValue(fakeStream([], controller.signal));
+
+      startAll(controller.signal);
+      await vi.advanceTimersByTimeAsync(STREAM_TIMING.initialReconnectDelayMs);
+
+      expect(mockConsumeOpenCtiStream).toHaveBeenCalledTimes(2);
+      expect(warnings()).toHaveLength(1);
+      expect(mockLogFromError).not.toHaveBeenCalled();
+    });
+
+    it('logs an error once the stream has delivered no frame for the alert delay, and on every failure after it', async () => {
+      mockConsumeOpenCtiStream.mockImplementation(() => droppingStream([]));
+
+      startAll(controller.signal);
+      await vi.advanceTimersByTimeAsync(STREAM_TIMING.unreachableAlertMs - 1);
+      expect(errors()).toHaveLength(0);
+      const warnedBefore = warnings().length;
+
+      await vi.advanceTimersByTimeAsync(3 * STREAM_TIMING.maxReconnectDelayMs);
+
+      expect(errors().length).toBeGreaterThanOrEqual(2);
+      expect(warnings()).toHaveLength(warnedBefore);
+    });
+
+    it('starts counting again after a heartbeat, which proves the stream was reached', async () => {
+      const startedAt = Date.now();
+      // Down for most of the delay, one heartbeat, then down again for most of it.
+      const heartbeatAt = startedAt + STREAM_TIMING.unreachableAlertMs - 2 * STREAM_TIMING.maxReconnectDelayMs;
+      let heartbeatSent = false;
+      mockConsumeOpenCtiStream.mockImplementation(() => {
+        if (!heartbeatSent && Date.now() >= heartbeatAt) {
+          heartbeatSent = true;
+          return droppingStream([connected, heartbeat]);
+        }
+        return droppingStream([]);
+      });
+
+      startAll(controller.signal);
+      await vi.advanceTimersByTimeAsync(STREAM_TIMING.unreachableAlertMs + 3 * STREAM_TIMING.maxReconnectDelayMs);
+
+      expect(heartbeatSent).toBe(true);
+      expect(errors()).toHaveLength(0);
+    });
+
+    it('keeps counting through an event that fails to be written on every replay', async () => {
+      const write = mockUpsertStreamObject.getMockImplementation();
+      onTestFinished(() => {
+        if (write) {
+          mockUpsertStreamObject.mockImplementation(write);
+        }
+      });
+      mockUpsertStreamObject.mockRejectedValue(new Error('Connection terminated unexpectedly'));
+      mockConsumeOpenCtiStream.mockImplementation(() => fakeStream([connected, createEvent('1620249512318-1', 'create', stixThreat)]));
+
+      startAll(controller.signal);
+      await vi.advanceTimersByTimeAsync(STREAM_TIMING.unreachableAlertMs + 2 * STREAM_TIMING.maxReconnectDelayMs);
+
+      expect(errors().length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('keeps counting through connections that open and send nothing else', async () => {
+      mockConsumeOpenCtiStream.mockImplementation(() => droppingStream([connected]));
+
+      startAll(controller.signal);
+      await vi.advanceTimersByTimeAsync(STREAM_TIMING.unreachableAlertMs + 2 * STREAM_TIMING.maxReconnectDelayMs);
+
+      expect(errors().length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it('persists enabled=false when the SSE connection fails with an OpenCTI auth error, instead of only stopping in-memory', async () => {

@@ -79,6 +79,7 @@ export interface Logger {
   logTrace: (message: string, data?: LogMethodData) => void,
   logTraceFromError: (e: unknown, message: string, data?: LogMethodData) => void,
   logWarn: (message: string, data?: LogMethodData) => void,
+  logWarnFromError: (e: unknown, message: string, data?: LogMethodData) => void,
   logError: (message: string, data?: LogMethodData) => void,
   logFromError: (e: unknown, message: string, data?: LogMethodData) => void,
   logFatalError: (message: string, data?: LogMethodData) => never,
@@ -91,6 +92,7 @@ const enrichLogger = (logger: Omit<Logger, 'enrich'>, extraData: LogMethodData, 
   const enrichedLogger: Omit<Logger, 'enrich'> = {
     ...logger,
     logWarn: (message, data) => logger.logWarn(getMessage(message), { ...data, ...extraData }),
+    logWarnFromError: (e, message, data) => logger.logWarnFromError(e, getMessage(message), { ...data, ...extraData }),
     logError: (message, data) => logger.logError(getMessage(message), { ...data, ...extraData }),
     logFromError: (e, message, data) => logger.logFromError(e, getMessage(message), { ...data, ...extraData }),
     logFatalError: (message, data) => logger.logFatalError(getMessage(message), { ...data, ...extraData }),
@@ -171,6 +173,12 @@ export const createLogger = (tags?: { engine: string } | { feature: string }): L
     emitToSink('trace', message);
   };
 
+  const logWarnFromError: Logger['logWarnFromError'] = (e, message, data) => {
+    const technicalLogData = { data: { ...data, error: errorToObject(e) }, processName, ...tags };
+    technicalLogger.warn(message, technicalLogData);
+    emitToSink('trace', message, e);
+  };
+
   const logError: Logger['logError'] = (message, data) => {
     const technicalLogData = { data, processName, ...tags };
     technicalLogger.error(message, technicalLogData);
@@ -187,6 +195,7 @@ export const createLogger = (tags?: { engine: string } | { feature: string }): L
     logTrace,
     logTraceFromError,
     logWarn,
+    logWarnFromError,
     logError,
     logFromError,
     logFatalError: (message, data) => {
