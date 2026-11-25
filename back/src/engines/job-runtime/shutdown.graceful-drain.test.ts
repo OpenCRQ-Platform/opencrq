@@ -5,7 +5,7 @@ describe('createGracefulDrain', () => {
   it('returns immediately when no active jobs', async () => {
     const drain = createGracefulDrain({ size: () => 0 }, 5_000, 50);
     const start = Date.now();
-    await drain();
+    await expect(drain()).resolves.toBe(true);
     expect(Date.now() - start).toBeLessThan(200);
   });
 
@@ -22,7 +22,7 @@ describe('createGracefulDrain', () => {
     }, 150);
 
     const start = Date.now();
-    await drainPromise;
+    await expect(drainPromise).resolves.toBe(true);
     const elapsed = Date.now() - start;
     expect(elapsed).toBeGreaterThanOrEqual(150);
     expect(elapsed).toBeLessThan(1_000);
@@ -31,7 +31,7 @@ describe('createGracefulDrain', () => {
   it('returns after graceMs even if active jobs remain', async () => {
     const drain = createGracefulDrain({ size: () => 5 }, 300, 20);
     const start = Date.now();
-    await drain();
+    await expect(drain()).resolves.toBe(false);
     const elapsed = Date.now() - start;
     expect(elapsed).toBeGreaterThanOrEqual(300);
     expect(elapsed).toBeLessThan(800);

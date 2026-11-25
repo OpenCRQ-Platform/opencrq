@@ -1384,6 +1384,11 @@ export const crqIndicatorsService = defineService(
     await onProgress?.({ walked: 0, total: pass.total });
     let previous: string | undefined;
     for (const riskScenarioId of riskScenarioIds) {
+      // The engine reads the signal only once it turns, and a scenario whose inputs did not move
+      // returns before it: a pass of unchanged scenarios would otherwise walk to its end.
+      if (signal?.aborted === true) {
+        return null;
+      }
       if (previous !== undefined && budgetMs !== undefined && Date.now() - startedAtMs >= budgetMs) {
         pass.resumeAfter = previous;
         return pass;

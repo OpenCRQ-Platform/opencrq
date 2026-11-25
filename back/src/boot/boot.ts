@@ -4,12 +4,13 @@ import { config } from '../config';
 import { listEngines, sealEngineRegistration } from '../engines/engines-manager';
 import { isFeatureEnabled } from '../features/feature-flags/feature-flags';
 import { listFeatures } from '../features';
+import { CHILD_EXIT_DEADLINE_MS } from '../utils/child-stop-deadline';
 import { sendHealthStatus } from '../utils/health-check';
 import { createLogger } from '../utils/logger';
 import { platformVersion } from '../utils/platform-version';
 
 const logger = createLogger({ engine: 'boot' });
-const { logTrace, logFromError, logFromFatalError } = logger;
+const { logTrace, logError, logFromError, logFromFatalError } = logger;
 
 let status: HealthStatus = 'BOOTING';
 let lastLogStatusTime = 0;
@@ -73,9 +74,9 @@ export const boot = () => {
   const runningEnginesPromise = (async () => {
     try {
       const runningEngines = await Promise.all(enabledEngines.map(async ({ key, start }) => {
-        const { onEnginesStarted, onEnginesStopping, stop } = await start(abortController.signal);
+        const { onEnginesStarted, onEnginesStopping, stop, stopsLast } = await start(abortController.signal);
         logTrace('Engine is started', { key });
-        return { key, onEnginesStarted, onEnginesStopping, stop };
+        return { key, onEnginesStarted, onEnginesStopping, stop, stopsLast };
       }));
 
       sealEngineRegistration();
@@ -92,16 +93,23 @@ export const boot = () => {
 
   const stopProcess = async () => {
     let exitCode = 1;
+    // A handler holding a database client keeps the pool's end waiting, and a SIGKILL would leave no line saying so.
+    setTimeout(() => {
+      logError(`Engines did not stop within ${CHILD_EXIT_DEADLINE_MS / 1000} seconds, exiting`);
+      process.exit(1);
+    }, CHILD_EXIT_DEADLINE_MS).unref();
     try {
       abortController.abort();
       const runningEngines = await runningEnginesPromise;
       reportHealthStatus('STOPPING');
       logTrace('Stopping engines', { engines: runningEngines.map(({ key }) => key) });
       await Promise.all(runningEngines.map(({ onEnginesStopping }) => onEnginesStopping?.()));
-      await Promise.all(runningEngines.map(async ({ key, stop }) => {
+      const stopEngine = async ({ key, stop }: { key: string, stop?: () => void | Promise<void> }) => {
         await stop?.();
         logTrace('Engine is stopped', { key });
-      }));
+      };
+      await Promise.all(runningEngines.filter(({ stopsLast }) => !stopsLast).map(stopEngine));
+      await Promise.all(runningEngines.filter(({ stopsLast }) => stopsLast).map(stopEngine));
       exitCode = 0;
     } catch (e) {
       logFromError(e, 'Engines stop error');

@@ -14,6 +14,7 @@ import type { HealthStatus } from './utils/health-check';
 import { getProcessName, pmConfig } from './config';
 import { collectMetricsSnapshot, stopTelemetry } from './tracing';
 import { onHealthReport } from './utils/health-check';
+import { CHILD_STOP_DEADLINE_MS } from './utils/child-stop-deadline';
 import { createLogger } from './utils/logger';
 import { onRemoteEntitlementGranted, sendRemoteEntitlement } from './features/edition/entitlement-ipc';
 import { onMetricsCollected, sendMetricsCollect } from './utils/metrics-ipc';
@@ -339,9 +340,9 @@ const stopProcessManager: StopProcessManager = (onStop, onAlreadyStopping) => {
     childProcesses.forEach((process) => process.stop());
 
     childrenSigkillTimeout = setTimeout(() => {
-      logError('Processes did not stop after 30 seconds, sending SIGKILL');
+      logError(`Processes did not stop after ${CHILD_STOP_DEADLINE_MS / 1000} seconds, sending SIGKILL`);
       childProcesses.forEach((process) => process.forceStop());
-    }, 30_000).unref();
+    }, CHILD_STOP_DEADLINE_MS).unref();
   } else {
     onAlreadyStopping?.();
   }

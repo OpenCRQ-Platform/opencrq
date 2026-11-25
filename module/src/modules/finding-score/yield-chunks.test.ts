@@ -26,4 +26,16 @@ describe('mapInYieldedChunks', () => {
     expect(mapped).toEqual([1, 2, 3]);
     expect(yieldToEventLoop).toHaveBeenCalledTimes(1);
   });
+
+  it('should throw the abort reason before the chunk after the signal is aborted', async () => {
+    const controller = new AbortController();
+    const mapped: Array<number> = [];
+
+    await expect(mapInYieldedChunks([1, 2, 3, 4], 2, (item) => {
+      mapped.push(item);
+      controller.abort('engine-shutdown');
+      return item;
+    }, controller.signal)).rejects.toBe('engine-shutdown');
+    expect(mapped).toEqual([1, 2]);
+  });
 });

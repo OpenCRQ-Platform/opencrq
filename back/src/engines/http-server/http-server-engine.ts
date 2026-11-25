@@ -40,6 +40,8 @@ const routeDefinitions: Array<ReturnType<typeof router>> = [];
 // that serves no HTTP.
 let servedRouter: AnyTRPCRouter | null = null;
 
+const HTTP_CLOSE_GRACE_MS = 5_000;
+
 // Public engine API — the curated verbs consumers may touch, via httpServerEngine.
 const startHttpServerEngine = async () => {
   const httpServerConfig = config().http_server;
@@ -152,7 +154,14 @@ const startHttpServerEngine = async () => {
     }
   };
 
-  return { onEnginesStarted };
+  // close() waits for every request in flight, and a stream a browser holds open never ends on its own.
+  const stop = async (): Promise<void> => {
+    const forceClose = setTimeout(() => server.server.closeAllConnections(), HTTP_CLOSE_GRACE_MS).unref();
+    await server.close();
+    clearTimeout(forceClose);
+  };
+
+  return { onEnginesStarted, stop };
 };
 
 export const httpServerEngine = registerEngine({
