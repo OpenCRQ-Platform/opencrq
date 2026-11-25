@@ -10,13 +10,9 @@
 export const COUNTERPART_KINDS = ['ASSET', 'ATTACK_PATTERN', 'VULNERABILITY', 'THREAT'] as const;
 export type CounterpartKind = typeof COUNTERPART_KINDS[number];
 
-export const XTM_PRODUCTS = ['opencti', 'openaev'] as const;
-export type XtmProduct = typeof XTM_PRODUCTS[number];
-
 /**
  * The products an object is looked up in, in the emblem order of the contract (Sam, 23 Nov 2026):
- * XTM One first (its CTEM inventory), then OpenCTI and OpenAEV. The product switcher keeps
- * `XTM_PRODUCTS`: XTM One is not a sibling product there.
+ * XTM One first (its CTEM inventory), then OpenCTI and OpenAEV.
  */
 export const COUNTERPART_PRODUCTS = ['xtmone', 'opencti', 'openaev'] as const;
 export type CounterpartProduct = typeof COUNTERPART_PRODUCTS[number];
@@ -215,18 +211,3 @@ export const resolveCounterparts = async (
 
 export const xtmConnections = (providers: ReadonlyArray<CounterpartProvider>): Array<XtmConnection> =>
   providers.map((p) => ({ product: p.product, connected: p.isConnected, url: p.isConnected ? p.url : null }));
-
-/**
- * Where the product switcher sends a person: the sibling product's URL the deployment declares
- * (`XTM__OPENCTI_URL`, `XTM__OPENAEV_URL`), else the URL of the tenant's connection to it.
- */
-export const switcherProducts = (
-  declared: { opencti_url?: string | undefined, openaev_url?: string | undefined },
-  providers: ReadonlyArray<CounterpartProvider>,
-): Array<{ product: XtmProduct, url: string | null }> =>
-  XTM_PRODUCTS.map((product) => {
-    const url = (product === 'opencti' ? declared.opencti_url : declared.openaev_url)
-      ?? providers.find((provider) => provider.product === product && provider.isConnected)?.url
-      ?? null;
-    return { product, url: url === null ? null : url.replace(/\/+$/, '') };
-  });

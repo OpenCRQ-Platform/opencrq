@@ -12885,11 +12885,6 @@
       }
     },
     {
-      "path": "xtm.products",
-      "type": "query",
-      "input": null
-    },
-    {
       "path": "xtmOne.getSettings",
       "type": "query",
       "input": null

@@ -59,7 +59,6 @@ The image is [`filigran/opencrq`](https://hub.docker.com/r/filigran/opencrq) on 
 | `INITIAL_TENANT__ID`, `INITIAL_TENANT__NAME` | The tenant OpenCRQ creates at its first start: see [Initial tenant](configuration.md#initial-tenant). |
 | `CONNECTORS__<NAME>__<tenant-uuid>__<FIELD>` | Per tenant: see [Connectors](configuration.md#connectors). |
 | `APP__ADMIN__TOKEN`               | Optional: the UUIDv4 a sibling product (OpenAEV, OpenCTI) calls OpenCRQ's API with. See [Admin token as a bearer](configuration.md#admin-token-as-a-bearer). |
-| `XTM__OPENCTI_URL`, `XTM__OPENAEV_URL` | Optional: where the product switcher sends a person. See [Application](configuration.md#application-backendfrontend). |
 
 The application refuses to start while one of the three `XTM_ONE__*` is missing. Every other setting
 is in the [Configuration Guide](configuration.md).

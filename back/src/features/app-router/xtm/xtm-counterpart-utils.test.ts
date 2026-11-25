@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CounterpartProvider, XtmCounterpart } from './xtm-counterpart-utils';
 import type { ReaderAuthorization } from './xtm-providers';
-import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, switcherProducts, xtmConnections } from './xtm-counterpart-utils';
+import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, xtmConnections } from './xtm-counterpart-utils';
 import { openaevProvider, openctiProvider, XTM_ONE_LOOKUP_PATH, xtmOneProvider } from './xtm-providers';
 
 const NO_READER: ReaderAuthorization = () => Promise.resolve(null);
@@ -92,23 +92,6 @@ describe('resolveCounterparts', () => {
     const p = provider();
     expect(await resolveCounterparts(TENANT, READER, 'THREAT', ['apt28'], [p])).toEqual([]);
     expect(p.resolve).not.toHaveBeenCalled();
-  });
-});
-
-describe('switcherProducts', () => {
-  it('prefers the URL the deployment declares, else the connection, without a trailing slash', () => {
-    const providers = [openctiProvider({ url: 'https://opencti.connection/', token: 'secret' }, NO_READER), openaevProvider({ url: 'https://openaev.connection/', token: 'secret' }, NO_READER)];
-    expect(switcherProducts({ openaev_url: 'https://openaev.declared/' }, providers)).toEqual([
-      { product: 'opencti', url: 'https://opencti.connection' },
-      { product: 'openaev', url: 'https://openaev.declared' },
-    ]);
-  });
-
-  it('answers no URL for a product neither declared nor connected', () => {
-    expect(switcherProducts({}, [openctiProvider(undefined, NO_READER), openaevProvider(undefined, NO_READER)])).toEqual([
-      { product: 'opencti', url: null },
-      { product: 'openaev', url: null },
-    ]);
   });
 });
 
