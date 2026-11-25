@@ -10,6 +10,8 @@ import type {
   DependencyGraphLink,
   DependencyGraphTruncation,
   DependencyWriteOutcome,
+  PrimaryToPrimaryGraphTruncation,
+  PrimaryToPrimaryLinkGraph,
 } from './constants';
 import type { InferRepository } from '../../registry';
 import type { AssetCriticality } from '../supporting-assets/constants';
@@ -586,6 +588,52 @@ const walkRelationsAround = async (repo: Repo, asset: DependencyGraphAsset, dept
   };
 };
 
+/** Walking towards the providers, the assets already met are the dependent end of the links read. */
+const ownEndOf = (side: PrimaryToPrimaryGraphTruncation['side']) => (side === 'provider' ? 'dependent' as const : 'provider' as const);
+
+/**
+ * The primary assets a primary asset depends on and the ones depending on it, each side walked on
+ * its own up to the depth: an asset a cycle puts on both sides keeps the neighbours of both. No
+ * width bound, since primary assets are declared by hand.
+ */
+const walkPrimaryToPrimaryLinks = async (repo: Repo, primaryAssetId: string, depth: number): Promise<PrimaryToPrimaryLinkGraph> => {
+  const names = new Map<string, string>();
+  const truncated: Array<PrimaryToPrimaryGraphTruncation> = [];
+  const frontiers: Array<{ side: PrimaryToPrimaryGraphTruncation['side'], frontier: Array<string> }> = [];
+  for (const side of ['provider', 'dependent'] as const) {
+    const ownEnd = ownEndOf(side);
+    const visited = new Set([primaryAssetId]);
+    let frontier = [primaryAssetId];
+    for (let level = 0; level < depth && frontier.length > 0; level += 1) {
+      const next: Array<string> = [];
+      for (const row of await repo.findPrimaryToPrimaryNeighboursBatch(frontier, ownEnd)) {
+        if (!visited.has(row.otherAssetId)) {
+          visited.add(row.otherAssetId);
+          names.set(row.otherAssetId, row.otherAssetName);
+          next.push(row.otherAssetId);
+        }
+      }
+      frontier = next;
+    }
+    frontiers.push({ side, frontier });
+  }
+  const drawn = new Set([primaryAssetId, ...names.keys()]);
+  for (const { side, frontier } of frontiers) {
+    const hidden = new Map<string, Set<string>>();
+    for (const row of await repo.findPrimaryToPrimaryNeighboursBatch(frontier, ownEndOf(side))) {
+      if (!drawn.has(row.otherAssetId)) {
+        hidden.set(row.ownAssetId, (hidden.get(row.ownAssetId) ?? new Set()).add(row.otherAssetId));
+      }
+    }
+    truncated.push(...[...hidden].map(([assetId, ids]) => ({ assetId, hiddenCount: ids.size, side })));
+  }
+  return {
+    primaryAssets: [...names].map(([id, name]) => ({ id, name })),
+    links: await repo.findPrimaryToPrimaryLinksAmong([...drawn]),
+    truncated,
+  };
+};
+
 export const assetDependenciesService = defineService(
   'assetDependencies',
   assetDependenciesRepository,
@@ -899,6 +947,12 @@ export const assetDependenciesService = defineService(
       ...dependsOn.map((link) => ({ ...link, direction: 'depends' as const })),
       ...dependedOnBy.map((link) => ({ ...link, direction: 'provides' as const })),
     ].sort((a, b) => a.relatedAssetName.localeCompare(b.relatedAssetName));
+  },
+  getPrimaryToPrimaryLinkGraph: async ({ repo }, primaryAssetId: string, depth: number): Promise<PrimaryToPrimaryLinkGraph> => {
+    if (!(await repo.findVisiblePrimaryAssetIds([primaryAssetId])).has(primaryAssetId)) {
+      throw new PrimaryAssetNotFoundError();
+    }
+    return walkPrimaryToPrimaryLinks(repo, primaryAssetId, depth);
   },
   /**
    * Brings the stored reach of every primary asset to the one its links give it, writing only the

@@ -11,6 +11,7 @@ import type {
   DependencyGraphSelection,
   DrawnEdge,
   GraphGrammar,
+  PrimaryNeighbour,
 } from '../dependency-graph-utils';
 import type { AssetRelationDirection } from '../../supporting-assets/asset-relations-utils';
 import { postureSeverityBand } from '@app/module/client';
@@ -63,11 +64,17 @@ import {
   isMutualEdge,
   isSelectableEdge,
   isStoredLinkKind,
+  isUnknownStrengthEdge,
   nodeNeighbours,
   nodePins,
+  PRIMARY_LINK_COLOR_PROPERTY,
+  primaryEdgeAlpha,
+  primaryNeighbours,
   ringAlpha,
+  UNKNOWN_STRENGTH_COLOR_PROPERTY,
 } from '../dependency-graph-utils';
 import { getLinkRoleLabel } from '../link-role-labels';
+import { getLinkStrengthLabel } from '../link-strength-labels';
 import { getAssetCategoryLabel, getAssetCriticalityLabel } from '../../../utils';
 import { assetRelationGroupLine, assetRelationKindLabel, assetRelationSentence } from '../../supporting-assets/asset-relation-labels';
 import { findingCountLabel, postureScoreLabel } from './asset-findings-labels';
@@ -92,6 +99,7 @@ const FINDING_PILL_TOP = 24;
 const MARKED_REACH = NODE_RADIUS + HALO_GAP + HALO_WIDTH / 2;
 const FOCUSED_LINK_WIDTH = 2.2;
 const SELECTED_LINK_WIDTH = 2.8;
+const PRIMARY_LINK_WIDTH_FACTOR = 1.5;
 /** In screen pixels, like the labels, so a pill stays a click target at any zoom. */
 const PILL_TEXT_PX = 10;
 const PILL_HEIGHT_PX = 18;
@@ -155,9 +163,23 @@ const shapeSignature = (model: DependencyGraphModel): string =>
   `${model.nodes.map((node) => node.id).sort().join()}|${model.links.map((link) => link.id).sort().join()}`;
 
 /** An aggregate node's name is the count it stands for, which no plural of the model can hold. */
-const nodeName = (node: DependencyGraphNode): string => (node.kind === 'aggregate'
-  ? plural(node.hiddenProviderCount, { one: '# asset', other: '# assets' })
-  : node.label);
+const nodeName = (node: DependencyGraphNode): string => {
+  if (node.kind !== 'aggregate') {
+    return node.label;
+  }
+  return node.primaryFoldSide === undefined
+    ? plural(node.hiddenProviderCount, { one: '# asset', other: '# assets' })
+    : plural(node.hiddenProviderCount, { one: '# primary asset', other: '# primary assets' });
+};
+
+const primaryNeighbourName = (neighbour: PrimaryNeighbour): string => {
+  const name = nodeName(neighbour.node);
+  if (neighbour.strength === null) {
+    return name;
+  }
+  const strength = getLinkStrengthLabel(neighbour.strength);
+  return t`${name} (${strength})`;
+};
 
 /**
  * What the canvas draws, said in words. A canvas has no nodes to focus and no relations to announce,
@@ -177,6 +199,15 @@ const nodeSentence = (node: DependencyGraphNode, model: DependencyGraphModel, gr
   ];
   if (grammar === 'access_relations') {
     return `${[...said, ...relationLines(node, model)].join('. ')}.`;
+  }
+  const { dependsOn, dependedOnBy } = primaryNeighbours(model, node.id);
+  if (dependsOn.length > 0) {
+    const named = dependsOn.map(primaryNeighbourName).join(', ');
+    said.push(t`Depends on ${named}`);
+  }
+  if (dependedOnBy.length > 0) {
+    const named = dependedOnBy.map(primaryNeighbourName).join(', ');
+    said.push(t`Depended on by ${named}`);
   }
   if (providers.length > 0) {
     const named = providers.map(nodeName).join(', ');
@@ -222,6 +253,10 @@ const edgeSentence = (edge: DrawnEdge, model: DependencyGraphModel): string => {
     const supported = byId.get(link.source)?.label ?? '';
     const supporting = byId.get(link.target)?.label ?? '';
     const said = t`${supporting} supports ${supported}`;
+    if (link.strength !== undefined) {
+      const strength = getLinkStrengthLabel(link.strength);
+      return `${said}: ${strength}.`;
+    }
     if (link.roles === null) {
       return `${said}.`;
     }
@@ -233,7 +268,7 @@ const edgeSentence = (edge: DrawnEdge, model: DependencyGraphModel): string => {
 /** How far a node's ink reaches from its centre, which is where a line touching it must stop. */
 const nodeReach = (node: DependencyGraphNode, markedNodeId: string | undefined): number => {
   if (node.kind === 'primary') {
-    return PRIMARY_HALF_SIZE;
+    return node.id === markedNodeId ? PRIMARY_HALF_SIZE + HALO_GAP + HALO_WIDTH / 2 : PRIMARY_HALF_SIZE;
   }
   if (node.kind === 'internet') {
     return INTERNET_RADIUS;
@@ -306,6 +341,8 @@ export const DependencyGraph: FunctionComponent<DependencyGraphProps> = ({
     link: readCanvasColor('--fds-border-elevation-subtle-soft', '#cfcdc5'),
     accent: readCanvasColor('--fds-color-filigran-brand-primary', '#0079a8'),
     edge: readCanvasColor(LINK_COLOR_PROPERTY, '#0079a8'),
+    primaryEdge: readCanvasColor(PRIMARY_LINK_COLOR_PROPERTY, '#1fa9a9'),
+    unknownStrength: readCanvasColor(UNKNOWN_STRENGTH_COLOR_PROPERTY, '#7a7c85'),
     /** The neutral chip's own wash, laid over the surface like the tint. */
     pill: readCanvasColor('--fds-color-feedback-neutral-secondary', '#62636a'),
     icon: readCanvasColor('--fds-icon-default', '#0b0b0b'),
@@ -473,6 +510,8 @@ export const DependencyGraph: FunctionComponent<DependencyGraphProps> = ({
     if (node.kind === 'primary') {
       if (selected) {
         paintSelectionHalo(ctx, x, y, PRIMARY_HALF_SIZE, true);
+      } else if (node.id === markedNodeId) {
+        paintHalo(ctx, x, y, PRIMARY_HALF_SIZE, PRIMARY_CORNER, { color: palette.label, alpha: MARKED_HALO_ALPHA });
       }
       ctx.beginPath();
       ctx.roundRect(x - PRIMARY_HALF_SIZE, y - PRIMARY_HALF_SIZE, PRIMARY_HALF_SIZE * 2, PRIMARY_HALF_SIZE * 2, PRIMARY_CORNER);
@@ -531,17 +570,19 @@ export const DependencyGraph: FunctionComponent<DependencyGraphProps> = ({
     const headed = isDirectedEdge(edge, grammar ?? 'dependencies');
     const line = headed ? lineOf(curve, edge) : curve;
     const undeclared = edge.kind === 'internet_exposure';
+    const betweenPrimaryAssets = edge.kind === 'primary_dependency';
+    const unknownStrength = betweenPrimaryAssets && isUnknownStrengthEdge(edge);
 
     ctx.save();
-    ctx.globalAlpha = (focus === null ? 1 : ringAlpha(ring)) * LINK_INK_ALPHA;
-    ctx.strokeStyle = undeclared ? palette.glyph : palette.edge;
+    ctx.globalAlpha = (focus === null ? 1 : ringAlpha(ring)) * (betweenPrimaryAssets ? primaryEdgeAlpha(edge) : LINK_INK_ALPHA);
+    ctx.strokeStyle = undeclared ? palette.glyph : unknownStrength ? palette.unknownStrength : betweenPrimaryAssets ? palette.primaryEdge : palette.edge;
     ctx.fillStyle = ctx.strokeStyle;
     if (selectedEdge?.id === edge.id) {
       ctx.lineWidth = SELECTED_LINK_WIDTH;
     } else {
-      ctx.lineWidth = ring === undefined ? LINK_WIDTH : FOCUSED_LINK_WIDTH;
+      ctx.lineWidth = (ring === undefined ? LINK_WIDTH : FOCUSED_LINK_WIDTH) * (betweenPrimaryAssets ? PRIMARY_LINK_WIDTH_FACTOR : 1);
     }
-    if (undeclared) {
+    if (undeclared || unknownStrength) {
       ctx.setLineDash([5, 4]);
     }
     ctx.beginPath();

@@ -6,6 +6,7 @@ import type {
   DependencyGraphFold,
   DependencyLinkKind,
   PostureBand,
+  PrimaryToPrimaryLinkStrength,
   SeverityBand,
   SupportToPrimaryLinkRole,
 } from '@app/module/client';
@@ -22,6 +23,7 @@ type RouterOutputs = inferRouterOutputs<TRPCRouter>;
  */
 export type DependencyGraphPayload = RouterOutputs['assetDependencies']['getPrimaryAssetDependencyGraph'];
 export type AccessRelationGraphPayload = RouterOutputs['supportingAssets']['getSupportingAssetRelationGraph'];
+export type PrimaryToPrimaryLinkGraphPayload = RouterOutputs['assetDependencies']['getPrimaryToPrimaryLinkGraph'];
 /** `criticalityLift` comes with the access relation graph alone, which draws each asset's band. */
 export type DependencyGraphPayloadAsset = DependencyGraphPayload['assets'][number]
   & Partial<Pick<AccessRelationGraphPayload['assets'][number], 'criticalityLift'>>;
@@ -198,17 +200,33 @@ export const INTERNET_NODE_ID = 'internet-exposure';
 /** Prefixed so an aggregate node can never collide with the asset whose providers it stands for. */
 export const aggregateNodeId = (assetId: string): string => `aggregate:${assetId}`;
 
+export const PRIMARY_LINK_COLOR_PROPERTY = '--fds-color-filigran-tonic-primary';
+export const UNKNOWN_STRENGTH_COLOR_PROPERTY = '--fds-color-feedback-neutral-primary';
+
+/** The ink of a link between primary assets, by strength, as the primary asset graph draws it: an unknown one is also dashed. */
+export const PRIMARY_LINK_STRENGTH_ALPHA: Record<PrimaryToPrimaryLinkStrength, number> = {
+  critical: 1,
+  important: 0.55,
+  minor: 0.22,
+  unknown: 0.7,
+};
+
+export type PrimaryFoldSide = 'provider' | 'dependent';
+
+export const primaryAggregateNodeId = (assetId: string, side: PrimaryFoldSide): string => `aggregate:${side}:${assetId}`;
+
 export type DependencyNodeKind = 'primary' | 'asset' | 'internet' | 'aggregate';
 
 /**
  * `internet_exposure` is inferred from an asset's exposure and `beyond_depth` stands for the links the
- * walk left undrawn, past the depth or past what one asset draws: only the other kinds are stored
- * links, which the reader can select.
+ * walk left undrawn, past the depth or past what one asset draws. `primary_dependency` is a stored
+ * link between two primary assets, selectable but read only on the canvas, the primary asset's list
+ * being where it is edited. The other kinds are the stored links the reader can select and act on.
  */
-export type DependencyEdgeKind = DependencyLinkKind | AssetRelationKind | 'internet_exposure' | 'beyond_depth';
+export type DependencyEdgeKind = DependencyLinkKind | AssetRelationKind | 'primary_dependency' | 'internet_exposure' | 'beyond_depth';
 
 export const isStoredLinkKind = (kind: DependencyEdgeKind): kind is DependencyLinkKind | AssetRelationKind =>
-  kind !== 'internet_exposure' && kind !== 'beyond_depth';
+  kind !== 'internet_exposure' && kind !== 'beyond_depth' && kind !== 'primary_dependency';
 
 export interface DependencyGraphNode {
   id: string,
@@ -221,12 +239,14 @@ export interface DependencyGraphNode {
   /** The asset's impact if compromised on the scenario, absent off the Targets graph. */
   impact?: number,
   /**
-   * How many of this asset's providers the walk left undrawn. On the aggregate node standing for
-   * them it is the count again, and its whole name: a plural, so the view is what resolves it.
+   * How many of this asset's providers the walk left undrawn. On an aggregate node it is the count
+   * of the assets it stands for, and its whole name: a plural, so the view is what resolves it.
    */
   hiddenProviderCount: number,
   /** On an aggregate node alone: a fold past the depth opens one level deeper, a fold past the width does not. */
   foldedBy?: DependencyGraphFold,
+  /** On an aggregate node standing for primary assets alone. */
+  primaryFoldSide?: PrimaryFoldSide,
 }
 
 export interface DependencyGraphEdge {
@@ -242,6 +262,8 @@ export interface DependencyGraphEdge {
   attackShare?: LinkAttackShare,
   /** On an access relation alone. */
   relation?: RelationFacts,
+  /** On a link between two primary assets alone. */
+  strength?: PrimaryToPrimaryLinkStrength,
 }
 
 export interface DependencyGraphModel {
@@ -310,7 +332,15 @@ export const dependencyHighlights = (model: DependencyGraphModel): DependencyHig
   return { critical, exposed, unowned };
 };
 
-/** The nodes one link away, split by the side they sit on, for the graph's text equivalent. */
+const joinsPrimaryAssets = (link: DependencyGraphEdge, byId: ReadonlyMap<string, DependencyGraphNode>): boolean =>
+  link.kind === 'primary_dependency'
+  || byId.get(link.source)?.primaryFoldSide !== undefined
+  || byId.get(link.target)?.primaryFoldSide !== undefined;
+
+/**
+ * The nodes one link away, split by the side they sit on, for the graph's text equivalent. The links
+ * between primary assets are left to `primaryNeighbours`.
+ */
 export const nodeNeighbours = (model: DependencyGraphModel, nodeId: string): {
   providers: Array<DependencyGraphNode>,
   dependents: Array<DependencyGraphNode>,
@@ -318,7 +348,7 @@ export const nodeNeighbours = (model: DependencyGraphModel, nodeId: string): {
   const byId = new Map(model.nodes.map((node) => [node.id, node]));
   const providers: Array<DependencyGraphNode> = [];
   const dependents: Array<DependencyGraphNode> = [];
-  for (const link of model.links) {
+  for (const link of model.links.filter((candidate) => !joinsPrimaryAssets(candidate, byId))) {
     const provider = link.source === nodeId ? byId.get(link.target) : undefined;
     if (provider !== undefined) {
       providers.push(provider);
@@ -329,6 +359,33 @@ export const nodeNeighbours = (model: DependencyGraphModel, nodeId: string): {
     }
   }
   return { providers, dependents };
+};
+
+/** `strength` is null on an aggregate node, which stands for several links. */
+export interface PrimaryNeighbour {
+  node: DependencyGraphNode,
+  strength: PrimaryToPrimaryLinkStrength | null,
+}
+
+export const primaryNeighbours = (model: DependencyGraphModel, nodeId: string): {
+  dependsOn: Array<PrimaryNeighbour>,
+  dependedOnBy: Array<PrimaryNeighbour>,
+} => {
+  const byId = new Map(model.nodes.map((node) => [node.id, node]));
+  const dependsOn: Array<PrimaryNeighbour> = [];
+  const dependedOnBy: Array<PrimaryNeighbour> = [];
+  for (const link of model.links.filter((candidate) => joinsPrimaryAssets(candidate, byId))) {
+    const strength = link.strength ?? null;
+    const provider = link.source === nodeId ? byId.get(link.target) : undefined;
+    if (provider !== undefined) {
+      dependsOn.push({ node: provider, strength });
+    }
+    const dependent = link.target === nodeId ? byId.get(link.source) : undefined;
+    if (dependent !== undefined) {
+      dependedOnBy.push({ node: dependent, strength });
+    }
+  }
+  return { dependsOn, dependedOnBy };
 };
 
 const pushInto = <T>(index: Map<string, Array<T>>, key: string, value: T): void => {
@@ -423,17 +480,25 @@ const layoutColumns = (
  * primary asset and, on a walk that starts from a supporting asset, whatever the chain above it ends
  * on, one node per supporting asset however many branches and roots reach it, one link per stored link, the internet node every asset whose
  * exposure says it is reachable from it hangs off, and one aggregate node per asset, a primary one
- * included, whose providers the walk left undrawn, standing for them.
+ * included, whose providers the walk left undrawn, standing for them. `primaryLinkGraph` adds the
+ * primary assets linked to the first one and their links, and an aggregate node for the primary
+ * assets the depth left out past each asset on the last level of a side.
  */
 export const buildDependencyGraph = (
   primaryAssets: Array<PrimaryAssetHeader>,
   graph: DependencyGraphInput,
   labels: DependencyGraphLabels,
   grammar: GraphGrammar = 'dependencies',
+  primaryLinkGraph?: PrimaryToPrimaryLinkGraphPayload,
 ): DependencyGraphModel => {
   const foldOf = new Map(graph.truncated.map((row) => [row.assetId, row]));
+  const headerIds = new Set(primaryAssets.map((primaryAsset) => primaryAsset.id));
+  const headers = [
+    ...primaryAssets,
+    ...(primaryLinkGraph?.primaryAssets ?? []).filter((primaryAsset) => !headerIds.has(primaryAsset.id)),
+  ];
 
-  const nodes: Array<Omit<DependencyGraphNode, 'level'>> = primaryAssets.map((primaryAsset) => ({
+  const nodes: Array<Omit<DependencyGraphNode, 'level'>> = headers.map((primaryAsset) => ({
     id: primaryAsset.id,
     label: primaryAsset.name,
     kind: 'primary',
@@ -468,6 +533,9 @@ export const buildDependencyGraph = (
       roles: link.roles,
       attackShare: link.attackShare ?? undefined,
     }));
+  for (const link of primaryLinkGraph?.links ?? []) {
+    links.push({ id: link.id, source: link.dependentId, target: link.providerId, kind: 'primary_dependency', roles: null, strength: link.strength });
+  }
 
   for (const folding of [...nodes]) {
     const fold = foldOf.get(folding.id);
@@ -476,6 +544,13 @@ export const buildDependencyGraph = (
       nodes.push({ id, label: '', kind: 'aggregate', asset: null, hiddenProviderCount: fold.hiddenProviderCount, foldedBy: fold.foldedBy });
       links.push({ id, source: folding.id, target: id, kind: 'beyond_depth', roles: null });
     }
+  }
+  for (const fold of primaryLinkGraph?.truncated ?? []) {
+    const id = primaryAggregateNodeId(fold.assetId, fold.side);
+    nodes.push({ id, label: '', kind: 'aggregate', asset: null, hiddenProviderCount: fold.hiddenCount, foldedBy: 'depth', primaryFoldSide: fold.side });
+    links.push(fold.side === 'provider'
+      ? { id, source: fold.assetId, target: id, kind: 'beyond_depth', roles: null }
+      : { id, source: id, target: fold.assetId, kind: 'beyond_depth', roles: null });
   }
 
   // Exposure is a dependency on the internet: the access relations keep it as the asset's antenna alone.
@@ -505,8 +580,8 @@ export const buildDependencyGraph = (
 
 /**
  * What the canvas draws for the stored links: one edge per link, except the two opposite links of a
- * mutual dependency, which are one edge with a head at each end. Each keeps its own id in `links`,
- * since each is deleted on its own.
+ * mutual dependency of one kind, which are one edge with a head at each end. Each keeps its own id in
+ * `links`, since each is deleted on its own.
  */
 export interface DrawnEdge {
   /** The smaller of its links' ids, so a refetch returning them in another order keeps a selection. */
@@ -520,7 +595,13 @@ export interface DrawnEdge {
 
 export const isMutualEdge = (edge: DrawnEdge): boolean => edge.links.length > 1;
 
-export const isSelectableEdge = (edge: DrawnEdge): boolean => isStoredLinkKind(edge.kind);
+export const isSelectableEdge = (edge: DrawnEdge): boolean => isStoredLinkKind(edge.kind) || edge.kind === 'primary_dependency';
+
+/** A mutual edge between primary assets takes the ink of its stronger link. */
+export const primaryEdgeAlpha = (edge: DrawnEdge): number =>
+  Math.max(...edge.links.map((link) => (link.strength === undefined ? 1 : PRIMARY_LINK_STRENGTH_ALPHA[link.strength])));
+
+export const isUnknownStrengthEdge = (edge: DrawnEdge): boolean => edge.links.every((link) => link.strength === 'unknown');
 
 /**
  * The band a relation gives the asset it ends on, when that band is the asset's own: the lift came
@@ -541,17 +622,19 @@ export const edgeLift = (
 export const isDirectedEdge = (edge: Pick<DrawnEdge, 'kind'>, grammar: GraphGrammar): boolean =>
   grammar !== 'access_relations' || edge.kind !== 'beyond_depth';
 
+const MUTUAL_KINDS: ReadonlySet<DependencyEdgeKind> = new Set<DependencyEdgeKind>(['depends_on', 'primary_dependency']);
+
 export const drawnEdges = (model: DependencyGraphModel): Array<DrawnEdge> => {
   const stored = new Map(model.links
-    .filter((link) => link.kind === 'depends_on')
-    .map((link) => [`${link.source}\u0000${link.target}`, link]));
+    .filter((link) => MUTUAL_KINDS.has(link.kind))
+    .map((link) => [`${link.kind}\u0000${link.source}\u0000${link.target}`, link]));
   const merged = new Set<string>();
   const edges: Array<DrawnEdge> = [];
   for (const link of model.links) {
     if (merged.has(link.id)) {
       continue;
     }
-    const reverse = link.kind === 'depends_on' ? stored.get(`${link.target}\u0000${link.source}`) : undefined;
+    const reverse = MUTUAL_KINDS.has(link.kind) ? stored.get(`${link.kind}\u0000${link.target}\u0000${link.source}`) : undefined;
     const [first, second] = reverse !== undefined && reverse.id < link.id ? [reverse, link] : [link, reverse];
     if (second !== undefined) {
       merged.add(first.id);

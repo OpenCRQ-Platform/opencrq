@@ -173,6 +173,10 @@ msgstr "{0, plural, one {# pending change} other {# pending changes}}"
 msgid "{0, plural, one {# primary asset · sorted with the linked first} other {# primary assets · sorted with the linked first}}"
 msgstr "{0, plural, one {# primary asset · sorted with the linked first} other {# primary assets · sorted with the linked first}}"
 
+#. placeholder {0}: node.hiddenProviderCount
+msgid "{0, plural, one {# primary asset} other {# primary assets}}"
+msgstr "{0, plural, one {# primary asset} other {# primary assets}}"
+
 #. placeholder {0}: totalCount - answeredCount
 msgid "{0, plural, one {# question unanswered} other {# questions unanswered}}"
 msgstr "{0, plural, one {# question unanswered} other {# questions unanswered}}"
@@ -1003,6 +1007,9 @@ msgstr "{name} · {count} imported"
 
 msgid "{name} ({identityBand}), which gives {band}"
 msgstr "{name} ({identityBand}), which gives {band}"
+
+msgid "{name} ({strength})"
+msgstr "{name} ({strength})"
 
 msgid "{name} (inactive)"
 msgstr "{name} (inactive)"
@@ -3234,6 +3241,9 @@ msgstr "Between {low} and {high}"
 msgid "Between 1 and {maxYears} whole years, or empty for the full spend."
 msgstr "Between 1 and {maxYears} whole years, or empty for the full spend."
 
+msgid "Between primary assets"
+msgstr "Between primary assets"
+
 msgid "Beyond the depth"
 msgstr "Beyond the depth"
 
@@ -4282,6 +4292,10 @@ msgstr "critical"
 msgid "Critical"
 msgstr "Critical"
 
+msgctxt "strength of a dependency"
+msgid "Critical"
+msgstr "Critical"
+
 msgid "critical / high"
 msgstr "critical / high"
 
@@ -4665,6 +4679,12 @@ msgstr "Delivers threat actors"
 msgid "Department"
 msgstr "Department"
 
+msgid "Depended on by"
+msgstr "Depended on by"
+
+msgid "Depended on by {named}"
+msgstr "Depended on by {named}"
+
 msgid "Dependency deleted successfully."
 msgstr "Dependency deleted successfully."
 
@@ -4683,6 +4703,9 @@ msgstr "Depends on"
 #. js-lingui-explicit-id
 msgid "Depends on · {count}"
 msgstr "Depends on · {count}"
+
+msgid "Depends on {named}"
+msgstr "Depends on {named}"
 
 msgid "Deploy"
 msgstr "Deploy"
@@ -6456,6 +6479,10 @@ msgstr "Import simulation results from OpenAEV. Syncs detection and prevention o
 msgid "Import your compliance posture from Drata. Syncs your security frameworks (ISO 27001, SOC 2) with their requirements and control readiness, providing evidence to assess your security capabilities."
 msgstr "Import your compliance posture from Drata. Syncs your security frameworks (ISO 27001, SOC 2) with their requirements and control readiness, providing evidence to assess your security capabilities."
 
+msgctxt "strength of a dependency"
+msgid "Important"
+msgstr "Important"
+
 msgid "improbable (0)"
 msgstr "improbable (0)"
 
@@ -7558,6 +7585,10 @@ msgstr "Min must be ≤ Most Likely"
 
 msgid "Minimum"
 msgstr "Minimum"
+
+msgctxt "strength of a dependency"
+msgid "Minor"
+msgstr "Minor"
 
 msgid "minutes"
 msgstr "minutes"
@@ -11890,6 +11921,10 @@ msgstr "Stream throughput"
 msgid "Strength"
 msgstr "Strength"
 
+msgctxt "of a dependency"
+msgid "Strength"
+msgstr "Strength"
+
 msgid "strength {strength}, coverage {coverage} : efficacy {efficacy}"
 msgstr "strength {strength}, coverage {coverage} : efficacy {efficacy}"
 
@@ -13878,6 +13913,10 @@ msgid "Unknown"
 msgstr "Unknown"
 
 msgctxt "role of a dependency"
+msgid "Unknown"
+msgstr "Unknown"
+
+msgctxt "strength of a dependency"
 msgid "Unknown"
 msgstr "Unknown"
 

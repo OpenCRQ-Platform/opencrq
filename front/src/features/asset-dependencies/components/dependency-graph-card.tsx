@@ -2,12 +2,13 @@ import { Button, Paper, Spinner, Text } from '@filigran/design-system';
 import { Skeleton } from '@filigran/ui';
 import { msg, plural, t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
-import type { AssetRelationKind } from '@app/module/client';
+import type { AssetRelationKind, PrimaryToPrimaryLinkStrength } from '@app/module/client';
 import {
   ASSET_CRITICALITY_VALUES,
   DEPENDENCY_GRAPH_MAX_DEPTH,
   POSTURE_BANDS,
   postureSeverityBand,
+  PRIMARY_TO_PRIMARY_LINK_STRENGTHS,
   SEVERITY_BANDS,
   UNKNOWN_LINK_ROLE,
 } from '@app/module/client';
@@ -32,7 +33,11 @@ import {
   isMutualEdge,
   isStoredLinkKind,
   presentDomains,
+  PRIMARY_LINK_COLOR_PROPERTY,
+  PRIMARY_LINK_STRENGTH_ALPHA,
+  UNKNOWN_STRENGTH_COLOR_PROPERTY,
 } from '../dependency-graph-utils';
+import { getLinkStrengthLabel } from '../link-strength-labels';
 import { LINK_INK, MARKED_HALO_INK, TINT_ALPHA } from '../../../components/shared/column-graph-paint';
 import { useTheme } from '../../../providers/theme-provider';
 import { DependencyGraph } from './dependency-graph';
@@ -84,6 +89,7 @@ interface DependencyGraphLegendProps {
   hasUndeclaredLink: boolean,
   hasMutualLink: boolean,
   hasMarkedAsset: boolean,
+  hasPrimaryLink: boolean,
   /** Null on the dependency graph, whose links all read "supports". */
   relationKinds: Array<AssetRelationKind> | null,
   hasLift: boolean,
@@ -119,6 +125,21 @@ const LegendRule: FunctionComponent<{ color: string, dashed?: boolean }> = ({ co
   />
 );
 
+const StrengthSample: FunctionComponent<{ strength: PrimaryToPrimaryLinkStrength }> = ({ strength }) => (
+  <svg aria-hidden width="16" height="4" viewBox="0 0 16 4">
+    <line
+      x1="0"
+      y1="2"
+      x2="16"
+      y2="2"
+      strokeWidth="3"
+      strokeDasharray={strength === 'unknown' ? '5 4' : undefined}
+      opacity={PRIMARY_LINK_STRENGTH_ALPHA[strength]}
+      style={{ stroke: `var(${strength === 'unknown' ? UNKNOWN_STRENGTH_COLOR_PROPERTY : PRIMARY_LINK_COLOR_PROPERTY})` }}
+    />
+  </svg>
+);
+
 const assetDomainLabel = (domain: AssetDomain): string => {
   switch (domain) {
     case 'endpoint': return t`Endpoint`;
@@ -138,6 +159,7 @@ const DependencyGraphLegend: FunctionComponent<DependencyGraphLegendProps> = ({
   hasUndeclaredLink,
   hasMutualLink,
   hasMarkedAsset,
+  hasPrimaryLink,
   relationKinds,
   hasLift,
 }) => {
@@ -244,6 +266,17 @@ const DependencyGraphLegend: FunctionComponent<DependencyGraphLegendProps> = ({
           </span>
         )}
       </LegendCluster>
+
+      {hasPrimaryLink && (
+        <LegendCluster title={t`Between primary assets`}>
+          {PRIMARY_TO_PRIMARY_LINK_STRENGTHS.map((strength) => (
+            <span key={strength} className="flex items-center gap-1.5">
+              <StrengthSample strength={strength} />
+              {getLinkStrengthLabel(strength)}
+            </span>
+          ))}
+        </LegendCluster>
+      )}
 
       {hasMarkedAsset && (
         <span className="flex items-center gap-2 text-content-caption text-default-secondary">
@@ -477,6 +510,7 @@ export const DependencyGraphCard: FunctionComponent<DependencyGraphCardProps> = 
         hasUndeclaredLink={exposedAssetCount > 0 || hasUnknownRole}
         hasMutualLink={edges.some(isMutualEdge)}
         hasMarkedAsset={marksCurrentAsset === true && currentAssetId !== undefined}
+        hasPrimaryLink={model.links.some((link) => link.kind === 'primary_dependency')}
         relationKinds={relationKinds}
         hasLift={model.nodes.some((node) => node.asset?.criticalityLift !== undefined && node.asset.criticalityLift !== null)}
       />

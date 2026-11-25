@@ -14,6 +14,7 @@ import type {
   DependencyGraphPayloadAsset,
   DrawnEdge,
   GraphGrammar,
+  PrimaryNeighbour,
 } from '../dependency-graph-utils';
 import {
   criticalityRingProperty,
@@ -22,6 +23,8 @@ import {
   INTERNET_NODE_ID,
   isStoredLinkKind,
   nodeNeighbours,
+  PRIMARY_LINK_COLOR_PROPERTY,
+  primaryNeighbours,
 } from '../dependency-graph-utils';
 import { LINK_INK, TINT_ALPHA } from '../../../components/shared/column-graph-paint';
 import { TooltipHintProvider } from '../../../components/shared';
@@ -42,6 +45,7 @@ import { CrqPostureExplanation } from '../../supporting-assets/components/crq-po
 import { assetRelationGroupLabel, assetRelationSourceLabel } from '../../supporting-assets/asset-relation-labels';
 import { usePrimaryAssetScope } from '../hooks/use-primary-asset-scope';
 import { getLinkRoleLabel } from '../link-role-labels';
+import { getLinkStrengthLabel } from '../link-strength-labels';
 import { findingCountLabel, postureScoreLabel } from './asset-findings-labels';
 import { CriticalityBandPill } from './criticality-band-pill';
 import { DependencyGraphNodeBadge } from './dependency-graph-node-badge';
@@ -69,9 +73,14 @@ interface DependencyGraphPanelProps {
 const formatObservation = (value: string | null): string => (value === null ? EMPTY_VALUE : formatDate(value));
 
 /** An aggregate node has no name of its own: it is the count of the assets it stands for. */
-const neighbourName = (node: DependencyGraphNode): string => (node.kind === 'aggregate'
-  ? plural(node.hiddenProviderCount, { one: '# asset', other: '# assets' })
-  : node.label);
+const neighbourName = (node: DependencyGraphNode): string => {
+  if (node.kind !== 'aggregate') {
+    return node.label;
+  }
+  return node.primaryFoldSide === undefined
+    ? plural(node.hiddenProviderCount, { one: '# asset', other: '# assets' })
+    : plural(node.hiddenProviderCount, { one: '# primary asset', other: '# primary assets' });
+};
 
 /** How many assets a neighbour stands for: an aggregate node is all the assets it folds. */
 const assetWeight = (node: DependencyGraphNode): number =>
@@ -137,6 +146,51 @@ const NeighbourList: FunctionComponent<{
                   onClick={() => onEditLink(primaryLink)}
                 />
               )}
+              {edge !== undefined && (
+                <IconButton
+                  priority="tertiary"
+                  className="shrink-0"
+                  aria-label={t`Show the link with ${name} in the graph`}
+                  icon={<Eye className="size-3.5" aria-hidden />}
+                  onClick={() => onSelectEdge(edge.id)}
+                />
+              )}
+            </li>
+          );
+        })}
+        {rest > 0 && (
+          <li className="flex min-h-7 items-center pl-5 txt-sub-content text-default-secondary">
+            {plural(rest, { one: 'and # more', other: 'and # more' })}
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+};
+
+const PrimaryNeighbourList: FunctionComponent<{
+  title: string,
+  node: DependencyGraphNode,
+  neighbours: Array<PrimaryNeighbour>,
+  edges: Array<DrawnEdge>,
+  onSelectEdge: (edgeId: string) => void,
+}> = ({ title, node, neighbours, edges, onSelectEdge }) => {
+  const rest = neighbours.slice(MAX_NAMED_NEIGHBOURS).reduce((sum, neighbour) => sum + assetWeight(neighbour.node), 0);
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="flex items-center gap-2 txt-sub-content text-default-secondary">
+        <span aria-hidden className="h-0.5 w-3 rounded-full" style={{ backgroundColor: `var(${PRIMARY_LINK_COLOR_PROPERTY})` }} />
+        {title}
+      </span>
+      <ul aria-label={title} className="m-0 flex list-none flex-col p-0">
+        {neighbours.slice(0, MAX_NAMED_NEIGHBOURS).map((neighbour) => {
+          const name = neighbourName(neighbour.node);
+          const edge = drawnEdgeBetween(edges, node.id, neighbour.node.id);
+          return (
+            <li key={neighbour.node.id} className="flex min-h-7 items-center gap-2 txt-sub-content text-default-primary">
+              <span aria-hidden className="mx-2 size-1 shrink-0 rounded-full bg-[color:var(--fds-text-default-secondary)]" />
+              <span title={name} className="min-w-0 flex-1 truncate font-medium">{name}</span>
+              {neighbour.strength !== null && <span className="shrink-0 text-default-secondary">{getLinkStrengthLabel(neighbour.strength)}</span>}
               {edge !== undefined && (
                 <IconButton
                   priority="tertiary"
@@ -326,6 +380,7 @@ export const DependencyGraphPanel: FunctionComponent<DependencyGraphPanelProps> 
   const findings = asset === null ? [] : findingPills(asset);
   const { providers, dependents } = nodeNeighbours(model, node.id);
   const assetProviders = providers.filter((provider) => provider.id !== INTERNET_NODE_ID);
+  const { dependsOn, dependedOnBy } = primaryNeighbours(model, node.id);
   const relations = grammar === 'access_relations' ? relationGroups(node, model) : [];
 
   return (
@@ -351,6 +406,16 @@ export const DependencyGraphPanel: FunctionComponent<DependencyGraphPanelProps> 
 
       {node.kind === 'primary' && (
         <>
+          {(dependsOn.length > 0 || dependedOnBy.length > 0) && (
+            <div className="flex flex-col gap-2.5 px-3.5 py-3" style={{ borderTop: SECTION_RULE }}>
+              {dependsOn.length > 0 && (
+                <PrimaryNeighbourList title={t`Depends on`} node={node} neighbours={dependsOn} edges={edges} onSelectEdge={onSelectEdge} />
+              )}
+              {dependedOnBy.length > 0 && (
+                <PrimaryNeighbourList title={t`Depended on by`} node={node} neighbours={dependedOnBy} edges={edges} onSelectEdge={onSelectEdge} />
+              )}
+            </div>
+          )}
           {assetProviders.length > 0 && (
             <div className="flex flex-col gap-2.5 px-3.5 py-3" style={{ borderTop: SECTION_RULE }}>
               <NeighbourList

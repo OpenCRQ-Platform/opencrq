@@ -244,6 +244,105 @@ describe('Primary-to-primary links', () => {
     });
   });
 
+  describe('graph', () => {
+    let paymentsId: string;
+    let reportingId: string;
+
+    const link = (dependentAssetId: string, providerAssetId: string, strength: 'critical' | 'important' | 'minor' | 'unknown' = 'unknown') => ({
+      id: uuidv7(), dependentAssetId, providerAssetId, strength,
+    });
+    const graphOf = (primaryAssetId: string, depth: number) =>
+      services.withOrigin(adminOrigin).assetDependencies.getPrimaryToPrimaryLinkGraph(primaryAssetId, depth);
+    const namesOf = (graph: Awaited<ReturnType<typeof graphOf>>) => graph.primaryAssets.map((asset) => asset.name).sort();
+    const pairsOf = (graph: Awaited<ReturnType<typeof graphOf>>, nameOf: Map<string, string>) =>
+      graph.links.map((row) => `${nameOf.get(row.dependentId)} > ${nameOf.get(row.providerId)} ${row.strength}`).sort();
+
+    beforeEach(async () => {
+      paymentsId = await createPrimaryAsset(adminOrigin, organizationId, 'Payments');
+      reportingId = await createPrimaryAsset(adminOrigin, organizationId, 'Reporting');
+    });
+
+    it('should walk what an asset depends on and what depends on it, two levels each way', async () => {
+      const auditId = await createPrimaryAsset(adminOrigin, organizationId, 'Audit');
+      await services.withOrigin(adminOrigin).assetDependencies.createPrimaryToPrimaryLinks([
+        link(billingId, ordersId, 'critical'),
+        link(ordersId, treasuryId, 'important'),
+        link(paymentsId, billingId, 'minor'),
+        link(reportingId, paymentsId),
+        link(auditId, ordersId),
+      ]);
+
+      const graph = await graphOf(billingId, 3);
+
+      const nameOf = new Map([[billingId, 'Billing'], [ordersId, 'Orders'], [treasuryId, 'Treasury'], [paymentsId, 'Payments'], [reportingId, 'Reporting']]);
+      expect(namesOf(graph)).toEqual(['Order management', 'Payments', 'Reporting', 'Treasury']);
+      expect(pairsOf(graph, nameOf)).toEqual([
+        'Billing > Orders critical',
+        'Orders > Treasury important',
+        'Payments > Billing minor',
+        'Reporting > Payments unknown',
+      ]);
+      expect(graph.truncated).toEqual([]);
+    });
+
+    it('should stop each side at the depth and count the primary assets it left past each last asset', async () => {
+      await services.withOrigin(adminOrigin).assetDependencies.createPrimaryToPrimaryLinks([
+        link(billingId, ordersId),
+        link(ordersId, treasuryId),
+        link(paymentsId, billingId),
+        link(reportingId, paymentsId),
+      ]);
+
+      const graph = await graphOf(billingId, 1);
+
+      expect(namesOf(graph)).toEqual(['Order management', 'Payments']);
+      expect(graph.links).toHaveLength(2);
+      expect(graph.truncated).toEqual(expect.arrayContaining([
+        { assetId: ordersId, hiddenCount: 1, side: 'provider' },
+        { assetId: paymentsId, hiddenCount: 1, side: 'dependent' },
+      ]));
+      expect(graph.truncated).toHaveLength(2);
+    });
+
+    it('should end on a cycle, and keep the dependents of an asset the cycle puts on both sides', async () => {
+      await services.withOrigin(adminOrigin).assetDependencies.createPrimaryToPrimaryLinks([
+        link(billingId, ordersId),
+        link(ordersId, treasuryId),
+        link(treasuryId, billingId),
+        link(reportingId, treasuryId),
+      ]);
+
+      const graph = await graphOf(billingId, 6);
+
+      expect(namesOf(graph)).toEqual(['Order management', 'Reporting', 'Treasury']);
+      expect(graph.links).toHaveLength(4);
+      expect(graph.truncated).toEqual([]);
+    });
+
+    it('should draw the link between two assets of the walk that neither side followed', async () => {
+      await services.withOrigin(adminOrigin).assetDependencies.createPrimaryToPrimaryLinks([
+        link(billingId, ordersId),
+        link(paymentsId, billingId),
+        link(paymentsId, ordersId, 'critical'),
+      ]);
+
+      const graph = await graphOf(billingId, 1);
+
+      expect(graph.links.map((row) => [row.dependentId, row.providerId, row.strength])).toContainEqual([paymentsId, ordersId, 'critical']);
+      expect(graph.links).toHaveLength(3);
+    });
+
+    it('should return no primary asset for an asset no link reaches', async () => {
+      expect(await graphOf(billingId, 3)).toEqual({ primaryAssets: [], links: [], truncated: [] });
+    });
+
+    it('should refuse a primary asset of another tenant', async () => {
+      await expect(
+        services.withOrigin(await otherTenantOrigin()).assetDependencies.getPrimaryToPrimaryLinkGraph(billingId, 3),
+      ).rejects.toThrow('Primary asset not found');
+    });
+  });
+
   describe('tenant isolation', () => {
     it('should refuse a link naming another tenant\'s primary asset in the database', async () => {
       const otherOrigin = await otherTenantOrigin();

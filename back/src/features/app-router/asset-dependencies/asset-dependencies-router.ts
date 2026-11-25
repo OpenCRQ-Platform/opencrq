@@ -248,6 +248,13 @@ export const assetDependenciesRouter = (procedure: TenantProcedure) => router({
     }))
     .query(({ input, ctx: { services, origin } }) => withNotFoundOn(PrimaryAssetNotFoundError, () => services.withOrigin(origin)
       .assetDependencies.getPrimaryAssetDependencyGraph(input.primaryAssetId, input.depth))),
+  getPrimaryToPrimaryLinkGraph: procedure
+    .input(z.object({
+      primaryAssetId: z.uuid(),
+      depth: z.number().int().min(1).max(DEPENDENCY_GRAPH_MAX_DEPTH).default(DEPENDENCY_GRAPH_DEFAULT_DEPTH),
+    }))
+    .query(({ input, ctx: { services, origin } }) => withNotFoundOn(PrimaryAssetNotFoundError, () => services.withOrigin(origin)
+      .assetDependencies.getPrimaryToPrimaryLinkGraph(input.primaryAssetId, input.depth))),
   getSupportingAssetDependencyGraph: procedure
     .input(z.object({
       supportingAssetId: z.uuid(),

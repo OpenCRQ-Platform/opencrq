@@ -1,4 +1,4 @@
-import { supportToPrimaryLinks, supportToSupportLinks } from '../../modules/asset-dependencies/schema';
+import { primaryToPrimaryLinks, supportToPrimaryLinks, supportToSupportLinks } from '../../modules/asset-dependencies/schema';
 import {
   PrimaryAsset_AmlKycProcess,
   PrimaryAsset_CardTransactionData,
@@ -8,6 +8,8 @@ import {
   PrimaryAsset_InterbankPayment,
   PrimaryAsset_InvestmentPortfolio,
   PrimaryAsset_SecuritiesTrading,
+  PrimaryToPrimaryLink_AccountDataOnCreditDecision,
+  PrimaryToPrimaryLink_PaymentOnAccountData,
   SupportingAsset_AmlPlatform,
   SupportingAsset_AzureCloud,
   SupportingAsset_BackupDr,
@@ -90,5 +92,11 @@ registerPlatformSeed('asset-dependencies', async ({ db }) => {
     { id: SupportingToSupportingLink_LbServesPortal, tenantId: Tenant_Acme, providerAssetId: SupportingAsset_LoadBalancer, dependentAssetId: SupportingAsset_InternetBanking },
     { id: SupportingToSupportingLink_WanConnectsDc, tenantId: Tenant_Acme, providerAssetId: SupportingAsset_CorporateWan, dependentAssetId: SupportingAsset_DatacenterParis },
     { id: SupportingToSupportingLink_BackupProtectsOracle, tenantId: Tenant_Acme, providerAssetId: SupportingAsset_BackupDr, dependentAssetId: SupportingAsset_OracleExadata },
+  ]);
+
+  // A chain two links long, which a primary asset's graph walks past its first level.
+  await db.insert(primaryToPrimaryLinks).values([
+    { id: PrimaryToPrimaryLink_PaymentOnAccountData, tenantId: Tenant_Acme, dependentAssetId: PrimaryAsset_InterbankPayment, providerAssetId: PrimaryAsset_CustomerAccountData, strength: 'critical' },
+    { id: PrimaryToPrimaryLink_AccountDataOnCreditDecision, tenantId: Tenant_Acme, dependentAssetId: PrimaryAsset_CustomerAccountData, providerAssetId: PrimaryAsset_CreditDecisionProcess, strength: 'minor' },
   ]);
 });

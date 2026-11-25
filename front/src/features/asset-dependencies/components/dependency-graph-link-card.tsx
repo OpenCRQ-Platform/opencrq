@@ -11,6 +11,7 @@ import { edgeLift, formatWholePercent, isMutualEdge, isStoredLinkKind } from '..
 import { LINK_INK } from '../../../components/shared/column-graph-paint';
 import { usePrimaryAssetScope } from '../hooks/use-primary-asset-scope';
 import { getLinkRoleLabel } from '../link-role-labels';
+import { getLinkStrengthLabel } from '../link-strength-labels';
 import { AssetName } from '../../../components/shared/asset-name';
 import { useTenant } from '../../../providers/tenant-provider';
 import { EMPTY_VALUE, formatDate, getAssetCategoryLabel } from '../../../utils';
@@ -141,6 +142,30 @@ const RelationSection: FunctionComponent<RelationSectionProps> = ({ link, byId, 
   );
 };
 
+/** The primary asset's list is where such a link is edited, so the card only reads it. */
+const PrimaryLinkSection: FunctionComponent<RelationSectionProps> = ({ link, byId, closeButton }) => {
+  const dependent = byId.get(link.source);
+  const provider = byId.get(link.target);
+  if (dependent === undefined || provider === undefined || link.strength === undefined) {
+    return null;
+  }
+  return (
+    <>
+      <div className="flex items-start gap-2.5 p-3.5">
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <LinkEnd node={provider} />
+          <Connector><Trans>supports</Trans></Connector>
+          <LinkEnd node={dependent} />
+        </span>
+        {closeButton}
+      </div>
+      <dl className="m-0 flex flex-col gap-2 px-3.5 py-3" style={{ borderTop: SECTION_RULE }}>
+        <PropertyRow label={t({ message: 'Strength', context: 'of a dependency' })}>{getLinkStrengthLabel(link.strength)}</PropertyRow>
+      </dl>
+    </>
+  );
+};
+
 interface LinkSectionProps {
   link: DependencyGraphEdge,
   byId: Map<string, DependencyGraphNode>,
@@ -247,7 +272,9 @@ export const DependencyGraphLinkCard: FunctionComponent<DependencyGraphLinkCardP
     >
       {edge.links.map((link, index) => (
         <div key={link.id} className="flex flex-col" style={index > 0 ? { borderTop: SECTION_RULE } : undefined}>
-          {link.relation === undefined ? (
+          {link.kind === 'primary_dependency' ? (
+            <PrimaryLinkSection link={link} byId={byId} closeButton={index === 0 ? closeButton : null} />
+          ) : link.relation === undefined ? (
             <LinkSection
               link={link}
               byId={byId}

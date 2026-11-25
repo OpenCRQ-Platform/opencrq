@@ -1,5 +1,6 @@
 import type { AssetCategory, AssetCriticality, AssetRelationKind, AssetRelationSource, SupportingAssetExposure } from '../supporting-assets/schema';
 import type { SupportToPrimaryLinkRole } from './link-roles';
+import type { PrimaryToPrimaryLinkStrength } from './link-strengths';
 
 /**
  * Deeper than this and the walk costs more queries than a screen can justify; the payload states
@@ -139,4 +140,30 @@ export interface AccessRelationGraph {
   /** How many related assets of each asset on the last level the depth left undrawn. */
   truncated: Array<DependencyGraphTruncation>,
   hiddenAssetCount: number,
+}
+
+export interface PrimaryToPrimaryGraphLink {
+  id: string,
+  dependentId: string,
+  providerId: string,
+  strength: PrimaryToPrimaryLinkStrength,
+}
+
+/**
+ * An asset on the last level of one side, and how many primary assets past it on that side the
+ * depth left undrawn: the ones it depends on on the `provider` side, the ones depending on it on
+ * the `dependent` side.
+ */
+export interface PrimaryToPrimaryGraphTruncation {
+  assetId: string,
+  hiddenCount: number,
+  side: 'provider' | 'dependent',
+}
+
+export interface PrimaryToPrimaryLinkGraph {
+  /** Every primary asset the walk reached, on either side, the one it started from excluded. */
+  primaryAssets: Array<{ id: string, name: string }>,
+  /** Every link between two of the drawn primary assets, the start included. */
+  links: Array<PrimaryToPrimaryGraphLink>,
+  truncated: Array<PrimaryToPrimaryGraphTruncation>,
 }
