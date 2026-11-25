@@ -155,7 +155,7 @@ A write to a tenant's data rings a doorbell that tells every connected client of
 | Variable | Required | Default Value | Architectural/Functional Impact |
 |:---------|:--------:|:--------------|:--------------------------------|
 | `EVENTS__DOORBELL_WINDOW_MS` | No | `100` | Window, in milliseconds, that opens at the first write to a tenant and ends in one ring covering every write it gathered. It applies to writes made by a person and by a job run someone is waiting on, each kind in its own window. |
-| `EVENTS__JOB_DOORBELL_WINDOW_MS` | No | `30000` | The same window for writes made by a job run nobody is waiting on, much coarser so that a bulk write does not ring once per window for its whole duration. |
+| `EVENTS__JOB_DOORBELL_WINDOW_MS` | No | `30000` | The same window for writes made by a job run nobody is waiting on. It is much coarser, so a bulk write that lasts minutes rings once per this window instead of once per `EVENTS__DOORBELL_WINDOW_MS`. |
 
 ## Recompute (scheduled scoring)
 
