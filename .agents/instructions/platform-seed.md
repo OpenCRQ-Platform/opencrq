@@ -7,7 +7,7 @@ description: 'Platform seed maintenance guidelines, testing workflow, and conven
 
 The platform seed (`module/src/platform-seed/`) creates realistic test data (users, tenants, organizations, roles, groups, assets, notifications) for manual e2e testing. It is **separate** from reference seeds (capabilities, countries, sectors) and is **optional** — triggered by a `platform_seed` config block.
 
-**Configuration (env vars, JSON examples, secret-store integration) is documented in [`docs/deployment/configuration.md`](docs/deployment/configuration.md#platform-seed-non-production). Dev setup (`yarn seed:setup-dev`, `yarn seed:rollback-dev`) is in [`docs/development/development.md`](docs/development/development.md). This file covers only the seeder-authoring workflow.**
+**Configuration (env vars, JSON examples, secret-store integration) and dev setup (`yarn seed:setup-dev`, `yarn seed:rollback-dev`) are documented in [`docs/development/development.md`](docs/development/development.md#platform-seed). This file covers only the seeder-authoring workflow.**
 
 ## Maintaining the seed
 

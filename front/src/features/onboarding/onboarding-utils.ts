@@ -84,8 +84,8 @@ export const shouldOpenGetStarted = ({ seen, wizard }: GetStartedRedirectInput):
   return !wizard.finished;
 };
 
-/** The platform-config section that lists the variables a tenant needs for the Microsoft Defender connector. */
-export const MICROSOFT_DEFENDER_DOCUMENTATION_URL = 'https://github.com/OpenCRQ-Platform/opencrq/blob/main/docs/deployment/configuration.md#microsoft-graph-microsoft-defender-for-endpoint';
+/** The section of the connector's page that lists the variables a tenant needs for the Microsoft Defender connector. */
+export const MICROSOFT_DEFENDER_DOCUMENTATION_URL = 'https://filigran.io/docs/opencrq/use/sources/microsoft-defender/#give-opencrq-the-credentials';
 
 /** The variables a platform administrator sets to turn the Microsoft Defender connector on for one tenant. */
 export const microsoftDefenderEnvBlock = (tenantId: string): string => [
@@ -113,16 +113,16 @@ export const getConnectorCardMode = ({ platformConfigured, hasManageSecurity }: 
 export const canSyncConnector = ({ platformConfigured, tenantConfigured, hasActiveRun }: { platformConfigured: boolean, tenantConfigured: boolean, hasActiveRun: boolean }): boolean =>
   platformConfigured && tenantConfigured && !hasActiveRun;
 
-/** The section of the platform configuration that lists the variables a tenant needs for the Drata connector. */
-export const DRATA_DOCUMENTATION_URL = 'https://github.com/OpenCRQ-Platform/opencrq/blob/main/docs/deployment/configuration.md#drata-compliance-posture-import';
+/** The section of the connector's page that lists the variables a tenant needs for the Drata connector. */
+export const DRATA_DOCUMENTATION_URL = 'https://filigran.io/docs/opencrq/use/sources/drata/#before-you-start';
 
 /** The variable a platform administrator sets to turn the Drata connector on for one tenant, the only one required. */
 export const drataEnvBlock = (tenantId: string): string => [
   `CONNECTORS__DRATA__${tenantId}__API_KEY=`,
 ].join('\n');
 
-/** The section of the platform configuration that lists the variables a tenant needs for the OpenCTI connector. */
-export const OPENCTI_DOCUMENTATION_URL = 'https://github.com/OpenCRQ-Platform/opencrq/blob/main/docs/deployment/configuration.md#opencti-live-stream-import-of-stix-bundles';
+/** The section of the connector's page that lists the variables a tenant needs for the OpenCTI connector. */
+export const OPENCTI_DOCUMENTATION_URL = 'https://filigran.io/docs/opencrq/use/sources/opencti/#give-opencrq-the-url-and-the-token';
 
 /** The variables a platform administrator sets to turn the OpenCTI connector on for one tenant. */
 export const openctiEnvBlock = (tenantId: string): string => [
