@@ -153,7 +153,7 @@ export const resetCounterpartCache = () => cache.clear();
 
 /**
  * Batched, cached and silent: one call per product for the keys the cache does not hold, and a
- * product that fails answers nothing rather than failing the page.
+ * product that fails answers nothing rather than failing the page, but is named in `unavailable`.
  */
 export const resolveCounterparts = async (
   tenantId: string,
@@ -162,12 +162,13 @@ export const resolveCounterparts = async (
   keys: ReadonlyArray<string>,
   providers: ReadonlyArray<CounterpartProvider>,
   now: () => number = Date.now,
-): Promise<Array<XtmCounterpart>> => {
+): Promise<{ counterparts: Array<XtmCounterpart>, unavailable: Array<CounterpartProduct> }> => {
   const normalised = normaliseCounterpartKeys(kind, keys);
   if (normalised.length === 0) {
-    return [];
+    return { counterparts: [], unavailable: [] };
   }
   const results: Array<XtmCounterpart> = [];
+  const unavailable: Array<CounterpartProduct> = [];
   for (const provider of providers) {
     if (!provider.supports(kind) || !provider.isConnected) {
       continue;
@@ -191,6 +192,7 @@ export const resolveCounterparts = async (
       found = await provider.resolve(kind, missing);
     } catch {
       // A pivot is never worth a page error, and a failure is not cached as a miss.
+      unavailable.push(provider.product);
       continue;
     }
     const byKey = new Map(found.filter((c) => isHttpUrl(c.objectUrl)).map((c) => [c.key, c]));
@@ -206,7 +208,7 @@ export const resolveCounterparts = async (
       }
     }
   }
-  return results;
+  return { counterparts: results, unavailable };
 };
 
 export const xtmConnections = (providers: ReadonlyArray<CounterpartProvider>): Array<XtmConnection> =>

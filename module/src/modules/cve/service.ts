@@ -8,6 +8,7 @@ import type { cveSourceObservations } from './schema';
 import type { CveSource } from './sources';
 import { defineService } from '../../registry';
 import { isCisaListed } from './cisa-listing';
+import { nvdRecordState } from './nvd-record';
 import { cveRepository } from './repository';
 import { cvssVersionOf, resolveCveFields } from './resolution';
 
@@ -123,6 +124,16 @@ export const cveService = defineService(
   getCveByCveId: async ({ repo }, cveId: string) => {
     const row = await repo.findByCveId(cveId);
     return row === null ? null : withCisaListing(row);
+  },
+
+  /** The CVE as a reader sees it, with what NVD is known to hold on it. */
+  getCveInfo: async ({ repo }, cveId: string) => {
+    const row = await repo.findInfoByCveId(cveId);
+    if (row === null) {
+      return null;
+    }
+    const { hasNvdObservation, ...cveRow } = row;
+    return { ...withCisaListing(cveRow), nvdRecord: nvdRecordState(cveRow.remediationReadAt, hasNvdObservation) };
   },
 
   getCvesByCveIds: async ({ repo }, cveIds: Array<string>) =>

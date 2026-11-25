@@ -241,6 +241,30 @@ yields `NaN`, which passes `z.number()` and reaches the API. Use `NumberFormInpu
 `components/shared`, which maps a blank field to `undefined` and renders `undefined` / `NaN` as an
 empty input.
 
+## Screens that read threats
+
+A member reads the threats mirrored from OpenCTI only as far as their own OpenCTI rights allow, so
+every screen that lists or counts threats says why it may show fewer, by the category `xtm.readerAccess`
+gives (`useReaderAccess`): `HiddenThreatsAlert` above a list (`ReaderAccessNotice` for a screen that already holds the
+category), one `HiddenThreatsHint` in the title of a card of figures and none beside figures a
+notice already sits above, a smaller number never read as a fact. Both render nothing while the reader misses no threat, and
+neither is fed a flag by the screen's own procedure: the backend names a category only while the
+tenant holds a mirrored threat the reader cannot read (`hasThreatHiddenFromUnresolvedReader`), so a
+tenant with nothing mirrored yet, or only unmarked threats, is told nothing. An OpenCTI that runs a
+token XTM One signed for the reader as nobody (`AUTH_REQUIRED`) is `no_account`: it cannot tell a
+missing account from another way of not recognising the token, and the former is far likelier. In a
+tenant that shows every member what the connector reads, an unresolved scope is the connector's own
+read failing, whatever the cause: the category is `connector_unavailable`, which words no cause in
+the member and asks an administrator, never a member's `not_linked` or `no_account`. The rows hanging off a threat follow it, so the
+detail of a threat the member can read (hero, outcomes, CVE tab, techniques, relevance proof) is
+complete and carries no message, and a link to a threat they may not read opens a page saying it is
+hidden (`threats.isHidden`, the route's `notFoundComponent`), never "not found", unless that lookup fails. The page words why by `xtm.readerAccess`'s
+`threatVisibility`: the reader's own OpenCTI rights when those decide (`per_member`), no cause in the
+connector's mode or when the answer failed. The counterparts of an object are always read as the member,
+whatever the tenant's threat visibility: the emblem surface says per product why one is empty
+(`no-access` when it is not linked to XTM One or has no account for the reader, `unavailable` when
+its token exchange or its lookup failed, the latter reported by `xtm.counterparts` as `unavailable`).
+
 ## React Compiler Guidance
 
 - React Compiler is the default memoization strategy in `front`.

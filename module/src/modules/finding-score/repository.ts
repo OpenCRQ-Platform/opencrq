@@ -12,6 +12,7 @@ import { foldedLike, orderByFolded } from '../../db/fold-text';
 import { escapeLikePattern } from '../../db/like-pattern';
 import { inUuids } from '../../db/uuid-array';
 import { cisaListedSql } from '../cve/cisa-listing';
+import { cveNvdRecordMissing } from '../cve/nvd-record-sql';
 import { entryOpenings } from '../entry-openings/schema';
 import { isIntegrationSource } from '../integration-settings/schema';
 import { defineRepository } from '../../registry';
@@ -1397,6 +1398,7 @@ export const findingScoreRepository = defineRepository({
         score: views.findingScores.score,
         band: views.findingScores.band,
         pendingVector: findingPendingVector(views),
+        nvdRecordMissing: cveNvdRecordMissing({ db, views }),
         currentState: state,
         stateOrigin: latest.origin,
         dismissalType: latest.dismissalType,
@@ -1673,6 +1675,7 @@ export const findingScoreRepository = defineRepository({
         gainP10: page.gainP10,
         gainP90: page.gainP90,
         pendingVector: uniqueCvePendingVector({ db, views }, page, params.mappedToOrganizationId),
+        nvdRecordMissing: cveNvdRecordMissing({ db, views }),
         affectedAssetCount: page.affectedAssetCount,
         firstSeenAt: page.firstSeenAt,
       })
@@ -1826,6 +1829,7 @@ export const findingScoreRepository = defineRepository({
           { cveRef: views.cve.id, uniqueScore: stored.score },
           params.mappedToOrganizationId,
         ),
+        nvdRecordMissing: cveNvdRecordMissing({ db, views }),
         affectedAssetCount: stored.affectedAssetCount,
         firstSeenAt: stored.firstSeenAt,
       })
@@ -1892,6 +1896,7 @@ export const findingScoreRepository = defineRepository({
           cveTitle: views.cve.cveTitle,
           kevUpdatedAt: views.cve.kevUpdatedAt,
           epss: views.cve.epss,
+          nvdRecordMissing: cveNvdRecordMissing({ db, views }),
           storedId: stored.id,
           uniqueScore: stored.score,
           worstScore: stored.worstScore,

@@ -15,6 +15,7 @@ vi.mock('../../threats', async () => {
     observedAtSortValue: () => undefined,
     ActivityGradeBadge: () => null,
     DimensionTags: () => null,
+    HiddenThreatsAlert: () => null,
     RelevanceBand: () => null,
     RelevanceProofPanel: () => null,
     ResourceLevelValue: () => null,
@@ -87,7 +88,7 @@ const renderTable = async (storageSuffix: string, counterparts: Array<object> = 
       answers: {
         'threats.getRelevantForScenario': { items: [LOWER_PRODUCT, HIGHER_PRODUCT], belowGateClaimCount: 0 },
         'threats.hasAny': true,
-        'xtm.counterparts': counterparts,
+        'xtm.counterparts': { counterparts, unavailable: [] },
       },
     },
   );

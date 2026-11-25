@@ -1,4 +1,4 @@
-import type { ConnectorOrigin, DrizzleDB, UserOrigin } from '@app/module';
+import type { DrizzleDB, OpenctiThreatVisibility } from '@app/module';
 import { allServiceDefinitions, createServices, PlatformCapability_ManageUsers } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import type { PublicProcedure } from '../../trpc';
@@ -58,7 +58,7 @@ import { complianceAssessmentsRouter } from './compliance-assessments';
 import { usersRouter } from './users';
 
 import { isTenantReachableOnce } from './tenant-edition-utils';
-import { readerMarkings } from './xtm/reader-markings';
+import { readerMarkings, withReaderScope } from './xtm/reader-markings';
 
 const instantiateServices = (db: DrizzleDB) => createServices([...allServiceDefinitions], db);
 
@@ -100,12 +100,10 @@ export const createTenantProcedure = (services: ReturnType<typeof instantiateSer
         threatVisibility,
         readerScopeAuthorization(db, ctx.user, threatVisibility),
       );
-      const markedOrigin: UserOrigin | ConnectorOrigin = scope === undefined
-        ? origin
-        : { ...origin, markings: scope?.markings ?? null, openctiAccess: scope?.access ?? null };
-      return next({ ctx: { ...ctx, origin: markedOrigin, services } });
+      const { origin: markedOrigin, readerAccessIssue } = withReaderScope(origin, scope, threatVisibility);
+      return next({ ctx: { ...ctx, origin: markedOrigin, services, readerAccessIssue, threatVisibility } });
     }
-    return next({ ctx: { ...ctx, services } });
+    return next({ ctx: { ...ctx, services, readerAccessIssue: null, threatVisibility: 'per_member' as OpenctiThreatVisibility } });
   });
 
 export type TenantProcedure = ReturnType<typeof createTenantProcedure>;

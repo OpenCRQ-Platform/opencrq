@@ -23,6 +23,8 @@
   ],
   updateNotScheduled: false,
   rebaseWhen: 'conflicted',
+  // Dependabot alerts are off on the repository, so GitHub's advisories never reach Renovate.
+  osvVulnerabilityAlerts: true,
   // An update adds an entry for the range it raises and leaves every other range of the package on
   // its old resolution, which the backend bundle cannot load for a package it keeps external.
   postUpdateOptions: ['yarnDedupeHighest'],
@@ -62,15 +64,12 @@
     schedule: [
       'on sunday',
     ],
+    // A rebase regenerates the whole lockfile, hence only on conflict. No automerge: the organization
+    // ruleset requires an approving review on main and lets no bot bypass it.
     rebaseWhen: 'conflicted',
-    automerge: true,
     enabled: true,
-    // Off schedule, updateNotScheduled: false would skip the branch before any automerge attempt,
-    // and with auto-merge off on the repository only a Renovate run can merge it. A rebase
-    // regenerates the whole lockfile, hence only on conflict.
-    updateNotScheduled: true,
     // A regenerated lockfile carries no release timestamp, so the age check would stay pending
-    // forever and the automerge never fire. Yarn's npmMinimalAgeGate holds the same 3 days while
+    // forever and the pull request never open. Yarn's npmMinimalAgeGate holds the same 3 days while
     // it resolves.
     minimumReleaseAge: null,
   },

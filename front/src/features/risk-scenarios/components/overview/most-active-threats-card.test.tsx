@@ -12,6 +12,7 @@ vi.mock('../../../../components/shared', () => ({
 
 vi.mock('../../../threats', () => ({
   ActivityGradeBadge: ({ lastObservedAt }: { lastObservedAt: string | null }) => <span>{lastObservedAt === null ? 'Not dated' : 'Dated'}</span>,
+  HiddenThreatsAlert: () => null,
   ThreatTypeBadge: () => null,
 }));
 

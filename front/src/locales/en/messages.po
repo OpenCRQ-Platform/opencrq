@@ -1016,11 +1016,17 @@ msgstr "{name} could not be reached. Try again later."
 msgid "{name} depends on…"
 msgstr "{name} depends on…"
 
+msgid "{name} has no account for your email, so OpenCRQ cannot look this object up there as you. Ask an administrator of {name} to create one."
+msgstr "{name} has no account for your email, so OpenCRQ cannot look this object up there as you. Ask an administrator of {name} to create one."
+
 msgid "{name} import progress"
 msgstr "{name} import progress"
 
 msgid "{name} is not connected"
 msgstr "{name} is not connected"
+
+msgid "{name} is not linked to this platform's XTM One, so OpenCRQ cannot look this object up there as you. Ask an administrator to link it."
+msgstr "{name} is not linked to this platform's XTM One, so OpenCRQ cannot look this object up there as you. Ask an administrator to link it."
 
 msgid "{name} is supported by…"
 msgstr "{name} is supported by…"
@@ -4073,8 +4079,8 @@ msgstr "count"
 msgid "Count"
 msgstr "Count"
 
-msgid "Counted in no band: their CVE has no usable CVSS vector yet."
-msgstr "Counted in no band: their CVE has no usable CVSS vector yet."
+msgid "Counted in no band: their CVE has no usable CVSS vector, either not scored by NVD yet or with no usable NVD record. The list shows which."
+msgstr "Counted in no band: their CVE has no usable CVSS vector, either not scored by NVD yet or with no usable NVD record. The list shows which."
 
 msgid "Countries"
 msgstr "Countries"
@@ -7883,6 +7889,9 @@ msgstr "no"
 msgid "No"
 msgstr "No"
 
+msgid "No access"
+msgstr "No access"
+
 msgid "No access relation is known for {supportingAssetName}."
 msgstr "No access relation is known for {supportingAssetName}."
 
@@ -8561,11 +8570,20 @@ msgstr "No unique finding score recorded over this period."
 msgid "No usable CVSS vector for this CVE yet."
 msgstr "No usable CVSS vector for this CVE yet."
 
+msgid "No usable NVD record"
+msgstr "No usable NVD record"
+
+msgid "No usable NVD record: NVD does not know this CVE or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+msgstr "No usable NVD record: NVD does not know this CVE or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+
 msgid "No users found"
 msgstr "No users found"
 
 msgid "No value on this run"
 msgstr "No value on this run"
+
+msgid "No vector"
+msgstr "No vector"
 
 msgid "No version range has been published for this CVE."
 msgstr "No version range has been published for this CVE."
@@ -8871,6 +8889,9 @@ msgstr "Number of employees"
 msgid "Number of iterations run per simulation. Higher values increase accuracy but slow down computation."
 msgstr "Number of iterations run per simulation. Higher values increase accuracy but slow down computation."
 
+msgid "NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct."
+msgstr "NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct."
+
 msgid "Objective"
 msgstr "Objective"
 
@@ -9152,8 +9173,8 @@ msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's to
 msgid "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 msgstr "OpenCRQ could not create its Live Stream in OpenCTI: the deployment's token lacks the {capability} capability. Grant it to that token's user and restart OpenCRQ, or press Configure to choose a stream."
 
-msgid "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that it is registered with this platform's XTM One, and that your email has an account in both."
-msgstr "OpenCRQ could not read what you are allowed to see in OpenCTI, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to check that OpenCTI is reachable, that it is registered with this platform's XTM One, and that your email has an account in both."
+msgid "OpenCRQ could not read OpenCTI with the connector's access, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once OpenCTI answers. If this lasts, tell an administrator."
+msgstr "OpenCRQ could not read OpenCTI with the connector's access, so it shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once OpenCTI answers. If this lasts, tell an administrator."
 
 msgid "OpenCRQ home"
 msgstr "OpenCRQ home"
@@ -9194,6 +9215,18 @@ msgstr "OpenCTI"
 
 msgid "OpenCTI did not answer, so the filter of the stream in use could not be read."
 msgstr "OpenCTI did not answer, so the filter of the stream in use could not be read."
+
+msgid "OpenCTI did not recognise you, most likely because it has no account for your email, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an OpenCTI administrator to create an account with the same email."
+msgstr "OpenCTI did not recognise you, most likely because it has no account for your email, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an OpenCTI administrator to create an account with the same email."
+
+msgid "OpenCTI does not let you read this threat."
+msgstr "OpenCTI does not let you read this threat."
+
+msgid "OpenCTI is not linked to this platform's XTM One, so OpenCRQ cannot tell what you are allowed to see there. It shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to link OpenCTI to XTM One, or to show every member what the connector reads."
+msgstr "OpenCTI is not linked to this platform's XTM One, so OpenCRQ cannot tell what you are allowed to see there. It shows threats from OpenCTI only when they carry no marking and no sharing restriction. Ask an administrator to link OpenCTI to XTM One, or to show every member what the connector reads."
+
+msgid "OpenCTI or XTM One did not answer, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once the answer does. If this lasts, tell an administrator."
+msgstr "OpenCTI or XTM One did not answer, so OpenCRQ shows threats from OpenCTI only when they carry no marking and no sharing restriction. They come back once the answer does. If this lasts, tell an administrator."
 
 msgid "Opens the evidence behind this threat's score"
 msgstr "Opens the evidence behind this threat's score"
@@ -11673,8 +11706,17 @@ msgstr "Software-as-a-Service application"
 msgid "Solid"
 msgstr "Solid"
 
-msgid "Some threats may be hidden from you."
-msgstr "Some threats may be hidden from you."
+msgid "Some of the XTM Platform could not be read"
+msgstr "Some of the XTM Platform could not be read"
+
+msgid "Some threats are hidden because you have no OpenCTI account."
+msgstr "Some threats are hidden because you have no OpenCTI account."
+
+msgid "Some threats are hidden for now."
+msgstr "Some threats are hidden for now."
+
+msgid "Some threats are hidden until OpenCTI is linked."
+msgstr "Some threats are hidden until OpenCTI is linked."
 
 msgid "Someone is waiting on this run"
 msgstr "Someone is waiting on this run"
@@ -13242,6 +13284,9 @@ msgstr "This filter does not admit everything the connector reads. It leaves out
 msgid "This filter uses conditions this platform does not evaluate, so it cannot say whether the stream carries threat actors. Read the filter and decide."
 msgstr "This filter uses conditions this platform does not evaluate, so it cannot say whether the stream carries threat actors. Read the filter and decide."
 
+msgid "This finding has no score: NVD holds no usable record of its CVE, which it does not know or rejected, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+msgstr "This finding has no score: NVD holds no usable record of its CVE, which it does not know or rejected, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+
 msgid "This finding has not been scored yet. Its score appears once the next recompute has run."
 msgstr "This finding has not been scored yet. Its score appears once the next recompute has run."
 
@@ -13418,6 +13463,15 @@ msgstr "This tenant isn't available."
 
 msgid "this threat"
 msgstr "this threat"
+
+msgid "This threat exists, but OpenCRQ does not show it to you. If you need it, ask an administrator."
+msgstr "This threat exists, but OpenCRQ does not show it to you. If you need it, ask an administrator."
+
+msgid "This threat exists, but your rights in OpenCTI do not allow you to read it, so OpenCRQ does not show it. If you need it, ask an OpenCTI administrator for access."
+msgstr "This threat exists, but your rights in OpenCTI do not allow you to read it, so OpenCRQ does not show it. If you need it, ask an OpenCTI administrator for access."
+
+msgid "This threat is hidden from you"
+msgstr "This threat is hidden from you"
 
 msgid "This threat matches none of your attack outcomes."
 msgstr "This threat matches none of your attack outcomes."
@@ -14515,6 +14569,9 @@ msgstr "Why change the mode of these axes?"
 msgid "Why fixing it is worth nothing"
 msgstr "Why fixing it is worth nothing"
 
+msgid "Why no usable NVD record"
+msgstr "Why no usable NVD record"
+
 msgid "Why pending vector"
 msgstr "Why pending vector"
 
@@ -14695,6 +14752,9 @@ msgstr "You can now open {tenantName}."
 #. js-lingui-explicit-id
 msgid "You can now open the platform administration."
 msgstr "You can now open the platform administration."
+
+msgid "You cannot read this threat."
+msgstr "You cannot read this threat."
 
 msgid "You don't have access to OpenCRQ yet"
 msgstr "You don't have access to OpenCRQ yet"

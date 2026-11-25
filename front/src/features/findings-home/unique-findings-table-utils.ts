@@ -17,6 +17,8 @@ export interface UniqueFindingTableRow {
   worstScore: number | null,
   worstBand: SeverityBand | null,
   pendingVector: boolean,
+  /** An NVD pass read the CVE and found no usable record: the vector the group waits on will not come from NVD. */
+  nvdRecordMissing: boolean,
   affectedAssetCount: number,
   /** Null on a technique group, which no catalogue lists. */
   knownExploited: boolean | null,
@@ -40,6 +42,8 @@ export interface UniqueFindingTableSource {
   worstScore: number | null,
   worstBand: SeverityBand | null,
   pendingVector: boolean,
+  /** An NVD pass read the CVE and found no usable record: the vector the group waits on will not come from NVD. */
+  nvdRecordMissing: boolean,
   affectedAssetCount: number,
   sources: Array<string>,
   /** Null on a CVE the estate does not carry. */
@@ -59,6 +63,7 @@ export const toUniqueFindingTableRow = (group: UniqueFindingTableSource, now: Da
     worstScore: group.worstScore,
     worstBand: group.worstBand,
     pendingVector: group.pendingVector,
+    nvdRecordMissing: group.nvdRecordMissing,
     affectedAssetCount: group.affectedAssetCount,
     knownExploited: group.knownExploited,
     epssPercent: group.epss === null ? null : roundPercentPoints(group.epss, 0),

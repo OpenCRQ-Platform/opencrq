@@ -42,7 +42,7 @@ afterEach(() => cleanup());
 
 const renderEmblems = (counterparts: unknown, connections: unknown = CONNECTED, objectKey: string | null = CVE, sourced?: Partial<Record<'opencti' | 'openaev', XtmCounterpart>>) => renderWithTrpc(
   <XtmPivotEmblems kind="VULNERABILITY" objectKey={objectKey} sourced={sourced} />,
-  { answers: { 'xtm.connections': connections, 'xtm.counterparts': counterparts } },
+  { answers: { 'xtm.connections': connections, 'xtm.counterparts': counterparts === FAILED ? FAILED : { counterparts, unavailable: [] } } },
 );
 
 const openSurface = async () => {
@@ -136,8 +136,50 @@ describe('XtmPivotEmblems (single XTM One emblem, parity with opencti #20153)', 
 
   it('says a lookup that failed could not reach the product, never "not found"', async () => {
     renderEmblems(FAILED, BOTH);
-    const { surface } = await openSurface();
+    const { emblem, surface } = await openSurface();
     expect(within(surface).getByTestId('xtm-section-opencti').getAttribute('data-status')).toBe('unavailable');
+    expect(emblem.getAttribute('aria-label')).toBe('Some of the XTM Platform could not be read');
+  });
+
+  it('says why a connected product cannot be read as the reader, by category and per product, never "not found"', async () => {
+    renderWithTrpc(<XtmPivotEmblems kind="VULNERABILITY" objectKey={CVE} />, {
+      answers: {
+        'xtm.connections': BOTH,
+        'xtm.counterparts': { counterparts: [], unavailable: [] },
+        'xtm.readerAccess': { threats: null, counterparts: { opencti: 'not_linked', openaev: 'no_account' } },
+      },
+    });
+    const { emblem, surface } = await openSurface();
+
+    await waitFor(() => expect(within(surface).getByTestId('xtm-section-opencti').getAttribute('data-status')).toBe('no-access'));
+    expect(within(surface).getByTestId('xtm-section-openaev').getAttribute('data-status')).toBe('no-access');
+    expect(within(surface).getByText(/OpenCTI is not linked to this platform's XTM One/)).toBeTruthy();
+    expect(within(surface).getByText(/OpenAEV has no account for your email.*Ask an administrator of OpenAEV to create one/)).toBeTruthy();
+    expect(emblem.getAttribute('aria-label')).toBe('Some of the XTM Platform could not be read');
+  });
+
+  it('says a lookup that failed for one product is unavailable there, and keeps what the other found', async () => {
+    renderWithTrpc(<XtmPivotEmblems kind="VULNERABILITY" objectKey={CVE} />, {
+      answers: { 'xtm.connections': BOTH, 'xtm.counterparts': { counterparts: [MATCH], unavailable: ['openaev'] } },
+    });
+    const { surface } = await openSurface();
+
+    expect(within(surface).getByTestId('xtm-section-opencti').getAttribute('data-status')).toBe('found');
+    expect(within(surface).getByTestId('xtm-section-openaev').getAttribute('data-status')).toBe('unavailable');
+  });
+
+  it('says an outage of the product is unavailable, as a failed lookup is', async () => {
+    renderWithTrpc(<XtmPivotEmblems kind="VULNERABILITY" objectKey={CVE} />, {
+      answers: {
+        'xtm.connections': BOTH,
+        'xtm.counterparts': { counterparts: [], unavailable: [] },
+        'xtm.readerAccess': { threats: null, counterparts: { opencti: 'unavailable', openaev: null } },
+      },
+    });
+    const { surface } = await openSurface();
+
+    await waitFor(() => expect(within(surface).getByTestId('xtm-section-opencti').getAttribute('data-status')).toBe('unavailable'));
+    expect(within(surface).getByTestId('xtm-section-openaev').getAttribute('data-status')).toBe('not-found');
   });
 
   it('puts XTM One first on an asset, and never a connector link for XTM One', async () => {
@@ -147,7 +189,7 @@ describe('XtmPivotEmblems (single XTM One emblem, parity with opencti #20153)', 
     };
     renderWithTrpc(
       <XtmPivotEmblems kind="ASSET" objectKey="web-01" />,
-      { answers: { 'xtm.connections': [{ product: 'xtmone', connected: true, url: 'https://xtm-one.example' }, ...BOTH], 'xtm.counterparts': [xtmOne] } },
+      { answers: { 'xtm.connections': [{ product: 'xtmone', connected: true, url: 'https://xtm-one.example' }, ...BOTH], 'xtm.counterparts': { counterparts: [xtmOne], unavailable: [] } } },
     );
     const { surface } = await openSurface();
     const sections = within(surface).getAllByRole('region');
@@ -200,11 +242,20 @@ describe('xtmEmblemState', () => {
     expect(xtmEmblemState('opencti', { ...base, hasKey: false, counterparts: undefined }).kind).toBe('not-found');
   });
 
+  it('says a connected product cannot be read as the reader, by category, but only once it is connected', () => {
+    expect(xtmEmblemState('opencti', { ...base, readerIssue: 'not_linked' })).toEqual({ kind: 'no-access', issue: 'not_linked' });
+    expect(xtmEmblemState('opencti', { ...base, readerIssue: 'no_account' })).toEqual({ kind: 'no-access', issue: 'no_account' });
+    expect(xtmEmblemState('opencti', { ...base, readerIssue: 'unavailable' }).kind).toBe('unavailable');
+    expect(xtmEmblemState('opencti', { ...base, connected: false, readerIssue: 'not_linked' }).kind).toBe('not-connected');
+    expect(xtmEmblemState('opencti', { ...base, hasKey: false, readerIssue: 'not_linked' }).kind).toBe('no-access');
+  });
+
   it('keeps the source link of a sourced object and takes the facts the lookup answered', () => {
     const facts = [{ key: 'findings', value: '2' }];
     const state = xtmEmblemState('openaev', { ...base, sourced: SOURCED, counterparts: [{ ...SOURCED, objectUrl: 'https://elsewhere', facts }] });
     expect(state).toEqual({ kind: 'found', counterpart: { ...SOURCED, facts } });
     expect(xtmEmblemState('openaev', { ...base, connected: undefined, sourced: SOURCED }).kind).toBe('found');
+    expect(xtmEmblemState('openaev', { ...base, sourced: SOURCED, readerIssue: 'no_account' }).kind).toBe('found');
   });
 });
 

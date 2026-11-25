@@ -213,6 +213,7 @@ export type { IntegrationSource } from './modules/integration-settings/constants
 export { readCvssMetrics } from './modules/cve/cvss-vector';
 export { CVE_LIST_SORT_KEYS } from './modules/cve/list-sort';
 export type { CveListSortKey } from './modules/cve/list-sort';
+export type { NvdRecordState } from './modules/cve/nvd-record';
 export { CVSS_SEVERITY_LEVELS, getCvssSeverityLevel } from './modules/cve/severity';
 export type { CvssSeverityLevel } from './modules/cve/severity';
 export { explainAssetPosture, POSTURE_POINTS_PER_FINDING } from './modules/finding-score/asset-posture';

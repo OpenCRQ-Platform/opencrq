@@ -13,14 +13,11 @@ export const useThreatCount = (kind: ThreatSourceKind, enabled = true): number |
   return data?.total;
 };
 
-/**
- * The tenant's whole threat count, undefined while it loads, and whether OpenCTI left the reader's scope
- * unresolved, so the counts may lack threats.
- */
-export const useTenantThreats = (): { total: number | undefined, readerScopeUnresolved: boolean } => {
+/** The tenant's whole threat count; undefined while it loads. */
+export const useTenantThreats = (): number | undefined => {
   const trpc = useTRPC();
   const { data } = useQuery(trpc.threats.list.queryOptions({ page: 1, limit: 1, kind: undefined }));
-  return { total: data?.total, readerScopeUnresolved: data?.readerScopeUnresolved ?? false };
+  return data?.total;
 };
 
 /** An asset source's own assets, or the tenant's whole count without a source; undefined while it loads. */

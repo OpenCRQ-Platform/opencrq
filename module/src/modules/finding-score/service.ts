@@ -112,6 +112,8 @@ export interface ScoredFindingPage {
     score: number | null,
     band: SeverityBand | null,
     pendingVector: boolean,
+    /** An NVD pass read the CVE and found no record of it: the vector a pending finding waits on will not come from NVD. */
+    nvdRecordMissing: boolean,
     currentState: EvidenceState,
     stateOrigin: EvidenceHistoryOrigin | null,
     dismissalType: DismissalType | null,
@@ -162,6 +164,8 @@ export interface UniqueFindingPage {
     worstBand: SeverityBand | null,
     /** A CVE group whose members are all unscored, one of them pending a vector. */
     pendingVector: boolean,
+    /** An NVD pass read the CVE and found no record of it: the vector a pending finding waits on will not come from NVD. */
+    nvdRecordMissing: boolean,
     affectedAssetCount: number,
     sources: Array<string>,
     firstSeenAt: Date,
@@ -188,6 +192,8 @@ export interface UniqueCveFinding {
   worstScore: number | null,
   worstBand: SeverityBand | null,
   pendingVector: boolean,
+  /** An NVD pass read the CVE and found no record of it: the vector a pending finding waits on will not come from NVD. */
+  nvdRecordMissing: boolean,
   affectedAssetCount: number,
   sources: Array<string>,
   firstSeenAt: Date | null,
@@ -213,6 +219,8 @@ export interface ThreatCveFinding {
   worstScore: number | null,
   worstBand: SeverityBand | null,
   pendingVector: boolean,
+  /** An NVD pass read the CVE and found no record of it: the vector a pending finding waits on will not come from NVD. */
+  nvdRecordMissing: boolean,
   affectedAssetCount: number,
   sources: Array<string>,
   firstSeenAt: Date | null,
@@ -1846,6 +1854,7 @@ export const findingScoreService = defineService(
         worstScore,
         worstBand: worstScore === null ? null : resolveSeverityBand(worstScore),
         pendingVector: row.pendingVector,
+        nvdRecordMissing: row.nvdRecordMissing,
         affectedAssetCount: row.affectedAssetCount,
         sources: row.sources,
         firstSeenAt: new Date(row.firstSeenAt),
@@ -1888,6 +1897,7 @@ export const findingScoreService = defineService(
       worstScore,
       worstBand: worstScore === null ? null : resolveSeverityBand(worstScore),
       pendingVector: row.pendingVector,
+      nvdRecordMissing: row.nvdRecordMissing,
       affectedAssetCount: row.affectedAssetCount ?? 0,
       sources,
       firstSeenAt: row.firstSeenAt,
@@ -1929,6 +1939,7 @@ export const findingScoreService = defineService(
         worstScore,
         worstBand: worstScore === null ? null : resolveSeverityBand(worstScore),
         pendingVector: presence === 'present' && score === null && (row?.members?.unscoredMember ?? false),
+        nvdRecordMissing: row?.nvdRecordMissing ?? false,
         affectedAssetCount: presence === 'present' ? row?.affectedAssetCount ?? 0 : 0,
         sources: (presence === 'present' ? row?.members?.listedSources : row?.members?.allSources) ?? [],
         firstSeenAt: presence === 'present' ? row?.firstSeenAt ?? null : null,

@@ -37,6 +37,7 @@ const UniqueCveFindingOverviewTab = () => {
         band={finding.band}
         worstScore={finding.worstScore}
         pendingVector={finding.pendingVector}
+        nvdRecordMissing={finding.nvdRecordMissing}
         affectedAssetCount={finding.affectedAssetCount}
         composition={finding.composition}
         aside={(

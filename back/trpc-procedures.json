@@ -12132,6 +12132,23 @@
       "input": null
     },
     {
+      "path": "threats.isHidden",
+      "type": "query",
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
       "path": "threats.list",
       "type": "query",
       "input": {
@@ -12883,6 +12900,11 @@
           "keys"
         ]
       }
+    },
+    {
+      "path": "xtm.readerAccess",
+      "type": "query",
+      "input": null
     },
     {
       "path": "xtmOne.getSettings",
