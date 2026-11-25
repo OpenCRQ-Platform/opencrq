@@ -2,7 +2,7 @@ import type { CompletedRunObservation, SerializedSlot } from '@app/module';
 import { createServices, deferralPolicyFor, jobLogsService, jobsService, SUBSCRIBE_ALL_SENTINEL, workersService } from '@app/module';
 import { uuidv7 } from 'uuidv7';
 import { config, getProcessName } from '../../config';
-import { CHILD_EXIT_DEADLINE_MS } from '../../utils/child-stop-deadline';
+import { JOB_DRAIN_MS } from '../../utils/shutdown-budget';
 import { flushLogCapture } from '../../utils/log-capture';
 import { createLogger } from '../../utils/logger';
 import { dbEngine } from '../db';
@@ -17,8 +17,6 @@ import { createGracefulDrain } from './shutdown';
 const JOB_RUNTIME_ENGINE_KEY = 'job-runtime';
 
 const REAP_INTERVAL_MS = 60_000;
-// Inside the child's exit deadline, with room for the engines' stop after it.
-const GRACEFUL_DRAIN_MS = CHILD_EXIT_DEADLINE_MS - 5_000;
 const HANDLER_SETTLE_GRACE_MS = 60_000;
 
 const handlerRegistry = new HandlerRegistry();
@@ -349,7 +347,7 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
 
   signal.addEventListener('abort', stop, { once: true });
 
-  const drainHandlers = createGracefulDrain({ size: () => unsettledHandlers.size + reservedSlots }, GRACEFUL_DRAIN_MS);
+  const drainHandlers = createGracefulDrain({ size: () => unsettledHandlers.size + reservedSlots }, JOB_DRAIN_MS);
 
   return {
     onEnginesStarted,

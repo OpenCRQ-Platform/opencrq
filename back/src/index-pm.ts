@@ -14,7 +14,7 @@ import type { HealthStatus } from './utils/health-check';
 import { getProcessName, pmConfig } from './config';
 import { collectMetricsSnapshot, stopTelemetry } from './tracing';
 import { onHealthReport } from './utils/health-check';
-import { CHILD_STOP_DEADLINE_MS } from './utils/child-stop-deadline';
+import { CHILD_STOP_DEADLINE_MS } from './utils/shutdown-budget';
 import { createLogger } from './utils/logger';
 import { onRemoteEntitlementGranted, sendRemoteEntitlement } from './features/edition/entitlement-ipc';
 import { onMetricsCollected, sendMetricsCollect } from './utils/metrics-ipc';

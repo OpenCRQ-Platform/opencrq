@@ -12,6 +12,7 @@ import type { ProtectedProcedure, PublicProcedure, router } from '../../trpc';
 import { config } from '../../config';
 import { createContext, protectedProcedure, publicProcedure, scopeSessionCookieToPort, setMaxResponseItems, trpcInstance } from '../../trpc';
 import { createLogger } from '../../utils/logger';
+import { HTTP_CLOSE_GRACE_MS } from '../../utils/shutdown-budget';
 import { dbEngine } from '../db';
 import { registerEngine } from '../engines-manager';
 import { registerClientErrorsRoute } from './client-errors-route';
@@ -39,8 +40,6 @@ const routeDefinitions: Array<ReturnType<typeof router>> = [];
 // The router `/trpc` serves, merged once the engines have started; `null` before, and in a process
 // that serves no HTTP.
 let servedRouter: AnyTRPCRouter | null = null;
-
-const HTTP_CLOSE_GRACE_MS = 5_000;
 
 // Public engine API — the curated verbs consumers may touch, via httpServerEngine.
 const startHttpServerEngine = async () => {
@@ -154,7 +153,7 @@ const startHttpServerEngine = async () => {
     }
   };
 
-  // close() waits for every request in flight, and a stream a browser holds open never ends on its own.
+  // close() waits for every request in flight, so a slow one would hold the stop until the child's exit deadline.
   const stop = async (): Promise<void> => {
     const forceClose = setTimeout(() => server.server.closeAllConnections(), HTTP_CLOSE_GRACE_MS).unref();
     await server.close();

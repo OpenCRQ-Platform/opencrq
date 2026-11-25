@@ -295,6 +295,7 @@ describe('Finding Score Service', () => {
     });
 
     it('should roll back every write when the abort comes at its last check before the commit', async () => {
+      // What this guards is a check inside the transaction right before the commit, wherever the count puts it.
       const assetId = await createAsset('Edge gateway', { exposure: 'internet_facing', criticality: 'very_high' });
       await attachCve(assetId, await insertCve('CVE-2026-0001', { epss: 0.5, kev: true }));
       const storedScores = () => db.select({ id: findingScores.assetEvidenceId }).from(findingScores)
