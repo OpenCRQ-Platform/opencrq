@@ -15,6 +15,7 @@ const source = (overrides: Partial<UniqueTechniqueFindingAssetSource>): UniqueTe
   score: null,
   band: null,
   pendingVector: false,
+  nvdRecordMissing: false,
   assetName: 'ws-fin-014',
   assetDerivedName: null,
   assetCategoryId: 'host',

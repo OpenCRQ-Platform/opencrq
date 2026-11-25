@@ -7,7 +7,7 @@ import type { ColumnDefWithOptionsHeader } from '../../../components/ui/data-tab
 import type { UniqueFindingTableRow } from '../unique-findings-table-utils';
 import { EmptyValue } from '../../../components/ui/empty-value';
 import { InfoTooltip, SourceStack } from '../../../components/shared';
-import { PendingVectorMark, ScoreGaugeMark, severityBandFigureColor, severityBandLabel } from '../../finding-score';
+import { ScoreGaugeMark, severityBandFigureColor, severityBandLabel, UnscoredMark } from '../../finding-score';
 import { getExpectationTypeLabel } from '../../../utils';
 import { formatNumber } from '../../../utils/format-number';
 
@@ -73,9 +73,9 @@ export const uniqueFindingsTableColumns = <T extends UniqueFindingTableRow = Uni
     header: (): ReactElement => <ScoreHeader />,
     size: 160,
     cell: ({ row }): ReactElement => {
-      const { score, band, pendingVector } = row.original;
+      const { score, band, pendingVector, nvdRecordMissing } = row.original;
       if (pendingVector) {
-        return <PendingVectorMark />;
+        return <UnscoredMark nvdRecordMissing={nvdRecordMissing} />;
       }
       if (score === null || band === null) {
         return <EmptyValue />;

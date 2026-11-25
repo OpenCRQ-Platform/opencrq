@@ -4073,8 +4073,8 @@ msgstr "count"
 msgid "Count"
 msgstr "Count"
 
-msgid "Counted in no band: their CVE has no usable CVSS vector yet."
-msgstr "Counted in no band: their CVE has no usable CVSS vector yet."
+msgid "Counted in no band: their CVE has no usable CVSS vector, either not scored by NVD yet or with no usable NVD record. The list shows which."
+msgstr "Counted in no band: their CVE has no usable CVSS vector, either not scored by NVD yet or with no usable NVD record. The list shows which."
 
 msgid "Countries"
 msgstr "Countries"
@@ -8561,11 +8561,20 @@ msgstr "No unique finding score recorded over this period."
 msgid "No usable CVSS vector for this CVE yet."
 msgstr "No usable CVSS vector for this CVE yet."
 
+msgid "No usable NVD record"
+msgstr "No usable NVD record"
+
+msgid "No usable NVD record: NVD does not know this CVE or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+msgstr "No usable NVD record: NVD does not know this CVE or rejected it, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+
 msgid "No users found"
 msgstr "No users found"
 
 msgid "No value on this run"
 msgstr "No value on this run"
+
+msgid "No vector"
+msgstr "No vector"
 
 msgid "No version range has been published for this CVE."
 msgstr "No version range has been published for this CVE."
@@ -8870,6 +8879,9 @@ msgstr "Number of employees"
 
 msgid "Number of iterations run per simulation. Higher values increase accuracy but slow down computation."
 msgstr "Number of iterations run per simulation. Higher values increase accuracy but slow down computation."
+
+msgid "NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct."
+msgstr "NVD has no record of this CVE, or rejected it, so NVD will not score it. Check that the CVE id is correct."
 
 msgid "Objective"
 msgstr "Objective"
@@ -13242,6 +13254,9 @@ msgstr "This filter does not admit everything the connector reads. It leaves out
 msgid "This filter uses conditions this platform does not evaluate, so it cannot say whether the stream carries threat actors. Read the filter and decide."
 msgstr "This filter uses conditions this platform does not evaluate, so it cannot say whether the stream carries threat actors. Read the filter and decide."
 
+msgid "This finding has no score: NVD holds no usable record of its CVE, which it does not know or rejected, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+msgstr "This finding has no score: NVD holds no usable record of its CVE, which it does not know or rejected, so no CVSS vector comes from NVD. Check that the CVE id is correct."
+
 msgid "This finding has not been scored yet. Its score appears once the next recompute has run."
 msgstr "This finding has not been scored yet. Its score appears once the next recompute has run."
 
@@ -14514,6 +14529,9 @@ msgstr "Why change the mode of these axes?"
 
 msgid "Why fixing it is worth nothing"
 msgstr "Why fixing it is worth nothing"
+
+msgid "Why no usable NVD record"
+msgstr "Why no usable NVD record"
 
 msgid "Why pending vector"
 msgstr "Why pending vector"

@@ -169,7 +169,7 @@ export const FindingsKpiPanel: FunctionComponent<FindingsKpiPanelProps> = ({ cou
             tone="neutral"
             figure={formatPanelCount(counts.pendingVector, locale)}
             subtitle={null}
-            tooltip={<Trans>Counted in no band: their CVE has no usable CVSS vector yet.</Trans>}
+            tooltip={<Trans>Counted in no band: their CVE has no usable CVSS vector, either not scored by NVD yet or with no usable NVD record. The list shows which.</Trans>}
           />
         )}
       </PanelGrid>
