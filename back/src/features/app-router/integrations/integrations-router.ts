@@ -3,10 +3,12 @@ import { TRPCError } from '@trpc/server';
 import { createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import type { TenantProcedure } from '../app-router-router';
+import type { ProductConnection, ReaderProduct } from '../xtm/xtm-providers';
 import { isOriginAuthorizedForItsTenant } from '../tenant-access-utils';
 import { config } from '../../../config';
 import { router } from '../../../trpc';
 import { defaultThreatsRunState, resolveConnectorConfigurations } from '../connectors/connector-configuration';
+import { publicProductUrls } from '../xtm/public-product-urls';
 import { assertOneServiceAccountChoice, NewServiceAccountSchema } from './new-service-account-input';
 
 const SourceSchema = z.enum(INTEGRATION_SOURCES);
@@ -21,6 +23,9 @@ const IntegrationSettingsSchema = createSelectSchema(integrationSettings, {
 // stay exhaustive over the real `integration_settings.source` column.
 const CONNECTOR_STATUS_SOURCES = [...INTEGRATION_SOURCES, 'opencti', 'default_threats'] as const;
 const ConnectorStatusSourceSchema = z.enum(CONNECTOR_STATUS_SOURCES);
+
+const browserUrl = async (product: ReaderProduct, connection: ProductConnection | undefined): Promise<string | null> =>
+  connection ? await publicProductUrls.resolve(product, connection) : null;
 
 export const integrationsRouter = (procedure: TenantProcedure) => router({
   getSettings: procedure
@@ -46,13 +51,25 @@ export const integrationsRouter = (procedure: TenantProcedure) => router({
       const settings = tenantId ? await scoped.integrationSettings.getAllIntegrationSettings() : [];
       const openctiSettings = tenantId ? await scoped.openctiConnector.getSettings(tenantId) : null;
       const defaultThreats = tenantId ? await scoped.defaultThreats.getSettings(tenantId) : null;
-      return resolveConnectorConfigurations(
-        config().connectors,
+      const credentials = config().connectors;
+      const statuses = resolveConnectorConfigurations(
+        credentials,
         tenantId,
         settings,
         openctiSettings,
         defaultThreats === null ? null : defaultThreatsRunState(defaultThreats),
       );
+      // `url` is where a browser opens the product (the switcher, links to its objects), which the
+      // connection's own URL, often an address inside the cluster, may not be.
+      const [openctiUrl, openaevUrl] = await Promise.all([
+        browserUrl('opencti', tenantId ? credentials?.opencti?.[tenantId] : undefined),
+        browserUrl('openaev', tenantId ? credentials?.openaev?.[tenantId] : undefined),
+      ]);
+      return {
+        ...statuses,
+        opencti: { ...statuses.opencti, url: openctiUrl ?? statuses.opencti.url },
+        openaev: { ...statuses.openaev, url: openaevUrl ?? statuses.openaev.url },
+      };
     }),
 
   configure: procedure
