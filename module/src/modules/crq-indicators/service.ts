@@ -1109,7 +1109,7 @@ const runAttackRunEngine = async (
     throw new InputsNotReadyError('Cannot run the attack run engine: the attacker mixture of this outcome is not computed yet');
   }
   if (outcomeTechniques.mixtureGroups.length === 0) {
-    throw new NonRetryableError('Cannot run the attack run engine: no admitted actor uses a technique this outcome can be described with');
+    throw new NonRetryableError('Cannot run the attack run engine: no actor was admitted, or none uses a technique this outcome can be described with');
   }
   const settings = await deps.crqIndicatorSettings.getCrqIndicatorSettings();
 
