@@ -28,6 +28,7 @@ import { XTM_ONE_SESSION_ID } from './xtm-one-auth';
 import { buildXtmOneHeaders } from './xtm-one-headers';
 import { getXtmOneSettings } from './xtm-one-config';
 import { buildJwks, ensureSigningKey } from './xtm-one-keys';
+import { ASSISTANT_INTENT } from './xtm-one-registration';
 
 const { logTrace, logFromError } = createLogger({ feature: 'xtm-one' });
 
@@ -218,7 +219,7 @@ export const registerXtmOneRoutes = (server: FastifyInstance, db: DrizzleDB): vo
     }
     try {
       const response = await fetch(
-        `${ctx.settings.url}/api/v1/intents/catalog?vertical=crq&intent=${encodeURIComponent('global.assistant')}`,
+        `${ctx.settings.url}/api/v1/intents/catalog?vertical=crq&intent=${encodeURIComponent(ASSISTANT_INTENT)}`,
         { headers: ctx.headers, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) },
       );
       if (!response.ok) {

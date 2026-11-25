@@ -10,7 +10,7 @@ const ca = await vi.hoisted(async () => {
 });
 vi.mock('../edition/xtm-ca', () => ({ XTM_CA_PEM: ca.certificatePem }));
 
-const { buildRegistrationBody, buildRegistrationHealth, DECLARED_INTENTS, MAX_HEALTH_JOBS, procedureManifestPayload, readRegistrationEntitlement, registrationResultSchema } = await import('./xtm-one-registration');
+const { ASSISTANT_INTENT, buildRegistrationBody, buildRegistrationHealth, MAX_HEALTH_JOBS, procedureManifestPayload, readRegistrationEntitlement, registrationResultSchema } = await import('./xtm-one-registration');
 const { platformIdentityHeaders } = await import('./xtm-one-headers');
 
 const SETTINGS: XtmOneSettings = {
@@ -42,7 +42,7 @@ describe('XTM One registration payload', () => {
       platform_title: 'OpenCRQ',
       platform_id: 'instance-1',
       business_vertical: 'crq',
-      intents: DECLARED_INTENTS,
+      intents: [{ name: ASSISTANT_INTENT, description: 'General-purpose assistant' }],
     });
     // The platform carries no license of its own: XTM One resolves the
     // contract from the platform id alone.
