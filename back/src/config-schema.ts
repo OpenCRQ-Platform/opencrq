@@ -94,6 +94,14 @@ const pyroscopeFields = z.strictObject({
   server_address: z.string().min(1),
 });
 
+// A few minutes: sizes and row counts move slowly, and every reading runs the size functions on
+// every table of the schema.
+const TABLE_STATISTICS_INTERVAL_MS = 300_000;
+
+const tableStatisticsFields = z.strictObject({
+  interval_ms: z.coerce.number().int().min(10_000).max(MAX_TIMER_DELAY_MS).default(TABLE_STATISTICS_INTERVAL_MS),
+});
+
 const prometheusFields = z.strictObject({
   // 14269 is OpenCTI's documented default for the same endpoint
   port: z.coerce.number().int().min(1).max(65535).default(14269),
@@ -143,6 +151,12 @@ export const featureConfigs = {
             error: 'collect_timeout_ms must be strictly below round_deadline_ms',
             path: ['collect_timeout_ms'],
           }),
+      ]).default({ enabled: false }),
+      // Off by default: the row counts tell an unauthenticated reader of the scrape endpoint how
+      // large the estate an instance holds is.
+      table_statistics: z.discriminatedUnion('enabled', [
+        switchedOff(tableStatisticsFields),
+        tableStatisticsFields.extend({ enabled: z.literal(true) }),
       ]).default({ enabled: false }),
       pyroscope: z.discriminatedUnion('enabled', [
         switchedOff(pyroscopeFields),

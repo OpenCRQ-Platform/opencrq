@@ -49,6 +49,11 @@ const CONTRACTED_EXPOSED_NAMES = [
   'db_client_connection_use_time',
   'db_client_connection_timeouts_total',
   'opencrq_db_client_connection_reconnection_attempts_total',
+  'opencrq_db_table_size',
+  'opencrq_db_table_rows',
+  'opencrq_db_table_updates_total',
+  'opencrq_db_table_vacuums_total',
+  'opencrq_db_size',
   'db_client_operation_duration',
   'opencrq_trpc_server_duration',
   'opencrq_trpc_server_calls_total',
@@ -84,6 +89,7 @@ const serializeContractedDocument = async () => {
   metrics.setGlobalMeterProvider(provider);
   const { recordCollectionOutcome, registerProcessSupervisionMetrics } = await import('./pm-metrics');
   const { registerDbPoolMetrics, instrumentPoolAcquisition, recordReconnectionAttempt } = await import('../engines/db/db-metrics');
+  const { registerDbTableMetrics } = await import('../engines/db/db-table-metrics');
 
   // Resolved through the entry point tracing.ts uses, with the same configuration.
   const instrumentations = getNodeAutoInstrumentations({
@@ -135,6 +141,12 @@ const serializeContractedDocument = async () => {
   const typedTimeoutPool = timeoutPool as unknown as Parameters<typeof registerDbPoolMetrics>[0];
   instrumentPoolAcquisition(typedTimeoutPool);
   await typedTimeoutPool.connect().catch(() => {});
+
+  // The reading the worker's timer would have stored, so the table families serialize without a database.
+  registerDbTableMetrics(() => ({
+    databaseBytes: 1_000_000,
+    tables: [{ table: 'assets', heapBytes: 8192, indexesBytes: 16384, toastBytes: 0, liveRows: 10, deadRows: 2, hotUpdates: 30, updates: 40, autovacuums: 3, vacuums: 1 }],
+  }));
 
   // `db.client.operation.duration` is adopted from `instrumentation-pg`, which requires a real
   // database connection to produce — simulate its own recording call instead, proving the name

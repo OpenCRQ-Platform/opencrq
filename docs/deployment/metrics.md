@@ -35,7 +35,9 @@ Derive no name by applying the sanitisation rules above by hand: always confirm 
 
 The scrape endpoint carries no authentication by design — it is protected by where it is reachable from, never by a credential. Never publish it outside the container or pod network; the bind address (`TELEMETRY__OBSERVABILITY__PROMETHEUS__HOST`) is the control, and **it defaults to `0.0.0.0`**, so a deployment that enables this transport without setting it listens on every interface of its container. The image declares no metric port, so nothing is exposed unless a deployment explicitly enables and routes to this transport.
 
-An unauthenticated reader of the endpoint learns: the platform version, the process role names a deployment runs and how many of each, the database server's address, port and name (the values of `postgres.host`, `postgres.port` and `postgres.database`, which appear in the connection-pool identifier and on the query-duration histogram), Postgres `SQLSTATE` codes observed on queries, and the kinds of database operation the application issues (`SELECT`, `INSERT`, ...). Database **table names are not exposed** — the query-duration histogram carries an operation kind and, bounded, an error code, never the SQL text or the tables it touches.
+An unauthenticated reader of the endpoint learns: the platform version, the process role names a deployment runs and how many of each, the database server's address, port and name (the values of `postgres.host`, `postgres.port` and `postgres.database`, which appear in the connection-pool identifier and on the query-duration histogram), Postgres `SQLSTATE` codes observed on queries, and the kinds of database operation the application issues (`SELECT`, `INSERT`, ...). Database **table names are not exposed** by default — the query-duration histogram carries an operation kind and, bounded, an error code, never the SQL text or the tables it touches.
+
+[Database tables](#database-tables-worker-process-opt-in), off by default, change that once `TELEMETRY__OBSERVABILITY__TABLE_STATISTICS__ENABLED` is set: the reader then also learns every table name of the application schema, each table's size on disk and estimated row count, how often its rows are updated and vacuumed, and the size of the whole database. The table names are public in OpenCRQ's source; the row counts are not, since they reveal how large the estate an instance holds is (assets, findings, scenarios). Enable them only where the endpoint is reachable by your own monitoring alone.
 
 ## Composition across processes
 
@@ -48,7 +50,7 @@ Most per-process families are additive, and compose across processes by **sum**:
 
 When a panel spans more than one container, keep `instance` in the grouping (`sum by (instance) (...)`) unless a fleet-wide total is genuinely what you want — a bare `sum(...)` silently aggregates every scraped container together.
 
-A future family describing state that is *shared* between the processes of a container, rather than owned independently by each, would instead aggregate by `max` at the consumer, never pre-reduced at the point of recording; no such family ships today.
+The [database table](#database-tables-worker-process-opt-in) families are the exception: they describe the database, which every container of a deployment shares, so each container reports the same values. Only one process per container reports them, so no aggregation is needed within a container, but across containers aggregate by `max` (`max without (instance, process_name) (...)`), never `sum`, which would count the database once per replica.
 
 ## Database facts
 
@@ -149,6 +151,33 @@ A query that produced no error carries no `error_type` attribute at all — abse
 | Instrument name (push) | Exposed name (scrape) | Type | Unit | Attributes | Description |
 |:--|:--|:--|:--|:--|:--|
 | `opencrq.db.client.connection.reconnection_attempts` | `opencrq_db_client_connection_reconnection_attempts_total` | Counter | `{attempt}` | `db_client_connection_pool_name` | The number of attempts made to re-establish the database connection after the pool reported an error. |
+
+### Database tables (worker process, opt-in)
+
+Authored in `back/src/engines/db/db-table-metrics.ts`, and served only when `TELEMETRY__OBSERVABILITY__TABLE_STATISTICS__ENABLED` is `true` (see [Configuration](configuration.md#database-table-statistics) and the disclosure under [Protection](#protection-network-placement-not-authentication)). Without it, none of these families exists on either transport.
+
+The figures are PostgreSQL's own: `pg_stat_user_tables` and the size functions, for every table of the application schema. One process per container reads them, the one running the job runtime (`worker` in `split`, `main` in `monolith`), on a timer of `TELEMETRY__OBSERVABILITY__TABLE_STATISTICS__INTERVAL_MS` (five minutes by default), and the instruments report the last reading. **A scrape never runs a query**: a value is at most one interval old, and it moves in steps of one interval. The reading runs in a read-only transaction with a two-second lock timeout, so a migration or a `VACUUM FULL` holding a table exclusively makes that reading fail, logged as `Reading the database table statistics failed`, rather than wait. The first reading is taken once the process has started, so the families are absent until then.
+
+| Instrument name (push) | Exposed name (scrape) | Type | Unit | Attributes | Description |
+|:--|:--|:--|:--|:--|:--|
+| `opencrq.db.table.size` | `opencrq_db_table_size` | Gauge | `By` | `db_table`, `part`: `heap` (the table with its free-space and visibility maps), `indexes`, `toast` (its TOAST table with that table's index) | The disk space a table of the application schema uses, by part. The three parts add up to `pg_total_relation_size`. |
+| `opencrq.db.table.rows` | `opencrq_db_table_rows` | Gauge | `{row}` | `db_table`, `state`: `live` or `dead` | The estimated number of live and dead rows of a table (`n_live_tup`, `n_dead_tup`). |
+| `opencrq.db.table.updates` | `opencrq_db_table_updates_total` | Counter | `{row}` | `db_table`, `in_place`: `true` for an update that stayed in place (HOT, `n_tup_hot_upd`), `false` for the others (`n_tup_upd - n_tup_hot_upd`) | The rows of a table updated since the statistics were last reset. |
+| `opencrq.db.table.vacuums` | `opencrq_db_table_vacuums_total` | Counter | `{vacuum}` | `db_table`, `kind`: `auto` (`autovacuum_count`) or `manual` (`vacuum_count`) | The vacuums of a table since the statistics were last reset. |
+| `opencrq.db.size` | `opencrq_db_size` | Gauge | `By` | none | The disk space the database uses (`pg_database_size`). |
+
+The share of a table's updates that stayed in place over a window, and the growth of its size:
+
+```promql
+  sum by (db_table) (rate(opencrq_db_table_updates_total{in_place="true"}[1h]))
+/ sum by (db_table) (rate(opencrq_db_table_updates_total[1h]))
+
+deriv((max without (instance, process_name) (opencrq_db_table_size))[1d:5m])
+```
+
+The counters are reported as the cumulative values PostgreSQL keeps. Its statistics restart from zero after a crash or a `pg_stat_reset()`, which reaches Prometheus as an ordinary counter reset: `rate()` and `increase()` handle it, and no window shows a negative rate.
+
+`db_table` is bounded by the schema, about 180 tables, and each table carries nine series, so the families add under 2,000 series to the container that reads them. `opencrq.db.table.size`, three series per table, is the one that would first reach the SDK's limit of 2,000 series per instrument, at about 660 tables. Every table is reported, not only the largest: a cut-off would make series appear and disappear with the data. A table a migration drops keeps its last values until the process restarts, which a deployment that migrates does anyway: the OpenTelemetry SDK keeps serving every series an asynchronous instrument has once observed. For the same reason a reading that fails leaves the previous values in place rather than a gap; the error log is the signal.
 
 ### Change-driven recompute (job-running processes)
 

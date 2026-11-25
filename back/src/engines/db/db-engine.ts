@@ -13,6 +13,7 @@ import { registerEngine } from '../engines-manager';
 import { imageVersion } from '../../utils/platform-version';
 import { probeConnection } from './db-connection-probe';
 import { computePoolName, instrumentPoolAcquisition, recordReconnectionAttempt, registerDbPoolMetrics } from './db-metrics';
+import { readDatabaseStatistics, registerDbTableMetrics } from './db-table-metrics';
 import { findSeedSkipReason, resetDatabaseIfVersionChanged, restorePreservedMetadata, storeCurrentVersion, storeSeededBoot } from './db-reset';
 import { ensureDefaultPlatformRolesAndGroups } from './default-platform-roles-and-groups';
 import { ensureInitialTenant } from './initial-tenant';
@@ -220,6 +221,8 @@ export const dbEngine = registerEngine({
     controlDb: controlDB,
     pool,
     checkConnection: () => reconnecting.size === 0,
+    readTableStatistics: () => readDatabaseStatistics(pool),
+    registerTableMetrics: registerDbTableMetrics,
   },
   registrationApi: {
     // Every statement the shared instance issues, transactions included, reaches the observer.
