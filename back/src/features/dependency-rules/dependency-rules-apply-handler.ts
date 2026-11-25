@@ -16,5 +16,12 @@ export const dependencyRulesApplyHandler: JobHandler = async (ctx) => {
   const services = createServices([...allServiceDefinitions], ctx.runDb)
     .withOrigin({ type: 'job', tenantId: ctx.tenantId, jobKind: ctx.kind, interactive: ctx.interactive });
   const { rules, inserted, updated, deleted } = await services.assetDependencies.applyDependencyRules();
+  // The links the pass wrote, so the run never reads "0 processed" over a pass that changed links.
+  const changed = inserted + updated + deleted;
+  await ctx.updateProgress({
+    processedTotal: changed,
+    expectedTotal: changed,
+    message: `${rules} enabled rules: ${inserted} links added, ${updated} rewritten, ${deleted} removed`,
+  });
   logTrace('Dependency rules applied', { tenantId: ctx.tenantId, rules, inserted, updated, deleted });
 };
