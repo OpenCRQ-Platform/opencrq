@@ -150,7 +150,7 @@ The job runtime claims and executes background work: connector syncs, score proj
 
 ## Events (live refresh)
 
-A write to a tenant's data rings a doorbell that tells every connected client of that tenant to refetch. Bursts of writes are folded into one ring per window.
+A write to a tenant's data rings a doorbell that tells every connected client of that tenant which of its queries to refetch, or all of them when the change cannot be traced to some. Bursts of writes are folded into one ring per window.
 
 | Variable | Required | Default Value | Architectural/Functional Impact |
 |:---------|:--------:|:--------------|:--------------------------------|
