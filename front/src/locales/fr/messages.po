@@ -13071,8 +13071,8 @@ msgstr "La tolérance s'applique à ce scénario pris isolément, jamais à la s
 msgid "The tolerance needs both values. Leave without saving it?"
 msgstr "La tolérance nécessite les deux valeurs. Quitter sans l'enregistrer ?"
 
-msgid "The total carries no band. Adding each scenario's p10 and p90 would assume every scenario has its extreme year at once, which is a stress bound, not an interval on the total. Each scenario's own band is on its page."
-msgstr "Le total n'a pas de bande. Additionner le p10 et le p90 de chaque scénario supposerait que tous les scénarios connaissent leur année extrême en même temps : c'est une borne de stress, pas un intervalle sur le total. La bande de chaque scénario figure sur sa page."
+msgid "The total carries no band. Adding each scenario's p10 and p90 would treat the scenarios as if they moved together, which overstates the spread of the total. Each scenario's own band is on its page."
+msgstr "Le total n'a pas de bande. Additionner le p10 et le p90 de chaque scénario reviendrait à traiter les scénarios comme s'ils évoluaient ensemble, ce qui surestime l'étalement du total. La bande de chaque scénario figure sur sa page."
 
 msgid "The two factors multiply, they never add, so neither can make up for the other. The result is rounded to the nearest whole number."
 msgstr "Les deux facteurs se multiplient, ils ne s'additionnent jamais : aucun ne peut racheter la faiblesse de l'autre. Le résultat est arrondi à l'entier le plus proche."

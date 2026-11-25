@@ -350,8 +350,8 @@ export interface ExposureFlowAggregate {
    */
   unmappedScenarios: Array<ExposureFlowScenarioRef>,
   /**
-   * No percentile of the total: summing per-scenario p10s and p90s assumes every scenario has its
-   * extreme year at once, which is a stress bound and not a portfolio figure.
+   * No percentile of the total: summing per-scenario p10s and p90s would treat the scenarios as if
+   * they moved together, which overstates the spread of the total.
    */
   totals: { aleMean: number | null },
 }

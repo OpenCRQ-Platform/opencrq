@@ -51,8 +51,8 @@ export interface ExposureFlowData {
    */
   hasError: boolean,
   /**
-   * The sum of the scenarios' means, with no band: summing per-scenario p10s and p90s assumes every
-   * scenario has its extreme year at once, a stress bound presented as a portfolio figure.
+   * The sum of the scenarios' means, with no band: summing per-scenario p10s and p90s would treat
+   * the scenarios as if they moved together, which overstates the spread of the total.
    */
   totals: { aleMean: number | null },
 }
