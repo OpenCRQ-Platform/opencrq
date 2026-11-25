@@ -419,8 +419,8 @@ describe('openctiEnvBlock', () => {
     ]);
   });
 
-  it('points to the OpenCTI section of the configuration documentation', () => {
-    expect(OPENCTI_DOCUMENTATION_URL.endsWith('configuration.md#opencti-live-stream-import-of-stix-bundles')).toBe(true);
+  it('points to the section of the OpenCTI connector page that lists its variables', () => {
+    expect(OPENCTI_DOCUMENTATION_URL).toBe('https://filigran.io/docs/opencrq/use/sources/opencti/#give-opencrq-the-url-and-the-token');
   });
 });
 
