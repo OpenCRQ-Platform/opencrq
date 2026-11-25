@@ -6,7 +6,7 @@ import { errorCategory, logCategory } from '../../../utils/error-category';
 import { createLogger } from '../../../utils/logger';
 import { ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
 import { issueOfTokenFailure } from './reader-access-issue';
-import { isRecord } from './xtm-counterpart-utils';
+import { isRecord, withinBudget } from './xtm-counterpart-utils';
 
 const { logWarn } = createLogger({ feature: 'reader-markings' });
 
@@ -23,10 +23,17 @@ const { logWarn } = createLogger({ feature: 'reader-markings' });
  * unmarked, unrestricted mirrored objects (fail closed means seeing less, never nothing, as OpenAEV
  * ADR-009), and the issue says which category of failure it was.
  * `undefined` when the tenant has no OpenCTI connection: there is no OpenCTI to ask and nothing to
- * enforce, so nothing is narrowed. A lookup is shared per tenant and user from the moment it starts,
- * and its answer kept a short while after, so a page's burst of reads asks OpenCTI once.
+ * enforce, so nothing is narrowed.
+ *
+ * Every tenant request reads it, so it is never waited for once known: a reader's last answer is
+ * served at once and, past a minute, asked again in the background, so a right changed in OpenCTI
+ * applies from the request after that refresh completes. Only a reader with no answer, or none read
+ * for six hours, waits, and at most five seconds, after which it is answered fail closed while the
+ * lookup goes on.
  */
 
+const READER_SCOPE_KEPT_MS = 6 * 60 * 60_000;
+const READER_SCOPE_FIRST_WAIT_MS = 5_000;
 const READER_MARKINGS_TIMEOUT_MS = 5_000;
 const MAX_CACHED_READERS = 5_000;
 const BYPASS_CAPABILITY = 'BYPASS';
@@ -187,7 +194,36 @@ const lookUpReaderScope = async (
   return { scope: answer.scope };
 };
 
-interface CachedScope { scope: Promise<ReaderScopeAnswer>, expiresAt: number }
+/**
+ * A reader's last answer, and the last scope read for them, which an `unavailable` refresh keeps.
+ * `answer` is what a read gets: settled, except while the first lookup runs and before its wait ends.
+ */
+interface ScopeEntry {
+  answer: Promise<ReaderScopeAnswer>,
+  kept: ReaderScope | null,
+  freshUntil: number,
+  keptUntil: number,
+  refreshStartedAt: number,
+}
+
+interface ReaderScopeTiming {
+  /** How long an answer is served without asking OpenCTI again. */
+  freshMs: number,
+  /** How long an answer is served at all. */
+  keptMs: number,
+  /** How long the first read of a reader waits for OpenCTI before it is answered fail closed. */
+  firstWaitMs: number,
+  capacity: number,
+}
+
+const DEFAULT_TIMING: ReaderScopeTiming = {
+  freshMs: READER_SCOPE_TTL_MS,
+  keptMs: READER_SCOPE_KEPT_MS,
+  firstWaitMs: READER_SCOPE_FIRST_WAIT_MS,
+  capacity: MAX_CACHED_READERS,
+};
+
+const UNAVAILABLE: ReaderScopeAnswer = { issue: 'unavailable' };
 
 export interface ReaderMarkingsResolver {
   resolve: (
@@ -203,31 +239,66 @@ export interface ReaderMarkingsResolver {
 export const createReaderMarkingsResolver = (
   fetchImpl: FetchLike = fetch,
   now: () => number = Date.now,
-  ttlMs: number = READER_SCOPE_TTL_MS,
+  timing: Partial<ReaderScopeTiming> = {},
 ): ReaderMarkingsResolver => {
-  const cache = new Map<string, CachedScope>();
+  const { freshMs, keptMs, firstWaitMs, capacity } = { ...DEFAULT_TIMING, ...timing };
+  const cache = new Map<string, ScopeEntry>();
+
+  const settle = (key: string, entry: ScopeEntry, answer: ReaderScopeAnswer) => {
+    if (cache.get(key) !== entry) {
+      return;
+    }
+    const at = now();
+    entry.freshUntil = at + freshMs;
+    // An outage keeps the scope last read until it expires, and never extends it; a refusal is an
+    // answer about the reader and replaces it.
+    if ('issue' in answer && answer.issue === 'unavailable' && entry.kept !== null) {
+      return;
+    }
+    entry.kept = 'scope' in answer ? answer.scope : null;
+    entry.answer = Promise.resolve(answer);
+    entry.keptUntil = at + keptMs;
+    // Re-inserted, so that eviction drops the reader whose answer is the oldest.
+    cache.delete(key);
+    cache.set(key, entry);
+  };
+
+  const lookUp = (key: string, entry: ScopeEntry, look: () => Promise<ReaderScopeAnswer>) => {
+    entry.refreshStartedAt = now();
+    const lookup = look();
+    void lookup.then((answer) => settle(key, entry, answer));
+    return lookup;
+  };
+
   return {
-    resolve: async (tenantId, userId, connection, threatVisibility, authorization) => {
+    resolve: (tenantId, userId, connection, threatVisibility, authorization) => {
       if (!connection?.url) {
-        return undefined;
+        return Promise.resolve(undefined);
       }
+      const look = () => lookUpReaderScope(tenantId, userId, connection, authorization, fetchImpl);
       // A scope read under the other visibility was asked with another bearer.
       const key = `${tenantId}:${userId}:${threatVisibility}`;
+      const at = now();
       const cached = cache.get(key);
-      if (cached && cached.expiresAt > now()) {
-        return cached.scope;
+      if (cached && cached.keptUntil > at) {
+        // A lookup that never settles stops counting as under way after a fresh window.
+        const refreshing = at - cached.refreshStartedAt < freshMs;
+        if (cached.freshUntil <= at && !refreshing) {
+          lookUp(key, cached, look);
+        }
+        return cached.answer;
       }
-      // The window restarts at the answer; it is set at the start too, so a lookup that never settles is retried.
-      const entry: CachedScope = { scope: lookUpReaderScope(tenantId, userId, connection, authorization, fetchImpl), expiresAt: now() + ttlMs };
-      const restartWindow = () => {
-        entry.expiresAt = now() + ttlMs;
-      };
-      void entry.scope.then(restartWindow, restartWindow);
-      if (cache.size >= MAX_CACHED_READERS) {
-        cache.clear();
+      const entry: ScopeEntry = { answer: Promise.resolve(UNAVAILABLE), kept: null, freshUntil: at + freshMs, keptUntil: at + keptMs, refreshStartedAt: at };
+      cache.delete(key);
+      if (cache.size >= capacity) {
+        const oldest = cache.keys().next().value;
+        if (oldest !== undefined) {
+          cache.delete(oldest);
+        }
       }
       cache.set(key, entry);
-      return entry.scope;
+      entry.answer = withinBudget(lookUp(key, entry, look), firstWaitMs).then((answer) => answer ?? UNAVAILABLE);
+      return entry.answer;
     },
     clear: () => cache.clear(),
   };
