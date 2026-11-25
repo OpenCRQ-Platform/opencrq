@@ -1,4 +1,5 @@
 import type { DrizzleDB, OpenctiThreatVisibility } from '@app/module';
+import { OPENCTI_THREAT_VISIBILITIES, withoutReaderScope } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { AuthUser } from '../../../trpc';
@@ -11,8 +12,10 @@ import { router } from '../../../trpc';
 import { authenticateXtmOneJwt } from '../../xtm-one/xtm-one-auth';
 import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
 import { buildXtmOneHeaders } from '../../xtm-one/xtm-one-headers';
-import { readerTokenExchange, ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
+import { readerTokenExchange } from '../../xtm-one/xtm-one-token-exchange';
 import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
+import { counterpartAccess, readCounterpartIssues } from './counterpart-access';
+import { probeReaderIssue, READER_ACCESS_ISSUES, THREAT_ACCESS_ISSUES } from './reader-access-issue';
 import { openctiPublicUrl } from './opencti-public-url';
 import { lookupXtmObjects,resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
@@ -73,14 +76,11 @@ export const probeReaderLink = async (
   authorization: ReaderAuthorization,
   connection: ProductConnection,
 ): Promise<typeof READER_LINKS[number]> => {
-  if (authorization.unsigned !== undefined) {
-    return 'unknown';
+  const issue = await probeReaderIssue(authorization, 'opencti', connection);
+  if (issue === null) {
+    return 'linked';
   }
-  try {
-    return (await authorization('opencti', connection)) ? 'linked' : 'unknown';
-  } catch (err) {
-    return err instanceof ReaderTokenUnavailable && err.refusal === 'audience' ? 'not_linked' : 'unknown';
-  }
+  return issue === 'not_linked' ? 'not_linked' : 'unknown';
 };
 
 /** No reader to sign for XTM One: its lookup reaches nothing. */
@@ -132,6 +132,8 @@ const counterpartSchema = z.object({
   facts: z.array(z.object({ key: z.string(), value: z.string() })),
 });
 
+const readerAccessIssueSchema = z.enum(READER_ACCESS_ISSUES).nullable();
+
 const lookupObjectSchema = z.object({
   object_key: z.string(),
   object_id: z.string(),
@@ -181,14 +183,41 @@ export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
       kind: z.enum(COUNTERPART_KINDS),
       keys: z.array(z.string().max(512)).max(MAX_COUNTERPART_KEYS),
     }))
-    .output(z.array(counterpartSchema))
+    .output(z.object({ counterparts: z.array(counterpartSchema), unavailable: z.array(z.enum(COUNTERPART_PRODUCTS)) }))
     .query(async ({ input, ctx: { services, origin, user } }) => {
       const tenantId = await authorizedTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t));
       if (!user) {
         // Only a person pivots, with their own rights in the sibling product.
-        return [];
+        return { counterparts: [], unavailable: [] };
       }
       return resolveCounterparts(tenantId, user.id, input.kind, input.keys, tenantProviders(tenantId, readerAuthorization(db, user), xtmOneReaderHeaders(db, user)));
+    }),
+
+  // Why the member's reads of OpenCTI and OpenAEV may fall short, `null` when nothing does: the
+  // threats the reader scope narrows, and the counterparts, always read as the member.
+  readerAccess: procedure
+    // What the statements of the call do not read: XTM One's answers decide the category, and the
+    // tenant's threat visibility is read by the tenant procedure.
+    .meta({ reads: [] })
+    .output(z.object({
+      threats: z.enum(THREAT_ACCESS_ISSUES).nullable(),
+      // Whose OpenCTI rights decide what the member reads: a screen words a hidden threat by it.
+      threatVisibility: z.enum(OPENCTI_THREAT_VISIBILITIES),
+      counterparts: z.object({ opencti: readerAccessIssueSchema, openaev: readerAccessIssueSchema }),
+    }))
+    .query(async ({ ctx: { services, origin, user, readerAccessIssue, threatVisibility } }) => {
+      const tenantId = await authorizedTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t));
+      const counterparts = await readCounterpartIssues(counterpartAccess, {
+        tenantId,
+        userId: user?.id,
+        connections: config().connectors,
+        authorization: readerAuthorization(db, user),
+      });
+      // A category only when the tenant holds a threat this reader cannot read: a tenant with
+      // nothing mirrored yet, or only unmarked threats, has nothing to be told.
+      const hidesThreats = readerAccessIssue !== null
+        && await services.withOrigin(withoutReaderScope(origin)).threatAnalyses.hasThreatHiddenFromUnresolvedReader();
+      return { threats: hidesThreats ? readerAccessIssue : null, threatVisibility, counterparts };
     }),
 
   // bounded-by: MAX_COUNTERPART_KEYS keys per call, one batched read of one kind

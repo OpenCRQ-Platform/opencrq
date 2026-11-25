@@ -30,6 +30,9 @@ type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 const trimSlash = (url: string) => url.replace(/\/+$/, '');
 
+/** An answer that is not the shape the product documents is a failed lookup, not an empty one. */
+const malformedAnswer = () => newError('XTM counterpart lookup failed', { answer: 'malformed' });
+
 const postJson = async (fetchImpl: FetchLike, url: string, bearer: string, body: unknown): Promise<unknown> => {
   const res = await fetchImpl(url, {
     method: 'POST',
@@ -73,7 +76,10 @@ export const openaevProvider = (
     }
     const url = `${trimSlash(connection.url)}/api/tenants/${OPENAEV_DEFAULT_TENANT_ID}/xtm/objects/${path}`;
     const data = await postJson(fetchImpl, url, bearer, { counterpart_keys: keys });
-    return toCounterparts('openaev', kind, keys, Array.isArray(data) ? data : []);
+    if (!Array.isArray(data)) {
+      throw malformedAnswer();
+    }
+    return toCounterparts('openaev', kind, keys, data);
   },
 });
 
@@ -124,8 +130,10 @@ export const xtmOneProvider = (
       throw newError('XTM One asset lookup failed', { status: res.status });
     }
     const answer: unknown = await res.json();
-    const items = isRecord(answer) && Array.isArray(answer.items) ? answer.items.filter(isRecord) : [];
-    return toCounterparts('xtmone', kind, keys, items.map((item) => ({
+    if (!isRecord(answer) || !Array.isArray(answer.items)) {
+      throw malformedAnswer();
+    }
+    return toCounterparts('xtmone', kind, keys, answer.items.filter(isRecord).map((item) => ({
       object_key: item.key,
       object_id: item.id,
       object_type: 'asset',
@@ -194,12 +202,18 @@ const OPENCTI_LOOKUPS: Partial<Record<CounterpartKind, OpenctiLookup>> = {
 
 const representativeMain = (node: Record<string, unknown>): unknown => (isRecord(node.representative) ? node.representative.main : undefined);
 
-/** The nodes of a `stixCoreObjects` answer, read field by field: the answer is not trusted. */
+/**
+ * The nodes of a `stixCoreObjects` answer, read field by field: the answer is not trusted. GraphQL
+ * refuses with a 200 whose `errors` say so, which is a failed lookup, never an empty one.
+ */
 const openctiNodes = (answer: unknown): Array<Record<string, unknown>> => {
   const data = isRecord(answer) && isRecord(answer.data) ? answer.data : undefined;
   const connection = data && isRecord(data.stixCoreObjects) ? data.stixCoreObjects : undefined;
-  const edges = connection && Array.isArray(connection.edges) ? connection.edges : [];
-  return edges.flatMap((edge: unknown) => (isRecord(edge) && isRecord(edge.node) ? [edge.node] : []));
+  const refused = isRecord(answer) && Array.isArray(answer.errors) && answer.errors.length > 0;
+  if (refused || !connection || !Array.isArray(connection.edges)) {
+    throw malformedAnswer();
+  }
+  return connection.edges.flatMap((edge: unknown) => (isRecord(edge) && isRecord(edge.node) ? [edge.node] : []));
 };
 
 export const openctiProvider = (

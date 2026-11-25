@@ -328,6 +328,7 @@ const ScenarioUniqueCveSchema = UniqueFindingRowSchema.pick({
   worstScore: true,
   worstBand: true,
   pendingVector: true,
+  nvdRecordMissing: true,
   affectedAssetCount: true,
   sources: true,
   firstSeenAt: true,

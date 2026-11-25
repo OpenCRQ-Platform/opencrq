@@ -20,6 +20,8 @@ export interface FindingTableRow {
   score: number | null,
   band: SeverityBand | null,
   pendingVector: boolean,
+  /** An NVD pass read the CVE and found no usable record: the vector the finding waits on will not come from NVD. */
+  nvdRecordMissing: boolean,
   assetName: string | null,
   assetDerivedName: string | null,
   assetCategoryId: AssetCategory | null,
@@ -41,6 +43,8 @@ export interface FindingTableSource {
   score: number | null,
   band: SeverityBand | null,
   pendingVector: boolean,
+  /** An NVD pass read the CVE and found no usable record: the vector the finding waits on will not come from NVD. */
+  nvdRecordMissing: boolean,
   assetName: string | null,
   assetDerivedName: string | null,
   assetCategoryId: AssetCategory | null,
@@ -94,6 +98,7 @@ export const toFindingTableRow = (finding: FindingTableSource, now: Date = new D
   score: finding.score,
   band: finding.band,
   pendingVector: finding.pendingVector,
+  nvdRecordMissing: finding.nvdRecordMissing,
   assetName: finding.assetName,
   assetDerivedName: finding.assetDerivedName,
   assetCategoryId: finding.assetCategoryId,

@@ -47,7 +47,7 @@ afterEach(() => cleanup());
 
 const render = (items: Array<unknown>, counterparts: Array<unknown>) => renderWithTrpc(
   <RiskScenarioSimulateAction riskScenarioId={SCENARIO_ID} />,
-  { answers: { 'threats.getRelevantForScenario': { items }, 'xtm.counterparts': counterparts } },
+  { answers: { 'threats.getRelevantForScenario': { items }, 'xtm.counterparts': { counterparts, unavailable: [] } } },
 );
 
 describe('RiskScenarioSimulateAction', () => {

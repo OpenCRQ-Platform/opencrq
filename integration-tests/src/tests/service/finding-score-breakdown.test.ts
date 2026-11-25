@@ -544,8 +544,8 @@ describe('Finding Score Service', () => {
         id: uuidv7(), supportingAssetId: assetB, tenantId: tenantBId, cveId: cveB, userId: adminUserId,
       }]);
 
-      expect(await services.withOrigin(jobA).findingScore.recomputeFindingScores()).toEqual({ scored: 1 });
-      expect(await services.withOrigin(jobB).findingScore.recomputeFindingScores()).toEqual({ scored: 1 });
+      expect(await services.withOrigin(jobA).findingScore.recomputeFindingScores()).toMatchObject({ scored: 1 });
+      expect(await services.withOrigin(jobB).findingScore.recomputeFindingScores()).toMatchObject({ scored: 1 });
 
       expect((await listEstate(jobA)).items.map((finding) => finding.cveId)).toEqual(['CVE-2026-0008']);
       expect((await listEstate(jobB)).items.map((finding) => finding.cveId)).toEqual(['CVE-2026-0009']);

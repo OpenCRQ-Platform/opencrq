@@ -8,3 +8,4 @@ export * from './printed-dollars';
 export * from './decimals';
 export * from './text-fold';
 export * from './service-account-token';
+export * from './reader-scope';

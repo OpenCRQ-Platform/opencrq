@@ -6,13 +6,15 @@
   <a href="https://hub.docker.com/r/filigran/opencrq"><img src="https://img.shields.io/docker/pulls/filigran/opencrq?style=flat-square&labelColor=0A0C1C&logo=docker&logoColor=white&color=001BDA" alt="docker pulls"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0%20%2B%20EE-001BDA?style=flat-square&labelColor=0A0C1C" alt="license"></a>
   <a href="https://github.com/OpenCRQ-Platform/opencrq/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/OpenCRQ-Platform/opencrq/ci.yml?branch=main&label=CI&style=flat-square&labelColor=0A0C1C&logo=githubactions&logoColor=white&color=001BDA" alt="CI"></a>
-  <a href="https://github.com/OpenCRQ-Platform/opencrq/tree/main/docs"><img src="https://img.shields.io/badge/docs-read-001BDA?style=flat-square&labelColor=0A0C1C" alt="docs"></a>
+  <a href="https://filigran.io/docs/opencrq/"><img src="https://img.shields.io/badge/docs-read-001BDA?style=flat-square&labelColor=0A0C1C" alt="docs"></a>
   <a href="https://community.filigran.io"><img src="https://img.shields.io/badge/community-slack-001BDA?style=flat-square&labelColor=0A0C1C&logo=slack&logoColor=white" alt="community"></a>
 </p>
 
 <p align="center"><b>Threat-informed cyber risk quantification: know what each exposure would cost you, and fix what removes the most loss.</b></p>
 
 OpenCRQ turns the threats you know in [OpenCTI](https://github.com/OpenCTI-Platform/opencti), the defenses you prove in [OpenAEV](https://github.com/OpenAEV-Platform/openaev) and the assets and controls you run into the financial loss to expect, risk scenario by risk scenario. It is the prioritization stage of CTEM in the XTM Platform: one number per risk, with its range and its causes, so the next control, patch or budget line goes where it removes the most loss, and [XTM One](https://github.com/XTM-One-Platform/xtm-one) gets the fix done.
+
+**Documentation.** Using, deploying and configuring OpenCRQ is documented on the XTM documentation site, **[filigran.io/docs](https://filigran.io/docs/opencrq/)**, beside XTM One, OpenCTI and OpenAEV: start with [how OpenCRQ quantifies risk](https://filigran.io/docs/opencrq/concepts/how-risk-is-quantified/), [install it](https://filigran.io/docs/deploy/install/opencrq/), or look up its [configuration](https://filigran.io/docs/reference/opencrq/configuration/) and [API](https://filigran.io/docs/reference/opencrq/api/). Something missing or wrong on a page? Click **Give us feedback** on it, or [open an issue](https://github.com/FiligranHQ/xtm-docs/issues/new/choose).
 
 <p align="center">If OpenCRQ helps your security program, <a href="https://github.com/OpenCRQ-Platform/opencrq/stargazers">give it a star</a>: it is how the project grows.</p>
 
@@ -175,11 +177,8 @@ docker compose up -d
 
 Open http://localhost:8082 and sign in with XTM One: OpenCTI and OpenAEV are already connected.
 
-- **Guides**: [quick start](docs/quick-start.md) and [Docker deployment](docs/deployment/docker.md).
-- **Docker**: [`filigran/opencrq`](https://hub.docker.com/r/filigran/opencrq).
-- **Helm**: not available as a public chart; run the Docker image on Kubernetes with your own manifests and the [configuration](docs/deployment/configuration.md) reference.
-- **Configuration**: [configuration](docs/deployment/configuration.md) and [architecture](docs/deployment/architecture.md).
-- **Releases**: the [GitHub releases page](https://github.com/OpenCRQ-Platform/opencrq/releases).
+- **Docker**: [`filigran/opencrq`](https://hub.docker.com/r/filigran/opencrq), one tag per [release](https://github.com/OpenCRQ-Platform/opencrq/releases).
+- **Docs**: [installation](https://filigran.io/docs/deploy/install/opencrq/), [configuration](https://filigran.io/docs/deploy/configure/opencrq/) and the [configuration reference](https://filigran.io/docs/reference/opencrq/configuration/).
 
 ## Editions
 
@@ -194,10 +193,10 @@ A source file without a license header belongs to the Community Edition; see [LI
 
 ## Integrations and ecosystem
 
-- **XTM Platform:** OpenCTI threats through its [connector](docs/deployment/opencti-connector.md), OpenAEV assets and verdicts through its [connector](docs/deployment/openaev-connector.md), XTM One for Ariane and sign-in.
+- **XTM Platform:** OpenCTI threats through a [Live Stream](https://filigran.io/docs/opencrq/use/sources/opencti/), OpenAEV assets and verdicts through its [connector](https://filigran.io/docs/opencrq/use/sources/openaev/), XTM One for Ariane and sign-in.
 - **[XTM Hub](https://hub.filigran.io):** integrations, dashboards and scenarios for the XTM Platform.
 - **Vulnerability data:** NIST NVD, CISA known exploited vulnerabilities and FIRST EPSS.
-- **Estate and compliance:** Microsoft Defender for Endpoint, Entra ID and Intune through Microsoft Graph, and Drata for NIST CSF 2.0 evidence.
+- **Estate and compliance:** [Microsoft Defender for Endpoint](https://filigran.io/docs/opencrq/use/sources/microsoft-defender/), Entra ID and Intune through Microsoft Graph, and [Drata](https://filigran.io/docs/opencrq/use/sources/drata/) for NIST CSF 2.0 evidence.
 
 ## Community
 

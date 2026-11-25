@@ -1,9 +1,12 @@
-import type { OpenCtiReaderAccess, OpenctiThreatVisibility } from '@app/module';
+import type { EventOrigin, OpenCtiReaderAccess, OpenctiThreatVisibility } from '@app/module';
+import { READER_SCOPE_TTL_MS } from '@app/utils';
+import type { ReaderAccessIssue, ThreatAccessIssue } from './reader-access-issue';
 import type { ProductConnection, ReaderAuthorization } from './xtm-providers';
 import { errorCategory, logCategory } from '../../../utils/error-category';
 import { createLogger } from '../../../utils/logger';
 import { ReaderTokenUnavailable } from '../../xtm-one/xtm-one-token-exchange';
-import { isRecord } from './xtm-counterpart-utils';
+import { issueOfTokenFailure } from './reader-access-issue';
+import { isRecord, withinBudget } from './xtm-counterpart-utils';
 
 const { logWarn } = createLogger({ feature: 'reader-markings' });
 
@@ -15,15 +18,22 @@ const { logWarn } = createLogger({ feature: 'reader-markings' });
  * tenant chose to show every member what the connector reads. A mirrored object is then read only when OpenCTI would show it to them: all its
  * markings are among theirs, and its organization sharing and authorized members admit them.
  *
- * `null` when the answer is unknown (no identity to sign for, a refusal, a timeout, a malformed
- * answer): the reader then holds no clearance and no membership, and sees only unmarked,
- * unrestricted mirrored objects (fail closed means seeing less, never nothing, as OpenAEV ADR-009).
+ * An `issue` instead of a scope when the answer is unknown (no identity to sign for, a refusal, a
+ * timeout, a malformed answer): the reader then holds no clearance and no membership, and sees only
+ * unmarked, unrestricted mirrored objects (fail closed means seeing less, never nothing, as OpenAEV
+ * ADR-009), and the issue says which category of failure it was.
  * `undefined` when the tenant has no OpenCTI connection: there is no OpenCTI to ask and nothing to
- * enforce, so nothing is narrowed. A lookup is shared per tenant and user from the moment it starts,
- * and its answer kept a short while after, so a page's burst of reads asks OpenCTI once.
+ * enforce, so nothing is narrowed.
+ *
+ * Every tenant request reads it, so it is never waited for once known: a reader's last answer is
+ * served at once and, past a minute, asked again in the background, so a right changed in OpenCTI
+ * applies from the request after that refresh completes. Only a reader with no answer, or none read
+ * for six hours, waits, and at most five seconds, after which it is answered fail closed while the
+ * lookup goes on.
  */
 
-export const READER_MARKINGS_TTL_MS = 60_000;
+const READER_SCOPE_KEPT_MS = 6 * 60 * 60_000;
+const READER_SCOPE_FIRST_WAIT_MS = 5_000;
 const READER_MARKINGS_TIMEOUT_MS = 5_000;
 const MAX_CACHED_READERS = 5_000;
 const BYPASS_CAPABILITY = 'BYPASS';
@@ -86,18 +96,32 @@ export const parseReaderScope = (answer: unknown): ReaderScope | null => {
   };
 };
 
-/** Why OpenCTI's answer holds no scope: GraphQL refuses with a 200 whose `errors` carry a code. */
-const unreadableAnswer = (answer: unknown): string => {
+/** The code of OpenCTI's refusal: GraphQL refuses with a 200 whose `errors` carry one. */
+const refusalCode = (answer: unknown): string | null => {
   const errors = isRecord(answer) && Array.isArray(answer.errors) ? answer.errors : [];
   const first: unknown = errors[0];
-  if (!isRecord(first)) {
-    return 'the answer lacks the reader scope fields';
-  }
-  const code = isRecord(first.extensions) ? logCategory(first.extensions.code) : null;
-  return `OpenCTI refused the query: ${code ?? 'no error code'}`;
+  return isRecord(first) && isRecord(first.extensions) ? logCategory(first.extensions.code) : null;
 };
 
-type ScopeAnswer = { ok: true, scope: ReaderScope } | { ok: false, failure: string };
+/** Why OpenCTI's answer holds no scope. */
+const unreadableAnswer = (answer: unknown): string => (
+  isRecord(answer) && Array.isArray(answer.errors) && isRecord(answer.errors[0])
+    ? `OpenCTI refused the query: ${refusalCode(answer) ?? 'no error code'}`
+    : 'the answer lacks the reader scope fields'
+);
+
+/**
+ * OpenCTI resolves a token XTM One signed to a user by the token's email and, with none to answer to
+ * it, runs the query as nobody: `AUTH_REQUIRED` (`authenticateUserFromRequest`). Any token it fails
+ * to resolve is refused alike, but this one was signed for the reader a moment ago, so an account
+ * that does not exist is by far the likeliest cause.
+ */
+const UNRECOGNISED_READER_CODE = 'AUTH_REQUIRED';
+
+/** `failure` is for the log only; `issue` is what a reader may be told. */
+type ScopeAnswer = { ok: true, scope: ReaderScope } | { ok: false, failure: string, issue: ReaderAccessIssue };
+
+const unavailable = (failure: string): ScopeAnswer => ({ ok: false, failure, issue: 'unavailable' });
 
 const fetchReaderScope = async (
   connection: ProductConnection,
@@ -110,10 +134,18 @@ const fetchReaderScope = async (
     bearer = await authorization('opencti', connection);
   } catch (err) {
     // Nothing has been sent to OpenCTI yet.
-    return { ok: false, failure: err instanceof ReaderTokenUnavailable ? err.failure : `obtaining the reader's token failed: ${errorCategory(err)}` };
+    return {
+      ok: false,
+      failure: err instanceof ReaderTokenUnavailable ? err.failure : `obtaining the reader's token failed: ${errorCategory(err)}`,
+      issue: issueOfTokenFailure(err),
+    };
   }
   if (!bearer) {
-    return { ok: false, failure: `no token could be signed for the reader: ${authorization.unsigned ?? 'no reason given'}` };
+    return {
+      ok: false,
+      failure: `no token could be signed for the reader: ${authorization.unsigned ?? 'no reason given'}`,
+      issue: 'unavailable',
+    };
   }
   const res = await fetchImpl(`${base}/graphql`, {
     method: 'POST',
@@ -123,7 +155,7 @@ const fetchReaderScope = async (
     signal: AbortSignal.timeout(READER_MARKINGS_TIMEOUT_MS),
   });
   if (!res.ok) {
-    return { ok: false, failure: `OpenCTI answered HTTP ${res.status}` };
+    return unavailable(`OpenCTI answered HTTP ${res.status}`);
   }
   let answer: unknown;
   try {
@@ -131,31 +163,67 @@ const fetchReaderScope = async (
   } catch (err) {
     // A page answering for OpenCTI (a proxy, a wrong URL) is an answer, not a failed request.
     if (err instanceof SyntaxError) {
-      return { ok: false, failure: 'OpenCTI answered something other than JSON' };
+      return unavailable('OpenCTI answered something other than JSON');
     }
     throw err;
   }
   const scope = parseReaderScope(answer);
-  return scope ? { ok: true, scope } : { ok: false, failure: unreadableAnswer(answer) };
+  if (scope) {
+    return { ok: true, scope };
+  }
+  const failure = unreadableAnswer(answer);
+  return refusalCode(answer) === UNRECOGNISED_READER_CODE ? { ok: false, failure, issue: 'no_account' } : unavailable(failure);
 };
+
+/** What OpenCTI lets a reader read, or why that is unknown. */
+export type ReaderScopeAnswer = { scope: ReaderScope } | { issue: ReaderAccessIssue };
 
 const lookUpReaderScope = async (
   tenantId: string, userId: string, connection: ProductConnection, authorization: ReaderAuthorization, fetchImpl: FetchLike,
-): Promise<ReaderScope | null> => {
+): Promise<ReaderScopeAnswer> => {
   let answer: ScopeAnswer;
   try {
     answer = await fetchReaderScope(connection, authorization, fetchImpl);
   } catch (err) {
-    answer = { ok: false, failure: `the request failed: ${errorCategory(err)}` };
+    answer = unavailable(`the request failed: ${errorCategory(err)}`);
   }
   if (!answer.ok) {
     logWarn('OpenCTI reader scope unresolved', { tenantId, userId, reason: answer.failure });
-    return null;
+    return { issue: answer.issue };
   }
-  return answer.scope;
+  return { scope: answer.scope };
 };
 
-interface CachedScope { scope: Promise<ReaderScope | null>, expiresAt: number }
+/**
+ * A reader's last answer, and the last scope read for them, which an `unavailable` refresh keeps.
+ * `answer` is what a read gets: settled, except while the first lookup runs and before its wait ends.
+ */
+interface ScopeEntry {
+  answer: Promise<ReaderScopeAnswer>,
+  kept: ReaderScope | null,
+  freshUntil: number,
+  keptUntil: number,
+  refreshStartedAt: number,
+}
+
+interface ReaderScopeTiming {
+  /** How long an answer is served without asking OpenCTI again. */
+  freshMs: number,
+  /** How long an answer is served at all. */
+  keptMs: number,
+  /** How long the first read of a reader waits for OpenCTI before it is answered fail closed. */
+  firstWaitMs: number,
+  capacity: number,
+}
+
+const DEFAULT_TIMING: ReaderScopeTiming = {
+  freshMs: READER_SCOPE_TTL_MS,
+  keptMs: READER_SCOPE_KEPT_MS,
+  firstWaitMs: READER_SCOPE_FIRST_WAIT_MS,
+  capacity: MAX_CACHED_READERS,
+};
+
+const UNAVAILABLE: ReaderScopeAnswer = { issue: 'unavailable' };
 
 export interface ReaderMarkingsResolver {
   resolve: (
@@ -164,40 +232,97 @@ export interface ReaderMarkingsResolver {
     connection: ProductConnection | undefined,
     threatVisibility: OpenctiThreatVisibility,
     authorization: ReaderAuthorization,
-  ) => Promise<ReaderScope | null | undefined>,
+  ) => Promise<ReaderScopeAnswer | undefined>,
   clear: () => void,
 }
 
 export const createReaderMarkingsResolver = (
   fetchImpl: FetchLike = fetch,
   now: () => number = Date.now,
-  ttlMs: number = READER_MARKINGS_TTL_MS,
+  timing: Partial<ReaderScopeTiming> = {},
 ): ReaderMarkingsResolver => {
-  const cache = new Map<string, CachedScope>();
+  const { freshMs, keptMs, firstWaitMs, capacity } = { ...DEFAULT_TIMING, ...timing };
+  const cache = new Map<string, ScopeEntry>();
+
+  const settle = (key: string, entry: ScopeEntry, answer: ReaderScopeAnswer) => {
+    if (cache.get(key) !== entry) {
+      return;
+    }
+    const at = now();
+    entry.freshUntil = at + freshMs;
+    // An outage keeps the scope last read until it expires, and never extends it; a refusal is an
+    // answer about the reader and replaces it.
+    if ('issue' in answer && answer.issue === 'unavailable' && entry.kept !== null) {
+      return;
+    }
+    entry.kept = 'scope' in answer ? answer.scope : null;
+    entry.answer = Promise.resolve(answer);
+    entry.keptUntil = at + keptMs;
+    // Re-inserted, so that eviction drops the reader whose answer is the oldest.
+    cache.delete(key);
+    cache.set(key, entry);
+  };
+
+  const lookUp = (key: string, entry: ScopeEntry, look: () => Promise<ReaderScopeAnswer>) => {
+    entry.refreshStartedAt = now();
+    const lookup = look();
+    void lookup.then((answer) => settle(key, entry, answer));
+    return lookup;
+  };
+
   return {
-    resolve: async (tenantId, userId, connection, threatVisibility, authorization) => {
+    resolve: (tenantId, userId, connection, threatVisibility, authorization) => {
       if (!connection?.url) {
-        return undefined;
+        return Promise.resolve(undefined);
       }
+      const look = () => lookUpReaderScope(tenantId, userId, connection, authorization, fetchImpl);
       // A scope read under the other visibility was asked with another bearer.
       const key = `${tenantId}:${userId}:${threatVisibility}`;
+      const at = now();
       const cached = cache.get(key);
-      if (cached && cached.expiresAt > now()) {
-        return cached.scope;
+      if (cached && cached.keptUntil > at) {
+        // A lookup that never settles stops counting as under way after a fresh window.
+        const refreshing = at - cached.refreshStartedAt < freshMs;
+        if (cached.freshUntil <= at && !refreshing) {
+          lookUp(key, cached, look);
+        }
+        return cached.answer;
       }
-      // The window restarts at the answer; it is set at the start too, so a lookup that never settles is retried.
-      const entry: CachedScope = { scope: lookUpReaderScope(tenantId, userId, connection, authorization, fetchImpl), expiresAt: now() + ttlMs };
-      const restartWindow = () => {
-        entry.expiresAt = now() + ttlMs;
-      };
-      void entry.scope.then(restartWindow, restartWindow);
-      if (cache.size >= MAX_CACHED_READERS) {
-        cache.clear();
+      const entry: ScopeEntry = { answer: Promise.resolve(UNAVAILABLE), kept: null, freshUntil: at + freshMs, keptUntil: at + keptMs, refreshStartedAt: at };
+      cache.delete(key);
+      if (cache.size >= capacity) {
+        const oldest = cache.keys().next().value;
+        if (oldest !== undefined) {
+          cache.delete(oldest);
+        }
       }
       cache.set(key, entry);
-      return entry.scope;
+      entry.answer = withinBudget(lookUp(key, entry, look), firstWaitMs).then((answer) => answer ?? UNAVAILABLE);
+      return entry.answer;
     },
     clear: () => cache.clear(),
+  };
+};
+
+/**
+ * The person's origin narrowed by what OpenCTI answered for them, and what the screens may tell them
+ * of it. A tenant that shows every member what the connector reads can only tell them that the
+ * connector's own read failed.
+ */
+export const withReaderScope = (
+  origin: Extract<EventOrigin, { type: 'client' }>,
+  answer: ReaderScopeAnswer | undefined,
+  threatVisibility: OpenctiThreatVisibility,
+): { origin: Extract<EventOrigin, { type: 'client' }>, readerAccessIssue: ThreatAccessIssue | null } => {
+  if (answer === undefined) {
+    return { origin, readerAccessIssue: null };
+  }
+  const read = 'scope' in answer ? answer.scope : null;
+  const issue = 'issue' in answer ? answer.issue : null;
+  return {
+    origin: { ...origin, markings: read?.markings ?? null, openctiAccess: read?.access ?? null },
+    // The connector's token is not the member's: whatever failed, nothing is the member's to fix.
+    readerAccessIssue: issue !== null && threatVisibility === 'service_account' ? 'connector_unavailable' : issue,
   };
 };
 

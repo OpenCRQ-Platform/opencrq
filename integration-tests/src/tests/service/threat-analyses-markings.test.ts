@@ -1,5 +1,5 @@
 import type { EventOrigin, OpenCtiReaderAccess, ParsedThreatInput } from '@app/module';
-import { openctiStreamObjects } from '@app/module';
+import { openctiStreamObjects, withoutReaderScope } from '@app/module';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createTenantUser, createTenantWithAdmin } from '../../helpers/factories';
@@ -189,5 +189,156 @@ describe('OpenCTI organization segregation of mirrored threats', () => {
 
   it('should leave a BYPASS reader every threat', async () => {
     expect(await listedStixIds(as({ ...reader([]), bypass: true }))).toEqual([SHARED_ID, MEMBERS_ID, OPEN_ID]);
+  });
+});
+
+/**
+ * A link to a threat the reader's OpenCTI rights hide is told from one to a threat that does not
+ * exist by whether the id exists once their OpenCTI scope is set aside: the tenant and the OpenCRQ
+ * clearance still narrow it, so another tenant's id and a threat an OpenCRQ marking hides stay as absent.
+ */
+describe('A threat hidden by the reader\'s OpenCTI rights, told from one that does not exist', () => {
+  let adminOrigin: Extract<EventOrigin, { type: 'client' }>;
+  let tenantId: string;
+  let hiddenId: string;
+  let openId: string;
+
+  const exists = (origin: EventOrigin, id: string) => services.withOrigin(origin).threatAnalyses.exists(id);
+  const idOf = async (origin: EventOrigin, stixId: string): Promise<string> => {
+    const found = (await services.withOrigin(origin).threatAnalyses.list(DEFAULT_LIST_PARAMS)).items.find((item) => item.stixId === stixId);
+    if (!found) {
+      throw new Error(`${stixId} not listed`);
+    }
+    return found.id;
+  };
+
+  beforeEach(async () => {
+    await truncateAllTables(db);
+    const setup = await createTenantWithAdmin(services);
+    adminOrigin = setup.origin;
+    tenantId = setup.tenantId;
+    await services.withOrigin(adminOrigin).threatAnalyses.ingestBundle([
+      mirrored(MARKED_ID, 'Marked Actor', [TLP_RED]),
+      mirrored(UNMARKED_ID, 'Unmarked Actor', []),
+    ], tenantId, 'connector');
+    hiddenId = await idOf(adminOrigin, MARKED_ID);
+    openId = await idOf(adminOrigin, UNMARKED_ID);
+  });
+
+  it('should find a threat the reader\'s OpenCTI rights hide only once their OpenCTI scope is set aside', async () => {
+    const reader: EventOrigin = { ...adminOrigin, markings: [] };
+
+    expect(await exists(reader, hiddenId)).toBe(false);
+    expect(await exists(withoutReaderScope(reader), hiddenId)).toBe(true);
+  });
+
+  it('should find a threat the reader reads, with or without their OpenCTI scope', async () => {
+    const reader: EventOrigin = { ...adminOrigin, markings: [] };
+
+    expect(await exists(reader, openId)).toBe(true);
+    expect(await exists(withoutReaderScope(reader), openId)).toBe(true);
+  });
+
+  it('should find a threat hidden from a reader OpenCTI did not answer for', async () => {
+    const reader: EventOrigin = { ...adminOrigin, markings: null, openctiAccess: null };
+
+    expect(await exists(reader, hiddenId)).toBe(false);
+    expect(await exists(withoutReaderScope(reader), hiddenId)).toBe(true);
+  });
+
+  it('should find no id that does not exist', async () => {
+    const reader: EventOrigin = { ...adminOrigin, markings: [] };
+
+    expect(await exists(withoutReaderScope(reader), uuidv7())).toBe(false);
+  });
+
+  it('should find no threat of another tenant, even with the OpenCTI scope set aside', async () => {
+    const other = await createTenantWithAdmin(services);
+    await services.withOrigin(other.origin).threatAnalyses.ingestBundle([
+      mirrored('intrusion-set--44444444-4444-4444-8444-444444444449', 'Other Tenant Actor', []),
+    ], other.tenantId, 'connector');
+    const otherId = await idOf(other.origin, 'intrusion-set--44444444-4444-4444-8444-444444444449');
+
+    expect(await exists(adminOrigin, otherId)).toBe(false);
+    expect(await exists(withoutReaderScope({ ...adminOrigin, markings: [] }), otherId)).toBe(false);
+    expect(await exists(other.origin, otherId)).toBe(true);
+  });
+
+  it('should find no import an OpenCRQ marking hides from the reader, whatever their OpenCTI scope', async () => {
+    const member = (await createTenantUser(services, db, adminOrigin)).origin;
+    await services.withOrigin(adminOrigin).threatAnalyses.ingestBundle([
+      mirrored('intrusion-set--66666666-6666-4666-8666-666666666669', 'Imported Red Actor', [TLP_RED]),
+    ], tenantId, 'stix-import');
+    const importedId = await idOf(adminOrigin, 'intrusion-set--66666666-6666-4666-8666-666666666669');
+
+    expect(await exists(member, importedId)).toBe(false);
+    expect(await exists(withoutReaderScope(member), importedId)).toBe(false);
+  });
+});
+
+/**
+ * The notice that threats are hidden is told only to a reader OpenCTI did not answer for, and only
+ * while the tenant holds a mirrored threat that reader cannot read.
+ */
+describe('A mirrored threat hidden from a reader OpenCTI did not answer for', () => {
+  const OCTI_EXTENSION = 'extension-definition--ea279b3e-5c71-4632-ac08-831c66a786ba';
+  let adminOrigin: Extract<EventOrigin, { type: 'client' }>;
+  let tenantId: string;
+
+  const anyHidden = (origin: EventOrigin = adminOrigin) =>
+    services.withOrigin(withoutReaderScope(origin)).threatAnalyses.hasThreatHiddenFromUnresolvedReader();
+  const ingest = (threats: Array<ParsedThreatInput>, kind: 'connector' | 'stix-import' = 'connector') =>
+    services.withOrigin(adminOrigin).threatAnalyses.ingestBundle(threats, tenantId, kind);
+
+  beforeEach(async () => {
+    await truncateAllTables(db);
+    const setup = await createTenantWithAdmin(services);
+    adminOrigin = setup.origin;
+    tenantId = setup.tenantId;
+  });
+
+  it('should find none in a tenant that holds no threat yet', async () => {
+    expect(await anyHidden()).toBe(false);
+  });
+
+  it('should find none while every mirrored threat is unmarked and unrestricted', async () => {
+    await ingest([mirrored(UNMARKED_ID, 'Unmarked Actor', [])]);
+
+    expect(await anyHidden()).toBe(false);
+  });
+
+  it('should find a marked mirrored threat', async () => {
+    await ingest([mirrored(UNMARKED_ID, 'Unmarked Actor', []), mirrored(MARKED_ID, 'Marked Actor', [TLP_RED])]);
+
+    expect(await anyHidden()).toBe(true);
+  });
+
+  it('should find a mirrored threat whose body restricts it to members', async () => {
+    await ingest([mirrored(UNMARKED_ID, 'Unmarked Actor', [])]);
+    await db.insert(openctiStreamObjects).values({
+      id: uuidv7(),
+      tenantId,
+      stixId: UNMARKED_ID,
+      stixType: 'intrusion-set',
+      data: { id: UNMARKED_ID, type: 'intrusion-set', extensions: { [OCTI_EXTENSION]: { id: 'internal', type: 'Intrusion-Set', authorized_members: [{ id: 'group-1', access_right: 'view' }] } } },
+    });
+
+    expect(await anyHidden()).toBe(true);
+  });
+
+  it('should not count a marked import, which OpenCTI\'s rights never narrow', async () => {
+    await ingest([mirrored(MARKED_ID, 'Imported Actor', [TLP_RED])], 'stix-import');
+
+    expect(await anyHidden()).toBe(false);
+  });
+
+  it('should not count a marked mirrored threat of another tenant', async () => {
+    const other = await createTenantWithAdmin(services);
+    await services.withOrigin(other.origin).threatAnalyses.ingestBundle([
+      mirrored(MARKED_ID, 'Other Tenant Actor', [TLP_RED]),
+    ], other.tenantId, 'connector');
+
+    expect(await anyHidden()).toBe(false);
+    expect(await anyHidden(other.origin)).toBe(true);
   });
 });

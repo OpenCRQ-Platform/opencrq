@@ -792,7 +792,7 @@ describe('OpenAEV snapshot sync against a fake OpenAEV', () => {
   });
 
   describe('an asset OpenAEV stopped listing', () => {
-    it('should leave the description candidates, and have its CVE retired by the inventory that no longer lists it', async () => {
+    it('should leave the description candidates and the scope, its CVE retired with it, by the inventory that no longer lists it', async () => {
       main.setGenericAssets([{ id: 'app-1', name: 'Payroll', category: 'saas_application', description: 'The payroll application' }]);
       main.putVulnerability({ assetId: 'app-1', cve: 'CVE-2024-0100', verifiedAt: daysAgo(2) });
       main.putVulnerability({ assetId: 'ep-1', cve: 'CVE-2024-0101', verifiedAt: daysAgo(2) });
@@ -800,6 +800,7 @@ describe('OpenAEV snapshot sync against a fake OpenAEV', () => {
       expect(await stateOf('app-1', 'CVE-2024-0100')).toMatchObject({ state: 'applicable' });
       const fetchesBefore = fake.requestsTo('GET', '/assets/app-1', OAEV_TENANT).length;
       expect(fetchesBefore).toBe(1);
+      const appAssetId = await supportingAssetIdOf('app-1');
 
       // OpenAEV deletes the asset's documents with it; no stream read is needed to see it go.
       main.setGenericAssets([]);
@@ -811,7 +812,13 @@ describe('OpenAEV snapshot sync against a fake OpenAEV', () => {
       expect(registered.map((row) => row.sourceAssetId).sort()).toEqual(['ep-1', 'ep-2']);
       expect(await services.withOrigin(adminOrigin).openaevConnector.listDescriptionCandidates({ connectorId, openaevTenantId: OAEV_TENANT, limit: 100 })).toEqual([]);
       expect(fake.requestsTo('GET', '/assets/app-1', OAEV_TENANT)).toHaveLength(fetchesBefore);
-      expect(await stateOf('app-1', 'CVE-2024-0100')).toEqual({ state: 'dismissed', reason: RETIRED });
+      // Nothing else observes the asset and nobody invested in it: its connector source is retired and
+      // the asset leaves the scope; any evidence row that outlives it is retired, never left applicable.
+      expect((await services.withOrigin(adminOrigin).supportingAssets.getInventoryAssetIdMap(connectorId)).has('app-1')).toBe(false);
+      expect(await db.select({ id: supportingAssets.id }).from(supportingAssets).where(eq(supportingAssets.id, appAssetId))).toEqual([]);
+      for (const row of await evidenceRowsOfAsset(appAssetId)) {
+        expect({ state: row.currentState, reason: row.stateReason }).toEqual({ state: 'dismissed', reason: RETIRED });
+      }
       expect(await stateOf('ep-1', 'CVE-2024-0101')).toMatchObject({ state: 'applicable' });
     });
 

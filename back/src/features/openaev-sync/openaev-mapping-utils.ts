@@ -258,6 +258,21 @@ export const assetToConnectorInput = (
 };
 
 /**
+ * The tags the OpenAEV GitHub collector puts on the source-code assets of a repository it no longer
+ * collects: archived on GitHub, or no longer returned (gone, or archived and left out by its
+ * settings), with its workflows and packages. Such an asset is no longer part of the estate, so it
+ * leaves the risk scope instead of reading as an asset nobody measures any more.
+ */
+export const RETIRED_SOURCE_TAG_NAMES: ReadonlySet<string> = new Set(['github-state:archived', 'github-state:deleted']);
+
+/** Whether an inventory row is an asset its source says is archived or deleted, read from its tag names. */
+export const isRetiredSourceAsset = (row: AssetInventoryRow, tagNameBySourceTagId: ReadonlyMap<string, string>): boolean =>
+  (row.asset_tags ?? []).some((sourceTagId) => {
+    const name = tagNameBySourceTagId.get(sourceTagId);
+    return name !== undefined && RETIRED_SOURCE_TAG_NAMES.has(name.trim().toLowerCase());
+  });
+
+/**
  * The markings an OpenAEV asset carries, as STIX marking ids (CTEM marking parity, G4), so OpenCRQ
  * reads them against the same clearance as an OpenCTI marking. An OpenAEV id the tenant's
  * definitions do not resolve is kept as it is: no OpenCRQ marking carries it, so nobody but the

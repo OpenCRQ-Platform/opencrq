@@ -41,6 +41,7 @@ const UniqueCveFindingLayout = () => {
         worstScore={finding.worstScore}
         worstBand={finding.worstBand}
         pendingVector={finding.pendingVector}
+        nvdRecordMissing={finding.nvdRecordMissing}
         affectedAssetCount={finding.affectedAssetCount}
         knownExploited={finding.knownExploited}
         epss={finding.epss}

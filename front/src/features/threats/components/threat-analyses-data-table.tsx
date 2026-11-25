@@ -12,6 +12,7 @@ import { OpenctiBackfillIndicator } from '../../integrations';
 import { THREAT_ANALYSES_LIST_SEARCH_DEFAULTS, threatAnalysesListSearchSchema } from '../threat-analyses-list-search';
 import { usePersistedPageSize, usePersistedSorting, useUrlListFilters } from '../../../hooks';
 import { useTRPC } from '../../../lib';
+import { useReaderAccess } from '../../xtm/use-reader-access';
 import { useCounterparts, XtmRowMarks } from '../../xtm/xtm-counterparts';
 import { resolveOptionFilter } from '../../../utils';
 import { ListEmptyCard } from '../../../components/ui/list-empty-card';
@@ -62,6 +63,7 @@ export const ThreatAnalysesDataTable: FunctionComponent = () => {
   const { filters, setFilters } = useUrlListFilters(threatAnalysesListSearchSchema);
 
   const { data: outcomes } = useQuery(trpc.attackOutcomes.getAttackOutcomes.queryOptions());
+  const { threats: readerAccessIssue } = useReaderAccess();
   // `outcomes` is `undefined` while the catalogue query is pending, not because the tenant has no
   // outcomes: a deep link or a copied cross-tenant address can carry an `outcomeId` this tenant
   // resolves nothing for, and only a loaded catalogue can tell the two apart.
@@ -216,7 +218,7 @@ export const ThreatAnalysesDataTable: FunctionComponent = () => {
   return (
     <ThreatListPage
       pending={pending}
-      readerScopeUnresolved={data?.readerScopeUnresolved ?? false}
+      readerAccessIssue={readerAccessIssue}
       catalogEmpty={isThreatCatalogEmpty({ total: data?.total, filtered, isPlaceholderData })}
       emptyState={emptyCard}
       kpiBand={<ThreatCatalogKpiBand />}
