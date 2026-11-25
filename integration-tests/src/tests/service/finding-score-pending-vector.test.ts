@@ -177,7 +177,7 @@ describe('A finding pending a vector', () => {
     const readByNvd = async (cveRowId: string, reported: boolean) => {
       await db.update(cve).set({ remediationReadAt: new Date() }).where(eq(cve.id, cveRowId));
       if (reported) {
-        await db.insert(cveSourceObservations).values([{ id: uuidv7(), tenantId: admin.tenantId, cveId: cveRowId, source: 'nvd' }]);
+        await db.insert(cveSourceObservations).values([{ tenantId: admin.tenantId, cveId: cveRowId, source: 'nvd' }]);
       }
     };
     const cveIdOf = async (cveRowId: string) => (await db.select({ cveId: cve.cveId }).from(cve).where(eq(cve.id, cveRowId)))[0].cveId;
