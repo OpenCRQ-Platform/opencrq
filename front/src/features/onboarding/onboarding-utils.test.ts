@@ -4,6 +4,7 @@ import type { OnboardingWizard, StepSyncReads } from './onboarding-utils';
 import {
   backfillProgressPercent,
   canSyncConnector,
+  DRATA_DOCUMENTATION_URL,
   drataEnvBlock,
   firstStepKey,
   getCompletedStepKeys,
@@ -14,6 +15,7 @@ import {
   getStartedStepKeys,
   getStepStatus,
   isStepDone,
+  MICROSOFT_DEFENDER_DOCUMENTATION_URL,
   microsoftDefenderEnvBlock,
   nextStepKey,
   OPENCTI_DOCUMENTATION_URL,
@@ -418,9 +420,17 @@ describe('openctiEnvBlock', () => {
       'CONNECTORS__OPENCTI__tenant-1__TOKEN=',
     ]);
   });
+});
 
-  it('points to the section of the OpenCTI connector page that lists its variables', () => {
-    expect(OPENCTI_DOCUMENTATION_URL).toBe('https://filigran.io/docs/opencrq/use/sources/opencti/#give-opencrq-the-url-and-the-token');
+describe('connector documentation URLs', () => {
+  it.each([
+    ['microsoft-defender', MICROSOFT_DEFENDER_DOCUMENTATION_URL],
+    ['drata', DRATA_DOCUMENTATION_URL],
+    ['opencti', OPENCTI_DOCUMENTATION_URL],
+  ])('point to a section of the %s source page of the documentation site', (source, url) => {
+    const { origin, pathname, hash } = new URL(url);
+    expect(`${origin}${pathname}`).toBe(`https://filigran.io/docs/opencrq/use/sources/${source}/`);
+    expect(hash).not.toBe('');
   });
 });
 

@@ -28,6 +28,11 @@
   watches:
     - module/src/modules/supporting-assets/**
 
+- doc: docs/deployment/dependency-rules.md
+  watches:
+    - back/src/features/dependency-rules/**
+    - module/src/modules/asset-dependencies/**
+
 - doc: docs/deployment/openaev-connector.md
   watches:
     - back/src/features/openaev-sync/**
@@ -101,7 +106,6 @@
 
 - doc: README.md
   watches:
-    - docs/*/README.md
     - .github/img/logo_opencrq.svg
     - LICENSE
 
