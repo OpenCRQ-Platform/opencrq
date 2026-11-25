@@ -1,3 +1,4 @@
+import type { NonConvergingCycle } from './dispatcher-core';
 import type { Logger } from '../../utils/logger';
 import { recordFeedingCycle } from '../../utils/recompute-metrics';
 
@@ -5,4 +6,8 @@ import { recordFeedingCycle } from '../../utils/recompute-metrics';
 export const createFeedingCycleReport = (logger: Logger) => (cycle: Array<string>): void => {
   recordFeedingCycle(cycle);
   logger.logWarn('Recompute jobs feed each other: their reads and writes form a cycle', { cycle: cycle.join(' -> ') });
+};
+
+export const createNonConvergingCycleReport = (logger: Logger) => (report: NonConvergingCycle): void => {
+  logger.logError('Feeding cycle not converging', { ...report });
 };
