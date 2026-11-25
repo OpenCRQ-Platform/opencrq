@@ -1280,9 +1280,11 @@ export const supportingAssetsRepository = defineRepository({
       db.select({ id: views.supportingAssetRelations.toAssetId })
         .from(views.supportingAssetRelations)
         .where(and(inArray(views.supportingAssetRelations.toAssetId, assetIds), ne(views.supportingAssetRelations.connectorId, retiringConnectorId))),
+      // A link a dependency rule wrote is the rule's, rewritten from what the estate holds: it ties
+      // the asset to nothing a person decided, and must not keep a retired asset in scope.
       db.select({ id: views.supportToPrimaryLinks.supportingAssetId })
         .from(views.supportToPrimaryLinks)
-        .where(inArray(views.supportToPrimaryLinks.supportingAssetId, assetIds)),
+        .where(and(inArray(views.supportToPrimaryLinks.supportingAssetId, assetIds), isNull(views.supportToPrimaryLinks.ruleId))),
       db.select({ id: views.supportToSupportLinks.providerAssetId })
         .from(views.supportToSupportLinks)
         .where(inArray(views.supportToSupportLinks.providerAssetId, assetIds)),
