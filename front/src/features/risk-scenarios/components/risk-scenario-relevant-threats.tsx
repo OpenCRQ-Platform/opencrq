@@ -17,6 +17,7 @@ import {
   ActivityGradeBadge,
   composeThreatScore,
   DimensionTags,
+  HiddenThreatsAlert,
   observedAtSortValue,
   RelevanceBand,
   RelevanceProofPanel,
@@ -91,6 +92,7 @@ export const RiskScenarioRelevantThreats: FunctionComponent<RiskScenarioRelevant
   if (emptyState !== null) {
     return (
       <SectionCard title={t`Relevant Threats`}>
+        <HiddenThreatsAlert />
         <EmptyStatePanel>
           <div className="text-center">
             <p className="txt-subtitle font-medium">
@@ -203,6 +205,7 @@ export const RiskScenarioRelevantThreats: FunctionComponent<RiskScenarioRelevant
 
   return (
     <SectionCard title={t`Relevant Threats`}>
+      <HiddenThreatsAlert />
       <div ref={tableContainerRef} tabIndex={-1}>
         <DataPageLayout
           data={items}

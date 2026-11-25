@@ -1,6 +1,5 @@
 import {
   activityWeightFor,
-  originMarkingScope,
   SEVERITY_BANDS,
   THREAT_CVE_PRESENCES,
   THREAT_ENTITY_TYPES,
@@ -11,6 +10,7 @@ import {
   threatAnalysisLocations,
   threatAnalysisSectors,
   threatAnalysisTechniques,
+  withoutReaderScope,
 } from '@app/module';
 import { TRPCError } from '@trpc/server';
 import { createSelectSchema } from 'drizzle-zod';
@@ -92,9 +92,6 @@ const ThreatListResultSchema = pagedOutput(ThreatListRowSchema).extend({
   // Analyses the recompute has never covered yet, admitted to the page like any other row (see
   // `countPendingAnalyses`) but called out here so the UI can explain their blank columns.
   pending: z.number().int(),
-  // OpenCTI did not say what the reader may read there, so the mirrored threats they see are only
-  // the unmarked, unrestricted ones.
-  readerScopeUnresolved: z.boolean(),
 });
 
 // The citing rows carry the STIX id of the vulnerability object the relationship pointed at, which
@@ -332,10 +329,7 @@ export const threatsRouter = (procedure: TenantProcedure) => router({
   list: procedure
     .input(ThreatListInputSchema)
     .output(ThreatListResultSchema)
-    .query(async ({ input, ctx: { services, origin } }) => ({
-      ...await services.withOrigin(origin).threatAnalyses.list(input),
-      readerScopeUnresolved: originMarkingScope(origin) === null,
-    })),
+    .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin).threatAnalyses.list(input)),
 
   deleteImported: procedure
     .input(z.array(z.uuid()).min(1))
@@ -395,6 +389,19 @@ export const threatsRouter = (procedure: TenantProcedure) => router({
     .output(AnalysisDetailSchema.nullable())
     .query(async ({ input, ctx: { services, origin } }) => await services.withOrigin(origin)
       .threatAnalyses.getDetail(input.id) ?? null),
+
+  // A threat the reader's OpenCTI rights hide, told from one that does not exist: whether the id
+  // exists when the reader's OpenCTI scope is set aside, never what it holds. Their tenant and native
+  // clearance still narrow it, so another tenant's id and a threat their OpenCRQ markings hide answer false.
+  isHidden: procedure
+    .input(z.object({ id: z.uuid() }))
+    .output(z.boolean())
+    .query(async ({ input, ctx: { services, origin } }) => {
+      if (await services.withOrigin(origin).threatAnalyses.exists(input.id)) {
+        return false;
+      }
+      return services.withOrigin(withoutReaderScope(origin)).threatAnalyses.exists(input.id);
+    }),
 
   // bounded-by: the attack-outcome catalogue, one score per outcome
   getOutcomeScoresForAnalysis: procedure

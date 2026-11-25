@@ -55,15 +55,15 @@ describe('resolveCounterparts', () => {
     const p = provider({ resolve: vi.fn(() => Promise.resolve([counterpart('CVE-2024-3400')])) });
     const first = await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400', 'CVE-2023-1111'], [p]);
     const second = await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['cve-2024-3400', 'CVE-2023-1111'], [p]);
-    expect(first.map((c) => c.key)).toEqual(['CVE-2024-3400']);
-    expect(second.map((c) => c.key)).toEqual(['CVE-2024-3400']);
+    expect(first.counterparts.map((c) => c.key)).toEqual(['CVE-2024-3400']);
+    expect(second.counterparts.map((c) => c.key)).toEqual(['CVE-2024-3400']);
     expect(p.resolve).toHaveBeenCalledTimes(1);
   });
 
   it('skips a product that is not connected or does not hold the kind', async () => {
     const off = provider({ isConnected: false });
     const other = provider({ product: 'openaev', supports: () => false });
-    expect(await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400'], [off, other])).toEqual([]);
+    expect(await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400'], [off, other])).toEqual({ counterparts: [], unavailable: [] });
     expect(off.resolve).not.toHaveBeenCalled();
     expect(other.resolve).not.toHaveBeenCalled();
   });
@@ -71,26 +71,32 @@ describe('resolveCounterparts', () => {
   it('answers nothing for a failing product and does not cache the failure', async () => {
     const resolve = vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([counterpart('T1059')]);
     const p = provider({ resolve });
-    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual([]);
-    expect((await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).map((c) => c.key)).toEqual(['T1059']);
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual({ counterparts: [], unavailable: ['opencti'] });
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toMatchObject({ counterparts: [{ key: 'T1059' }], unavailable: [] });
+  });
+
+  it('names each product that failed, and only those, whatever the others answered', async () => {
+    const down = provider({ product: 'openaev', resolve: vi.fn().mockRejectedValue(new Error('timeout')) });
+    const up = provider({ resolve: vi.fn(() => Promise.resolve([counterpart('T1059')])) });
+    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [up, down])).toMatchObject({ counterparts: [{ key: 'T1059' }], unavailable: ['openaev'] });
   });
 
   it('drops a counterpart whose link is not http(s)', async () => {
     const p = provider({ resolve: vi.fn(() => Promise.resolve([{ ...counterpart('T1059'), objectUrl: 'javascript:alert(1)' }])) });
-    expect(await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).toEqual([]);
+    expect((await resolveCounterparts(TENANT, READER, 'ATTACK_PATTERN', ['T1059'], [p])).counterparts).toEqual([]);
   });
 
   it('never serves one reader the answer another reader got: the cache is per reader', async () => {
     const p = provider({ resolve: vi.fn(() => Promise.resolve([counterpart('CVE-2024-3400')])) });
     await resolveCounterparts(TENANT, READER, 'VULNERABILITY', ['CVE-2024-3400'], [p]);
     const restricted = provider({ resolve: vi.fn(() => Promise.resolve([])) });
-    expect(await resolveCounterparts(TENANT, OTHER_READER, 'VULNERABILITY', ['CVE-2024-3400'], [restricted])).toEqual([]);
+    expect((await resolveCounterparts(TENANT, OTHER_READER, 'VULNERABILITY', ['CVE-2024-3400'], [restricted])).counterparts).toEqual([]);
     expect(restricted.resolve).toHaveBeenCalledTimes(1);
   });
 
   it('never calls a product with no valid key', async () => {
     const p = provider();
-    expect(await resolveCounterparts(TENANT, READER, 'THREAT', ['apt28'], [p])).toEqual([]);
+    expect(await resolveCounterparts(TENANT, READER, 'THREAT', ['apt28'], [p])).toEqual({ counterparts: [], unavailable: [] });
     expect(p.resolve).not.toHaveBeenCalled();
   });
 });
@@ -167,7 +173,7 @@ describe('providers', () => {
   });
 
   it('sends the reader bearer, never the connector token, on every lookup', async () => {
-    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response('[]')));
+    const fetchImpl = vi.fn((_url: string, init: RequestInit) => Promise.resolve(new Response(String(init.body).includes('stixCoreObjects') ? '{"data":{"stixCoreObjects":{"edges":[]}}}' : '[]')));
     const connection = { url: 'https://product.example', token: 'connector-token' };
     await openaevProvider(connection, () => Promise.resolve('reader-jwt'), fetchImpl).resolve('ASSET', ['web-01']);
     await openctiProvider(connection, () => Promise.resolve('reader-jwt'), fetchImpl).resolve('ASSET', ['web-01']);
@@ -223,5 +229,63 @@ describe('xtmOneProvider', () => {
       { key: 'web-01', id: 'x1', name: 'web-01', url: 'javascript:alert(1)' },
     ] })))));
     expect(await script.resolve('ASSET', ['web-01'])).toEqual([]);
+  });
+});
+
+describe('a lookup that answers with something other than its documented shape', () => {
+  const CONNECTION = { url: 'https://product.example', token: 'connector-token' };
+  const SIGN = () => Promise.resolve('reader-jwt');
+  const CVE = 'CVE-2024-3400';
+  const OPENCTI_EMPTY = { data: { stixCoreObjects: { edges: [] } } };
+  const OPENCTI_REFUSED = { errors: [{ message: 'No user reader@example.com', extensions: { code: 'AUTH_REQUIRED' } }], data: null };
+  const answeringWith = (body: unknown) => vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status: 200 })));
+
+  beforeEach(() => resetCounterpartCache());
+
+  it('should find nothing, without failing, when OpenCTI answers an empty page', async () => {
+    const opencti = openctiProvider(CONNECTION, SIGN, answeringWith(OPENCTI_EMPTY));
+
+    expect(await opencti.resolve('VULNERABILITY', [CVE])).toEqual([]);
+  });
+
+  it('should fail when OpenCTI refuses the query with a 200, whatever the error says', async () => {
+    const opencti = openctiProvider(CONNECTION, SIGN, answeringWith(OPENCTI_REFUSED));
+
+    await expect(opencti.resolve('VULNERABILITY', [CVE])).rejects.toThrow('XTM counterpart lookup failed');
+  });
+
+  it('should fail when OpenCTI answers a page that is not a connection', async () => {
+    await expect(openctiProvider(CONNECTION, SIGN, answeringWith({ data: { stixCoreObjects: null } })).resolve('VULNERABILITY', [CVE])).rejects.toThrow();
+    await expect(openctiProvider(CONNECTION, SIGN, answeringWith({ data: { stixCoreObjects: { edges: 'none' } } })).resolve('VULNERABILITY', [CVE])).rejects.toThrow();
+    await expect(openctiProvider(CONNECTION, SIGN, answeringWith('<html>Sign in</html>')).resolve('VULNERABILITY', [CVE])).rejects.toThrow();
+  });
+
+  it('should find nothing, without failing, when OpenAEV answers an empty list, and fail on anything else', async () => {
+    expect(await openaevProvider(CONNECTION, SIGN, answeringWith([])).resolve('VULNERABILITY', [CVE])).toEqual([]);
+    await expect(openaevProvider(CONNECTION, SIGN, answeringWith({ error: 'Forbidden' })).resolve('VULNERABILITY', [CVE])).rejects.toThrow('XTM counterpart lookup failed');
+  });
+
+  it('should find nothing, without failing, when XTM One answers an empty inventory, and fail on anything else', async () => {
+    const headers = () => Promise.resolve({ Authorization: 'Bearer reader-jwt' });
+
+    expect(await xtmOneProvider('https://xtm-one.example', headers, answeringWith({ items: [] })).resolve('ASSET', ['web-01'])).toEqual([]);
+    await expect(xtmOneProvider('https://xtm-one.example', headers, answeringWith({ detail: 'Forbidden' })).resolve('ASSET', ['web-01'])).rejects.toThrow('XTM counterpart lookup failed');
+  });
+
+  it('should carry no text of the upstream answer in the failure', async () => {
+    const failure = await openctiProvider(CONNECTION, SIGN, answeringWith(OPENCTI_REFUSED)).resolve('VULNERABILITY', [CVE]).catch((err: unknown) => err);
+
+    expect(JSON.stringify(failure instanceof Error ? { message: failure.message, data: 'data' in failure ? failure.data : undefined } : failure)).not.toContain('reader@example.com');
+  });
+
+  it('should name the product as unavailable, and not cache the failure as a miss', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(OPENCTI_REFUSED), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(OPENCTI_EMPTY), { status: 200 }));
+    const opencti = openctiProvider(CONNECTION, SIGN, fetchImpl);
+
+    expect(await resolveCounterparts('t-1', 'u-1', 'VULNERABILITY', [CVE], [opencti])).toEqual({ counterparts: [], unavailable: ['opencti'] });
+    expect(await resolveCounterparts('t-1', 'u-1', 'VULNERABILITY', [CVE], [opencti])).toEqual({ counterparts: [], unavailable: [] });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 });

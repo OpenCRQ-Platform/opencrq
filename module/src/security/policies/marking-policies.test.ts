@@ -3,7 +3,7 @@ import { uuidv7 } from 'uuidv7';
 import { describe, expect, it } from 'vitest';
 import type { EventOrigin, GatekeeperResult, OpenCtiReaderAccess } from '../policy';
 import { openctiStreamObjects, openctiStreamReportRefs, threatAnalyses, threatAnalysisAliases } from '../../modules';
-import { originMarkingScope, originOpenCtiAccess, reportRefMarkingPolicy, streamObjectMarkingPolicy, threatAnalysisMarkingPolicy, threatMarkingPolicy } from './marking-policies';
+import { originMarkingScope, originOpenCtiAccess, reportRefMarkingPolicy, streamObjectMarkingPolicy, threatAnalysisMarkingPolicy, threatMarkingPolicy, withoutReaderScope } from './marking-policies';
 
 const userId = uuidv7();
 const tenantId = uuidv7();
@@ -48,6 +48,26 @@ describe('originMarkingScope', () => {
     { type: 'client', userId, tenantId, job: { jobKind: 'crq-simulation', interactive: true } },
   ])('should not narrow a $type origin, so scores blend every source', (origin) => {
     expect(originMarkingScope(origin)).toBeUndefined();
+  });
+});
+
+describe('withoutReaderScope', () => {
+  it('should drop the OpenCTI scope of a person and keep who and where they are', () => {
+    const origin = withoutReaderScope(identified([TLP_GREEN], ACCESS));
+
+    expect(origin).toMatchObject({ type: 'client', userId, tenantId });
+    expect(originMarkingScope(origin)).toBeUndefined();
+    expect(originOpenCtiAccess(origin)).toBeUndefined();
+  });
+
+  it('should leave a person whose OpenCTI did not answer no longer narrowed by that', () => {
+    expect(originMarkingScope(withoutReaderScope(client(null)))).toBeUndefined();
+  });
+
+  it('should leave any other origin as it is', () => {
+    const connector: EventOrigin = { type: 'connector', serviceAccountId: uuidv7(), tenantId };
+
+    expect(withoutReaderScope(connector)).toBe(connector);
   });
 });
 

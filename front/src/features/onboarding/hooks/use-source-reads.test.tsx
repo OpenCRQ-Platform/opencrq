@@ -16,22 +16,15 @@ afterEach(() => {
 });
 
 const Probe: FunctionComponent = () => {
-  const { total, readerScopeUnresolved } = useTenantThreats();
-  return <p>{total === undefined ? 'loading' : `${total} threats, hidden: ${String(readerScopeUnresolved)}`}</p>;
+  const total = useTenantThreats();
+  return <p>{total === undefined ? 'loading' : `${total} threats`}</p>;
 };
 
-const page = (readerScopeUnresolved: boolean) => ({ items: [], total: 2, page: 1, limit: 1, pending: 0, readerScopeUnresolved });
-
 describe('useTenantThreats', () => {
-  it('says threats may be hidden when OpenCTI left the reader scope unresolved', async () => {
-    renderWithTrpc(<Probe />, { answers: { 'threats.list': page(true) } });
+  it('gives the whole count of the tenant, not a source\'s', async () => {
+    const { calls } = renderWithTrpc(<Probe />, { answers: { 'threats.list': { items: [], total: 2, page: 1, limit: 1, pending: 0 } } });
 
-    expect(await screen.findByText('2 threats, hidden: true')).toBeTruthy();
-  });
-
-  it('says nothing is hidden once the reader scope is known', async () => {
-    renderWithTrpc(<Probe />, { answers: { 'threats.list': page(false) } });
-
-    expect(await screen.findByText('2 threats, hidden: false')).toBeTruthy();
+    expect(await screen.findByText('2 threats')).toBeTruthy();
+    expect(calls).toContainEqual(expect.objectContaining({ path: 'threats.list', input: { page: 1, limit: 1 } }));
   });
 });

@@ -20,7 +20,7 @@ const wrapper = ({ children }: { children: ReactNode }) => <I18nProvider i18n={i
 const renderPage = (props: Partial<ComponentProps<typeof ThreatListPage>> = {}) => render(
   <ThreatListPage
     pending={0}
-    readerScopeUnresolved={false}
+    readerAccessIssue={null}
     catalogEmpty={false}
     emptyState={<p>empty card</p>}
     kpiBand={<p>kpi band</p>}
@@ -84,23 +84,23 @@ describe('ThreatListPage', () => {
     expect(screen.queryByRole('button', { name: 'Analyze new bundle' })).toBeNull();
   });
 
-  it('says some threats may be hidden when OpenCTI did not answer for the reader', () => {
-    renderPage({ readerScopeUnresolved: true });
+  it('says why some threats are hidden, by the reader\'s issue, above the list', () => {
+    renderPage({ readerAccessIssue: 'no_account' });
 
-    expect(screen.getByText('Some threats may be hidden from you.')).toBeTruthy();
+    expect(screen.getByText('Some threats are hidden because you have no OpenCTI account.')).toBeTruthy();
     expect(screen.getByText('threat table')).toBeTruthy();
   });
 
-  it('says nothing about hidden threats when the reader scope is known', () => {
-    renderPage({ readerScopeUnresolved: false });
+  it('says nothing about hidden threats when the reader lacks none', () => {
+    renderPage({ readerAccessIssue: null });
 
-    expect(screen.queryByText('Some threats may be hidden from you.')).toBeNull();
+    expect(screen.queryByText(/Some threats are hidden/)).toBeNull();
   });
 
   it('warns on an empty catalogue too, instead of leaving "start with the threats" alone', () => {
-    renderPage({ catalogEmpty: true, readerScopeUnresolved: true });
+    renderPage({ catalogEmpty: true, readerAccessIssue: 'unavailable' });
 
-    expect(screen.getByText('Some threats may be hidden from you.')).toBeTruthy();
+    expect(screen.getByText('Some threats are hidden for now.')).toBeTruthy();
     expect(screen.getByText('empty card')).toBeTruthy();
   });
 

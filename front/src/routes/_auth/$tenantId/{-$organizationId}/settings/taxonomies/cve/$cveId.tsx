@@ -11,6 +11,7 @@ import { DescriptionField, DetailPageLayout, InfoField, SectionCard } from '../.
 import { DataPageLayout } from '../../../../../../../components/ui/data-page-layout';
 import { AssetName } from '../../../../../../../components/shared/asset-name';
 import { EmptyValue } from '../../../../../../../components/ui/empty-value';
+import { HiddenThreatsAlert, HiddenThreatsHint } from '../../../../../../../features/threats/components/hidden-threats-notice';
 import { ThreatListTable } from '../../../../../../../features/threats/components/threat-list-table';
 import { ThreatsCveActivityChart } from '../../../../../../../features/threats/components/threats-cve-activity-chart';
 import { CveAssetsActivityChart } from '../../../../../../../features/supporting-assets/components/cve-assets-activity-chart';
@@ -176,7 +177,10 @@ const CveDetailPage = () => {
             <CveAssetsActivityChart cveId={cveId} />
           </SectionCard>
           <SectionCard title={t`Threats activity`} cardClassName="flex-1">
-            <p className="txt-sub-content text-muted-foreground">{t`Threats targeting this CVE over the last year`}</p>
+            <div className="flex items-center gap-1">
+              <p className="txt-sub-content text-muted-foreground">{t`Threats targeting this CVE over the last year`}</p>
+              <HiddenThreatsHint />
+            </div>
             <ThreatsCveActivityChart cveId={cveId} />
           </SectionCard>
         </div>
@@ -205,6 +209,7 @@ const CveDetailPage = () => {
         />
       </SectionCard>
       <SectionCard title={t`Threats`}>
+        <HiddenThreatsAlert />
         <ThreatListTable
           data={threats}
           isLoading={isLoadingThreats}

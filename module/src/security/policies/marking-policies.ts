@@ -27,6 +27,13 @@ export const originMarkingScope = (origin: EventOrigin): ReadonlyArray<string> |
 };
 
 /**
+ * The origin without the OpenCTI scope the tenant procedure resolved for it. Its tenant rules and its
+ * native clearance stay: only what OpenCTI's own rights hide from the person is no longer narrowed.
+ */
+export const withoutReaderScope = (origin: EventOrigin): EventOrigin =>
+  (origin.type === 'client' ? { ...origin, markings: undefined, openctiAccess: undefined } : origin);
+
+/**
  * Who the person is in OpenCTI (opencrq #35): `undefined` when the origin carries no marking scope or
  * no identity was resolved with it (nothing narrowed on organizations and members), `null` when
  * OpenCTI did not answer for them (they belong to no organization and no member list).
@@ -117,6 +124,13 @@ const readableMirroredThreat = (row: ThreatColumns, markings: ReadonlyArray<stri
     : sql`not exists(select 1 from opencti_stream_objects as threat_body where threat_body.tenant_id = ${row.tenantId} and threat_body.stix_id = ${row.stixId} and threat_body.deleted_at is null and not ${admittedBody(sql`threat_body.data`, access)})`;
   return sql`(${marked} and ${admitted})`;
 };
+
+/**
+ * A mirrored row a reader OpenCTI did not answer for cannot read: the one the tenant procedure then
+ * narrows on, and the rows a notice that threats are hidden speaks of.
+ */
+export const mirroredThreatHiddenFromUnresolvedReader = (row: ThreatColumns): SQL =>
+  sql`(${row.kind} = 'connector' and not ${readableMirroredThreat(row, null, null)})`;
 
 /**
  * The markings of an imported row the tenant defines, as a SQL array: a STIX file names whatever

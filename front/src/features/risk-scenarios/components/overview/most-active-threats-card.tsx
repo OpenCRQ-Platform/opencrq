@@ -5,7 +5,7 @@ import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import type { FunctionComponent } from 'react';
 import { SectionCard } from '../../../../components/shared';
-import { ActivityGradeBadge, ThreatTypeBadge } from '../../../threats';
+import { ActivityGradeBadge, HiddenThreatsAlert, ThreatTypeBadge } from '../../../threats';
 import { useTRPC } from '../../../../lib';
 import { rankMostActiveThreats } from './most-active-threats-utils';
 
@@ -24,6 +24,7 @@ export const MostActiveThreatsCard: FunctionComponent<MostActiveThreatsCardProps
 
   return (
     <SectionCard title={t`Most Active Threats`} className="h-full" cardClassName="flex-1 p-4">
+      <HiddenThreatsAlert />
       {isLoading ? (
         Array.from({ length: SKELETON_ROWS }).map((_, i) => (
           <div key={i} className="flex items-center justify-between">

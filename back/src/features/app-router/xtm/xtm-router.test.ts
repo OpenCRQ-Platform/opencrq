@@ -25,7 +25,8 @@ vi.mock('../../xtm-one/xtm-one-headers', () => ({ buildXtmOneHeaders }));
 const { resolvePublicUrl } = vi.hoisted(() => ({ resolvePublicUrl: vi.fn() }));
 vi.mock('./opencti-public-url', () => ({ openctiPublicUrl: { resolve: resolvePublicUrl } }));
 
-const { probeReaderLink, readerAuthorization, readerScopeAuthorization } = await import('./xtm-router');
+const { probeReaderLink, readerAuthorization, readerScopeAuthorization, xtmRouter } = await import('./xtm-router');
+const { trpcInstance } = await import('../../../trpc');
 const { ReaderTokenUnavailable } = await import('../../xtm-one/xtm-one-token-exchange');
 
 beforeEach(() => {
@@ -128,5 +129,53 @@ describe('probeReaderLink', () => {
     expect(await probeReaderLink(authorize(USER), OPENCTI)).toBe('unknown');
     settings.current = null;
     expect(await probeReaderLink(authorize(USER), OPENCTI)).toBe('unknown');
+  });
+});
+
+describe('xtm.readerAccess', () => {
+  const TENANT_ID = '0198a2b4-7c3d-7e5f-8a9b-0c1d2e3f4a5c';
+  const narrowed = { type: 'client', userId: 'user-1', tenantId: TENANT_ID, markings: null, openctiAccess: null } as const;
+
+  /** `issue` and `threatVisibility` are what the tenant procedure resolved; `hidden` what the tenant holds that the reader cannot read. */
+  const readerAccessFor = (resolved: { issue: 'unavailable' | 'connector_unavailable' | null, threatVisibility: 'per_member' | 'service_account', hidden: boolean }) => {
+    const hasThreatHiddenFromUnresolvedReader = vi.fn(() => Promise.resolve(resolved.hidden));
+    const withOrigin = vi.fn(() => ({
+      tenants: { callerReachesTenant: () => Promise.resolve(true) },
+      threatAnalyses: { hasThreatHiddenFromUnresolvedReader },
+    }));
+    const procedure = trpcInstance.procedure.use(({ next }) => next({
+      ctx: { services: { withOrigin }, origin: narrowed, user: null, readerAccessIssue: resolved.issue, threatVisibility: resolved.threatVisibility },
+    }));
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- the router reads only the context fields set above and the database it never touches here
+    const caller = xtmRouter(procedure as never, DB as never).createCaller({} as never);
+    return { call: () => caller.readerAccess(), withOrigin, hasThreatHiddenFromUnresolvedReader };
+  };
+
+  it('should name the category when the tenant holds a threat the reader cannot read, asking past their OpenCTI scope', async () => {
+    const { call, withOrigin, hasThreatHiddenFromUnresolvedReader } = readerAccessFor({ issue: 'unavailable', threatVisibility: 'per_member', hidden: true });
+
+    expect(await call()).toEqual({ threats: 'unavailable', threatVisibility: 'per_member', counterparts: { opencti: null, openaev: null } });
+    expect(hasThreatHiddenFromUnresolvedReader).toHaveBeenCalledTimes(1);
+    expect(withOrigin).toHaveBeenLastCalledWith({ ...narrowed, markings: undefined, openctiAccess: undefined });
+  });
+
+  it('should say nothing when the scope is unresolved but the tenant holds no threat the reader cannot read', async () => {
+    const { call } = readerAccessFor({ issue: 'unavailable', threatVisibility: 'per_member', hidden: false });
+
+    expect((await call()).threats).toBeNull();
+  });
+
+  it('should not look for hidden threats when the scope resolved', async () => {
+    const { call, hasThreatHiddenFromUnresolvedReader } = readerAccessFor({ issue: null, threatVisibility: 'per_member', hidden: true });
+
+    expect((await call()).threats).toBeNull();
+    expect(hasThreatHiddenFromUnresolvedReader).not.toHaveBeenCalled();
+  });
+
+  it('should give the tenant\'s threat visibility, and the connector\'s category only when something is hidden', async () => {
+    expect(await readerAccessFor({ issue: 'connector_unavailable', threatVisibility: 'service_account', hidden: true }).call())
+      .toMatchObject({ threats: 'connector_unavailable', threatVisibility: 'service_account' });
+    expect(await readerAccessFor({ issue: 'connector_unavailable', threatVisibility: 'service_account', hidden: false }).call())
+      .toMatchObject({ threats: null, threatVisibility: 'service_account' });
   });
 });

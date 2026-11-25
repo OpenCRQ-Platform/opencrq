@@ -18,7 +18,7 @@ import { getDataTableI18nKey } from '../../../components/ui/data-table-i18n';
 import { useTRPC } from '../../../lib';
 import { cn, formatDollar, formatFractionAsPercent } from '../../../utils';
 import { formatPanelCount } from '../../findings-home/findings-panel-utils';
-import { ActivityGradeBadge, ThreatTypeBadge } from '../../threats';
+import { ActivityGradeBadge, HiddenThreatsHint, ThreatTypeBadge } from '../../threats';
 import { DashboardWidgetCard } from '../components/dashboard-widget-card';
 import {
   countGainingTechniques,
@@ -52,12 +52,15 @@ const ThreatCatalogCard: FunctionComponent = () => {
     <DashboardWidgetCard
       title={t`Threat catalog`}
       info={(
-        <MetricInfo
-          title={t`Threat catalog`}
-          what={<Trans>What the integrations have synced: the threats by type, how many of them are active, and the CVEs they are reported to target.</Trans>}
-          how={<Trans>A CVE several threats target counts once. A threat is active as on the Threats page, from how recently it was observed or reported.</Trans>}
-          caveat={<Trans>The whole tenant's catalog, whichever scope is selected: a threat is matched against a scope, it does not belong to one.</Trans>}
-        />
+        <>
+          <MetricInfo
+            title={t`Threat catalog`}
+            what={<Trans>What the integrations have synced: the threats by type, how many of them are active, and the CVEs they are reported to target.</Trans>}
+            how={<Trans>A CVE several threats target counts once. A threat is active as on the Threats page, from how recently it was observed or reported.</Trans>}
+            caveat={<Trans>The whole tenant's catalog, whichever scope is selected: a threat is matched against a scope, it does not belong to one.</Trans>}
+          />
+          <HiddenThreatsHint />
+        </>
       )}
     >
       {data === undefined
@@ -148,18 +151,21 @@ const MostActiveThreatsTable: FunctionComponent<{ organizationId?: string }> = (
         <CardTitle
           as="h3"
           endAdornment={(
-            <MetricInfo
-              title={t`Most active threats`}
-              what={<Trans>The most active threats relevant to at least one of the scope's risk scenarios.</Trans>}
-              how={(
-                <Trans>
-                  A threat is relevant to a scenario as on the scenario's overview: OpenCRQ's internal model gives
-                  it a probability above {thresholdLabel} of leading to the scenario's attack outcome. It counts
-                  once however many scenarios it is relevant to, and the Scenarios column says how many. Ties on
-                  activity go to the threat relevant to more scenarios.
-                </Trans>
-              )}
-            />
+            <>
+              <MetricInfo
+                title={t`Most active threats`}
+                what={<Trans>The most active threats relevant to at least one of the scope's risk scenarios.</Trans>}
+                how={(
+                  <Trans>
+                    A threat is relevant to a scenario as on the scenario's overview: OpenCRQ's internal model gives
+                    it a probability above {thresholdLabel} of leading to the scenario's attack outcome. It counts
+                    once however many scenarios it is relevant to, and the Scenarios column says how many. Ties on
+                    activity go to the threat relevant to more scenarios.
+                  </Trans>
+                )}
+              />
+              <HiddenThreatsHint />
+            </>
           )}
         >
           {t`Most active threats`}

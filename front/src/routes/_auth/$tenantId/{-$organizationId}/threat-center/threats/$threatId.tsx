@@ -1,9 +1,14 @@
 import { t } from '@lingui/core/macro';
+import type { NotFoundRouteProps } from '@tanstack/react-router';
 import { createFileRoute, linkOptions, notFound, Outlet } from '@tanstack/react-router';
+import { RouteNotFoundComponent } from '../../../../../../components/layout/route-not-found';
 import { RouteTabs } from '../../../../../../components/shared';
 import {
+  HiddenThreatPage,
+  isHiddenThreat,
   matchedTechniques,
   ThreatHero,
+  threatNotFoundData,
   useLiveThreatDetail,
 } from '../../../../../../features';
 import { trpcClient } from '../../../../../../lib';
@@ -49,13 +54,19 @@ const ThreatDetailLayout = () => {
   );
 };
 
+const ThreatNotFound = ({ data }: NotFoundRouteProps) => (
+  isHiddenThreat(data) ? <HiddenThreatPage /> : <RouteNotFoundComponent />
+);
+
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/threat-center/threats/$threatId')({
   loader: async ({ params }) => {
     const detail = await trpcClient.threats.getDetail.query({ id: params.threatId });
     if (!detail) {
-      throw notFound();
+      // A threat the reader's OpenCTI rights hide is not an absent one.
+      throw notFound({ data: await threatNotFoundData(() => trpcClient.threats.isHidden.query({ id: params.threatId })) });
     }
     return { detail, crumb: detail.analysis.name };
   },
+  notFoundComponent: ThreatNotFound,
   component: ThreatDetailLayout,
 });
