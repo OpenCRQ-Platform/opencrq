@@ -8288,8 +8288,8 @@ msgstr "No OpenCRQ Posture recorded over this period."
 msgid "No owner"
 msgstr "No owner"
 
-msgid "No P10 to P90 band at this level: adding up the scenarios' bands would assume they all have their worst year at once."
-msgstr "No P10 to P90 band at this level: adding up the scenarios' bands would assume they all have their worst year at once."
+msgid "No P10 to P90 band at this level: adding up the scenarios' bands would treat them as if they moved together."
+msgstr "No P10 to P90 band at this level: adding up the scenarios' bands would treat them as if they moved together."
 
 msgid "No pending change."
 msgstr "No pending change."
@@ -8991,8 +8991,8 @@ msgstr "One row per connector with an observation on this finding."
 msgid "One row per control: the ALE reduction of its best single upgrade in each scenario, summed across the scenarios it appears in, so a control is credited once per scenario, not once per candidate upgrade. The chip names the axis to move. Rows within 2× of each other share a tier and are not ranked against one another, because a ±30% weight error would reorder them. Hover a row to project it onto the timeline; select it to open the control."
 msgstr "One row per control: the ALE reduction of its best single upgrade in each scenario, summed across the scenarios it appears in, so a control is credited once per scenario, not once per candidate upgrade. The chip names the axis to move. Rows within 2× of each other share a tier and are not ranked against one another, because a ±30% weight error would reorder them. Hover a row to project it onto the timeline; select it to open the control."
 
-msgid "One row per scenario, ordered by annual loss exposure. Each figure is the mean of the simulated years, with the p10 to p90 band below it: eight simulated years in ten fall inside it. LEF is the expected loss events per year and SLE the loss per event, so ALE = LEF × SLE. The trend compares the latest run against the one that opened the 90-day window; a scenario with no earlier run is marked New rather than shown as no change. Select a row to open the scenario."
-msgstr "One row per scenario, ordered by annual loss exposure. Each figure is the mean of the simulated years, with the p10 to p90 band below it: eight simulated years in ten fall inside it. LEF is the expected loss events per year and SLE the loss per event, so ALE = LEF × SLE. The trend compares the latest run against the one that opened the 90-day window; a scenario with no earlier run is marked New rather than shown as no change. Select a row to open the scenario."
+msgid "One row per scenario, ordered by annual loss exposure. The loss and frequency figures are means over the simulated worlds, and the annual loss carries a p10 to p90 band below it: the range the expected annual loss takes in eight worlds in ten as the uncertain inputs vary, not the range of a single year's loss. LEF is the expected loss events per year. The trend compares the latest run against the one that opened the 90-day window; a scenario with no earlier run is marked New rather than shown as no change. Select a row to open the scenario."
+msgstr "One row per scenario, ordered by annual loss exposure. The loss and frequency figures are means over the simulated worlds, and the annual loss carries a p10 to p90 band below it: the range the expected annual loss takes in eight worlds in ten as the uncertain inputs vary, not the range of a single year's loss. LEF is the expected loss events per year. The trend compares the latest run against the one that opened the 90-day window; a scenario with no earlier run is marked New rather than shown as no change. Select a row to open the scenario."
 
 msgid "One save carries at most {MAX_SCOPE_MAPPING_IDS} changes. Save these, then map the rest."
 msgstr "One save carries at most {MAX_SCOPE_MAPPING_IDS} changes. Save these, then map the rest."
@@ -12716,8 +12716,8 @@ msgstr "The maximum probability must be between 0.1% and 100%."
 msgid "The mean annual loss exposure of each day's latest simulation."
 msgstr "The mean annual loss exposure of each day's latest simulation."
 
-msgid "The mean annual loss over the simulated worlds, priced from the four outcomes, with the p10 to p90 band that holds eight simulated years in ten."
-msgstr "The mean annual loss over the simulated worlds, priced from the four outcomes, with the p10 to p90 band that holds eight simulated years in ten."
+msgid "The mean annual loss over the simulated worlds, priced from the four outcomes, with the p10 to p90 band: the range the expected annual loss takes in eight worlds in ten as the uncertain inputs vary. It is not the range of a single year's loss."
+msgstr "The mean annual loss over the simulated worlds, priced from the four outcomes, with the p10 to p90 band: the range the expected annual loss takes in eight worlds in ten as the uncertain inputs vary. It is not the range of a single year's loss."
 
 msgid "The mean loss per loss event."
 msgstr "The mean loss per loss event."
@@ -13113,8 +13113,8 @@ msgstr "The tolerance applies to this scenario on its own, never to the sum of t
 msgid "The tolerance needs both values. Leave without saving it?"
 msgstr "The tolerance needs both values. Leave without saving it?"
 
-msgid "The total carries no band. Adding each scenario's p10 and p90 would assume every scenario has its extreme year at once, which is a stress bound, not an interval on the total. Each scenario's own band is on its page."
-msgstr "The total carries no band. Adding each scenario's p10 and p90 would assume every scenario has its extreme year at once, which is a stress bound, not an interval on the total. Each scenario's own band is on its page."
+msgid "The total carries no band. Adding each scenario's p10 and p90 would treat the scenarios as if they moved together, which overstates the spread of the total. Each scenario's own band is on its page."
+msgstr "The total carries no band. Adding each scenario's p10 and p90 would treat the scenarios as if they moved together, which overstates the spread of the total. Each scenario's own band is on its page."
 
 msgid "The two factors multiply, they never add, so neither can make up for the other. The result is rounded to the nearest whole number."
 msgstr "The two factors multiply, they never add, so neither can make up for the other. The result is rounded to the nearest whole number."

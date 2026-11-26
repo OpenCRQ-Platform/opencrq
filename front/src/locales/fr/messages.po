@@ -8288,8 +8288,8 @@ msgstr "Aucune posture OpenCRQ enregistrée sur cette période."
 msgid "No owner"
 msgstr "Sans propriétaire"
 
-msgid "No P10 to P90 band at this level: adding up the scenarios' bands would assume they all have their worst year at once."
-msgstr "Pas de bande P10 à P90 à ce niveau : additionner les bandes des scénarios supposerait qu'ils connaissent tous leur pire année en même temps."
+msgid "No P10 to P90 band at this level: adding up the scenarios' bands would treat them as if they moved together."
+msgstr "Pas de bande P10 à P90 à ce niveau : additionner les bandes des scénarios reviendrait à les traiter comme si elles évoluaient ensemble."
 
 msgid "No pending change."
 msgstr "Aucun changement en attente."
@@ -8991,8 +8991,8 @@ msgstr "Une ligne par connecteur ayant une observation sur ce finding."
 msgid "One row per control: the ALE reduction of its best single upgrade in each scenario, summed across the scenarios it appears in, so a control is credited once per scenario, not once per candidate upgrade. The chip names the axis to move. Rows within 2× of each other share a tier and are not ranked against one another, because a ±30% weight error would reorder them. Hover a row to project it onto the timeline; select it to open the control."
 msgstr "Une ligne par contrôle : la réduction d'ALE de sa meilleure amélioration unique dans chaque scénario, additionnée sur les scénarios où il apparaît, un contrôle étant donc crédité une fois par scénario et non une fois par amélioration candidate. La puce nomme l'axe à faire bouger. Les lignes situées à moins d'un facteur 2 l'une de l'autre partagent un palier et ne sont pas classées entre elles, car une erreur de pondération de ±30 % suffirait à les réordonner. Survolez une ligne pour la projeter sur la chronologie, sélectionnez-la pour ouvrir le contrôle."
 
-msgid "One row per scenario, ordered by annual loss exposure. Each figure is the mean of the simulated years, with the p10 to p90 band below it: eight simulated years in ten fall inside it. LEF is the expected loss events per year and SLE the loss per event, so ALE = LEF × SLE. The trend compares the latest run against the one that opened the 90-day window; a scenario with no earlier run is marked New rather than shown as no change. Select a row to open the scenario."
-msgstr "Une ligne par scénario, classée par perte annuelle attendue. Chaque chiffre est la moyenne des années simulées, avec la bande p10 à p90 en dessous : huit années simulées sur dix y tombent. Le LEF est le nombre d'événements de perte attendus par an et le SLE la perte par événement, donc ALE = LEF × SLE. La tendance compare la dernière simulation à celle qui a ouvert la fenêtre de 90 jours ; un scénario sans simulation antérieure est marqué « Nouveau » plutôt qu'affiché comme inchangé. Sélectionnez une ligne pour ouvrir le scénario."
+msgid "One row per scenario, ordered by annual loss exposure. The loss and frequency figures are means over the simulated worlds, and the annual loss carries a p10 to p90 band below it: the range the expected annual loss takes in eight worlds in ten as the uncertain inputs vary, not the range of a single year's loss. LEF is the expected loss events per year. The trend compares the latest run against the one that opened the 90-day window; a scenario with no earlier run is marked New rather than shown as no change. Select a row to open the scenario."
+msgstr "Une ligne par scénario, classée par perte annuelle attendue. Les chiffres de perte et de fréquence sont des moyennes sur les mondes simulés, et la perte annuelle porte en dessous une bande p10 à p90 : la plage que prend la perte annuelle attendue dans huit mondes sur dix lorsque les entrées incertaines varient, et non la plage de la perte d'une seule année. Le LEF est le nombre d'événements de perte attendus par an. La tendance compare la dernière simulation à celle qui a ouvert la fenêtre de 90 jours ; un scénario sans simulation antérieure est marqué « Nouveau » plutôt qu'affiché comme inchangé. Sélectionnez une ligne pour ouvrir le scénario."
 
 msgid "One save carries at most {MAX_SCOPE_MAPPING_IDS} changes. Save these, then map the rest."
 msgstr "Un enregistrement porte au plus {MAX_SCOPE_MAPPING_IDS} changements. Enregistrez ceux-ci, puis mappez le reste."
@@ -12716,8 +12716,8 @@ msgstr "La probabilité maximale doit être comprise entre 0,1 % et 100 %."
 msgid "The mean annual loss exposure of each day's latest simulation."
 msgstr "La perte annuelle attendue moyenne de la dernière simulation de chaque jour."
 
-msgid "The mean annual loss over the simulated worlds, priced from the four outcomes, with the p10 to p90 band that holds eight simulated years in ten."
-msgstr "La perte annuelle moyenne sur les mondes simulés, valorisée à partir des quatre issues, avec la bande p10 à p90 qui contient huit années simulées sur dix."
+msgid "The mean annual loss over the simulated worlds, priced from the four outcomes, with the p10 to p90 band: the range the expected annual loss takes in eight worlds in ten as the uncertain inputs vary. It is not the range of a single year's loss."
+msgstr "La perte annuelle moyenne sur les mondes simulés, valorisée à partir des quatre issues, avec la bande p10 à p90 : la plage que prend la perte annuelle attendue dans huit mondes sur dix lorsque les entrées incertaines varient. Ce n'est pas la plage de la perte d'une seule année."
 
 msgid "The mean loss per loss event."
 msgstr "La perte moyenne par événement de perte."
@@ -13113,8 +13113,8 @@ msgstr "La tolérance s'applique à ce scénario pris isolément, jamais à la s
 msgid "The tolerance needs both values. Leave without saving it?"
 msgstr "La tolérance nécessite les deux valeurs. Quitter sans l'enregistrer ?"
 
-msgid "The total carries no band. Adding each scenario's p10 and p90 would assume every scenario has its extreme year at once, which is a stress bound, not an interval on the total. Each scenario's own band is on its page."
-msgstr "Le total n'a pas de bande. Additionner le p10 et le p90 de chaque scénario supposerait que tous les scénarios connaissent leur année extrême en même temps : c'est une borne de stress, pas un intervalle sur le total. La bande de chaque scénario figure sur sa page."
+msgid "The total carries no band. Adding each scenario's p10 and p90 would treat the scenarios as if they moved together, which overstates the spread of the total. Each scenario's own band is on its page."
+msgstr "Le total n'a pas de bande. Additionner le p10 et le p90 de chaque scénario reviendrait à traiter les scénarios comme s'ils évoluaient ensemble, ce qui surestime l'étalement du total. La bande de chaque scénario figure sur sa page."
 
 msgid "The two factors multiply, they never add, so neither can make up for the other. The result is rounded to the nearest whole number."
 msgstr "Les deux facteurs se multiplient, ils ne s'additionnent jamais : aucun ne peut racheter la faiblesse de l'autre. Le résultat est arrondi à l'entier le plus proche."

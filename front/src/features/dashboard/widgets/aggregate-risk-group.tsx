@@ -112,7 +112,7 @@ export const AggregateRiskGroup: FunctionComponent<AggregateRiskGroupProps> = ({
           title={t`Annual loss exposure`}
           what={<Trans>The loss to expect on average over a year: the loss event frequency times the loss magnitude.</Trans>}
           how={<Trans>The sum of the mean annual loss exposure of each scenario's latest simulation on that day.</Trans>}
-          caveat={<Trans>No P10 to P90 band at this level: adding up the scenarios' bands would assume they all have their worst year at once.</Trans>}
+          caveat={<Trans>No P10 to P90 band at this level: adding up the scenarios' bands would treat them as if they moved together.</Trans>}
         />
       ),
       formatValue: formatDollar,

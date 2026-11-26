@@ -118,10 +118,11 @@ export const ScenariosTableWidget: FunctionComponent<ScenariosTableWidgetProps> 
           what={<Trans>Every scenario in scope, heaviest first, with the figures its latest simulation produced.</Trans>}
           how={
             <Trans>
-              One row per scenario, ordered by annual loss exposure. Each figure is the mean of the
-              simulated years, with the p10 to p90 band below it: eight simulated years in ten fall
-              inside it. LEF is the expected loss events per year and SLE the loss per event, so
-              ALE = LEF × SLE. The trend compares the latest
+              One row per scenario, ordered by annual loss exposure. The loss and frequency figures
+              are means over the simulated worlds, and the annual loss carries a p10 to p90 band
+              below it: the range the expected annual loss takes in eight worlds in ten as the
+              uncertain inputs vary, not the range of a single year's loss. LEF is the expected
+              loss events per year. The trend compares the latest
               run against the one that opened the 90-day window; a scenario with no earlier run is
               marked New rather than shown as no change. Select a row to open the scenario.
             </Trans>

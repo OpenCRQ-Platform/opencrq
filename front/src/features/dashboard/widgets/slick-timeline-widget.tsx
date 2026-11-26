@@ -125,9 +125,9 @@ export const SlickTimelineWidget: FunctionComponent<SlickTimelineWidgetProps> = 
           }
           caveat={
             <Trans>
-              The total carries no band. Adding each scenario's p10 and p90 would assume every
-              scenario has its extreme year at once, which is a stress bound, not an interval on
-              the total. Each scenario's own band is on its page.
+              The total carries no band. Adding each scenario's p10 and p90 would treat the
+              scenarios as if they moved together, which overstates the spread of the total. Each
+              scenario's own band is on its page.
             </Trans>
           }
         />

@@ -12,8 +12,8 @@
  *
  * Navigation queries (e.g. "which controls are linked to this scenario?") apply the same filter, so
  * a technique curated on an attack outcome that no relevant actor uses produces NO control links and
- * NO shared-TTP counts. That is intentional. It never leaves a scenario without a CRQ run though:
- * when the outcome has no usable evidence at all, `getMitreTechniquesForOutcome` falls back to
- * `evidenceMode: 'no-relevant-threats'` and every curated technique carries a non-zero level.
+ * NO shared-TTP counts. That is intentional. The `evidenceMode: 'no-relevant-threats'` fallback of
+ * `getMitreTechniquesForOutcome` weights every curated technique but does not make a CRQ run
+ * possible: the engine refuses an outcome with no mixture group.
  */
 export const isActiveTechnique = (t: { weight: number }): boolean => t.weight > 0;
