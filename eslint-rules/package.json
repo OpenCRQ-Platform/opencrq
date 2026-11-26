@@ -19,6 +19,6 @@
     "@typescript-eslint/utils": "8.73.0",
     "eslint": "10.15.0",
     "typescript-eslint": "8.73.0",
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   }
 }
