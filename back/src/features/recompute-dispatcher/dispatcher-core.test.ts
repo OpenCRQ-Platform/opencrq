@@ -1,11 +1,11 @@
 import type { CompletedRunObservation, DoorbellParent, JobDependencyRow } from '@app/module';
 import { describe, expect, it, vi } from 'vitest';
-import type { DispatchedJob, DispatcherSettings, TableSets } from './dispatcher-core';
+import type { DispatchedJob, DispatcherSettings, NonConvergingCycle, TableSets } from './dispatcher-core';
 import type { LogSinkLine } from '../../utils/logger';
 import { createLogger, setLogSink } from '../../utils/logger';
 import { recordFeedingCycle } from '../../utils/recompute-metrics';
 import { createDispatcher, findFeedingCycle } from './dispatcher-core';
-import { createFeedingCycleReport } from './feeding-cycle-report';
+import { createFeedingCycleReport, createNonConvergingCycleReport } from './feeding-cycle-report';
 
 // The core reads no configuration; the real logger, imported here to run the reporting wiring for
 // real, reads the deployment one at module load.
@@ -45,6 +45,7 @@ const createHarness = (jobs: Array<DispatchedJob>, overrides?: {
   enqueue?: (attempt: number) => Promise<void>,
   doorbellParents?: Array<DoorbellParent>,
   onFeedingCycle?: (cycle: Array<string>) => void,
+  onNonConvergingCycle?: (report: NonConvergingCycle) => void,
 }) => {
   let nowMs = 0;
   const tenants = overrides?.tenants ?? ['tenant-1'];
@@ -55,6 +56,7 @@ const createHarness = (jobs: Array<DispatchedJob>, overrides?: {
   const errors: Array<string> = [];
   const persisted: Array<{ kind: string, tenantId: string, reads: Array<string>, writes: Array<string> }> = [];
   const cycles: Array<Array<string>> = [];
+  const nonConverging: Array<NonConvergingCycle> = [];
 
   const dispatcher = createDispatcher(jobs, {
     enqueue: (kind, tenantId, reason, interactive) => {
@@ -78,6 +80,10 @@ const createHarness = (jobs: Array<DispatchedJob>, overrides?: {
     onFeedingCycle: (cycle) => {
       cycles.push(cycle);
       overrides?.onFeedingCycle?.(cycle);
+    },
+    onNonConvergingCycle: (report) => {
+      nonConverging.push(report);
+      overrides?.onNonConvergingCycle?.(report);
     },
     now: () => nowMs,
     setTimer: (fn, ms) => {
@@ -119,7 +125,7 @@ const createHarness = (jobs: Array<DispatchedJob>, overrides?: {
     await flush();
   };
 
-  return { dispatcher, advance, enqueues, absorbed, errors, persisted, cycles, tenants };
+  return { dispatcher, advance, enqueues, absorbed, errors, persisted, cycles, nonConverging, tenants };
 };
 
 const FS: DispatchedJob = { kind: 'finding-score-recompute', observed: true };
@@ -275,7 +281,7 @@ describe('dispatcher parent deletion', () => {
   it('should record the silent children as changed during a run, so the completed observation can judge them', async () => {
     const h = createHarness([FS], { observations: reads(FS.kind, 'tenant-1', 'asset_evidence'), doorbellParents: PARENTS });
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.handleEvent({ table: 'risk_scenarios', tenantId: 'tenant-1', op: 'DELETE' });
     await h.advance(0);
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 500, observed({ reads: ['asset_evidence', 'scenario_loss_estimates'], writes: [] }));
@@ -343,7 +349,7 @@ describe('dispatcher debounce', () => {
   it('should scale the delay with the measured run duration, clamped to the cap', async () => {
     const h = createHarness([FS], { settings: { factor: 2, floorMs: 1_000, capMs: 5_000 } });
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 2_000, null);
     h.dispatcher.handleEvent({ table: 'asset_evidence', tenantId: 'tenant-1' });
     await h.advance(3_999);
@@ -351,7 +357,7 @@ describe('dispatcher debounce', () => {
     await h.advance(1);
     expect(h.enqueues).toHaveLength(1);
 
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 60_000, null);
     h.dispatcher.handleEvent({ table: 'asset_evidence', tenantId: 'tenant-1' });
     await h.advance(5_000);
@@ -468,7 +474,7 @@ describe('dispatcher debounce', () => {
     await h.dispatcher.start();
     h.dispatcher.handleEvent({ table: 'asset_evidence', tenantId: 'tenant-1' });
     await h.advance(500);
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     await h.advance(120_000);
     expect(h.enqueues).toHaveLength(0);
     expect(h.absorbed).toEqual([{ kind: FS.kind, tenantId: 'tenant-1', reason: 'change' }]);
@@ -480,7 +486,7 @@ describe('dispatcher debounce', () => {
     h.dispatcher.handleEvent({ table: 'asset_evidence', tenantId: 'tenant-1' });
     await h.advance(0);
     // The manual path claims the run before the debounce expires, the shadow-mode routine.
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 500, null);
     await h.advance(120_000);
     expect(h.enqueues).toHaveLength(0);
@@ -502,7 +508,7 @@ describe('dispatcher dirty mark', () => {
   it('should convert a change landing mid-run into exactly one follow-up enqueue', async () => {
     const h = createHarness([FS]);
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.handleEvent({ table: 'asset_evidence', tenantId: 'tenant-1' });
     h.dispatcher.handleEvent({ table: 'asset_evidence', tenantId: 'tenant-1' });
     await h.advance(120_000);
@@ -512,7 +518,7 @@ describe('dispatcher dirty mark', () => {
     expect(h.enqueues).toHaveLength(0);
     await h.advance(1);
     expect(h.enqueues).toEqual([{ kind: FS.kind, tenantId: 'tenant-1', reason: 'followup', interactive: true }]);
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 1_000, null);
     await h.advance(120_000);
     expect(h.enqueues).toHaveLength(1);
@@ -521,7 +527,7 @@ describe('dispatcher dirty mark', () => {
   it('should turn a reconnect during a run into the dirty mark', async () => {
     const h = createHarness([FS]);
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.markAllDirty();
     await h.advance(120_000);
     expect(h.enqueues).toHaveLength(0);
@@ -535,7 +541,7 @@ describe('dispatcher dirty mark', () => {
   it('should follow up on a table the run discovered while that table was changing', async () => {
     const h = createHarness([FS], { observations: reads(FS.kind, 'tenant-1', 'table_1') });
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     // Not in the persisted set: this very run is the one discovering it.
     h.dispatcher.handleEvent({ table: 'table_2', tenantId: 'tenant-1' });
     await h.advance(120_000);
@@ -548,7 +554,7 @@ describe('dispatcher dirty mark', () => {
   it('should not follow up on a table the completed run turned out not to read', async () => {
     const h = createHarness([FS], { observations: reads(FS.kind, 'tenant-1', 'table_1') });
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.handleEvent({ table: 'countries', tenantId: 'tenant-1' });
     await h.advance(120_000);
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 1_000, observed({ reads: ['table_1'], writes: [] }));
@@ -559,7 +565,7 @@ describe('dispatcher dirty mark', () => {
   it('should not follow up on the run own writes to a table it also reads', async () => {
     const h = createHarness([FS], { observations: reads(FS.kind, 'tenant-1', 'finding_scores') });
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.handleEvent({ table: 'finding_scores', tenantId: 'tenant-1', origin: FS.kind });
     await h.advance(120_000);
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 1_000, observed({ reads: ['finding_scores'], writes: ['finding_scores'] }));
@@ -570,7 +576,7 @@ describe('dispatcher dirty mark', () => {
   it('should refresh the subscription from the completed run observation', async () => {
     const h = createHarness([FS]);
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 500, observed({ reads: ['asset_evidence'], writes: ['finding_scores'] }));
     h.dispatcher.handleEvent({ table: 'countries', tenantId: 'tenant-1' });
     await h.advance(1_000);
@@ -855,24 +861,160 @@ describe('feeding cycles are reported once each', () => {
 describe('feeding cycles that do not converge', () => {
   const A: DispatchedJob = { kind: 'job-a', observed: true };
   const B: DispatchedJob = { kind: 'job-b', observed: true };
+  const loop = [...reads('job-a', 'tenant-1', 'table_b'), ...reads('job-b', 'tenant-1', 'table_a')];
 
-  const askFromJob = async (h: ReturnType<typeof createHarness>, times: number, origin = 'job-b') => {
-    for (let i = 0; i < times; i += 1) {
-      h.dispatcher.handleEvent({ table: 'table_a', tenantId: 'tenant-1', origin });
+  /** One round of a loop: each job's write asks for the other. */
+  const bounce = async (h: ReturnType<typeof createHarness>, rounds: number) => {
+    for (let i = 0; i < rounds; i += 1) {
+      h.dispatcher.handleEvent({ table: 'table_a', tenantId: 'tenant-1', origin: 'job-a' });
+      await h.advance(1_000);
+      h.dispatcher.handleEvent({ table: 'table_b', tenantId: 'tenant-1', origin: 'job-b' });
       await h.advance(1_000);
     }
   };
 
-  it('should report a run other jobs alone keep asking for, naming them', async () => {
-    const h = createHarness([A, B], { observations: reads('job-a', 'tenant-1', 'table_a') });
+  it('should report a run its own writes keep asking for again, naming the jobs in between', async () => {
+    const h = createHarness([A, B], { observations: loop });
     await h.dispatcher.start();
 
-    await askFromJob(h, 19);
-    expect(h.errors).not.toContain('feeding cycle');
+    await bounce(h, 19);
+    expect(h.nonConverging).toEqual([]);
 
-    await askFromJob(h, 1);
-    expect(h.errors).toContain('feeding cycle');
-    expect(h.enqueues).toHaveLength(20);
+    await bounce(h, 1);
+    expect(h.nonConverging).toEqual([{
+      kind: 'job-a', tenantId: 'tenant-1', asks: 20, windowMs: 60_000, threshold: 20, origins: ['job-b'], cycle: ['job-a', 'job-b'],
+    }]);
+    // Its own report, never the generic error channel, which names nothing but the context.
+    expect(h.errors).toEqual([]);
+  });
+
+  /**
+   * A routed job woken over and over by an outside source, such as the OpenCTI mirror under a stream
+   * burst, asks its downstream jobs on every run, and they ask theirs: a chain that never comes back
+   * to the job it asks for converges with the source, however fast it rings.
+   */
+  it('should not report the jobs downstream of a routed job relaying an outside burst', async () => {
+    const mirror: DispatchedJob = { kind: 'mirror', observed: true };
+    const activity: DispatchedJob = { kind: 'activity', observed: true };
+    const price: DispatchedJob = { kind: 'price', observed: true };
+    const h = createHarness([mirror, activity, price], {
+      observations: [
+        ...reads('mirror', 'tenant-1', 'stream_objects'),
+        ...reads('activity', 'tenant-1', 'threats'),
+        ...reads('price', 'tenant-1', 'threats', 'activity'),
+      ],
+    });
+    await h.dispatcher.start();
+
+    for (let i = 0; i < 30; i += 1) {
+      h.dispatcher.handleEvent({ table: 'stream_objects', tenantId: 'tenant-1' });
+      h.dispatcher.handleEvent({ table: 'threats', tenantId: 'tenant-1', origin: 'mirror' });
+      h.dispatcher.handleEvent({ table: 'activity', tenantId: 'tenant-1', origin: 'activity' });
+      await h.advance(1_000);
+    }
+
+    expect(h.enqueues.filter(({ kind }) => kind === 'price')).toHaveLength(30);
+    expect(h.nonConverging).toEqual([]);
+  });
+
+  it('should report a loop that closes across tenants over global tables', async () => {
+    const h = createHarness([A, B], {
+      tenants: ['tenant-1', 'tenant-2'],
+      observations: [
+        ...reads('job-a', 'tenant-1', 'global_b'), ...reads('job-a', 'tenant-2', 'table_x'),
+        ...reads('job-b', 'tenant-2', 'global_a'), ...reads('job-b', 'tenant-1', 'table_x'),
+      ],
+    });
+    await h.dispatcher.start();
+
+    for (let i = 0; i < 20; i += 1) {
+      h.dispatcher.handleEvent({ table: 'global_a', origin: 'job-a' });
+      await h.advance(1_000);
+      h.dispatcher.handleEvent({ table: 'global_b', origin: 'job-b' });
+      await h.advance(1_000);
+    }
+
+    expect(h.nonConverging.map(({ kind, tenantId }) => ({ kind, tenantId }))).toEqual([{ kind: 'job-a', tenantId: 'tenant-1' }]);
+  });
+
+  it('should report a loop whose every answer lands while the run it answers is still going', async () => {
+    const h = createHarness([A, B], { observations: loop });
+    await h.dispatcher.start();
+
+    for (let i = 0; i < 20; i += 1) {
+      h.dispatcher.onRunStarted('job-a', 'tenant-1', 'event');
+      h.dispatcher.handleEvent({ table: 'table_a', tenantId: 'tenant-1', origin: 'job-a' });
+      await h.advance(1_000);
+      h.dispatcher.handleEvent({ table: 'table_b', tenantId: 'tenant-1', origin: 'job-b' });
+      await h.advance(0);
+      h.dispatcher.onRunCompleted('job-a', 'tenant-1', 100, null);
+      await h.advance(1_000);
+    }
+
+    expect(h.enqueues.filter(({ kind, reason }) => kind === 'job-a' && reason === 'followup')).toHaveLength(20);
+    expect(h.nonConverging).toEqual([{
+      kind: 'job-a', tenantId: 'tenant-1', asks: 20, windowMs: 60_000, threshold: 20, origins: ['job-b'], cycle: ['job-a', 'job-b'],
+    }]);
+  });
+
+  it('should name only the jobs that close a loop, not those that relayed into it before it formed', async () => {
+    const mirror: DispatchedJob = { kind: 'mirror', observed: true };
+    const h = createHarness([mirror, A, B], {
+      observations: [...reads('mirror', 'tenant-1', 'stream_objects'), ...reads('job-a', 'tenant-1', 'table_b', 'mirrored'), ...reads('job-b', 'tenant-1', 'table_a')],
+    });
+    await h.dispatcher.start();
+    h.dispatcher.handleEvent({ table: 'stream_objects', tenantId: 'tenant-1' });
+    await h.advance(1_000);
+    h.dispatcher.handleEvent({ table: 'mirrored', tenantId: 'tenant-1', origin: 'mirror' });
+    await h.advance(1_000);
+
+    await bounce(h, 20);
+
+    expect(h.nonConverging).toEqual([{
+      kind: 'job-a', tenantId: 'tenant-1', asks: 20, windowMs: 60_000, threshold: 20, origins: ['job-b'], cycle: ['job-a', 'job-b'],
+    }]);
+  });
+
+  /**
+   * A scheduled or manual run answers no ask the dispatcher routed, so its writes relay nothing,
+   * whatever chain the dispatcher's last booking of that job carried.
+   */
+  it('should not report the asks of a run the dispatcher did not book, after a loop that converged', async () => {
+    const h = createHarness([A, B], { observations: loop });
+    await h.dispatcher.start();
+    await bounce(h, 2);
+
+    for (let i = 0; i < 30; i += 1) {
+      h.dispatcher.onRunStarted('job-a', 'tenant-1', 'scheduler');
+      h.dispatcher.onRunCompleted('job-a', 'tenant-1', 100, null);
+      h.dispatcher.handleEvent({ table: 'table_a', tenantId: 'tenant-1', origin: 'job-a' });
+      await h.advance(1_000);
+    }
+
+    expect(h.enqueues.filter(({ kind }) => kind === 'job-b')).toHaveLength(32);
+    expect(h.nonConverging).toEqual([]);
+  });
+
+  /**
+   * A run that starts before an outside ask's debounce expires answers that ask, so what it writes
+   * relays the outside source, whatever chain the ask before it carried.
+   */
+  it('should not report a relay through a run that absorbed an outside ask', async () => {
+    const h = createHarness([A, B], { observations: loop });
+    await h.dispatcher.start();
+    await bounce(h, 2);
+
+    for (let i = 0; i < 30; i += 1) {
+      h.dispatcher.handleEvent({ table: 'table_b', tenantId: 'tenant-1' });
+      await h.advance(0);
+      h.dispatcher.onRunStarted('job-a', 'tenant-1', 'event');
+      h.dispatcher.onRunCompleted('job-a', 'tenant-1', 100, null);
+      h.dispatcher.handleEvent({ table: 'table_a', tenantId: 'tenant-1', origin: 'job-a' });
+      await h.advance(1_000);
+    }
+
+    expect(h.absorbed).toHaveLength(30);
+    expect(h.nonConverging).toEqual([]);
   });
 
   it('should not report asks from a job no change wakes, such as a connector sync', async () => {
@@ -880,30 +1022,55 @@ describe('feeding cycles that do not converge', () => {
     const h = createHarness([A, sync], { observations: reads('job-a', 'tenant-1', 'table_a') });
     await h.dispatcher.start();
 
-    await askFromJob(h, 30, sync.kind);
-    expect(h.errors).not.toContain('feeding cycle');
+    for (let i = 0; i < 30; i += 1) {
+      h.dispatcher.handleEvent({ table: 'table_a', tenantId: 'tenant-1', origin: sync.kind });
+      await h.advance(1_000);
+    }
     expect(h.enqueues).toHaveLength(30);
+    expect(h.nonConverging).toEqual([]);
   });
 
-  it('should not report asks a client write took part in', async () => {
-    const h = createHarness([A], { observations: reads('job-a', 'tenant-1', 'table_a') });
+  it('should not report a loop whose every ask a client write took part in', async () => {
+    const h = createHarness([A, B], { observations: loop });
     await h.dispatcher.start();
 
     for (let i = 0; i < 30; i += 1) {
-      h.dispatcher.handleEvent({ table: 'table_a', tenantId: 'tenant-1' });
+      h.dispatcher.handleEvent({ table: 'table_a', tenantId: 'tenant-1', origin: 'job-a' });
+      await h.advance(1_000);
+      h.dispatcher.handleEvent({ table: 'table_b', tenantId: 'tenant-1', origin: 'job-b' });
+      h.dispatcher.handleEvent({ table: 'table_b', tenantId: 'tenant-1' });
       await h.advance(1_000);
     }
-    expect(h.errors).not.toContain('feeding cycle');
+    expect(h.enqueues).toHaveLength(60);
+    expect(h.nonConverging).toEqual([]);
   });
 
   it('should forget asks that fall out of the window', async () => {
-    const h = createHarness([A], { observations: reads('job-a', 'tenant-1', 'table_a') });
+    const h = createHarness([A, B], { observations: loop });
     await h.dispatcher.start();
 
-    await askFromJob(h, 19);
+    await bounce(h, 19);
     await h.advance(60_000);
-    await askFromJob(h, 19);
-    expect(h.errors).not.toContain('feeding cycle');
+    await bounce(h, 19);
+    expect(h.nonConverging).toEqual([]);
+  });
+
+  it('should report through the real logger under a message of its own', async () => {
+    const captured: Array<LogSinkLine> = [];
+    const h = createHarness([A, B], {
+      observations: loop,
+      onNonConvergingCycle: createNonConvergingCycleReport(createLogger({ engine: 'recompute-dispatcher' })),
+    });
+    await h.dispatcher.start();
+    setLogSink((line) => captured.push(line));
+
+    try {
+      await bounce(h, 20);
+    } finally {
+      setLogSink(null);
+    }
+
+    expect(captured.map((line) => line.message)).toContain('Feeding cycle not converging');
   });
 });
 
@@ -911,7 +1078,7 @@ describe('dispatcher observation persistence', () => {
   it('should write back an observation the run could not persist', async () => {
     const h = createHarness([FS]);
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 500, observed({ reads: ['*'], writes: [] }, false));
     expect(h.persisted).toEqual([{ kind: FS.kind, tenantId: 'tenant-1', reads: ['*'], writes: [] }]);
   });
@@ -919,7 +1086,7 @@ describe('dispatcher observation persistence', () => {
   it('should not write back an observation the run already persisted', async () => {
     const h = createHarness([FS]);
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 500, observed({ reads: ['asset_evidence'], writes: [] }));
     expect(h.persisted).toEqual([]);
   });
@@ -939,7 +1106,7 @@ describe('dispatcher widened observation', () => {
   it('should route on every table but the runtime ones after a run hands back the sentinel', async () => {
     const h = createHarness([FS], { observations: reads(FS.kind, 'tenant-1', 'asset_evidence') });
     await h.dispatcher.start();
-    h.dispatcher.onRunStarted(FS.kind, 'tenant-1');
+    h.dispatcher.onRunStarted(FS.kind, 'tenant-1', 'event');
     h.dispatcher.onRunCompleted(FS.kind, 'tenant-1', 500, observed({ reads: ['*'], writes: [] }));
     h.dispatcher.handleEvent({ table: 'countries', tenantId: 'tenant-1' });
     h.dispatcher.handleEvent({ table: 'jobs', tenantId: 'tenant-1' });

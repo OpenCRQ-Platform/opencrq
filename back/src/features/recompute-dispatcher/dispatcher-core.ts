@@ -1,4 +1,4 @@
-import type { CompletedRunObservation, DoorbellParent, JobDependencyRow, JobObservation } from '@app/module';
+import type { CompletedRunObservation, DoorbellParent, JobDependencyRow, JobObservation, TriggeredBy } from '@app/module';
 import { createDoorbellTopology, SUBSCRIBE_ALL_SENTINEL } from '@app/module';
 import { newError } from '@app/utils';
 import type { DispatcherAskReason } from '../../utils/recompute-metrics';
@@ -28,6 +28,18 @@ export interface DataChangedEvent {
   interactive?: boolean | null,
 }
 
+export interface NonConvergingCycle {
+  kind: string,
+  tenantId: string,
+  asks: number,
+  windowMs: number,
+  threshold: number,
+  /** The jobs whose writes made the last ask. */
+  origins: Array<string>,
+  /** The routed jobs that close the loop, the kind included, leaving out those that only relayed into it. */
+  cycle: Array<string>,
+}
+
 export interface DispatcherDeps {
   enqueue: (kind: string, tenantId: string, reason: DispatcherAskReason, interactive: boolean) => Promise<void>,
   loadObservations: () => Promise<Array<JobDependencyRow>>,
@@ -40,6 +52,8 @@ export interface DispatcherDeps {
   onError: (err: unknown, context: string) => void,
   /** A feeding cycle, handed over once per distinct cycle for the life of the dispatcher. */
   onFeedingCycle?: (cycle: Array<string>) => void,
+  /** A (kind, tenant) its own writes keep asking for again through other jobs: a cycle that is not converging. */
+  onNonConvergingCycle?: (report: NonConvergingCycle) => void,
   now?: () => number,
   setTimer?: (fn: () => void, ms: number) => unknown,
   clearTimer?: (handle: unknown) => void,
@@ -64,8 +78,8 @@ const key = (kind: string, tenantId: string): string => `${kind}::${tenantId}`;
 /**
  * A cycle converges as long as every job in it is watermark-scoped: the one woken by another's
  * write finds nothing stale and writes nothing, so the loop stops of its own accord. One that does
- * not converge shows as a (kind, tenant) asked for again and again by job writes alone, and this is
- * the window and the count that make it visible in the logs.
+ * not converge shows as a (kind, tenant) asked for again and again by job writes that its own run
+ * set off, and this is the window and the count that make it visible in the logs.
  */
 const JOB_DRIVEN_ASK_WINDOW_MS = 60_000;
 /**
@@ -191,6 +205,12 @@ export const findFeedingCycle = (
   return null;
 };
 
+/** A routed job's write, with the chain of the asks its run answered. */
+interface AskSource {
+  origin: string,
+  chain: Set<string>,
+}
+
 interface PendingEnqueue {
   timer: unknown,
   reason: DispatcherAskReason,
@@ -199,9 +219,11 @@ interface PendingEnqueue {
   interactive: boolean,
 }
 
-/** Which origins asked for a pending run, so a run nothing but other jobs asked for is countable. */
+/** Who asked for a pending run or changed a table under a running one, so a run nothing but other jobs asked for is countable. */
 interface AskProvenance {
   origins: Set<string>,
+  /** The origins, and the routed jobs behind their own latest asks. */
+  chain: Set<string>,
   jobsOnly: boolean,
 }
 
@@ -211,7 +233,8 @@ interface AskProvenance {
  * not name yet, so only its own observation can say whether the change matters.
  */
 interface RunChanges {
-  tables: Set<string>,
+  /** Each changed table, with who changed it: a follow-up carries on the asks it answers. */
+  tables: Map<string, AskProvenance>,
   /** A debounce or a reconnect that fired mid-run: already known to matter, whatever the tables. */
   forced: boolean,
   interactive: boolean,
@@ -246,6 +269,11 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
   const observedThisSession = new Set<string>();
   const reportedCycles = new Set<string>();
   const askProvenance = new Map<string, AskProvenance>();
+  /**
+   * The chain behind the latest ask booked for each (kind, tenant), empty once an outside source took
+   * part in it. It is what that run's writes pass on, since a run does what its ask asked for.
+   */
+  const askChains = new Map<string, Set<string>>();
   const jobDrivenAskTimes = new Map<string, Array<number>>();
   let knownTenantIds: Array<string> = [];
   let knownTenants = new Set<string>();
@@ -272,29 +300,77 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
 
   const routedKinds = new Set(jobs.filter(isRouted).map((job) => job.kind));
 
+  const newProvenance = (): AskProvenance => ({ origins: new Set(), chain: new Set(), jobsOnly: true });
+
   /**
    * Only a routed job can sit in a cycle, since nothing else is woken by a change: a write from a
    * connector sync or any job booked on its own schedule is an outside ask, like a user's, however
-   * many times a long run of it rings.
+   * many times a long run of it rings. A routed job's write passes on the chain of its own latest
+   * ask, so a job relaying an outside burst downstream is told apart from one its writes come back to.
+   * A write to a global table does not say which tenant's run made it, so it passes on the chains of
+   * all of them.
    */
-  const noteAskOrigin = (entryKey: string, origin: string | null): void => {
-    const provenance = askProvenance.get(entryKey) ?? { origins: new Set<string>(), jobsOnly: true };
+  const sourceOf = (origin: string | null, writerTenantId: string | null): AskSource | null => {
     if (origin === null || !routedKinds.has(origin)) {
-      provenance.jobsOnly = false;
-    } else {
-      provenance.origins.add(origin);
+      return null;
     }
+    const chain = new Set([origin]);
+    const chains = writerTenantId === null
+      ? knownTenantIds.map((tenantId) => askChains.get(key(origin, tenantId)))
+      : [askChains.get(key(origin, writerTenantId))];
+    chains.forEach((askChain) => askChain?.forEach((kind) => chain.add(kind)));
+    return { origin, chain };
+  };
+
+  const addSource = (provenance: AskProvenance, source: AskSource | null): void => {
+    if (source === null) {
+      provenance.jobsOnly = false;
+      return;
+    }
+    provenance.origins.add(source.origin);
+    source.chain.forEach((kind) => provenance.chain.add(kind));
+  };
+
+  const mergeProvenance = (into: AskProvenance, from: AskProvenance): void => {
+    from.origins.forEach((origin) => into.origins.add(origin));
+    from.chain.forEach((kind) => into.chain.add(kind));
+    into.jobsOnly = into.jobsOnly && from.jobsOnly;
+  };
+
+  const noteAskSource = (entryKey: string, source: AskSource | null): void => {
+    const provenance = askProvenance.get(entryKey) ?? newProvenance();
+    addSource(provenance, source);
     askProvenance.set(entryKey, provenance);
   };
 
-  /**
-   * Reports a (kind, tenant) that other jobs' writes keep asking for, which is a cycle that is not
-   * converging. Nothing is paused: only the run itself can tell an empty recompute from a real one.
-   */
-  const countJobDrivenAsk = (kind: string, tenantId: string, entryKey: string): void => {
+  const isJobDriven = (provenance: AskProvenance | undefined): provenance is AskProvenance =>
+    provenance !== undefined && provenance.jobsOnly && provenance.origins.size > 0;
+
+  /** Takes the pending ask's provenance, and makes its chain the one the run answering it passes on. */
+  const settleAsk = (entryKey: string): AskProvenance | undefined => {
     const provenance = askProvenance.get(entryKey);
     askProvenance.delete(entryKey);
-    if (!provenance?.jobsOnly || provenance.origins.size === 0) {
+    if (provenance !== undefined) {
+      askChains.set(entryKey, isJobDriven(provenance) ? provenance.chain : new Set());
+    }
+    return provenance;
+  };
+
+  /**
+   * The kinds of a chain that the asked kind's own writes reached, which close the loop: the chain
+   * also holds whatever relayed into the loop before it formed, since a loop never goes back
+   * through an outside source.
+   */
+  const loopOf = (kind: string, chain: Set<string>): Array<string> =>
+    [...chain].filter((member) => member === kind || knownTenantIds.some((tenantId) => askChains.get(key(member, tenantId))?.has(kind))).sort();
+
+  /**
+   * Reports a (kind, tenant) asked for again and again by the writes its own runs set off, which is a
+   * cycle that is not converging. Nothing is paused: only the run itself can tell an empty recompute
+   * from a real one.
+   */
+  const countJobDrivenAsk = (kind: string, tenantId: string, entryKey: string, provenance: AskProvenance | undefined): void => {
+    if (!isJobDriven(provenance) || !provenance.chain.has(kind)) {
       jobDrivenAskTimes.delete(entryKey);
       return;
     }
@@ -303,17 +379,15 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
     const threshold = Math.max(2, Math.ceil(JOB_DRIVEN_ASK_WINDOW_MS / pacingDelayMs(entryKey) / JOB_DRIVEN_ASK_CEILING_SHARE));
     if (times.length >= threshold) {
       jobDrivenAskTimes.set(entryKey, []);
-      deps.onError(
-        newError('Recompute asked for by other jobs alone, repeatedly: a feeding cycle is not converging', {
-          kind,
-          tenantId,
-          asks: times.length,
-          windowMs: JOB_DRIVEN_ASK_WINDOW_MS,
-          threshold,
-          origins: [...provenance.origins].sort().join(', '),
-        }),
-        'feeding cycle',
-      );
+      deps.onNonConvergingCycle?.({
+        kind,
+        tenantId,
+        asks: times.length,
+        windowMs: JOB_DRIVEN_ASK_WINDOW_MS,
+        threshold,
+        origins: [...provenance.origins].sort(),
+        cycle: loopOf(kind, provenance.chain),
+      });
       return;
     }
     jobDrivenAskTimes.set(entryKey, times);
@@ -327,12 +401,19 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
     return tables.has(table);
   };
 
-  const noteChangeDuringRun = (entryKey: string, table: string | null, interactive: boolean): void => {
-    const changes = changedDuringRun.get(entryKey) ?? { tables: new Set<string>(), forced: false, interactive: false };
+  const noteChangeDuringRun = (
+    entryKey: string,
+    table: string | null,
+    interactive: boolean,
+    source: AskSource | null = null,
+  ): void => {
+    const changes = changedDuringRun.get(entryKey) ?? { tables: new Map<string, AskProvenance>(), forced: false, interactive: false };
     if (table === null) {
       changes.forced = true;
     } else {
-      changes.tables.add(table);
+      const provenance = changes.tables.get(table) ?? newProvenance();
+      addSource(provenance, source);
+      changes.tables.set(table, provenance);
     }
     changes.interactive = changes.interactive || interactive;
     changedDuringRun.set(entryKey, changes);
@@ -351,7 +432,7 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
         running.delete(entryKey);
       }
     }
-    for (const bookkeeping of [changedDuringRun, lastRunDurationMs, retryDelayMs]) {
+    for (const bookkeeping of [changedDuringRun, lastRunDurationMs, retryDelayMs, askProvenance, askChains, jobDrivenAskTimes]) {
       for (const entryKey of bookkeeping.keys()) {
         if (entryKey.endsWith(suffix)) {
           bookkeeping.delete(entryKey);
@@ -372,7 +453,7 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
 
   const doEnqueue = (kind: string, tenantId: string, reason: DispatcherAskReason, interactive: boolean): void => {
     const entryKey = key(kind, tenantId);
-    countJobDrivenAsk(kind, tenantId, entryKey);
+    countJobDrivenAsk(kind, tenantId, entryKey, settleAsk(entryKey));
     deps.enqueue(kind, tenantId, reason, interactive)
       .then(() => {
         retryDelayMs.delete(entryKey);
@@ -464,6 +545,7 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
     // A user's own write has somebody waiting by definition and declares nothing; a job's write
     // passes on what its run declared, so a nightly sweep cannot hand the page a fast window.
     const sourceInteractive = event.interactive ?? event.origin == null;
+    const source = sourceOf(event.origin ?? null, event.tenantId ?? null);
     for (const job of jobs) {
       // A global table is written once for the tenant the job ran for, and rings for all of them:
       // routing the job's own echo to the other tenants would ping-pong it between them forever,
@@ -475,9 +557,9 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
       for (const tenantId of tenantIds) {
         const entryKey = key(job.kind, tenantId);
         if (running.has(entryKey)) {
-          tables.forEach((table) => noteChangeDuringRun(entryKey, table, sourceInteractive));
+          tables.forEach((table) => noteChangeDuringRun(entryKey, table, sourceInteractive, source));
         } else if ([...tables].some((table) => isSubscribed(job.kind, tenantId, table))) {
-          noteAskOrigin(entryKey, event.origin ?? null);
+          noteAskSource(entryKey, source);
           schedule(job.kind, tenantId, 'change', sourceInteractive);
         }
       }
@@ -495,7 +577,7 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
         await refreshTenants();
         for (const job of jobs.filter(isRouted)) {
           for (const tenantId of knownTenantIds) {
-            noteAskOrigin(key(job.kind, tenantId), null);
+            noteAskSource(key(job.kind, tenantId), null);
             schedule(job.kind, tenantId, 'reconnect', false);
           }
         }
@@ -571,7 +653,7 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
       }, dueAtMs - nowMs);
     },
 
-    onRunStarted: (kind: string, tenantId: string): void => {
+    onRunStarted: (kind: string, tenantId: string, triggeredBy: TriggeredBy): void => {
       const entryKey = key(kind, tenantId);
       // A pending ask stands for changes committed before this run started, which the run will
       // read: letting it fire mid-run would force a follow-up for nothing, and in shadow mode the
@@ -580,7 +662,13 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
       if (existing) {
         clearTimer(existing.timer);
         pending.delete(entryKey);
+        settleAsk(entryKey);
         deps.onAskAbsorbed?.(kind, tenantId, existing.reason);
+      }
+      // A scheduled, manual or answering run was booked by no change the dispatcher routed, so its
+      // writes relay no chain; a continuation or a retry keeps its booking's asker, and its chain.
+      if (triggeredBy !== 'event') {
+        askChains.set(entryKey, new Set());
       }
       retryDelayMs.delete(entryKey);
       changedDuringRun.delete(entryKey);
@@ -613,10 +701,16 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
       changedDuringRun.delete(entryKey);
       // Decided against the observation this run just produced, so a table it discovered while
       // that table was changing owes a follow-up, and one it turned out not to read owes none.
-      if (changes && (changes.forced || [...changes.tables].some((table) => isSubscribed(kind, tenantId, table)))) {
+      const relevant = changes === undefined
+        ? []
+        : [...changes.tables].filter(([table]) => isSubscribed(kind, tenantId, table)).map(([, provenance]) => provenance);
+      if (changes && (changes.forced || relevant.length > 0)) {
+        // A loop whose every answer lands mid-run would otherwise never be counted.
+        const provenance = askProvenance.get(entryKey) ?? newProvenance();
+        relevant.forEach((tableProvenance) => mergeProvenance(provenance, tableProvenance));
+        askProvenance.set(entryKey, provenance);
         // Spaced like any other ask: an immediate follow-up would chain full-estate recomputes
         // back to back under a sustained write stream.
-        noteAskOrigin(entryKey, null);
         schedule(kind, tenantId, 'followup', changes.interactive);
       }
     },
@@ -629,6 +723,7 @@ export const createDispatcher = (jobs: Array<DispatchedJob>, deps: DispatcherDep
       pending.clear();
       changedDuringRun.clear();
       askProvenance.clear();
+      askChains.clear();
       jobDrivenAskTimes.clear();
       if (deferredCatchUp !== undefined) {
         clearTimer(deferredCatchUp);

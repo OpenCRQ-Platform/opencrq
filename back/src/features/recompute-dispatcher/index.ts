@@ -8,7 +8,7 @@ import { createLogger } from '../../utils/logger';
 import { startPgListenLoop } from '../../utils/pg-listen-loop';
 import { recordRecomputeAsk } from '../../utils/recompute-metrics';
 import { createDispatcher } from './dispatcher-core';
-import { createFeedingCycleReport } from './feeding-cycle-report';
+import { createFeedingCycleReport, createNonConvergingCycleReport } from './feeding-cycle-report';
 
 const logger = createLogger({ engine: 'recompute-dispatcher' });
 const { logTrace, logFromError } = logger;
@@ -72,6 +72,7 @@ registerEngine({
         },
         onError: (err, context) => logFromError(err, 'Dispatcher error', { context }),
         onFeedingCycle: createFeedingCycleReport(logger),
+        onNonConvergingCycle: createNonConvergingCycleReport(logger),
       },
     );
 

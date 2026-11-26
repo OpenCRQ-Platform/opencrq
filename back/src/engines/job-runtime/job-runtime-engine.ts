@@ -1,4 +1,4 @@
-import type { CompletedRunObservation, SerializedSlot } from '@app/module';
+import type { CompletedRunObservation, SerializedSlot, TriggeredBy } from '@app/module';
 import { createServices, deferralPolicyFor, jobLogsService, jobsService, SUBSCRIBE_ALL_SENTINEL, workersService } from '@app/module';
 import { uuidv7 } from 'uuidv7';
 import { config, getProcessName } from '../../config';
@@ -22,7 +22,8 @@ const HANDLER_SETTLE_GRACE_MS = 60_000;
 const handlerRegistry = new HandlerRegistry();
 
 export interface RunLifecycleListener {
-  onRunStarted?: (kind: string, tenantId: string) => void,
+  /** `triggeredBy` is the claimed row's, which a continuation and a retry keep from the run they carry on. */
+  onRunStarted?: (kind: string, tenantId: string, triggeredBy: TriggeredBy) => void,
   /**
    * The run's own observation, or null when the run failed or was unobserved. Fired once the
    * handler has settled, which an abort (timeout, lease lost, shutdown) outlives.
@@ -117,7 +118,7 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
 
     const startedAtMs = Date.now();
     let succeeded = false;
-    runListeners.forEach((listener) => listener.onRunStarted?.(claimed.kind, claimed.tenantId));
+    runListeners.forEach((listener) => listener.onRunStarted?.(claimed.kind, claimed.tenantId, claimed.triggeredBy));
 
     let markHandlerSettled = (): void => {};
     const handlerSettled = new Promise<void>((resolve) => {
