@@ -64,7 +64,7 @@
     "eslint-plugin-sort": "4.0.0",
     "globals": "17.14.0",
     "jiti": "2.7.0",
-    "knip": "6.45.1",
+    "knip": "6.48.0",
     "pg": "8.23.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.73.0",
