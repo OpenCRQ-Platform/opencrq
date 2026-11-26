@@ -18,7 +18,7 @@ const CLIENT_ERRORS_BODY_LIMIT_BYTES = 256 * 1024;
  */
 export const registerClientErrorsRoute = (server: FastifyInstance, db: DrizzleDB): void => {
   const resolveAuth = resolveRequestAuth(db);
-  const { logError } = createLogger({ engine: 'http-server' });
+  const { logWarn, logError } = createLogger({ engine: 'http-server' });
 
   server.post('/api/errors', { bodyLimit: CLIENT_ERRORS_BODY_LIMIT_BYTES }, async (req, reply) => {
     const parsed = clientErrorReportBatchSchema.safeParse(req.body);
@@ -33,7 +33,10 @@ export const registerClientErrorsRoute = (server: FastifyInstance, db: DrizzleDB
     const tenantId = Array.isArray(tenantIdHeader) ? tenantIdHeader[0] : tenantIdHeader;
 
     parsed.data.reports.forEach((report) => {
-      logError('Client Error Report', {
+      // A call the browser lost on the way (network, a proxy's error page) succeeds on its next try,
+      // so only the other kinds alert.
+      const log = report.kind === 'transport' ? logWarn : logError;
+      log('Client Error Report', {
         kind: report.kind,
         message: report.message,
         stack: report.stack,

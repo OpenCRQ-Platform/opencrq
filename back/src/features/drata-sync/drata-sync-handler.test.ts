@@ -13,7 +13,7 @@ const mockWithOrigin = vi.fn().mockReturnValue({
 });
 
 vi.mock('../../utils/logger', () => ({
-  createLogger: vi.fn().mockReturnValue({ logTrace: vi.fn(), logFromError: vi.fn() }),
+  createLogger: vi.fn().mockReturnValue({ logTrace: vi.fn(), logTraceFromError: vi.fn() }),
 }));
 
 vi.mock('@app/module', () => ({

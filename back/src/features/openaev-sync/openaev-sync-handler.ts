@@ -25,7 +25,7 @@ import { syncObservationStreams } from './openaev-observation-phase';
 import { onCompleteMirrors } from './openaev-reconciliation-scope';
 import { retireAttackEvidence, retireCveEvidence } from './openaev-retirement';
 
-const { logTrace, logWarn, logFromError } = createLogger({ feature: 'openaev-sync' });
+const { logTrace, logTraceFromError, logWarn } = createLogger({ feature: 'openaev-sync' });
 
 /** Bounds the OpenAEV calls in flight: the description phase's `GET /assets/{id}`, and the batches of ids the inventory looks up. */
 const FETCH_CONCURRENCY = 8;
@@ -587,7 +587,8 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
     await recordFindingCounts();
     logTrace('OpenAEV sync complete', { observations: observationsBeforeTenant, findings: findingCounts, assets: inventoryCounts });
   } catch (err) {
-    logFromError(err, 'OpenAEV sync failed', { tenantId: ctx.tenantId, attempt: ctx.attempt });
+    // The runtime logs the run's outcome, at the level its retry or move to the DLQ calls for.
+    logTraceFromError(err, 'OpenAEV sync failed', { tenantId: ctx.tenantId, attempt: ctx.attempt });
     throw err;
   }
 };

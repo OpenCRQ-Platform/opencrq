@@ -70,6 +70,15 @@ describe('the technical levels the logger writes at', () => {
     ]);
   });
 
+  it('should write a warning that carries an error at the warning level', async () => {
+    const logger = createLogger({ feature: 'logger-test' });
+
+    logger.logWarnFromError(new Error('socket hang up'), 'A retried failure');
+
+    await settled();
+    expect(emitted).toEqual([{ level: 'warn', message: 'A retried failure' }]);
+  });
+
   it('should carry the warning through an enriched logger too', async () => {
     const logger = createLogger({ feature: 'logger-test' }).enrich({ tenantId: 'tenant-1' }, '[prefix] ');
 

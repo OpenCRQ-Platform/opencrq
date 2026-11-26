@@ -5,13 +5,14 @@ import type { DrizzleDB } from '@app/module';
 // ── Stubs ────────────────────────────────────────────────────────────────────────────
 
 const mockLogError = vi.fn();
+const mockLogWarn = vi.fn();
 
 vi.mock('../../trpc', () => ({
   resolveRequestAuth: () => () => Promise.resolve(),
 }));
 
 vi.mock('../../utils/logger', () => ({
-  createLogger: vi.fn().mockReturnValue({ logError: mockLogError }),
+  createLogger: vi.fn().mockReturnValue({ logWarn: mockLogWarn, logError: mockLogError }),
 }));
 
 const { registerClientErrorsRoute } = await import('./client-errors-route');
@@ -28,8 +29,8 @@ const registerHandler = (): { handler: (req: FastifyRequest, reply: FastifyReply
 };
 
 const validReport = {
-  kind: 'transport',
-  message: 'Failed to fetch',
+  kind: 'render',
+  message: 'Cannot read properties of undefined',
   occurrences: 1,
   firstSeen: '2026-07-30T10:00:00.000Z',
   lastSeen: '2026-07-30T10:00:00.000Z',
@@ -77,6 +78,17 @@ describe('registerClientErrorsRoute', () => {
     expect(reply.send).toHaveBeenCalledWith({ status: 'ok' });
   });
 
+  it('logs a transport report as a warning and every other kind as an error', async () => {
+    const { handler } = registerHandler();
+    const reports = (['transport', 'chunk', 'route', 'render'] as const).map((kind) => ({ ...validReport, kind, message: `A ${kind} failure` }));
+    const req = makeReq({ body: { reports } });
+
+    await handler(req, makeReply());
+
+    expect(mockLogWarn.mock.calls.map(([, data]) => data.kind)).toEqual(['transport']);
+    expect(mockLogError.mock.calls.map(([, data]) => data.kind)).toEqual(['chunk', 'route', 'render']);
+  });
+
   it('rejects with 400 and does not log when the payload is malformed', async () => {
     const { handler } = registerHandler();
     const req = makeReq({ body: {} });
@@ -87,6 +99,7 @@ describe('registerClientErrorsRoute', () => {
     expect(reply.code).toHaveBeenCalledWith(400);
     expect(reply.send).toHaveBeenCalledWith({ error: 'Invalid report payload' });
     expect(mockLogError).not.toHaveBeenCalled();
+    expect(mockLogWarn).not.toHaveBeenCalled();
   });
 
   it('rejects with 400 when the batch exceeds the cap', async () => {
@@ -98,6 +111,7 @@ describe('registerClientErrorsRoute', () => {
 
     expect(reply.code).toHaveBeenCalledWith(400);
     expect(mockLogError).not.toHaveBeenCalled();
+    expect(mockLogWarn).not.toHaveBeenCalled();
   });
 
   it('logs userId/tenantId and anonymous: false for an authenticated request', async () => {

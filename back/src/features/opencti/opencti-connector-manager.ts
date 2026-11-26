@@ -1,5 +1,6 @@
 import type { SyncedMarkingDefinition } from '@app/module';
 import { allServiceDefinitions, createServices, isRelevantStixObject, STREAM_LOG_SCOPE_KIND, trimRelevantStixObject } from '@app/module';
+import { newError } from '@app/utils';
 // Deep import: the barrel is heavy and this is the one pure helper the consumer needs on every event.
 import { sanitizeStixNullBytes } from '@app/module/stix-sanitize';
 import { uuidv7 } from 'uuidv7';
@@ -14,7 +15,7 @@ import { fetchOpenCtiMarkingDefinitions, parseStreamMarking } from './opencti-ma
 import { consumeOpenCtiStream, OpenCtiAuthError, OpenCtiStreamFatalError } from './opencti-sse-client';
 
 const logger = createLogger({ feature: 'opencti' });
-const { logTrace, logFromError } = logger;
+const { logTrace, logWarnFromError, logFromError } = logger;
 
 export const STREAM_TIMING = {
   /** Quiet period after the last event that triggers a flush. */
@@ -22,6 +23,11 @@ export const STREAM_TIMING = {
   /** Reconnect backoff (mirrors `startPgListenLoop`), reset on `onConnected`. */
   initialReconnectDelayMs: 5_000,
   maxReconnectDelayMs: 60_000,
+  /**
+   * How long reconnections may keep failing with no frame in between before one alerts, longer than
+   * a redeploy of OpenCTI. Counted in time, not attempts: one attempt fails at once or after 90 s.
+   */
+  unreachableAlertMs: 10 * 60_000,
 } as const;
 
 // Every event re-arms the idle debounce, so a busy stream would never write its position without
@@ -117,29 +123,30 @@ const extractRetiredStixId = (eventData: unknown, survivorId: string): string | 
  * Runs one tenant's Live Stream until `signal` aborts, mirroring what each event states and
  * persisting its position. Rebuilding the records the mirror describes belongs to the
  * `opencti-mirror-rebuild` job, which reacts to the marks these writes leave: the receive path
- * resolves no graph and holds nothing a crash could lose.
+ * resolves no graph and holds nothing a crash could lose. Resolves `'skipped'` when the tenant has
+ * nothing to consume, so never opened the stream, and `'closed'` once the stream it opened ended.
  */
 const consumeTenantStream = async (
-  tenantId: string, signal: AbortSignal, onConnected: () => void,
-): Promise<void> => {
+  tenantId: string, signal: AbortSignal, onConnected: () => void, onFrame: () => void,
+): Promise<'skipped' | 'closed'> => {
   const openctiConfig = config().connectors?.opencti?.[tenantId];
   if (!openctiConfig) {
     logTrace('OpenCTI connector not configured for this tenant, skipping', { tenantId });
     await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve(), { once: true }));
-    return;
+    return 'skipped';
   }
 
   const systemServices = createServices([...allServiceDefinitions], dbEngine.db).withOrigin(SYSTEM_ORIGIN);
   const settings = await systemServices.openctiConnector.getSettings(tenantId);
   if (!settings?.enabled || !settings.streamId || !settings.serviceAccountId) {
-    return;
+    return 'skipped';
   }
 
   const serviceAccount = await systemServices.serviceAccounts.getServiceAccount(settings.serviceAccountId);
   if (!serviceAccount?.active) {
     // Otherwise security policy would silently deny every read/write below instead of stopping.
     logTrace('OpenCTI service account inactive, not consuming', { tenantId, serviceAccountId: settings.serviceAccountId });
-    return;
+    return 'skipped';
   }
 
   const origin = { type: 'connector' as const, serviceAccountId: settings.serviceAccountId, tenantId };
@@ -157,7 +164,7 @@ const consumeTenantStream = async (
   try {
     await syncMarkings(await fetchOpenCtiMarkingDefinitions(openctiConfig.url, openctiConfig.token));
   } catch (err) {
-    logFromError(err, 'OpenCTI marking definitions sync failed', { tenantId });
+    logWarnFromError(err, 'OpenCTI marking definitions sync failed', { tenantId });
   }
 
   /**
@@ -265,7 +272,10 @@ const consumeTenantStream = async (
         continue;
       }
 
+      // Not on `connected`, which proves no more than an accepted socket: a proxy holding the line
+      // open sends one and nothing after it.
       if (event.event === 'heartbeat') {
+        onFrame();
         continue;
       }
 
@@ -333,10 +343,13 @@ const consumeTenantStream = async (
       } else {
         scheduleIdleFlush();
       }
+      // Only once the event is written: one that fails on every replay is no healthy stream.
+      onFrame();
     }
   } finally {
     await flush().catch((err) => logFromError(err, 'OpenCTI stream final flush failed', { tenantId }));
   }
+  return 'closed';
 };
 
 const runConsumerLoop = async (tenantId: string, signal: AbortSignal): Promise<void> => {
@@ -344,10 +357,29 @@ const runConsumerLoop = async (tenantId: string, signal: AbortSignal): Promise<v
   const onConnected = (): void => {
     currentReconnectDelayMs = STREAM_TIMING.initialReconnectDelayMs;
   };
+  // When the first failure since the stream last delivered a frame happened.
+  let unreachableSince: Date | null = null;
+  const onFrame = (): void => {
+    unreachableSince = null;
+  };
+  const logReconnection = (err: unknown): void => {
+    unreachableSince ??= new Date();
+    const data = { tenantId, delayMs: currentReconnectDelayMs, unreachableSince: unreachableSince.toISOString() };
+    if (Date.now() - unreachableSince.getTime() >= STREAM_TIMING.unreachableAlertMs) {
+      logFromError(err, 'OpenCTI stream unreachable, reconnecting', data);
+    } else {
+      logWarnFromError(err, 'OpenCTI stream connection error, reconnecting', data);
+    }
+  };
 
   while (!signal.aborted) {
     try {
-      await consumeTenantStream(tenantId, signal, onConnected);
+      const ended = await consumeTenantStream(tenantId, signal, onConnected, onFrame);
+      // The SSE client returns when the server ends the response, which a stream never does on its
+      // own: one closed over and over is as unreachable as one refused.
+      if (ended === 'closed' && !signal.aborted) {
+        logReconnection(newError('OpenCTI stream closed by the server'));
+      }
     } catch (err) {
       if (!signal.aborted) {
         // An invalid/disabled token never recovers on its own — persist the disable via `authFailedAt`.
@@ -362,7 +394,7 @@ const runConsumerLoop = async (tenantId: string, signal: AbortSignal): Promise<v
           logFromError(err, 'OpenCTI stream unrecoverable, disabling consumer', { tenantId });
           return;
         }
-        logFromError(err, 'OpenCTI stream connection error, reconnecting', { tenantId, delayMs: currentReconnectDelayMs });
+        logReconnection(err);
       }
     }
     if (signal.aborted) {
@@ -447,9 +479,11 @@ const reconcileAllTenants = async (engineSignal: AbortSignal): Promise<void> => 
     }
   }
 
+  // An enabled row is not enough: `reconcileTenant` also wants a stream picked and an active account.
   for (const settings of enabledSettings) {
     if (!activeConsumers.has(settings.tenantId)) {
-      startConsumerForTenant(settings.tenantId, engineSignal);
+      await reconcileTenant(settings.tenantId, engineSignal)
+        .catch((err) => logFromError(err, 'OpenCTI reconcile failed', { tenantId: settings.tenantId }));
     }
   }
 };

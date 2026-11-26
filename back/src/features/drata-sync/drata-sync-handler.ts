@@ -7,7 +7,7 @@ import { createLogger } from '../../utils/logger';
 import { createDrataClient } from './drata-api-client';
 import { buildMirrorInput, isImportedFramework } from './drata-mapping-utils';
 
-const { logTrace, logFromError } = createLogger({ feature: 'drata-sync' });
+const { logTrace, logTraceFromError } = createLogger({ feature: 'drata-sync' });
 
 export const drataSyncHandler: JobHandler<DrataSyncPayload> = async (ctx) => {
   if (ctx.signal.aborted) {
@@ -93,7 +93,8 @@ export const drataSyncHandler: JobHandler<DrataSyncPayload> = async (ctx) => {
       controls: mirror.controls.length,
     });
   } catch (err) {
-    logFromError(err, 'Drata sync failed', { tenantId: ctx.tenantId, attempt: ctx.attempt });
+    // The runtime logs the run's outcome, at the level its retry or move to the DLQ calls for.
+    logTraceFromError(err, 'Drata sync failed', { tenantId: ctx.tenantId, attempt: ctx.attempt });
     throw err;
   }
 };

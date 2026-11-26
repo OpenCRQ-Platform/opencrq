@@ -5,7 +5,7 @@ import { dbEngine } from '../../engines/db';
 import { createLogger } from '../../utils/logger';
 import { datasetUrl, FETCH_TIMEOUT_MS, loadStamp, parseDatasetBody } from './default-threats-dataset';
 
-const { logFromError, logTrace } = createLogger({ feature: 'default-threats' });
+const { logTrace, logTraceFromError } = createLogger({ feature: 'default-threats' });
 
 export const DEFAULT_THREATS_SYNC_JOB = 'default-threats-sync';
 
@@ -85,7 +85,8 @@ export const defaultThreatsSyncHandler: JobHandler<Record<string, unknown>, Defa
     if (err instanceof DOMException && err.name === 'TimeoutError') {
       throw fromError(err, `Default Threats dataset fetch timed out after ${FETCH_TIMEOUT_MS}ms`);
     }
-    logFromError(err, 'Default Threats sync failed', { jobId: ctx.jobId, attempt: ctx.attempt });
+    // The runtime logs the run's outcome, at the level its retry or move to the DLQ calls for.
+    logTraceFromError(err, 'Default Threats sync failed', { jobId: ctx.jobId, attempt: ctx.attempt });
     throw err;
   }
 };

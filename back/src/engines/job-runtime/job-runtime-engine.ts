@@ -34,7 +34,7 @@ const runListeners: Array<RunLifecycleListener> = [];
 
 const startJobRuntimeEngine = (signal: AbortSignal) => {
   const logger = createLogger({ engine: JOB_RUNTIME_ENGINE_KEY });
-  const { logTrace, logWarn, logFromError } = logger;
+  const { logTrace, logWarn, logWarnFromError, logFromError } = logger;
 
   const jobsConfig = config().jobs;
   if (!jobsConfig || !jobsConfig.enabled) {
@@ -167,9 +167,11 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
         logTrace('Run booked the answer to an ask it absorbed', { jobId, kind, answeringJobId });
       },
       onJobFailure: (jobId, kind, err, outcome, nextAttemptAt) => {
+        // A retry is a failure the runtime recovers from on its own: only the move to the DLQ alerts.
         if (outcome === 'retry') {
-          const next = claimed.attempt + 1;
-          logFromError(err, `Job failed, attempt ${next} of ${claimed.maxAttempts} scheduled at ${nextAttemptAt?.toISOString() ?? 'now'}`, { jobId, kind, attempt: claimed.attempt });
+          logWarnFromError(err, 'Job failed, retry scheduled', {
+            jobId, kind, attempt: claimed.attempt, maxAttempts: claimed.maxAttempts, retryAt: nextAttemptAt?.toISOString() ?? 'now',
+          });
         } else {
           logFromError(err, 'Job failed, moved to DLQ', { jobId, kind, attempt: claimed.attempt });
         }

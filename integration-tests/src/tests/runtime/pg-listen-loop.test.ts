@@ -19,6 +19,7 @@ const silentLogger: Logger = {
   logTrace: () => {},
   logTraceFromError: () => {},
   logWarn: () => {},
+  logWarnFromError: () => {},
   logError: () => {},
   logFromError: () => {},
   logFatalError: (message) => {
