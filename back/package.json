@@ -31,7 +31,7 @@
     "@fastify/cors": "11.4.3",
     "@fastify/helmet": "13.2.0",
     "@fastify/multipart": "10.1.9",
-    "@fastify/static": "10.1.11",
+    "@fastify/static": "10.1.12",
     "@opentelemetry/api": "1.10.0",
     "@opentelemetry/auto-instrumentations-node": "0.83.1",
     "@opentelemetry/core": "3.1.1",
