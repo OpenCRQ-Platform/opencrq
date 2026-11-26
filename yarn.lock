@@ -80,7 +80,7 @@ __metadata:
     "@lingui/vite-plugin": "npm:6.12.0"
     "@rolldown/plugin-babel": "npm:0.3.1"
     "@tailwindcss/vite": "npm:4.3.5"
-    "@tanstack/devtools-vite": "npm:0.8.6"
+    "@tanstack/devtools-vite": "npm:0.8.7"
     "@tanstack/react-db": "npm:0.5.12"
     "@tanstack/react-devtools": "npm:0.10.14"
     "@tanstack/react-query": "npm:5.107.1"
@@ -6514,9 +6514,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/devtools-vite@npm:0.8.6":
-  version: 0.8.6
-  resolution: "@tanstack/devtools-vite@npm:0.8.6"
+"@tanstack/devtools-vite@npm:0.8.7":
+  version: 0.8.7
+  resolution: "@tanstack/devtools-vite@npm:0.8.7"
   dependencies:
     "@tanstack/devtools-bundler-core": "npm:0.1.4"
     "@tanstack/devtools-client": "npm:0.0.8"
@@ -6524,7 +6524,7 @@ __metadata:
     chalk: "npm:^5.6.2"
   peerDependencies:
     vite: ^6.0.0 || ^7.0.0 || ^8.0.0
-  checksum: 10c0/6a00065489f77e68a54a45083dcf56c2436c38357b3bc97b16c845bb166879c3627a815770134b867cc23c71f32192a0ef05789768963c1015a8926e192842b5
+  checksum: 10c0/ed972de740450ea2be8d3d2cc22f116619ffeb5653568ef340bc654b215559768ee30a9ad29c2c1a0f823755b1977cc93367378d2f8c3fc343c26feec340ccda
   languageName: node
   linkType: hard
 
