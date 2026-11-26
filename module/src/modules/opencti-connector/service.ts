@@ -98,6 +98,47 @@ export const openctiConnectorService = defineService(
     return repo.configureIfUnconfigured(tenantId, uuidv7(), serviceAccountId, streamId);
   },
 
+  /**
+   * Moves the binding the deployment made from `fromStreamId` to `toStreamId` and replays the stream
+   * from its start. Leaves an admin's binding alone: it applies only while the deployment still owns
+   * the binding on that stream. System origin only. Answers whether it re-pointed.
+   */
+  repointDeploymentStream: async ({ atomic, eventOrigin }, tenantId: string, fromStreamId: string, toStreamId: string): Promise<boolean> => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    return atomic(async ({ repo }) => repo.repointDeploymentStream(tenantId, fromStreamId, toStreamId));
+  },
+
+  /**
+   * Re-enables the binding the deployment made on `streamId` once its token authenticates again,
+   * from where the stream stopped. System origin only. Answers whether it resumed.
+   */
+  resumeDeploymentStream: async ({ repo, eventOrigin }, tenantId: string, streamId: string): Promise<boolean> => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    return repo.resumeDeploymentStream(tenantId, streamId);
+  },
+
+  /**
+   * Runs `run` while holding the lock of one OpenCTI's managed stream, inside a transaction that
+   * lasts as long as `run`. Answers false without running it when another caller holds the lock.
+   * System origin only.
+   */
+  withManagedStreamLock: async ({ atomic, eventOrigin }, openctiUrl: string, run: () => Promise<void>): Promise<boolean> => {
+    if (eventOrigin.type !== 'system') {
+      throw newError('System origin required');
+    }
+    return atomic(async ({ repo }) => {
+      if (!await repo.tryLockManagedStream(openctiUrl)) {
+        return false;
+      }
+      await run();
+      return true;
+    });
+  },
+
   /** What the boot found missing on the deployment's token, shown on the connector page. System origin only. */
   recordStreamMissingCapability: async ({ repo, eventOrigin }, tenantId: string, capability: string | null): Promise<void> => {
     if (eventOrigin.type !== 'system') {

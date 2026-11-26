@@ -321,7 +321,7 @@ add up, and all lead to the same status rule (any threat, section 4). No tile is
   `OpenctiConfigureDrawer`, which keeps its own behaviour. When OpenCTI cannot list its Live
   Streams the drawer says so instead of showing the form. *Read-only* says that an administrator
   configures the connector. The form carries the same service account choice as the Assets step
-  (section 6). A connection the deployment provides is usually bound at start already, to the
+  (section 6). A connection the deployment provides is usually bound already, to the
   "OpenCTI (deployment)" account and the "OpenCRQ threat feed" stream OpenCRQ manages
   (`back/src/features/deployment-integrations/`), so the drawer opens on that binding.
 - **The progress line** is drawn only when the percentage is known: OpenCTI's

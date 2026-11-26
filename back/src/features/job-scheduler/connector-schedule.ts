@@ -32,6 +32,18 @@ export interface ConnectorScheduleDeps {
 export const FIRST_LOAD_RETRY_MS = 60 * 60 * 1000;
 
 /**
+ * Whether a kind owes another attempt: none is queued or running, and either none ever ended or the
+ * last one ended `retryMs` ago or more, so a peer that is down is retried at that pace, not on every tick.
+ */
+export const retryDue = (summary: RunSummary | undefined, nowMs: number, retryMs: number): boolean => {
+  if (summary?.activeRun) {
+    return false;
+  }
+  const finishedAt = summary?.lastTerminalRun?.finishedAt;
+  return !finishedAt || nowMs - finishedAt.getTime() >= retryMs;
+};
+
+/**
  * Serves one tenant's due connector occurrences, each at most once. The claim moves the next run to
  * the first slot after now before anything is enqueued, so a skipped or a long-missed occurrence is
  * passed over rather than replayed. A manual run never touches the row, so it leaves the cadence
@@ -68,11 +80,7 @@ export const runDueConnectorSchedules = async (
   // is retried at most once an hour, not on every tick.
   const firstLoadDue = async (entry: RunnableConnector['entry']): Promise<boolean> => {
     const [summary] = await deps.jobs.getRunSummariesByKind(tenantId, [entry.jobKind]);
-    if (summary?.activeRun) {
-      return false;
-    }
-    const finishedAt = summary?.lastTerminalRun?.finishedAt;
-    return !finishedAt || nowMs - finishedAt.getTime() >= FIRST_LOAD_RETRY_MS;
+    return retryDue(summary, nowMs, FIRST_LOAD_RETRY_MS);
   };
 
   const serve = async ({ entry, payload, firstRunNow }: RunnableConnector): Promise<void> => {

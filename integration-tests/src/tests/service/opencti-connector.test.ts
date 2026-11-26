@@ -426,6 +426,7 @@ describe('OpenCTI Connector Service', () => {
     it('should bind the stream with a state row, so its first checkpoint is persisted', async () => {
       expect(await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-1')).toBe(true);
 
+      expect((await getSettingsRow(tenantId))[0].boundByDeployment).toBe(true);
       expect(await getStateRow(tenantId)).toHaveLength(1);
       const persisted = await system().updateCursor(tenantId, '1', new Date(), null, 2, 0);
       expect(persisted).toEqual({ reachedLiveTailAt: null, objectsRead: 2 });
@@ -439,6 +440,137 @@ describe('OpenCTI Connector Service', () => {
 
       expect((await getStateRow(tenantId))[0]).toMatchObject({ cursor: '1620249512318-0', objectsRead: 5, streamGeneration: 0 });
       expect((await getSettingsRow(tenantId))[0].streamId).toBe('live-stream-1');
+    });
+  });
+
+  describe('repointDeploymentStream (system origin)', () => {
+    const system = () => services.withOrigin({ type: 'system' }).openctiConnector;
+
+    it('should move the binding, replay the stream and clear the failure', async () => {
+      await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-1');
+      await system().updateCursor(tenantId, '1620249512318-0', new Date(), null, 5, 0);
+      await system().recordStreamMissingCapability(tenantId, 'TAXIIAPI_SETCOLLECTIONS');
+      await system().setEnabled(tenantId, false);
+      await system().markAuthFailed(tenantId);
+      const generation = (await getStateRow(tenantId))[0].streamGeneration;
+
+      expect(await system().repointDeploymentStream(tenantId, 'live-stream-1', 'live-stream-2')).toBe(true);
+
+      expect((await getSettingsRow(tenantId))[0]).toMatchObject({
+        streamId: 'live-stream-2', serviceAccountId, enabled: true, authFailedAt: null, streamMissingCapability: null, boundByDeployment: true,
+      });
+      const state = (await getStateRow(tenantId))[0];
+      expect(state).toMatchObject({ cursor: null, objectsRead: 0 });
+      expect(state.streamGeneration).toBe(generation + 1);
+    });
+
+    it('should leave a binding an admin configured in between alone, even on the deployment account', async () => {
+      await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-1');
+      await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-1');
+      await system().updateCursor(tenantId, '1620249512318-0', new Date(), null, 5, 1);
+      const before = (await getSettingsRow(tenantId))[0];
+      expect(before.boundByDeployment).toBe(false);
+
+      expect(await system().repointDeploymentStream(tenantId, 'live-stream-1', 'live-stream-2')).toBe(false);
+
+      expect((await getSettingsRow(tenantId))[0]).toEqual(before);
+      expect((await getStateRow(tenantId))[0]).toMatchObject({ cursor: '1620249512318-0', objectsRead: 5 });
+    });
+
+    it('should leave a binding moved to another stream in between alone', async () => {
+      await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-3');
+
+      expect(await system().repointDeploymentStream(tenantId, 'live-stream-1', 'live-stream-2')).toBe(false);
+
+      expect((await getSettingsRow(tenantId))[0].streamId).toBe('live-stream-3');
+    });
+
+    it('should reject a non-system origin', async () => {
+      await expect(services.withOrigin(adminOrigin).openctiConnector.repointDeploymentStream(tenantId, 'a', 'b')).rejects.toThrow();
+    });
+  });
+
+  describe('resumeDeploymentStream (system origin)', () => {
+    const system = () => services.withOrigin({ type: 'system' }).openctiConnector;
+
+    it('should re-enable the binding and clear the failure, from where the stream stopped', async () => {
+      await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-1');
+      await system().updateCursor(tenantId, '1620249512318-0', new Date(), null, 5, 0);
+      await system().markAuthFailed(tenantId);
+
+      expect(await system().resumeDeploymentStream(tenantId, 'live-stream-1')).toBe(true);
+
+      expect((await getSettingsRow(tenantId))[0]).toMatchObject({ enabled: true, authFailedAt: null, streamId: 'live-stream-1' });
+      expect((await getStateRow(tenantId))[0]).toMatchObject({ cursor: '1620249512318-0', objectsRead: 5, streamGeneration: 0 });
+    });
+
+    it('should leave a connector an admin disabled alone', async () => {
+      await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-1');
+      await system().markAuthFailed(tenantId);
+      await services.withOrigin(adminOrigin).openctiConnector.setEnabled(tenantId, false);
+
+      expect(await system().resumeDeploymentStream(tenantId, 'live-stream-1')).toBe(false);
+
+      expect((await getSettingsRow(tenantId))[0].enabled).toBe(false);
+    });
+
+    it('should leave a failing binding an admin configured alone, even on the deployment account', async () => {
+      await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-1');
+      await services.withOrigin(adminOrigin).openctiConnector.configure(tenantId, serviceAccountId, 'live-stream-1');
+      await system().markAuthFailed(tenantId);
+
+      expect(await system().resumeDeploymentStream(tenantId, 'live-stream-1')).toBe(false);
+
+      expect((await getSettingsRow(tenantId))[0]).toMatchObject({ enabled: false, boundByDeployment: false });
+    });
+
+    it('should leave a binding on another stream alone', async () => {
+      await system().configureDeploymentStream(tenantId, serviceAccountId, 'live-stream-1');
+      await system().markAuthFailed(tenantId);
+
+      expect(await system().resumeDeploymentStream(tenantId, 'live-stream-2')).toBe(false);
+
+      expect((await getSettingsRow(tenantId))[0].enabled).toBe(false);
+    });
+
+    it('should reject a non-system origin', async () => {
+      await expect(services.withOrigin(adminOrigin).openctiConnector.resumeDeploymentStream(tenantId, 'a')).rejects.toThrow();
+    });
+  });
+
+  describe('withManagedStreamLock (system origin)', () => {
+    const system = () => services.withOrigin({ type: 'system' }).openctiConnector;
+
+    it('should answer false to a second caller on the same OpenCTI while the first holds the lock', async () => {
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let entered: () => void = () => undefined;
+      const inside = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const first = system().withManagedStreamLock('https://opencti-a.example', async () => {
+        entered();
+        await held;
+      });
+      await inside;
+
+      let ranSecond = false;
+      expect(await system().withManagedStreamLock('https://opencti-a.example', () => {
+        ranSecond = true;
+        return Promise.resolve();
+      })).toBe(false);
+      expect(ranSecond).toBe(false);
+      expect(await system().withManagedStreamLock('https://opencti-b.example', () => Promise.resolve())).toBe(true);
+
+      release();
+      expect(await first).toBe(true);
+      expect(await system().withManagedStreamLock('https://opencti-a.example', () => Promise.resolve())).toBe(true);
+    });
+
+    it('should reject a non-system origin', async () => {
+      await expect(services.withOrigin(adminOrigin).openctiConnector.withManagedStreamLock('https://opencti-a.example', () => Promise.resolve())).rejects.toThrow();
     });
   });
 

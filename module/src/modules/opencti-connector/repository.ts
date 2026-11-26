@@ -59,6 +59,9 @@ const STREAM_STATE_RESET = {
 /** Namespaces the rebuild's advisory locks, so its tenant keys cannot collide with another user's. */
 const MIRROR_REBUILD_LOCK_CLASS = 1566;
 
+/** Namespaces the managed stream's advisory locks, keyed on the OpenCTI they provision. */
+const MANAGED_STREAM_LOCK_CLASS = 1567;
+
 const getString = (obj: Record<string, unknown>, key: string): string | null => {
   const value = obj[key];
   return typeof value === 'string' ? value : null;
@@ -82,6 +85,7 @@ export const openctiConnectorRepository = defineRepository({
       threatVisibility: settings.threatVisibility,
       authFailedAt: settings.authFailedAt,
       streamMissingCapability: settings.streamMissingCapability,
+      boundByDeployment: settings.boundByDeployment,
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
       cursor: state.cursor,
@@ -159,7 +163,7 @@ export const openctiConnectorRepository = defineRepository({
         set: { ...STREAM_STATE_RESET, streamGeneration: nextGeneration() },
       });
     await db.insert(openctiConnectorSettings)
-      .values([{ id, tenantId, serviceAccountId, streamId, enabled: true }])
+      .values([{ id, tenantId, serviceAccountId, streamId, enabled: true, boundByDeployment: false }])
       .onConflictDoUpdate({
         target: openctiConnectorSettings.tenantId,
         set: {
@@ -168,6 +172,7 @@ export const openctiConnectorRepository = defineRepository({
           enabled: true,
           authFailedAt: null,
           streamMissingCapability: null,
+          boundByDeployment: false,
           updatedAt,
         },
       });
@@ -182,14 +187,66 @@ export const openctiConnectorRepository = defineRepository({
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
     const updatedAt = sql`now()` as unknown as Date;
     const configured = await db.insert(openctiConnectorSettings)
-      .values([{ id, tenantId, serviceAccountId, streamId, enabled: true }])
+      .values([{ id, tenantId, serviceAccountId, streamId, enabled: true, boundByDeployment: true }])
       .onConflictDoUpdate({
         target: openctiConnectorSettings.tenantId,
-        set: { serviceAccountId, streamId, enabled: true, streamMissingCapability: null, updatedAt },
+        set: { serviceAccountId, streamId, enabled: true, streamMissingCapability: null, boundByDeployment: true, updatedAt },
         setWhere: and(isNull(openctiConnectorSettings.serviceAccountId), isNull(openctiConnectorSettings.streamId)),
       })
       .returning();
     return configured.length > 0;
+  },
+
+  /**
+   * Moves the binding the deployment made to another stream, applied only while the deployment still
+   * owns it and it still points at `fromStreamId`: an admin who configured in between is never
+   * overwritten. Resets the stream state as `upsertConfig` does, clears the failure and the missing
+   * capability, and enables the connector. The state row is locked first, in `upsertConfig`'s order, so
+   * a Configure running alongside cannot deadlock with it. The caller runs it in a transaction.
+   * Answers whether it re-pointed.
+   */
+  repointDeploymentStream: async ({ db, views }, tenantId: string, fromStreamId: string, toStreamId: string): Promise<boolean> => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
+    const updatedAt = sql`now()` as unknown as Date;
+    await db.select({ tenantId: views.openctiStreamState.tenantId })
+      .from(views.openctiStreamState)
+      .where(eq(views.openctiStreamState.tenantId, tenantId))
+      .for('update');
+    const moved = await db.update(openctiConnectorSettings)
+      .set({ streamId: toStreamId, enabled: true, authFailedAt: null, streamMissingCapability: null, updatedAt })
+      .where(and(
+        eq(openctiConnectorSettings.tenantId, tenantId),
+        eq(openctiConnectorSettings.boundByDeployment, true),
+        eq(openctiConnectorSettings.streamId, fromStreamId),
+      ))
+      .returning();
+    if (moved.length === 0) {
+      return false;
+    }
+    await db.update(openctiStreamState)
+      .set({ ...STREAM_STATE_RESET, streamGeneration: nextGeneration() })
+      .where(eq(openctiStreamState.tenantId, tenantId));
+    return true;
+  },
+
+  /**
+   * Re-enables the binding the deployment made on `streamId` after an authentication failure, keeping
+   * the stream's position. Applied only while the failure is still recorded: an admin's `setEnabled`
+   * clears it, so a manual disable is never undone. Answers whether it resumed.
+   */
+  resumeDeploymentStream: async ({ db }, tenantId: string, streamId: string): Promise<boolean> => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
+    const updatedAt = sql`now()` as unknown as Date;
+    const resumed = await db.update(openctiConnectorSettings)
+      .set({ enabled: true, authFailedAt: null, updatedAt })
+      .where(and(
+        eq(openctiConnectorSettings.tenantId, tenantId),
+        eq(openctiConnectorSettings.boundByDeployment, true),
+        eq(openctiConnectorSettings.streamId, streamId),
+        isNotNull(openctiConnectorSettings.authFailedAt),
+      ))
+      .returning();
+    return resumed.length > 0;
   },
 
   /**
@@ -668,6 +725,19 @@ export const openctiConnectorRepository = defineRepository({
     // eslint-disable-next-line no-restricted-syntax -- an advisory lock is not table data: there are no rows for a policy to scope, and this runs on the caller's own transaction
     const result = await rawDb().execute(
       sql`select pg_try_advisory_xact_lock(${MIRROR_REBUILD_LOCK_CLASS}, hashtext(${tenantId})) as locked`,
+    );
+    return result.rows[0]?.['locked'] === true;
+  },
+
+  /**
+   * One provisioner at a time per OpenCTI, held until the surrounding transaction ends and never
+   * waited on. Keyed on the OpenCTI's URL, not the tenant: tenants sharing one OpenCTI share its
+   * managed stream. The caller normalises the URL.
+   */
+  tryLockManagedStream: async ({ rawDb }, openctiUrl: string): Promise<boolean> => {
+    // eslint-disable-next-line no-restricted-syntax -- an advisory lock is not table data: there are no rows for a policy to scope, and this runs on the caller's own transaction
+    const result = await rawDb().execute(
+      sql`select pg_try_advisory_xact_lock(${MANAGED_STREAM_LOCK_CLASS}, hashtext(${openctiUrl})) as locked`,
     );
     return result.rows[0]?.['locked'] === true;
   },

@@ -26,6 +26,9 @@ export const openctiConnectorSettings = pgTable('opencti_connector_settings', {
   // The OpenCTI capability the deployment's token lacks to create the Live Stream OpenCRQ manages, set
   // at boot for a tenant with nothing bound; cleared once a stream is bound, by the boot or by Configure.
   streamMissingCapability: text('stream_missing_capability'),
+  // Whether the deployment made the binding, the only one it may move or resume. Not inferred from the
+  // account: Configure preselects the bound account, so an admin's choice often keeps the deployment's.
+  boundByDeployment: boolean('bound_by_deployment').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => [

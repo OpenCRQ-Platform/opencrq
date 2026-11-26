@@ -1,0 +1,1 @@
+ALTER TABLE "opencti_connector_settings" ADD COLUMN "bound_by_deployment" boolean DEFAULT false NOT NULL;
