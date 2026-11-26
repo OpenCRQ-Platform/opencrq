@@ -314,13 +314,6 @@ export const featureConfigs = {
     }).prefault({}),
   }),
 
-  // The sibling XTM products of this deployment, for the product switcher (XTM__OPENCTI_URL,
-  // XTM__OPENAEV_URL). A URL only: the connections themselves are `connectors.<name>.<tenant>`.
-  xtm: z.object({
-    opencti_url: z.url().optional(),
-    openaev_url: z.url().optional(),
-  }),
-
   // XTM One (Filigran agentic AI platform) integration: the platform registers itself with XTM One
   // (heartbeat every 5 minutes), publishes an Ed25519 JWKS for cross-platform authentication, and
   // proxies the embedded "Ask Ariane" chat, and signs the users in. Required in every build. Env vars: XTM_ONE__URL, XTM_ONE__TOKEN, XTM_ONE__PLATFORM_URL, and XTM_ONE__ENABLED if
@@ -360,7 +353,6 @@ export const configSchema = z.object({
   events: featureConfigs.events.prefault({}),
   connectors: featureConfigs.connectors.optional(),
   app: featureConfigs.app.prefault({}),
-  xtm: featureConfigs.xtm.prefault({}),
   xtm_one: featureConfigs.xtm_one,
   file_storage: featureConfigs.file_storage.optional(),
   feature_flags: featureConfigs.feature_flags.default([]),

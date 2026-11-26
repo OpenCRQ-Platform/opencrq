@@ -13,10 +13,11 @@ import { authenticateXtmOneJwt } from '../../xtm-one/xtm-one-auth';
 import { getXtmOneSettings } from '../../xtm-one/xtm-one-config';
 import { buildXtmOneHeaders } from '../../xtm-one/xtm-one-headers';
 import { readerTokenExchange } from '../../xtm-one/xtm-one-token-exchange';
-import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveCounterparts, switcherProducts, XTM_PRODUCTS, xtmConnections } from './xtm-counterpart-utils';
+import { COUNTERPART_KINDS, COUNTERPART_PRODUCTS, MAX_COUNTERPART_KEYS, resolveCounterparts, xtmConnections } from './xtm-counterpart-utils';
 import { counterpartAccess, readCounterpartIssues } from './counterpart-access';
 import { probeReaderIssue, READER_ACCESS_ISSUES, THREAT_ACCESS_ISSUES } from './reader-access-issue';
 import { openctiPublicUrl } from './opencti-public-url';
+import { publicProductUrls } from './public-product-urls';
 import { lookupXtmObjects,resolveLookupFactsOrigin, XTM_LOOKUP_KINDS, XTM_USER_TOKEN_HEADER } from './xtm-lookup';
 import { openaevProvider, openctiProvider, xtmOneProvider } from './xtm-providers';
 
@@ -111,7 +112,7 @@ export const tenantProviders = (
   const connectors = config().connectors;
   return [
     xtmOneProvider(getXtmOneSettings()?.url ?? null, xtmOneHeaders),
-    openctiProvider(connectors?.opencti?.[tenantId], authorization),
+    openctiProvider(connectors?.opencti?.[tenantId], authorization, fetch, (connection) => publicProductUrls.resolve('opencti', connection)),
     openaevProvider(connectors?.openaev?.[tenantId], authorization),
   ];
 };
@@ -161,15 +162,6 @@ const authorizedTenant = async (origin: TenantOrigin, callerReachesTenant: (tena
 };
 
 export const xtmRouter = (procedure: TenantProcedure, db: DrizzleDB) => router({
-  // bounded-by: XTM_PRODUCTS, one row per sibling product
-  // eslint-disable-next-line app/no-unused-router-endpoint -- the product switcher of the header (opencrq #8) reads it
-  products: procedure
-    .output(z.array(z.object({ product: z.enum(XTM_PRODUCTS), url: z.string().nullable() })))
-    .query(async ({ ctx: { services, origin } }) => switcherProducts(
-      config().xtm,
-      tenantProviders(await authorizedTenant(origin, (t) => services.withOrigin(origin).tenants.callerReachesTenant(t))),
-    )),
-
   // bounded-by: COUNTERPART_PRODUCTS, one row per product this tenant can reach
   connections: procedure
     .output(z.array(connectionSchema))

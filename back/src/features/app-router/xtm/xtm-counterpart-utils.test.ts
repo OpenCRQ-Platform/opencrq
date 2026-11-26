@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CounterpartProvider, XtmCounterpart } from './xtm-counterpart-utils';
 import type { ReaderAuthorization } from './xtm-providers';
-import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, switcherProducts, xtmConnections } from './xtm-counterpart-utils';
+import { normaliseCounterpartKey, resetCounterpartCache, resolveCounterparts, sanitiseFacts, xtmConnections } from './xtm-counterpart-utils';
 import { openaevProvider, openctiProvider, XTM_ONE_LOOKUP_PATH, xtmOneProvider } from './xtm-providers';
 
 const NO_READER: ReaderAuthorization = () => Promise.resolve(null);
@@ -145,23 +145,6 @@ describe('resolveCounterparts', () => {
   });
 });
 
-describe('switcherProducts', () => {
-  it('prefers the URL the deployment declares, else the connection, without a trailing slash', () => {
-    const providers = [openctiProvider({ url: 'https://opencti.connection/', token: 'secret' }, NO_READER), openaevProvider({ url: 'https://openaev.connection/', token: 'secret' }, NO_READER)];
-    expect(switcherProducts({ openaev_url: 'https://openaev.declared/' }, providers)).toEqual([
-      { product: 'opencti', url: 'https://opencti.connection' },
-      { product: 'openaev', url: 'https://openaev.declared' },
-    ]);
-  });
-
-  it('answers no URL for a product neither declared nor connected', () => {
-    expect(switcherProducts({}, [openctiProvider(undefined, NO_READER), openaevProvider(undefined, NO_READER)])).toEqual([
-      { product: 'opencti', url: null },
-      { product: 'openaev', url: null },
-    ]);
-  });
-});
-
 describe('xtmConnections', () => {
   it('reports each product without its credential', () => {
     const connections = xtmConnections([
@@ -205,6 +188,21 @@ describe('providers', () => {
     expect(authorization).toHaveBeenCalledWith('opencti', connection);
     expect(authHeaderOf(fetchImpl.mock.calls[0][1])).toBe('Bearer reader-jwt');
     expect(found).toEqual([{ key: STIX, product: 'opencti', objectId: 'abc', objectType: 'Intrusion-Set', objectName: 'APT28', objectUrl: 'https://opencti.example/dashboard/id/abc', facts: [] }]);
+  });
+
+  it('asks OpenCTI on the connection\'s address but links to the object on the URL OpenCTI names itself', async () => {
+    const fetchImpl = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(new Response(JSON.stringify({ data: { stixCoreObjects: { edges: [
+      { node: { id: 'abc', standard_id: STIX, entity_type: 'Intrusion-Set', representative: { main: 'APT28' } } },
+    ] } } }))));
+    const connection = { url: 'http://opencti:8080/', token: 'connector-token' };
+    const publicUrl = vi.fn((_connection: unknown) => Promise.resolve('https://opencti.example.com/'));
+    const p = openctiProvider(connection, () => Promise.resolve('reader-jwt'), fetchImpl, publicUrl);
+
+    const found = await p.resolve('THREAT', [STIX]);
+
+    expect(fetchImpl.mock.calls[0][0]).toBe('http://opencti:8080/graphql');
+    expect(publicUrl).toHaveBeenCalledWith(connection);
+    expect(found[0]?.objectUrl).toBe('https://opencti.example.com/dashboard/id/abc');
   });
 
   it('never sends the connector token: no reader identity means no call and no counterpart', async () => {

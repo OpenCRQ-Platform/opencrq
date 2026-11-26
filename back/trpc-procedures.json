@@ -12902,11 +12902,6 @@
       }
     },
     {
-      "path": "xtm.products",
-      "type": "query",
-      "input": null
-    },
-    {
       "path": "xtm.readerAccess",
       "type": "query",
       "input": null

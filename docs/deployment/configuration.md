@@ -6,7 +6,8 @@ This guide details the environment variables and configuration options for deplo
 
 | Variable                    | Required | Default Value | Architectural/Functional Impact                                                   |
 |:----------------------------|:--------:|:--------------|:----------------------------------------------------------------------------------|
-| `PROCESS_MANAGER__PROFILE`  |   Yes    | —             | `split` runs the HTTP server and the background worker as separate processes, each with its own database connection pool. `monolith` runs everything in a single process and is only intended for local development — never use it on an environment with real data volume. |
+| `PROCESS_MANAGER__PROFILE`  |    No    | `split`       | `split` runs the HTTP server and the background worker as separate processes, each with its own database connection pool. `monolith` runs everything in a single process and is only intended for local development — never use it on an environment with real data volume. |
+| `PROCESS_MANAGER__HEARTBEAT_TIMEOUT` |    No    | `60000`       | Milliseconds without a heartbeat from a child process after which the process manager's healthcheck reports the instance unhealthy (`503`). |
 
 ## Database (PostgreSQL)
 
@@ -59,9 +60,9 @@ In **non-production**, the bucket is created automatically at startup if missing
 | `HTTP_SERVER__HOST`                    | **Yes**  | -                                  | Internal listening interface, `0.0.0.0` in a container.                                    |
 | `HTTP_SERVER__PORT`                    | **Yes**  | -                                  | Internal listening port of the application, `3002`, which the published image exposes.     |
 | `HEALTHCHECK_HTTP_SERVER__PORT`        | **Yes**  | -                                  | Internal listening port for healthchecks, `8444`, which the published image exposes.       |
+| `HTTP_SERVER__MAX_RESPONSE_ITEMS`      |    No    | `20000`                            | Most items a tRPC call may return when its result is an array. A call over it is refused with `PAYLOAD_TOO_LARGE` instead of being serialised, since an array sized on a tenant's estate can exhaust the heap and kill the process. |
+| `FRONT_PATH`                           |    No    | -                                  | Directory the application serves the built frontend from. Unset, it is `../front/dist` from the backend's working directory, which fits a source checkout; the published image sets `/app/public`. |
 | `APP__ADMIN__TOKEN`                    |    No    | -                                  | Bootstrap admin token, a UUIDv4 (the counterpart of OpenCTI's `APP__ADMIN__TOKEN`). It authenticates the peer provisioning API below and is an admin bearer on the API (see [Admin token as a bearer](#admin-token-as-a-bearer)); unset, both are off. Pass through a secret store. |
-| `XTM__OPENCTI_URL`                     |    No    | -                                  | URL of the deployment's OpenCTI, where the product switcher sends a person. Unset: the URL of the tenant's OpenCTI connection, if any. |
-| `XTM__OPENAEV_URL`                     |    No    | -                                  | URL of the deployment's OpenAEV, for the product switcher. Unset: the URL of the tenant's OpenAEV connection, if any. |
 
 ### Peer provisioning API
 
@@ -138,7 +139,7 @@ The job runtime claims and executes background work: connector syncs, score proj
 
 | Variable                          | Required | Default Value | Architectural/Functional Impact                                                                                                                                                                                          |
 |:----------------------------------|:--------:|:--------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `JOBS__ENABLED`                   |    No    | `false`       | Master switch for the job runtime. The block is optional and unset reads as off, so it must be explicitly set to `true` to run. With it off, nothing claims queued jobs, and the integrations page says so: the no-worker banner is permanent, which is the honest reading.                                            |
+| `JOBS__ENABLED`                   |    No    | `true`        | Master switch for the job runtime. Unset, it runs: set it to `false` to turn the runtime off. With it off, nothing claims queued jobs, and the integrations page says so: the no-worker banner is permanent, which is the honest reading.                                            |
 | `JOBS__MAX_CONCURRENT`            |    No    | `4`           | Jobs a single runtime process executes at once.                                                                                                                                                                          |
 | `JOBS__POLLING_FALLBACK_MS`       |    No    | `30000`       | How often the runtime polls for work when no `LISTEN/NOTIFY` wake-up arrives.                                                                                                                                             |
 | `JOBS__HEARTBEAT_INTERVAL_MS`     |    No    | `10000`       | How often each runtime process refreshes its registry row. The beat is unconditional: it does not depend on the process holding work, so an idle worker is never mistaken for an absent one.                              |
@@ -146,6 +147,15 @@ The job runtime claims and executes background work: connector syncs, score proj
 | `JOBS__LOG_RETENTION_RUNS`        |    No    | `3`           | Runs of one job kind whose captured log lines are kept, per tenant. A run that ends deletes the lines of the older ones, and a connector's Logs tab renders exactly what this keeps. |
 | `JOBS__LOG_RETENTION_LINES`       |    No    | `500`         | Captured lines kept for the OpenCTI stream session, which never ends and so is bounded by count rather than by run. |
 | `JOBS__RUN_RETENTION_DAYS`        |    No    | `30`          | Days a finished run (`succeeded`, `cancelled`, `dlq`) is kept before the daily `jobs-retention` job purges its `jobs` row, taking its errors and captured log lines with it by cascade. The last finished run of each job kind is kept whatever its age, so a kind that runs rarely does not read as never ran. |
+
+## Events (live refresh)
+
+A write to a tenant's data rings a doorbell that tells every connected client of that tenant which of its queries to refetch, or all of them when the change cannot be traced to some. Bursts of writes are folded into one ring per window.
+
+| Variable | Required | Default Value | Architectural/Functional Impact |
+|:---------|:--------:|:--------------|:--------------------------------|
+| `EVENTS__DOORBELL_WINDOW_MS` | No | `100` | Window, in milliseconds, that opens at the first write to a tenant and ends in one ring covering every write it gathered. It applies to writes made by a person and by a job run someone is waiting on, each kind in its own window. |
+| `EVENTS__JOB_DOORBELL_WINDOW_MS` | No | `30000` | The same window for writes made by a job run nobody is waiting on. It is much coarser, so a bulk write that lasts minutes rings once per this window instead of once per `EVENTS__DOORBELL_WINDOW_MS`. |
 
 ## Recompute (scheduled scoring)
 
@@ -157,6 +167,7 @@ Scores are recomputed whenever the data they read changes, and once a day whatev
 | `RECOMPUTE__DEBOUNCE_FACTOR` | No | `1` | Multiplier on the last run's duration in the throttle delay, so a recompute that costs a minute is not asked for every five seconds. |
 | `RECOMPUTE__DEBOUNCE_FLOOR_MS` | No | `500` | Shortest delay between the first event of a burst and the run it books. It is also the fastest cadence a continuously written table can drive a job at: the events arriving inside the delay fold into the run already booked, they never postpone it. |
 | `RECOMPUTE__DEBOUNCE_CAP_MS` | No | `300000` | Longest that delay can grow to, whatever the last run cost. |
+| `RECOMPUTE__RECONNECT_MIN_INTERVAL_MS` | No | `600000` | Shortest interval between two catch-ups after the database notification channel reconnects. A catch-up asks for every routed job of every tenant, so a reconnect inside the interval is deferred until it ends, and several reconnects meanwhile share that one catch-up. |
 | `RECOMPUTE__SCORE_HISTORY_RETENTION_DAYS` | No | `365` | Days of finding score history kept, trimmed at the end of each run. Twelve months, the longest window a finding's score history offers on its page. A finding always keeps the line in force when the window opens, however old it is, so one whose score has not moved in a year still counts in every past figure. |
 
 ## Initial tenant
@@ -318,7 +329,7 @@ Syncs the asset inventory, the latest attack verdicts (prevention and detection 
 
 | Variable                                        | Required | Default Value | Architectural/Functional Impact                                     |
 |:----------------------------------------------------|:--------:|:--------------|:-----------------------------------------------------------------------|
-| `CONNECTORS__OPENAEV__<tenant-uuid>__URL`   | **Yes**  | -             | Base URL of that tenant's OpenAEV instance (e.g. `https://openaev.example.com`). |
+| `CONNECTORS__OPENAEV__<tenant-uuid>__URL`   | **Yes**  | -             | Base URL of that tenant's OpenAEV instance (e.g. `https://openaev.example.com`), the address OpenCRQ calls it on, which may be an internal one. The product switcher and the links to OpenAEV open the URL OpenAEV names itself (its `openaev.base-url` setting, `http://localhost:8080` until set), read with the token below and kept for an hour; when it cannot be read, they open this URL. |
 | `CONNECTORS__OPENAEV__<tenant-uuid>__TOKEN` | **Yes**  | -             | API token used to authenticate against that tenant's OpenAEV API. Pass through a secret store. |
 
 The connector reads OpenAEV's bulk snapshot export, which needs a version that ships it with its `BULK_SNAPSHOT_EXPORT` preview feature enabled, and a token whose role holds the `ACCESS_SNAPSHOT_OBSERVATION` and `ACCESS_ASSESSMENT` capabilities. Without the export, it falls back to reading exercises and findings, which needs `ACCESS_FINDINGS` instead. See [OpenAEV Connector](openaev-connector.md) for the phases, their cadences, the fallback and what a failed prerequisite looks like.
@@ -329,7 +340,7 @@ Subscribes to an OpenCTI Live Stream (Server-Sent Events) to automatically keep 
 
 | Variable                                        | Required | Default Value | Architectural/Functional Impact                                     |
 |:----------------------------------------------------|:--------:|:--------------|:-----------------------------------------------------------------------|
-| `CONNECTORS__OPENCTI__<tenant-uuid>__URL`   | **Yes**  | -             | Base URL of that tenant's OpenCTI instance (e.g. `https://opencti.example.com`). |
+| `CONNECTORS__OPENCTI__<tenant-uuid>__URL`   | **Yes**  | -             | Base URL of that tenant's OpenCTI instance (e.g. `https://opencti.example.com`), the address OpenCRQ calls it on, which may be an internal one. The product switcher and the links to OpenCTI open the URL OpenCTI names itself (its `APP__BASE_URL`), read with the token below and kept for an hour; when it cannot be read, they open this URL. |
 | `CONNECTORS__OPENCTI__<tenant-uuid>__TOKEN` | **Yes**  | -             | API token used to authenticate against that tenant's OpenCTI Live Stream/GraphQL API. Pass through a secret store. |
 
 OpenCRQ drives the Live Stream itself: at every start, for each tenant given these variables, it finds the stream it manages in that OpenCTI (named "OpenCRQ threat feed", recognised by a marker in its description), creates it with the filter of [OpenCTI Connector](opencti-connector.md) when there is none, and brings its filter back to the current version when it carries an older one. A tenant with nothing bound is then bound to it, under the "OpenCTI (deployment)" service account, and the connector starts. A binding an admin made is never replaced, and **Configure** still picks any other stream. Binding at start is safe because every mirrored object keeps its OpenCTI markings and each person reads only what their markings allow.
