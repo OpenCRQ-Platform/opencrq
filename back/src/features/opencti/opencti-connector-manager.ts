@@ -1,5 +1,6 @@
 import type { SyncedMarkingDefinition } from '@app/module';
 import { allServiceDefinitions, createServices, isRelevantStixObject, STREAM_LOG_SCOPE_KIND, trimRelevantStixObject } from '@app/module';
+import { newError } from '@app/utils';
 // Deep import: the barrel is heavy and this is the one pure helper the consumer needs on every event.
 import { sanitizeStixNullBytes } from '@app/module/stix-sanitize';
 import { uuidv7 } from 'uuidv7';
@@ -23,8 +24,8 @@ export const STREAM_TIMING = {
   initialReconnectDelayMs: 5_000,
   maxReconnectDelayMs: 60_000,
   /**
-   * How long the stream may go without a frame before a failed reconnection alerts, longer than a
-   * redeploy of OpenCTI. Counted in time, not attempts: one attempt fails at once or after 90 s.
+   * How long reconnections may keep failing with no frame in between before one alerts, longer than
+   * a redeploy of OpenCTI. Counted in time, not attempts: one attempt fails at once or after 90 s.
    */
   unreachableAlertMs: 10 * 60_000,
 } as const;
@@ -359,10 +360,24 @@ const runConsumerLoop = async (tenantId: string, signal: AbortSignal): Promise<v
   const onFrame = (): void => {
     unreachableSince = null;
   };
+  const logReconnection = (err: unknown): void => {
+    unreachableSince ??= new Date();
+    const data = { tenantId, delayMs: currentReconnectDelayMs, unreachableSince: unreachableSince.toISOString() };
+    if (Date.now() - unreachableSince.getTime() >= STREAM_TIMING.unreachableAlertMs) {
+      logFromError(err, 'OpenCTI stream unreachable, reconnecting', data);
+    } else {
+      logWarnFromError(err, 'OpenCTI stream connection error, reconnecting', data);
+    }
+  };
 
   while (!signal.aborted) {
     try {
       await consumeTenantStream(tenantId, signal, onConnected, onFrame);
+      // The SSE client returns when the server ends the response, which a stream never does on its
+      // own: one closed over and over is as unreachable as one refused.
+      if (!signal.aborted) {
+        logReconnection(newError('OpenCTI stream closed by the server'));
+      }
     } catch (err) {
       if (!signal.aborted) {
         // An invalid/disabled token never recovers on its own — persist the disable via `authFailedAt`.
@@ -377,13 +392,7 @@ const runConsumerLoop = async (tenantId: string, signal: AbortSignal): Promise<v
           logFromError(err, 'OpenCTI stream unrecoverable, disabling consumer', { tenantId });
           return;
         }
-        unreachableSince ??= new Date();
-        const data = { tenantId, delayMs: currentReconnectDelayMs, unreachableSince: unreachableSince.toISOString() };
-        if (Date.now() - unreachableSince.getTime() >= STREAM_TIMING.unreachableAlertMs) {
-          logFromError(err, 'OpenCTI stream unreachable, reconnecting', data);
-        } else {
-          logWarnFromError(err, 'OpenCTI stream connection error, reconnecting', data);
-        }
+        logReconnection(err);
       }
     }
     if (signal.aborted) {

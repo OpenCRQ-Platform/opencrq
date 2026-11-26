@@ -1,6 +1,7 @@
 import type { ClaimedJob, CompletedRunObservation } from '@app/module';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecuteJobOptions } from './execution-loop';
+import type * as LoggerModule from '../../utils/logger';
 import { listEngines } from '../engines-manager';
 import { jobRuntimeEngine } from './job-runtime-engine';
 
@@ -9,7 +10,21 @@ const mocks = vi.hoisted(() => ({
   executeJob: vi.fn(),
   finalizeRunObservation: vi.fn(),
   answerAbsorbedAsk: vi.fn(),
+  logWarnFromError: vi.fn(),
+  logFromError: vi.fn(),
 }));
+
+vi.mock('../../utils/logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof LoggerModule>();
+  return {
+    ...actual,
+    createLogger: (...args: Parameters<typeof actual.createLogger>) => ({
+      ...actual.createLogger(...args),
+      logWarnFromError: mocks.logWarnFromError,
+      logFromError: mocks.logFromError,
+    }),
+  };
+});
 
 vi.mock('../../config', () => ({
   config: vi.fn(() => ({
@@ -96,6 +111,8 @@ describe('job runtime run completion', () => {
     mocks.executeJob.mockReset();
     mocks.finalizeRunObservation.mockReset();
     mocks.answerAbsorbedAsk.mockReset();
+    mocks.logWarnFromError.mockReset();
+    mocks.logFromError.mockReset();
   });
 
   it('should announce the completion only once the handler has settled', async () => {
@@ -254,6 +271,32 @@ describe('job runtime run completion', () => {
     bookAnswer();
     await draining;
     expect(drained).toBe(true);
+    controller.abort();
+  });
+
+  it('should log a retry as a warning under one fixed message, and only the move to the DLQ as an error', async () => {
+    const kind = 'failing-sync';
+    const retryAt = new Date('2026-11-26T10:00:00.000Z');
+    mocks.claimNext
+      .mockResolvedValueOnce(claimedJob(kind))
+      .mockResolvedValueOnce({ ...claimedJob(kind), id: 'job-2', attempt: 3 })
+      .mockResolvedValue(null);
+    jobRuntimeEngine.registerHandler(kind, async () => {}, {});
+    const failure = new Error('502 Bad Gateway');
+    mocks.executeJob.mockImplementation((opts: ExecuteJobOptions) => {
+      const last = opts.job.attempt === opts.job.maxAttempts;
+      opts.onJobFailure?.(opts.job.id, opts.job.kind, failure, last ? 'dlq' : 'retry', last ? null : retryAt);
+      opts.onHandlerSettled?.();
+      return Promise.resolve();
+    });
+
+    const { controller } = await startEngine([]);
+
+    await vi.waitFor(() => expect(mocks.logFromError).toHaveBeenCalledWith(failure, 'Job failed, moved to DLQ', { jobId: 'job-2', kind, attempt: 3 }));
+    expect(mocks.logWarnFromError).toHaveBeenCalledExactlyOnceWith(failure, 'Job failed, retry scheduled', {
+      jobId: 'job-1', kind, attempt: 1, maxAttempts: 3, retryAt: retryAt.toISOString(),
+    });
+    expect(mocks.logFromError).toHaveBeenCalledOnce();
     controller.abort();
   });
 });

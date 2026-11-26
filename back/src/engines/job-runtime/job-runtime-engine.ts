@@ -170,7 +170,7 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
         // A retry is a failure the runtime recovers from on its own: only the move to the DLQ alerts.
         if (outcome === 'retry') {
           logWarnFromError(err, 'Job failed, retry scheduled', {
-            jobId, kind, attempt: claimed.attempt, nextAttempt: claimed.attempt + 1, maxAttempts: claimed.maxAttempts, retryAt: nextAttemptAt?.toISOString() ?? 'now',
+            jobId, kind, attempt: claimed.attempt, maxAttempts: claimed.maxAttempts, retryAt: nextAttemptAt?.toISOString() ?? 'now',
           });
         } else {
           logFromError(err, 'Job failed, moved to DLQ', { jobId, kind, attempt: claimed.attempt });

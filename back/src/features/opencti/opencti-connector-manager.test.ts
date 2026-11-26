@@ -1335,6 +1335,18 @@ describe('opencti-connector-manager', () => {
 
       expect(errors().length).toBeGreaterThanOrEqual(1);
     });
+
+    it('counts a connection the server ends cleanly as a failed one', async () => {
+      mockConsumeOpenCtiStream.mockImplementation(() => fakeStream([connected]));
+
+      startAll(controller.signal);
+      await vi.advanceTimersByTimeAsync(STREAM_TIMING.unreachableAlertMs - 1);
+      expect(warnings().length).toBeGreaterThanOrEqual(1);
+      expect(errors()).toHaveLength(0);
+
+      await vi.advanceTimersByTimeAsync(2 * STREAM_TIMING.maxReconnectDelayMs);
+      expect(errors().length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it('persists enabled=false when the SSE connection fails with an OpenCTI auth error, instead of only stopping in-memory', async () => {

@@ -8,7 +8,7 @@ const mockParse = vi.fn();
 const mockFetch = vi.fn<(url: string, init: { headers: Record<string, string> }) => Promise<Response>>();
 
 vi.mock('../../utils/logger', () => ({
-  createLogger: vi.fn().mockReturnValue({ logFromError: vi.fn(), logTrace: vi.fn() }),
+  createLogger: vi.fn().mockReturnValue({ logTrace: vi.fn(), logTraceFromError: vi.fn() }),
 }));
 
 vi.mock('@app/module', () => ({

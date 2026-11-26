@@ -33,8 +33,8 @@ export const registerClientErrorsRoute = (server: FastifyInstance, db: DrizzleDB
     const tenantId = Array.isArray(tenantIdHeader) ? tenantIdHeader[0] : tenantIdHeader;
 
     parsed.data.reports.forEach((report) => {
-      // A call the browser lost on the way (network, proxy page, a server error the server logged
-      // itself) succeeds on its next try, so only the other kinds alert.
+      // A call the browser lost on the way (network, a proxy's error page) succeeds on its next try,
+      // so only the other kinds alert.
       const log = report.kind === 'transport' ? logWarn : logError;
       log('Client Error Report', {
         kind: report.kind,
