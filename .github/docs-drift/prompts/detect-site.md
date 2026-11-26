@@ -15,8 +15,9 @@ The task input has:
 
 - `doc`: the page's path in the site's sources
 - `watches`: the code path globs this page is supposed to describe
-- `changed`: the files that changed since the last audit, the page included. When this
-  array is empty, this is a deep audit: check the page against the whole watched scope.
+- `changed`: the code files that changed between the two releases. When this array is
+  empty, this is a deep audit, which is also how a page the site just changed is audited:
+  check the page against the whole watched scope.
 
 Identify factual claims about OpenCRQ that the provided code contradicts: outdated
 defaults, limits or values, wrong environment variables or configuration keys, a

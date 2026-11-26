@@ -58,12 +58,20 @@ env:
 jobs:
   params:
     runs-on: ubuntu-26.04
-    permissions: {}
+    permissions:
+      contents: read
     outputs:
       mode: ${{ steps.decide.outputs.mode }}
       scope: ${{ steps.decide.outputs.scope }}
       actor: ${{ steps.decide.outputs.actor }}
+      local: ${{ steps.decide.outputs.local }}
+      site: ${{ steps.decide.outputs.site }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/docs-drift
+          persist-credentials: false
+
       - id: decide
         env:
           EVENT: ${{ github.event_name }}
@@ -87,14 +95,35 @@ jobs:
               scope="$INPUT_SCOPE"
               ;;
           esac
+          # An audit whose map no prefix of the scope matches would only post
+          # an empty run on the tracking issue.
+          in_scope() {
+            if [ -z "$scope" ]; then
+              echo true
+              return
+            fi
+            local doc prefix
+            while IFS= read -r doc; do
+              for prefix in $scope; do
+                if [[ "$doc" == "$prefix"* ]]; then
+                  echo true
+                  return
+                fi
+              done
+            done < <(yq '.[].doc' "$1")
+            echo false
+          }
           {
             echo "mode=$mode"
             echo "scope=$scope"
             echo "actor=$actor"
+            echo "local=$(in_scope "$MAP_FILE")"
+            echo "site=$(in_scope "$SITE_MAP_FILE")"
           } >> "$GITHUB_OUTPUT"
 
   audit:
     needs: params
+    if: needs.params.outputs.local == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 60
     # This job sends the repository's content to an external agent, so it holds
@@ -453,18 +482,24 @@ jobs:
   # site's mirror as an issue: the mirror accepts no pull request.
   audit-site:
     needs: params
+    if: needs.params.outputs.site == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 60
+    # Above DETECT_BUDGET_SECONDS by the longest page, two calls of up to ten
+    # minutes, and the steps around detection.
+    timeout-minutes: 150
     # Like audit, it sends code to an external agent and holds no write token.
     permissions:
       contents: read
+      issues: read
     outputs:
       release: ${{ steps.range.outputs.release }}
       previous: ${{ steps.range.outputs.previous }}
       mode: ${{ steps.range.outputs.mode }}
       mirror: ${{ steps.site.outputs.mirror }}
       count: ${{ steps.scope.outputs.count }}
+      todo: ${{ steps.filter.outputs.todo }}
       new: ${{ steps.filter.outputs.new }}
+      retried: ${{ steps.filter.outputs.retried }}
       known: ${{ steps.filter.outputs.known }}
       unquoted: ${{ steps.filter.outputs.unquoted }}
       malformed: ${{ steps.detect.outputs.malformed }}
@@ -538,6 +573,7 @@ jobs:
           SITE="$RUNNER_TEMP/site"
           pairs='[]'
           missing='[]'
+          dead='[]'
           n=$(yq 'length' "$MAP")
           for i in $(seq 0 $((n - 1))); do
             doc=$(yq ".[$i].doc" "$MAP")
@@ -559,7 +595,14 @@ jobs:
             fi
             watches=$(yq -o=json -I0 ".[$i].watches" "$MAP")
             specs=()
-            while IFS= read -r w; do specs+=(":(glob)$w"); done < <(jq -r '.[]' <<<"$watches")
+            while IFS= read -r w; do
+              specs+=(":(glob)$w")
+              # The map is checked against main, where a watch may name code
+              # the release does not have yet.
+              if [ -z "$(git ls-files -- ":(glob)$w")" ]; then
+                dead=$(jq -c --arg doc "$doc" --arg watch "$w" '. + [{doc: $doc, watch: $watch}]' <<<"$dead")
+              fi
+            done < <(jq -r '.[]' <<<"$watches")
             if [ "$RANGE_MODE" = "deep" ]; then
               changed=$(git ls-files -- "${specs[@]}")
               changed_json='[]'
@@ -581,12 +624,10 @@ jobs:
             fi
           done
           # A page the site added that no entry maps is never audited.
-          mapped=$(yq -o=json -I0 '[.[].doc]' "$MAP")
-          unmapped=$(cd "$SITE" && git ls-files -- ':(glob)docs/content/opencrq/**/*.md' ':(glob)docs/content/deploy/*/opencrq.md' \
-            | jq -c -R -s --argjson mapped "$mapped" 'split("\n") | map(select(length > 0 and (. as $d | $mapped | index($d) | not)))')
+          node "$GITHUB_WORKSPACE/.github/docs-drift/scripts/site-findings.js" unmapped "$SITE" "$MAP" > "$RUNNER_TEMP/unmapped.json"
           printf '%s' "$pairs" > "$RUNNER_TEMP/pairs.json"
           printf '%s' "$missing" > "$RUNNER_TEMP/missing.json"
-          printf '%s' "$unmapped" > "$RUNNER_TEMP/unmapped.json"
+          printf '%s' "$dead" > "$RUNNER_TEMP/dead.json"
           echo "count=$(jq length <<<"$pairs")" >> "$GITHUB_OUTPUT"
 
       - name: Detect drift
@@ -599,49 +640,31 @@ jobs:
           MAP_FILE: ${{ github.workspace }}/${{ env.SITE_MAP_FILE }}
           PROMPTS_DIR: ${{ github.workspace }}/${{ env.PROMPTS_DIR }}
           DETECT_PROMPT: detect-site
+          DETECT_BUDGET_SECONDS: '5400'
         run: bash "$GITHUB_WORKSPACE/.github/docs-drift/scripts/detect.sh" "$RUNNER_TEMP/pairs.json" "$RUNNER_TEMP"
 
       - name: Drop findings already reported to the site
         id: filter
         env:
           GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ vars.DOCS_DRIFT_ISSUE_NUMBER }}
         run: |
-          todo='[]'
-          known='[]'
-          unquoted=0
-          if [ -f "$RUNNER_TEMP/report.json" ]; then
-            # Every state: an issue the documentation team closed while the
-            # passage still reads the same was dismissed, and dismissed is forever.
-            gh api --paginate -X GET "repos/$SITE_REPO/issues" -f state=all -f creator="$SITE_REPORTER" -f per_page=100 \
-              | jq -s -c '[.[][] | {number, state, url: .html_url, ids: [(.body // "") | scan("docs-drift:([0-9a-f]{12})") | .[0]]}]' \
-              > "$RUNNER_TEMP/reported.json"
-            mapfile -t items < <(jq -c '.findings // [] | .[]' "$RUNNER_TEMP/report.json")
-            for f in "${items[@]}"; do
-              doc=$(jq -r '.doc' <<<"$f")
-              excerpt=$(jq -r '.doc_excerpt' <<<"$f" | tr -s '[:space:]' ' ' | sed 's/^ *//; s/ *$//')
-              # The excerpt is published as a quote of the page: anything else
-              # the agent wrote there is dropped.
-              if [ -z "$excerpt" ] || ! tr -s '[:space:]' ' ' < "$RUNNER_TEMP/site/$doc" | grep -qF -- "$excerpt"; then
-                unquoted=$((unquoted + 1))
-                continue
-              fi
-              id=$(printf '%s|%s' "$doc" "$excerpt" | sha1sum | cut -c1-12)
-              seen=$(jq -c --arg id "$id" 'map(select(.ids | index($id))) | .[0] // empty' "$RUNNER_TEMP/reported.json")
-              if [ -n "$seen" ]; then
-                known=$(jq -c --arg doc "$doc" --argjson issue "$seen" \
-                  '. + [{doc: $doc, url: $issue.url, state: $issue.state}]' <<<"$known")
-              elif ! jq -e --arg id "$id" 'any(.[]; .id == $id)' <<<"$todo" >/dev/null; then
-                todo=$(jq -c --argjson f "$f" --arg id "$id" '. + [$f + {id: $id}]' <<<"$todo")
-              fi
-            done
+          if [ ! -f "$RUNNER_TEMP/report.json" ]; then
+            echo '{"findings":[]}' > "$RUNNER_TEMP/report.json"
           fi
-          printf '%s' "$todo" > "$RUNNER_TEMP/todo.json"
-          printf '%s' "$known" > "$RUNNER_TEMP/known.json"
-          {
-            echo "new=$(jq length <<<"$todo")"
-            echo "known=$(jq length <<<"$known")"
-            echo "unquoted=$unquoted"
-          } >> "$GITHUB_OUTPUT"
+          gh api --paginate -X GET "repos/$SITE_REPO/issues" -f state=all -f creator="$SITE_REPORTER" -f per_page=100 \
+            | jq -s -c '[.[][] | {url: .html_url, state, state_reason, body}]' > "$RUNNER_TEMP/issues.json"
+          # The findings that never reached the mirror are listed there.
+          echo '[]' > "$RUNNER_TEMP/comments.json"
+          if [ -n "$ISSUE" ]; then
+            gh api --paginate -X GET "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -f per_page=100 \
+              | jq -s -c --arg me "$SITE_REPORTER" '[.[][] | select(.user.login == $me) | {url: .html_url, body}]' \
+              > "$RUNNER_TEMP/comments.json"
+          fi
+          jq -n -c --slurpfile issues "$RUNNER_TEMP/issues.json" --slurpfile comments "$RUNNER_TEMP/comments.json" \
+            '{issues: $issues[0], comments: $comments[0]}' > "$RUNNER_TEMP/reported.json"
+          node .github/docs-drift/scripts/site-findings.js triage \
+            "$RUNNER_TEMP/report.json" "$RUNNER_TEMP/site" "$RUNNER_TEMP/reported.json" "$RUNNER_TEMP"
 
       - name: Hand the run over to publish-site
         uses: actions/upload-artifact@v7
@@ -656,6 +679,7 @@ jobs:
             ${{ runner.temp }}/partial.json
             ${{ runner.temp }}/missing.json
             ${{ runner.temp }}/unmapped.json
+            ${{ runner.temp }}/dead.json
 
   publish-site:
     needs: [params, audit-site]
@@ -676,11 +700,18 @@ jobs:
           name: docs-drift-site-run
           path: ${{ runner.temp }}
 
+      # What audit-site hands over was shaped by an external agent's answers,
+      # and the mirror's issue is public while the code it was read from is not.
+      - name: Check the findings for the site's mirror
+        id: check
+        if: needs.audit-site.outputs.todo != '0' && needs.audit-site.outputs.todo != ''
+        run: node .github/docs-drift/scripts/site-findings.js check "$RUNNER_TEMP/todo.json" "$SITE_MAP_FILE" "$RUNNER_TEMP"
+
       # Fails while the app is not installed on the mirror: the findings then
       # go to the tracking issue rather than being lost.
       - name: Mint the site token
         id: site-token
-        if: needs.audit-site.outputs.new != '0' && needs.audit-site.outputs.new != ''
+        if: steps.check.outputs.public != '0' && steps.check.outputs.public != ''
         continue-on-error: true
         uses: actions/create-github-app-token@v3
         with:
@@ -694,45 +725,11 @@ jobs:
       - name: Report to the site's mirror
         id: report
         if: steps.site-token.outcome == 'success'
+        # A failure still leaves the findings on the tracking issue.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.site-token.outputs.token }}
         run: |
-          # What audit-site hands over was shaped by an external agent's answers,
-          # and this issue is public while the code it was read from is not: a
-          # finding whose text quotes code or names a file of this repository
-          # stays on the tracking issue.
-          mapped=$(yq -o=json -I0 '[.[].doc]' "$SITE_MAP_FILE")
-          top=$(git ls-files | cut -d/ -f1 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          jq -c --argjson mapped "$mapped" '
-            [.[] | select((.id | test("^[0-9a-f]{12}$")) and (.doc as $d | $mapped | index($d)))
-              | .suggested_fix = (if (.suggested_fix | type) == "string" then .suggested_fix else "" end)]' \
-            "$RUNNER_TEMP/todo.json" > "$RUNNER_TEMP/valid.json"
-          jq -c --argjson top "$top" '
-            def names_code: test("`{3}|\\.(tsx?|mjs|cjs|js|sql|json|ya?ml|sh)\\b")
-              or (. as $t | any($top[]; . as $d | $t | test("(^|[\\s`\"(])" + ($d | gsub("\\."; "\\.")) + "/")));
-            map(.public = (([.explanation, .suggested_fix] | join("\n")) | names_code | not))' \
-            "$RUNNER_TEMP/valid.json" > "$RUNNER_TEMP/checked.json"
-          jq -c 'map(select(.public | not) | .id)' "$RUNNER_TEMP/checked.json" > "$RUNNER_TEMP/held.json"
-          jq -c 'map(select(.public))' "$RUNNER_TEMP/checked.json" > "$RUNNER_TEMP/valid.json"
-          if [ "$(jq length "$RUNNER_TEMP/valid.json")" -eq 0 ]; then
-            exit 0
-          fi
-          jq -r --arg site "$SITE_URL" --arg release "$RELEASE" '
-            def url: $site + "/" + (sub("^docs/content/"; "") | sub("(/index)?\\.md$"; "")) + "/";
-            def quote: split("\n") | map("> " + .) | join("\n");
-            group_by(.doc) as $pages
-            | "**Pages:**\n\n" + ($pages | map("- " + (.[0].doc | url)) | join("\n"))
-            + "\n\n**Version:** OpenCRQ " + $release
-            + "\n\n### What should change?\n\nOpenCRQ'\''s documentation drift check compared these pages with the code of OpenCRQ "
-            + $release + " and found passages that code contradicts. Close this issue once they are fixed, or to dismiss"
-            + " them: a passage reported here is never reported again.\n\n"
-            + ($pages | map(
-                "#### " + (.[0].doc | url) + "\n\n"
-                + (map((.doc_excerpt | quote) + "\n\n" + .explanation
-                  + (if .suggested_fix != "" then "\n\n**Suggested fix:** " + .suggested_fix else "" end)
-                  + "\n\n<!-- docs-drift:" + .id + " -->") | join("\n\n"))
-              ) | join("\n\n"))
-          ' "$RUNNER_TEMP/valid.json" > "$RUNNER_TEMP/site-issue.md"
           url=$(gh issue create --repo "$SITE_REPO" --label feedback \
             --title "Feedback: OpenCRQ pages that no longer match OpenCRQ $RELEASE" \
             --body-file "$RUNNER_TEMP/site-issue.md")
@@ -763,7 +760,9 @@ jobs:
           FAILED: ${{ needs.audit-site.outputs.failed }}
           ACTOR: ${{ needs.params.outputs.actor }}
           SITE_ISSUE: ${{ steps.report.outputs.url }}
+          PUBLIC: ${{ steps.check.outputs.public }}
           TOKEN_OUTCOME: ${{ steps.site-token.outcome }}
+          REPORT_OUTCOME: ${{ steps.report.outcome }}
         run: |
           now=$(date -u +'%Y-%m-%d %H:%M UTC')
           if [ -n "$ACTOR" ]; then
@@ -778,7 +777,9 @@ jobs:
           partial=$(read_json partial.json)
           missing=$(read_json missing.json)
           unmapped=$(read_json unmapped.json)
+          dead=$(read_json dead.json)
           held=$(read_json held.json)
+          printf '%s' "$todo" > "$RUNNER_TEMP/todo.json"
           {
             echo "### Site drift check run, $now"
             echo ""
@@ -806,22 +807,21 @@ jobs:
             fi
             if [ -n "$SITE_ISSUE" ]; then
               echo "- Reported on the site's mirror: $SITE_ISSUE"
-            elif [ "$(jq length <<<"$todo")" -gt 0 ]; then
+            elif [ "${PUBLIC:-0}" -gt 0 ]; then
               if [ "$TOKEN_OUTCOME" = "failure" ]; then
                 echo "- Not reported on the site's mirror: no token could be minted for $SITE_REPO, where the app may not be installed."
               else
-                echo "- Not reported on the site's mirror: no finding passed the checks, against the site map and for code in their text."
+                echo "- Not reported on the site's mirror: creating the issue on $SITE_REPO failed ($REPORT_OUTCOME), see the run log."
               fi
+              echo "  The first run that reaches the mirror reports them there."
+            elif [ "$(jq length <<<"$todo")" -gt 0 ]; then
+              echo "- Not reported on the site's mirror: no finding passed the checks, against the site map and for code in their text."
             fi
             if [ "$(jq length <<<"$held")" -gt 0 ]; then
               echo "- Kept off the site's mirror, their text quoting code or naming a file: $(jq length <<<"$held"), marked below."
             fi
-            if [ "$(jq length <<<"$todo")" -gt 0 ]; then
-              echo "- New findings, with the code they rest on:"
-              jq -r --argjson held "$held" '.[] | "  - " + (if (.id as $id | $held | index($id)) then "**Kept off the mirror.** " else "" end)
-                + "`\(.doc)`: \(.doc_excerpt | gsub("\\s+"; " ") | .[0:200])\n    \(.explanation | gsub("\\s+"; " "))\n    Evidence: "
-                + (.evidence | map("`" + . + "`") | join(", "))' <<<"$todo"
-            fi
+            node .github/docs-drift/scripts/site-findings.js tracking \
+              "$RUNNER_TEMP/todo.json" "$RUNNER_TEMP/held.json" "$([ -n "$SITE_ISSUE" ] && echo true || echo false)"
             if [ "$(jq length <<<"$known")" -gt 0 ]; then
               echo "- Skipped, already reported:"
               jq -r '.[] | "  - `\(.doc)` via \(.url) (\(.state))"' <<<"$known"
@@ -833,6 +833,10 @@ jobs:
             if [ "$(jq length <<<"$unmapped")" -gt 0 ]; then
               echo "- Site pages no entry of \`$SITE_MAP_FILE\` maps, never audited:"
               jq -r '.[] | "  - `\(.)`"' <<<"$unmapped"
+            fi
+            if [ "$(jq length <<<"$dead")" -gt 0 ]; then
+              echo "- Watches that match no file of OpenCRQ $RELEASE, so that code was never sent:"
+              jq -r '.[] | "  - `\(.doc)`: `\(.watch)`"' <<<"$dead"
             fi
           } > "$RUNNER_TEMP/summary.md"
           gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/summary.md"

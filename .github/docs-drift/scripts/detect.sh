@@ -3,6 +3,8 @@
 # directory's code, and writes report.json, failed.json and partial.json to
 # <out-dir>. Writes the step outputs (failed, partial, malformed, and blocked
 # when no call reached the agent) to $GITHUB_OUTPUT, stdout outside a workflow.
+# With DETECT_BUDGET_SECONDS, no page starts once that time has passed: the
+# rest are reported as failed rather than the job being killed with them.
 #
 #   detect.sh <pairs.json> <out-dir>
 set -euo pipefail
@@ -11,6 +13,7 @@ pairs_file="$1"
 out="$2"
 ask_agent="$(cd "$(dirname "$0")" && pwd)/ask-agent.js"
 outputs="${GITHUB_OUTPUT:-/dev/stdout}"
+budget="${DETECT_BUDGET_SECONDS:-0}"
 
 # One call per document, several for one whose files do not fit a single
 # context, and a file larger than a call goes in parts.
@@ -20,6 +23,11 @@ partial='[]'
 mapfile -t pairs < <(jq -c '.[]' "$pairs_file")
 for p in "${pairs[@]}"; do
   doc=$(jq -r '.doc' <<<"$p")
+  if [ "$budget" -gt 0 ] && [ "$SECONDS" -ge "$budget" ]; then
+    failed=$(jq -c --arg doc "$doc" --arg why "not audited, the run's time budget of ${budget} s ran out" \
+      '. + [{doc: $doc, why: $why}]' <<<"$failed")
+    continue
+  fi
   printf '%s' "$p" > "$out/pair.json"
   if node "$ask_agent" detect "$out/pair.json" > "$out/one.json" 2> "$out/call.err"; then
     jq -s '{findings: (.[0].findings + .[1].findings)}' "$out/report.json" "$out/one.json" > "$out/merged.json"

@@ -5,12 +5,18 @@
 # the code that draws them. A drift found here is reported to the mirror as an
 # issue, never fixed by this repository.
 #
-# Every page under docs/content/opencrq/ and every docs/content/deploy/*/opencrq.md
-# needs an entry; a shared deploy page is mapped when it has an OpenCRQ section.
-# The references under docs/content/reference/opencrq/ are generated from this
+# Every page under docs/content/opencrq/ needs an entry, and so does every page
+# under docs/content/deploy/ that names OpenCRQ, unless a `# unaudited:` line
+# below leaves it out, with the reason it makes no claim the code decides. The
+# references under docs/content/reference/opencrq/ are generated from this
 # repository's code by the site itself and are left out. Check a change with
 # `node .github/docs-drift/scripts/dry-run.js --site <dir>`, <dir> holding the
 # mirror's docs/content.
+#
+# unaudited: docs/content/deploy/index.md  the platform overview
+# unaudited: docs/content/deploy/configure/xtm-one.md  XTM One's settings, OpenCRQ's address among them
+# unaudited: docs/content/deploy/quick-start/with-an-ai-agent.md  what an agent's run reports
+# unaudited: docs/content/deploy/upgrade/compatibility.md  the versions of the services the bundle ships
 
 # OpenCRQ pages of the documentation site (docs/content/opencrq/), audited against the code that decides their claims.
 
@@ -787,3 +793,28 @@
 - doc: docs/content/deploy/operate/backup.md
   watches:
     - back/src/config-schema.ts
+
+- doc: docs/content/deploy/plan/sizing.md
+  watches:
+    - back/config/default.json
+    - back/src/index-pm.ts
+    - back/src/config-schema.ts
+    - back/src/utils/pg-connection.ts
+
+- doc: docs/content/deploy/plan/requirements.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/utils/pg-connection.ts
+    - docker/prod.dockerfile
+
+- doc: docs/content/deploy/upgrade/xtm-one.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/features/xtm-one/xtm-one-registration.ts
+    - back/src/features/xtm-one/xtm-one-feature.ts
+
+- doc: docs/content/deploy/quick-start/index.md
+  watches:
+    - back/src/config-schema.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in.ts
+    - front/src/routes/login.tsx

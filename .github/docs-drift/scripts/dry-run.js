@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { detectContexts, gitLines as git, parseMap } from './drift-context.js';
+import { unmapped as unmappedSitePages } from './site-findings.js';
 
 const site = process.argv[2] === '--site' ? path.resolve(process.argv[3] || '') : null;
 if (site && !fs.existsSync(path.join(site, 'docs/content'))) {
@@ -25,26 +26,20 @@ if (site) {
   process.env.DOC_ROOT = site;
   process.env.MAP_FILE = MAP;
 }
-// The site pages the workflow requires a map entry for, the same rule as its own.
-const sitePages = () =>
-  fs
-    .readdirSync(path.join(site, 'docs/content'), { recursive: true })
-    .map((f) => `docs/content/${f.split(path.sep).join('/')}`)
-    .filter((f) => /^docs\/content\/(opencrq\/.+|deploy\/[^/]+\/opencrq)\.md$/.test(f))
-    .sort();
-
 const since = site ? null : process.argv[2] || null;
-const entries = parseMap(fs.readFileSync(MAP, 'utf8'));
+const mapText = fs.readFileSync(MAP, 'utf8');
+const entries = parseMap(mapText);
 let problems = 0;
 let audited = 0;
 
 const mapped = new Set(entries.map((e) => e.doc));
-const documents = site ? sitePages() : git(['ls-files', '--', ':(glob)docs/**/*.md']);
-const unmapped = documents.filter((f) => !mapped.has(f));
+const unmapped = site
+  ? unmappedSitePages(site, mapText)
+  : git(['ls-files', '--', ':(glob)docs/**/*.md']).filter((f) => !mapped.has(f));
 if (unmapped.length > 0) {
   console.log(
     site
-      ? 'UNMAPPED  every OpenCRQ page of the site (docs/content/opencrq/, docs/content/deploy/*/opencrq.md) has to be in the map'
+      ? 'UNMAPPED  every OpenCRQ page of the site, and every deploy page naming OpenCRQ, has to be in the map or listed as unaudited'
       : 'UNMAPPED  every markdown file under docs/ has to be in the map',
   );
   unmapped.forEach((f) => console.log(`          ${f}`));
