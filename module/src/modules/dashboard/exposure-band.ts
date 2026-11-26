@@ -4,8 +4,8 @@
  *
  * The carry-forward is deliberately identical to `buildDailyTrendSeries`: a newer run whose column
  * is null does NOT reset the carry, so this chart stays in step with the counters above it. The
- * total is a sum of means and carries no band: adding per-scenario p10s and p90s assumes every
- * scenario has its extreme year simultaneously.
+ * total is a sum of means and carries no band: adding per-scenario p10s and p90s would treat the
+ * scenarios as if they moved together, which overstates the spread of the total.
  */
 
 const DAY_MS = 86_400_000;

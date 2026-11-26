@@ -32,7 +32,7 @@ export interface AttackOutcomeReference {
   id: string,
   name: string,
   description: string,
-  /** Median of the outcome's simulated dwell distribution, in days. */
+  /** Reference dwell, in days: shown on the attack outcome's overview page, read by no engine. */
   referenceDwellDays: number,
   /**
    * `full` when the loss cannot happen without breaching the criterion on the primary asset, `lower`

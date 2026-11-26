@@ -946,7 +946,12 @@ export interface ScenarioPricingPass {
   sameResult: number,
   skipped: number,
   refused: Array<{ riskScenarioId: string, reason: string }>,
-  /** The scenarios this pass wrote a new run for, in the order it walked them: the ones `priced` counts. */
+  /**
+   * The scenarios this pass wrote a new run for whose ALE mean moved, in the order it walked them:
+   * a new run whose ALE mean equals the one before (its other figures moved) is counted in `priced`
+   * and left out here, so a reader of `moved` never sees a zero delta. A scenario with no run
+   * before, or no ALE on either side, is kept: its move is unknown, not nil.
+   */
   moved: Array<string>,
   /** The ALE of each scenario of `moved`, in the same order. */
   movedAle: Array<ScenarioAleMove>,
@@ -1109,7 +1114,7 @@ const runAttackRunEngine = async (
     throw new InputsNotReadyError('Cannot run the attack run engine: the attacker mixture of this outcome is not computed yet');
   }
   if (outcomeTechniques.mixtureGroups.length === 0) {
-    throw new NonRetryableError('Cannot run the attack run engine: no actor was admitted for this outcome');
+    throw new NonRetryableError('Cannot run the attack run engine: no actor was admitted, or none uses a technique this outcome can be described with');
   }
   const settings = await deps.crqIndicatorSettings.getCrqIndicatorSettings();
 
@@ -1379,6 +1384,11 @@ export const crqIndicatorsService = defineService(
     await onProgress?.({ walked: 0, total: pass.total });
     let previous: string | undefined;
     for (const riskScenarioId of riskScenarioIds) {
+      // The engine reads the signal only once it turns, and a scenario whose inputs did not move
+      // returns before it: a pass of unchanged scenarios would otherwise walk to its end.
+      if (signal?.aborted === true) {
+        return null;
+      }
       if (previous !== undefined && budgetMs !== undefined && Date.now() - startedAtMs >= budgetMs) {
         pass.resumeAfter = previous;
         return pass;
@@ -1409,14 +1419,12 @@ export const crqIndicatorsService = defineService(
           }
         } else {
           pass.priced += 1;
-          pass.moved.push(riskScenarioId);
           const { aleBefore, aleAfter } = outcome;
-          pass.movedAle.push({
-            riskScenarioId,
-            aleBefore,
-            aleAfter,
-            aleDelta: aleBefore === null || aleAfter === null ? null : aleAfter - aleBefore,
-          });
+          const aleDelta = aleBefore === null || aleAfter === null ? null : aleAfter - aleBefore;
+          if (aleDelta !== 0) {
+            pass.moved.push(riskScenarioId);
+            pass.movedAle.push({ riskScenarioId, aleBefore, aleAfter, aleDelta });
+          }
         }
       } catch (error) {
         if (!(error instanceof NonRetryableError)) {

@@ -33,6 +33,23 @@ const body = (markings: Array<string>) => ({
 });
 const answer = (markings: Array<string>) => new Response(JSON.stringify(body(markings)), { status: 200 });
 
+const FRESH = 1_000;
+const KEPT = 10_000;
+
+const deferred = () => {
+  let resolve: (response: Response) => void = () => undefined;
+  const promise = new Promise<Response>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
+
+const markingsOf = (read: { scope: { markings: ReadonlyArray<string> } } | { issue: string } | undefined) =>
+  (read && 'scope' in read ? read.scope.markings : undefined);
+
+/** Lets a lookup started in the background run to its end. */
+const settle = () => new Promise((done) => setTimeout(done, 0));
+
 describe('parseAllowedMarkings', () => {
   it('should read the standard ids, deduplicated and sorted', () => {
     expect(parseAllowedMarkings({ data: { me: { allowed_marking: [{ standard_id: 'b' }, { standard_id: 'a' }, { standard_id: 'b' }] } } }))
@@ -246,13 +263,13 @@ describe('createReaderMarkingsResolver', () => {
     expect(logWarn).toHaveBeenCalledTimes(1);
   });
 
-  it('should count the cache window from the answer, not from the request', async () => {
+  it('should count the fresh window from the answer, not from the request', async () => {
     let clock = 0;
     const fetchImpl = vi.fn().mockImplementation(() => {
       clock += 500;
       return Promise.resolve(answer(['m-1']));
     });
-    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, 1_000);
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT });
 
     await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
     clock = 1_400;
@@ -261,21 +278,252 @@ describe('createReaderMarkingsResolver', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it('should keep an answer per tenant and user until it expires', async () => {
-    let clock = 0;
+  it('should keep a scope per tenant and user', async () => {
     const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(answer(['m-1'])));
-    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, 1_000);
+    const resolver = createReaderMarkingsResolver(fetchImpl);
 
     await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
     await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
 
     await resolver.resolve('t-1', 'u-2', CONNECTION, 'per_member', SIGN);
+    await resolver.resolve('t-2', 'u-1', CONNECTION, 'per_member', SIGN);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('should not ask OpenCTI while the scope is fresh', async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(answer(['m-1'])));
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT });
+
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+    clock = FRESH - 1;
+    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+    await settle();
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('should answer a stale scope at once and refresh it in the background, once for a burst of reads', async () => {
+    let clock = 0;
+    const later = deferred();
+    const fetchImpl = vi.fn().mockResolvedValueOnce(answer(['m-1'])).mockReturnValueOnce(later.promise);
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT });
+    const read = () => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+
+    await read();
+    clock = FRESH + 1;
+    const burst = await Promise.all([read(), read(), read()]);
+
+    expect(burst.map(markingsOf)).toEqual([['m-1'], ['m-1'], ['m-1']]);
+    await settle();
     expect(fetchImpl).toHaveBeenCalledTimes(2);
 
-    clock = 1_001;
-    await resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+    later.resolve(answer(['m-2']));
+    await settle();
+    expect(markingsOf(await read())).toEqual(['m-2']);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('should keep the last known scope when a refresh fails, and ask again only once it is stale again', async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn().mockResolvedValueOnce(answer(['m-1'])).mockImplementation(() => Promise.resolve(new Response('no', { status: 503 })));
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT });
+    const read = () => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+
+    await read();
+    clock = FRESH + 1;
+    await read();
+    await settle();
+
+    expect(markingsOf(await read())).toEqual(['m-1']);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(logWarn).toHaveBeenCalledTimes(1);
+
+    clock = 2 * FRESH + 2;
+    await read();
+    await settle();
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('should replace the last known scope at once when a refresh says the reader has no account or OpenCTI is not linked', async () => {
+    const refusals: Array<[string, () => Promise<Response>, ReaderAuthorization]> = [
+      ['no_account', () => Promise.resolve(new Response(JSON.stringify({ errors: [{ message: 'You must be logged in to do this.', extensions: { code: 'AUTH_REQUIRED' } }], data: null }), { status: 200 })), SIGN],
+      ['not_linked', () => Promise.resolve(answer(['m-1'])), vi.fn()
+        .mockResolvedValueOnce('reader-jwt')
+        .mockRejectedValue(new ReaderTokenUnavailable('XTM One refused the token exchange', 'audience'))],
+    ];
+    for (const [issue, refusal, sign] of refusals) {
+      let clock = 0;
+      const fetchImpl = vi.fn().mockResolvedValueOnce(answer(['m-1'])).mockImplementation(refusal);
+      const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT });
+      const read = () => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', sign);
+
+      await read();
+      clock = FRESH + 1;
+      expect(markingsOf(await read())).toEqual(['m-1']);
+      await settle();
+
+      expect(await read()).toEqual({ issue });
+    }
+  });
+
+  it('should wait for OpenCTI again once the scope was not confirmed for the kept window, failed refreshes included', async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(answer(['m-1']))
+      .mockResolvedValueOnce(new Response('no', { status: 503 }))
+      .mockResolvedValueOnce(answer(['m-2']));
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT });
+    const read = () => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+
+    await read();
+    clock = KEPT - 1;
+    expect(markingsOf(await read())).toEqual(['m-1']);
+    await settle();
+
+    clock = KEPT + 1;
+    expect(markingsOf(await read())).toEqual(['m-2']);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('should keep a first failure as a known fail-closed answer, refreshed in the background like a scope', async () => {
+    let clock = 0;
+    const later = deferred();
+    const fetchImpl = vi.fn().mockResolvedValueOnce(new Response('no', { status: 503 })).mockReturnValueOnce(later.promise);
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT });
+    const read = () => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+
+    expect(await read()).toEqual({ issue: 'unavailable' });
+    clock = FRESH + 1;
+    expect(await read()).toEqual({ issue: 'unavailable' });
+    await settle();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+
+    later.resolve(answer(['m-1']));
+    await settle();
+    expect(markingsOf(await read())).toEqual(['m-1']);
+  });
+
+  it('should answer fail closed past the first wait, and serve the scope once the lookup settles', async () => {
+    const later = deferred();
+    const fetchImpl = vi.fn().mockReturnValueOnce(later.promise);
+    const resolver = createReaderMarkingsResolver(fetchImpl, Date.now, { firstWaitMs: 10 });
+    const read = () => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+
+    expect(await read()).toEqual({ issue: 'unavailable' });
+    expect(await read()).toEqual({ issue: 'unavailable' });
+
+    later.resolve(answer(['m-1']));
+    await settle();
+    expect(markingsOf(await read())).toEqual(['m-1']);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('should evict the reader confirmed the longest ago when full, not every reader', async () => {
+    const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(answer(['m-1'])));
+    const resolver = createReaderMarkingsResolver(fetchImpl, Date.now, { capacity: 2 });
+    const read = (userId: string) => resolver.resolve('t-1', userId, CONNECTION, 'per_member', SIGN);
+
+    await read('u-1');
+    await read('u-2');
+    await read('u-3');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+
+    await read('u-2');
+    await read('u-3');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+
+    await read('u-1');
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+  });
+
+  it('should evict the reader whose answer is the oldest, a refreshed answer counting from its refresh', async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn().mockImplementation(() => Promise.resolve(answer(['m-1'])));
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT, capacity: 2 });
+    const read = (userId: string) => resolver.resolve('t-1', userId, CONNECTION, 'per_member', SIGN);
+
+    await read('u-1');
+    await read('u-2');
+    clock = FRESH + 1;
+    await read('u-1');
+    await settle();
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+
+    await read('u-3');
+    await read('u-1');
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    await read('u-2');
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
+  });
+
+  it('should not bring back a reader evicted while their lookup ran', async () => {
+    const later = deferred();
+    const fetchImpl = vi.fn().mockReturnValueOnce(later.promise).mockImplementation(() => Promise.resolve(answer(['m-1'])));
+    const resolver = createReaderMarkingsResolver(fetchImpl, Date.now, { firstWaitMs: 10, capacity: 1 });
+    const read = (userId: string) => resolver.resolve('t-1', userId, CONNECTION, 'per_member', SIGN);
+
+    await read('u-1');
+    await read('u-2');
+    later.resolve(answer(['m-1']));
+    await settle();
+
+    await read('u-1');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('should place an expired reader asked again last, not where their old answer was', async () => {
+    let clock = 0;
+    const later = deferred();
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(answer(['m-1']))
+      .mockResolvedValueOnce(answer(['m-1']))
+      .mockResolvedValueOnce(answer(['m-1']))
+      .mockReturnValueOnce(later.promise)
+      .mockImplementation(() => Promise.resolve(answer(['m-1'])));
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT, firstWaitMs: 10, capacity: 3 });
+    const read = (userId: string) => resolver.resolve('t-1', userId, CONNECTION, 'per_member', SIGN);
+
+    await read('u-1');
+    clock = 1;
+    await read('u-2');
+    clock = KEPT / 2;
+    await read('u-3');
+    clock = KEPT + 2;
+    await read('u-2');
+    await read('u-4');
+    await read('u-5');
+    later.resolve(answer(['m-1']));
+    await settle();
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+
+    await read('u-2');
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+  });
+
+  it('should ask again once a refresh stuck past a fresh window, rather than wait on it for good', async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(answer(['m-1']))
+      .mockReturnValueOnce(new Promise<Response>(() => undefined))
+      .mockResolvedValueOnce(answer(['m-2']));
+    const resolver = createReaderMarkingsResolver(fetchImpl, () => clock, { freshMs: FRESH, keptMs: KEPT });
+    const read = () => resolver.resolve('t-1', 'u-1', CONNECTION, 'per_member', SIGN);
+
+    await read();
+    clock = FRESH + 1;
+    await read();
+    clock = 2 * FRESH;
+    await read();
+    await settle();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+
+    clock = 2 * FRESH + 1;
+    expect(markingsOf(await read())).toEqual(['m-1']);
+    await settle();
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(markingsOf(await read())).toEqual(['m-2']);
   });
 
   it('should ask again once the tenant changed its threat visibility, with the bearer that choice names', async () => {

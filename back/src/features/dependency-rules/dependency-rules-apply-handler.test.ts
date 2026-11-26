@@ -66,6 +66,19 @@ describe('dependencyRulesApplyHandler', () => {
     expect(mockApplyDependencyRules).toHaveBeenCalledOnce();
   });
 
+  it('reports the links it wrote as the run progress', async () => {
+    mockApplyDependencyRules.mockResolvedValueOnce({ rules: 2, inserted: 5, updated: 1, deleted: 3 });
+    const ctx = makeCtx();
+
+    await dependencyRulesApplyHandler(ctx);
+
+    expect(ctx.updateProgress).toHaveBeenCalledWith({
+      processedTotal: 9,
+      expectedTotal: 9,
+      message: '2 enabled rules: 5 links added, 1 rewritten, 3 removed',
+    });
+  });
+
   it('does nothing once aborted', async () => {
     const controller = new AbortController();
     controller.abort();

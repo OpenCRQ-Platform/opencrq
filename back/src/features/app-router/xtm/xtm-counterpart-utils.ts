@@ -152,8 +152,28 @@ const cacheKey = (tenantId: string, readerId: string, product: string, kind: Cou
 export const resetCounterpartCache = () => cache.clear();
 
 /**
- * Batched, cached and silent: one call per product for the keys the cache does not hold, and a
- * product that fails answers nothing rather than failing the page, but is named in `unavailable`.
+ * A product's lookup chains its reader's authorization (a token exchange, OpenCTI's public URL)
+ * and the lookup itself, each with its own timeout: the budget bounds the whole chain.
+ */
+const COUNTERPART_PROVIDER_BUDGET_MS = 5_000;
+
+/** The work's answer, or `null` once `ms` elapsed first; the work itself keeps running. */
+export const withinBudget = async <T>(work: Promise<T>, ms: number): Promise<T | null> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([work, new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), ms);
+    })]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+/**
+ * Batched, cached and silent: one call per product for the keys the cache does not hold, the
+ * products asked at once and each given `budgetMs`, so the page waits that long at most, and a
+ * product that fails or runs past its budget answers nothing rather than failing the page, but is
+ * named in `unavailable`. An answer past the budget is cached when it arrives, for the next page.
  */
 export const resolveCounterparts = async (
   tenantId: string,
@@ -162,17 +182,17 @@ export const resolveCounterparts = async (
   keys: ReadonlyArray<string>,
   providers: ReadonlyArray<CounterpartProvider>,
   now: () => number = Date.now,
+  budgetMs: number = COUNTERPART_PROVIDER_BUDGET_MS,
 ): Promise<{ counterparts: Array<XtmCounterpart>, unavailable: Array<CounterpartProduct> }> => {
   const normalised = normaliseCounterpartKeys(kind, keys);
   if (normalised.length === 0) {
     return { counterparts: [], unavailable: [] };
   }
-  const results: Array<XtmCounterpart> = [];
-  const unavailable: Array<CounterpartProduct> = [];
-  for (const provider of providers) {
+  const resolveWith = async (provider: CounterpartProvider): Promise<{ results: Array<XtmCounterpart>, failed: boolean }> => {
     if (!provider.supports(kind) || !provider.isConnected) {
-      continue;
+      return { results: [], failed: false };
     }
+    const results: Array<XtmCounterpart> = [];
     const missing: Array<string> = [];
     for (const key of normalised) {
       const entry = cache.get(cacheKey(tenantId, readerId, provider.product, kind, key));
@@ -185,30 +205,41 @@ export const resolveCounterparts = async (
       }
     }
     if (missing.length === 0) {
-      continue;
+      return { results, failed: false };
     }
-    let found: Array<XtmCounterpart>;
-    try {
-      found = await provider.resolve(kind, missing);
-    } catch {
-      // A pivot is never worth a page error, and a failure is not cached as a miss.
-      unavailable.push(provider.product);
-      continue;
-    }
-    const byKey = new Map(found.filter((c) => isHttpUrl(c.objectUrl)).map((c) => [c.key, c]));
-    const at = now();
-    if (cache.size + missing.length > MAX_CACHE_ENTRIES) {
-      cache.clear();
-    }
-    for (const key of missing) {
-      const value = byKey.get(key) ?? null;
-      cache.set(cacheKey(tenantId, readerId, provider.product, kind, key), { at, value });
-      if (value) {
-        results.push(value);
+    const store = (found: Array<XtmCounterpart>): Array<XtmCounterpart> => {
+      const byKey = new Map(found.filter((c) => isHttpUrl(c.objectUrl)).map((c) => [c.key, c]));
+      const at = now();
+      if (cache.size + missing.length > MAX_CACHE_ENTRIES) {
+        cache.clear();
       }
+      const stored: Array<XtmCounterpart> = [];
+      for (const key of missing) {
+        const value = byKey.get(key) ?? null;
+        cache.set(cacheKey(tenantId, readerId, provider.product, kind, key), { at, value });
+        if (value) {
+          stored.push(value);
+        }
+      }
+      return stored;
+    };
+    let found: Array<XtmCounterpart> | null;
+    try {
+      found = await withinBudget(provider.resolve(kind, missing).then(store), budgetMs);
+    } catch {
+      found = null;
     }
-  }
-  return { counterparts: results, unavailable };
+    if (found === null) {
+      // A pivot is never worth a page error, and a failure or an overrun is not cached as a miss.
+      return { results, failed: true };
+    }
+    return { results: [...results, ...found], failed: false };
+  };
+  const answers = await Promise.all(providers.map(resolveWith));
+  return {
+    counterparts: answers.flatMap((answer) => answer.results),
+    unavailable: providers.filter((_, index) => answers[index]?.failed).map((provider) => provider.product),
+  };
 };
 
 export const xtmConnections = (providers: ReadonlyArray<CounterpartProvider>): Array<XtmConnection> =>

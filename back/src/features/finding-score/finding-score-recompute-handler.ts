@@ -3,6 +3,7 @@ import { allServiceDefinitions, createServices } from '@app/module';
 import { newError } from '@app/utils';
 import { config } from '../../config';
 import { createLogger } from '../../utils/logger';
+import { findingScoreRunProgress } from './finding-score-run-progress';
 
 const { logTrace } = createLogger({ engine: 'job-runtime' });
 
@@ -16,8 +17,10 @@ export const findingScoreRecomputeHandler: JobHandler = async (ctx) => {
   }
   const services = createServices([...allServiceDefinitions], ctx.runDb)
     .withOrigin({ type: 'job', tenantId: ctx.tenantId, jobKind: ctx.kind, interactive: ctx.interactive });
-  const { scored } = await services.findingScore.recomputeFindingScores({
+  const summary = await services.findingScore.recomputeFindingScores({
     scoreHistoryRetentionDays: config().recompute.score_history_retention_days,
+    signal: ctx.signal,
   });
-  logTrace('Finding scores recomputed', { tenantId: ctx.tenantId, scored });
+  await ctx.updateProgress(findingScoreRunProgress(summary));
+  logTrace('Finding scores recomputed', { tenantId: ctx.tenantId, ...summary });
 };

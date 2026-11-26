@@ -204,11 +204,12 @@ const startDbEngine = async () => {
   watch(controlPool, CONTROL_POOL_NAME);
 
   return {
-    // The job runtime has drained by now, so the statements these pools serve have all landed.
+    // Every other engine has stopped by now, so nothing new reaches these pools. A client still held keeps `end()` waiting.
     stop: async () => {
       await controlPool.end();
       await pool.end();
     },
+    stopsLast: true,
   };
 };
 

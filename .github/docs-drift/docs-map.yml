@@ -28,6 +28,11 @@
   watches:
     - module/src/modules/supporting-assets/**
 
+- doc: docs/deployment/dependency-rules.md
+  watches:
+    - back/src/features/dependency-rules/**
+    - module/src/modules/asset-dependencies/**
+
 - doc: docs/deployment/openaev-connector.md
   watches:
     - back/src/features/openaev-sync/**
@@ -35,11 +40,6 @@
 
 - doc: docs/deployment/configuration.md
   watches:
-    - back/src/config-schema.ts
-
-- doc: docs/deployment/docker.md
-  watches:
-    - docker/**
     - back/src/config-schema.ts
 
 - doc: docs/deployment/metrics.md
@@ -70,6 +70,8 @@
     - scripts/secret-scan.sh
     - .githooks/**
     - .betterleaks.toml
+    - back/src/config-schema.ts
+    - utils/src/feature-flags.ts
 
 - doc: .claude/skills/devenv/SKILL.md
   watches:
@@ -102,15 +104,8 @@
     - .github/ISSUE_TEMPLATE/**
     - .github/LABELS.md
 
-- doc: docs/quick-start.md
-  watches:
-    - infra/local/**
-    - back/src/config-schema.ts
-
 - doc: README.md
   watches:
-    - docs/quick-start.md
-    - docs/*/README.md
     - .github/img/logo_opencrq.svg
     - LICENSE
 

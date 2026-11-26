@@ -13,8 +13,8 @@ OpenCRQ is an open source platform allowing organizations to quantify their
 cyber risk: for each risk scenario, it estimates the financial loss to expect
 from the threats the organization faces, given the assets at stake and the
 controls in place (if you want to know more about OpenCRQ, you can read the
-[documentation](docs/README.md) or try it with the
-[Quick Start Guide](docs/quick-start.md)).
+[documentation](https://filigran.io/docs/opencrq/) or try it by
+[installing it](https://filigran.io/docs/deploy/install/opencrq/)).
 
 Whether you are an organisation or an individual working or studying in the
 field of cybersecurity and cyber risk, or simply an individual looking for a

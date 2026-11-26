@@ -103,7 +103,7 @@ export interface OutcomeMixtureGroup {
 
 export interface OutcomeTechniques {
   evidenceMode: OutcomeEvidenceMode,
-  /** Empty in the fallback mode, where no actor was admitted. */
+  /** Empty unless `evidenceMode` is `attacker-mixture`. */
   mixtureGroups: Array<OutcomeMixtureGroup>,
   techniques: Array<OutcomeTechnique>,
 }

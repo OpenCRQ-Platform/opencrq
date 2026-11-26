@@ -49,6 +49,17 @@ describe('CRQ price pass over unchanged inputs', () => {
     expect(await runCount()).toBe(1);
   });
 
+  it('should abandon an aborted pass before a scenario whose inputs did not change, which never reaches the engine', async () => {
+    await seed();
+    expect(await pass()).toMatchObject({ priced: 1 });
+    const controller = new AbortController();
+    controller.abort();
+
+    expect(await services
+      .withOrigin({ type: 'job', tenantId, jobKind: 'crq-price-recompute', interactive: false })
+      .crqIndicators.priceAllScenarios(tenantId, controller.signal)).toBeNull();
+  });
+
   it('should name the scenario it re-priced, and none on a pass over unchanged inputs', async () => {
     await seed();
     const progress: Array<{ walked: number, total: number }> = [];
@@ -80,9 +91,12 @@ describe('CRQ price pass over unchanged inputs', () => {
     // A new image stamps a new fingerprint, so the next pass stores a run over the same inputs.
     const second = await pass({ appVersion: 'image-b' });
     const secondAle = await latestAle();
-    expect(second?.movedAle).toEqual([{
+    expect(second).toMatchObject({ priced: 1 });
+    // A run whose ALE mean did not move is priced but never reported as moved with a zero delta.
+    expect(second?.movedAle).toEqual(secondAle === firstAle ? [] : [{
       riskScenarioId, aleBefore: firstAle, aleAfter: secondAle, aleDelta: (secondAle ?? 0) - (firstAle ?? 0),
     }]);
+    expect(second?.movedAle.every(({ aleDelta }) => aleDelta !== 0)).toBe(true);
   });
 
   it('should still write the run of a manual simulation over unchanged inputs', async () => {

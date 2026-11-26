@@ -25,8 +25,5 @@ This folder contains all documentation related to deploying and configuring Open
 - [**OpenAEV Connector**](openaev-connector.md)  
   What the OpenAEV connector syncs, what the OpenAEV side must provide, how often each phase runs and when what it reported goes stale.
 
-- [**Docker Guide**](docker.md)  
-  Deploying OpenCRQ with the XTM Docker bundle, or its image against an XTM One that already runs.
-
 - [**Anonymous Usage Telemetry**](usage-telemetry.md)  
   What anonymous usage statistics are collected and how to tag deployments.

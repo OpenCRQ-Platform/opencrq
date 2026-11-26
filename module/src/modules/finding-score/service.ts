@@ -104,6 +104,23 @@ const RESISTANCE_RUNS_PER_YIELD = 1;
 
 const DETECTION_FUNCTIONS: ReadonlyArray<CapabilityFunction> = ['detect'];
 
+/**
+ * What one finding-score recompute changed, counted from the history lines it journals: a reader of
+ * the run tells a pass that moved a score, a band or a posture from one that moved nothing.
+ */
+export interface FindingScoreRecomputeSummary {
+  /** Findings walked, changed or not. */
+  scored: number,
+  /** Findings whose displayed score or band moved, a first score and a lost score included. */
+  changedFindings: number,
+  /** Assets whose posture moved, appeared or was dropped. */
+  changedPostures: number,
+  /** CVE groups (estate-wide and per organization) whose unique score moved, appeared or was dropped. */
+  changedUniqueFindings: number,
+  /** The three counts above added: zero means the run changed nothing a reader can see. */
+  changedCount: number,
+}
+
 export interface ScoredFindingPage {
   items: Array<{
     evidenceId: string,
@@ -578,12 +595,15 @@ const uniqueFindingKey = (group: { cveId: string | null, mitreTechniqueId: strin
 
 type UniqueFindingInput = Awaited<ReturnType<Repo['findUniqueFindingInputs']>>[number];
 
-/** Stores one estate's unique findings, run inside the transaction that wrote the scores they read. */
+/**
+ * Stores one estate's unique findings, run inside the transaction that wrote the scores they read.
+ * Answers how many CVE groups moved: a journal line written, a moved figure or a lost group alike.
+ */
 const projectUniqueFindingScores = async (
   repo: Repo,
   inputs: ReadonlyArray<UniqueFindingInput>,
   { tenantId, organizationId, computedAt }: { tenantId: string, organizationId: string | null, computedAt: Date },
-): Promise<void> => {
+): Promise<number> => {
   const incoming = inputs.map((group) => {
     const score = computeUniqueScore(group.scores);
     return {
@@ -630,6 +650,7 @@ const projectUniqueFindingScores = async (
       ? []
       : [{ id: uuidv7(), tenantId, organizationId, cveId: row.cveId, score: null, changedAt: computedAt }])));
   }
+  return journaled.length + lost.filter((row) => row.cveId !== null).length;
 };
 
 /** Sized by the catalogue and the tenant's declarations, never by the estate, so a run builds it once. */
@@ -1586,16 +1607,24 @@ export const findingScoreService = defineService(
   techniqueMappingService,
   attackSurfacesService,
 ]).implement({
-  /** The only writer of `finding_scores`. Runs in the worker: an estate allocates one object per finding. */
+  /**
+   * The only writer of `finding_scores`. Runs in the worker: an estate allocates one object per finding.
+   * An aborted `signal` throws its reason at the next batch, and up to the commit, so the whole run rolls back.
+   */
   recomputeFindingScores: async (
     ctx,
-    params: { scoreHistoryRetentionDays?: number } = {},
-  ): Promise<{ scored: number }> => {
+    params: { scoreHistoryRetentionDays?: number, signal?: AbortSignal } = {},
+  ): Promise<FindingScoreRecomputeSummary> => {
+    const { signal } = params;
     const tenantId = requireTenantId(ctx.eventOrigin);
     const context = await buildScoringContext(ctx, {});
     const computedAt = new Date();
     const retentionDays = params.scoreHistoryRetentionDays ?? SCORE_HISTORY_RETENTION_DAYS;
     let scored = 0;
+    // Counted from the journal lines the run writes, so a change is exactly what a history reader sees.
+    let changedFindings = 0;
+    let changedPostures = 0;
+    let changedUniqueFindings = 0;
     // A cell's worst finding can come in any batch, so the cells are only complete once the walk is.
     const heldOpenings: HeldOpenings = new Map();
     const producedEntryOpenings = new Set<string>();
@@ -1605,6 +1634,7 @@ export const findingScoreService = defineService(
     await ctx.atomic(async ({ repo }) => {
       let afterEvidenceId: string | null = null;
       for (;;) {
+        signal?.throwIfAborted();
         const evidenceIds = await repo.findEvidenceIdBatch({ afterEvidenceId, limit: SCORE_BATCH_SIZE });
         if (evidenceIds.length === 0) {
           break;
@@ -1618,7 +1648,7 @@ export const findingScoreService = defineService(
             openings: techniqueOpeningsOf(context, row, finding),
             entryOpenings: entryOpeningsOf(context, row, finding),
           };
-        });
+        }, signal);
         for (const { openings } of scoredRows) {
           openings.forEach((opening) => holdWorstOpening(heldOpenings, opening));
         }
@@ -1633,8 +1663,10 @@ export const findingScoreService = defineService(
         for (let i = 0; i < projected.length; i += SCORE_UPSERT_CHUNK_SIZE) {
           const chunk = projected.slice(i, i + SCORE_UPSERT_CHUNK_SIZE);
           const stored = await repo.findStoredScoreBandings(chunk.map((row) => row.assetEvidenceId));
+          const moved = rowsOwingAJournalLine(chunk, new Map(stored.map((row) => [row.assetEvidenceId, row])));
+          changedFindings += moved.length;
           await repo.insertFindingScoreHistoryBatch(
-            rowsOwingAJournalLine(chunk, new Map(stored.map((row) => [row.assetEvidenceId, row])))
+            moved
               .map((row) => ({
                 id: uuidv7(),
                 assetEvidenceId: row.assetEvidenceId,
@@ -1650,6 +1682,7 @@ export const findingScoreService = defineService(
         afterEvidenceId = evidenceIds[evidenceIds.length - 1]!;
       }
 
+      signal?.throwIfAborted();
       // Counted after the walk and inside its transaction, so the day's figure and the scores it
       // counts commit together.
       const counted = await repo.countApplicableFindingsByBand();
@@ -1672,15 +1705,19 @@ export const findingScoreService = defineService(
         };
       });
       for (let i = 0; i < postures.length; i += SCORE_UPSERT_CHUNK_SIZE) {
+        signal?.throwIfAborted();
         const chunk = postures.slice(i, i + SCORE_UPSERT_CHUNK_SIZE);
         const stored = await repo.findStoredAssetPostureScores(chunk.map((posture) => posture.supportingAssetId));
+        const movedPostures = posturesOwingAJournalLine(chunk, new Map(stored.map((row) => [row.supportingAssetId, row.score])));
+        changedPostures += movedPostures.length;
         await repo.insertAssetPostureHistoryBatch(
-          posturesOwingAJournalLine(chunk, new Map(stored.map((row) => [row.supportingAssetId, row.score])))
+          movedPostures
             .map(({ supportingAssetId, score, cause }) => ({ id: uuidv7(), supportingAssetId, tenantId, score, changedAt: computedAt, ...cause })),
         );
         await repo.upsertAssetPostureBatch(chunk.map(({ supportingAssetId, score }) => ({ supportingAssetId, tenantId, score })));
       }
       const lostPostures = await repo.deleteAssetPosturesWithoutApplicableFinding();
+      changedPostures += lostPostures.length;
       for (let i = 0; i < lostPostures.length; i += SCORE_UPSERT_CHUNK_SIZE) {
         await repo.insertAssetPostureHistoryBatch(lostPostures.slice(i, i + SCORE_UPSERT_CHUNK_SIZE)
           .map((supportingAssetId) => ({ id: uuidv7(), supportingAssetId, tenantId, score: null, changedAt: computedAt })));
@@ -1688,6 +1725,7 @@ export const findingScoreService = defineService(
 
       const techniqueScores = [...heldOpenings.values()];
       for (let i = 0; i < techniqueScores.length; i += SCORE_UPSERT_CHUNK_SIZE) {
+        signal?.throwIfAborted();
         await repo.upsertAssetTechniqueScoreBatch(techniqueScores.slice(i, i + SCORE_UPSERT_CHUNK_SIZE).map((held) => ({
           tenantId,
           supportingAssetId: held.supportingAssetId,
@@ -1700,6 +1738,7 @@ export const findingScoreService = defineService(
       // cursor leaves the pages ahead untouched.
       let afterCell: TechniqueScoreCellKey | null = null;
       for (;;) {
+        signal?.throwIfAborted();
         const stored = await repo.findAssetTechniqueScoreKeyPage({ after: afterCell, limit: SCORE_BATCH_SIZE });
         if (stored.length === 0) {
           break;
@@ -1709,6 +1748,7 @@ export const findingScoreService = defineService(
       }
       let afterOpening: EntryOpeningKey | null = null;
       for (;;) {
+        signal?.throwIfAborted();
         const stored = await repo.findEntryOpeningKeyPage({ tenantId, after: afterOpening, limit: SCORE_BATCH_SIZE });
         if (stored.length === 0) {
           break;
@@ -1717,19 +1757,27 @@ export const findingScoreService = defineService(
         afterOpening = stored[stored.length - 1]!;
       }
 
-      await projectUniqueFindingScores(repo, await repo.findUniqueFindingInputs(), { tenantId, organizationId: null, computedAt });
+      changedUniqueFindings += await projectUniqueFindingScores(repo, await repo.findUniqueFindingInputs(), { tenantId, organizationId: null, computedAt });
       const inputsByOrganization = Map.groupBy(await repo.findOrganizationUniqueFindingInputs(), (input) => input.organizationId);
       // An organization left with no applicable finding has no inputs, and its stored rows still have to go.
       const organizationIds = new Set([...inputsByOrganization.keys(), ...await repo.findStoredUniqueFindingOrganizationIds()]);
       for (const organizationId of organizationIds) {
-        await projectUniqueFindingScores(repo, inputsByOrganization.get(organizationId) ?? [], { tenantId, organizationId, computedAt });
+        signal?.throwIfAborted();
+        changedUniqueFindings += await projectUniqueFindingScores(repo, inputsByOrganization.get(organizationId) ?? [], { tenantId, organizationId, computedAt });
       }
 
       await repo.trimFindingScoreHistory(new Date(computedAt.getTime() - retentionDays * 86_400_000));
       await repo.trimAssetPostureHistory(new Date(computedAt.getTime() - POSTURE_HISTORY_RETENTION_DAYS * 86_400_000));
       await repo.trimUniqueFindingScoreHistory(new Date(computedAt.getTime() - UNIQUE_SCORE_HISTORY_RETENTION_DAYS * 86_400_000));
+      signal?.throwIfAborted();
     });
-    return { scored };
+    return {
+      scored,
+      changedFindings,
+      changedPostures,
+      changedUniqueFindings,
+      changedCount: changedFindings + changedPostures + changedUniqueFindings,
+    };
   },
 
   listScoredFindings: async (

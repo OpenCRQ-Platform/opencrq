@@ -18,6 +18,8 @@ If you want to contribute to OpenCRQ or modify the code, here is how to set up t
   - [The large estate](#the-large-estate)
   - [Troubleshooting](#troubleshooting)
 - [Database](#database)
+- [Platform seed](#platform-seed)
+- [Feature flags](#feature-flags)
 - [Agent files](#agent-files)
 - [Code quality](#code-quality)
 - [Secret scan](#secret-scan)
@@ -247,7 +249,7 @@ back as the same user without a password. To switch users, sign out of XTM One t
 
 By default you start on a blank platform: the `Default` tenant, no users, no data. XTM One's
 administrator signs in first, as super administrator, and lands in that tenant (see
-[Initial tenant](../deployment/configuration.md#initial-tenant)). To start with demo data instead
+[the first tenant](https://filigran.io/docs/reference/opencrq/configuration/#initial-tenant)). To start with demo data instead
 (tenants, users, organizations and assets for manual e2e testing), run `yarn env:up --seed`, which
 runs the interactive `seed:setup-dev` and writes a `platform_seed` block into
 `back/config/development.local.json` (gitignored). On an empty database the platform then holds the
@@ -264,7 +266,7 @@ change the credentials on a seeded platform, run `cd back && yarn seed:rollback-
 dropping the database, then `yarn env:up --seed` again: the users XTM One keeps take the new
 password. `cd back && yarn seed:rollback-dev` alone goes back to a
 blank platform. Env-var equivalents for CI and staging are in the
-[Configuration Guide](../deployment/configuration.md#platform-seed-non-production).
+[Platform seed](#platform-seed) section.
 A blank platform also has the default platform groups, with no member. On an empty database `--seed`
 gives it only the seed's `Admin` group; a stack that has already started keeps the two defaults
 beside it.
@@ -492,6 +494,32 @@ yarn env:reset --infra    # destroy the Compose volumes too (database + uploaded
 ```
 
 The script finds the container serving `postgres.port`, prints the target and asks for confirmation, then offers to set up the platform seed. Restart the backend (`yarn env:down`, then `yarn env:up`): migrations and the seed run on boot.
+
+## Platform seed
+
+The platform seed populates the database with demo tenants, users, organizations and assets. It's intended for **non-production environments** — local dev workstations, CI sandboxes, ephemeral test platforms, demo instances — and should **never be enabled in production**, where the platform starts with its [initial tenant](https://filigran.io/docs/reference/opencrq/configuration/#initial-tenant) and XTM One's administrator signs in first, as OpenCRQ's super administrator. On an empty database, the seed leaves only the demo tenants; a platform that booted once without it keeps its initial tenant beside them.
+
+When enabled, the boot sequence creates a platform administrator (in a platform group holding every platform capability) and the demo users, none with an OpenCRQ password: everyone signs in through XTM One. If `PLATFORM_SEED__ENABLED=true` is set, both the admin email and password are required — boot fails fast otherwise (enforced by Zod at config parse time); the password is the one the seeded users get in XTM One, and OpenCRQ stores it nowhere. The seed is idempotent: it skips on subsequent boots once the platform has any user.
+
+With `PLATFORM_SEED__XTM_ONE_ADMIN__*` set, every seeded user is first created in the XTM One of the `xtm_one` block, as a local account with the seeded admin's password, signed in as that XTM One administrator, and its OpenCRQ account is tied to the XTM One id, so the seeded users sign in through XTM One. A user XTM One already holds is reused rather than created again, and only a development build also gives it the seeded password and, at every boot, ties to that XTM One the seeded users of an already-seeded database; any other refusal fails the seed, and the platform boots without it. `yarn env:up` sets it on a development stack. Without it, the seed ties none of its users to XTM One, so none of them can sign in, and logs a warning saying so; the demo data is still there, for a service account token or for XTM One's own administrator, who reaches every tenant.
+
+Every `PLATFORM_SEED__*` variable, the large estate profile's included, is listed in the
+[configuration reference](https://filigran.io/docs/reference/opencrq/configuration/#platform-seed). See
+[the large estate](#the-large-estate) for what that profile writes.
+
+## Feature flags
+
+Feature flags let an unfinished feature be merged into `main` behind an off switch, then enabled on a staging deployment, in CI or in e2e without cutting a release. They are **deployment-level**, not per user and not per tenant: there is no targeting, no percentage rollout, no administration UI and no runtime toggling — a flag is turned on by a restart.
+
+Flag names come from a closed registry, `utils/src/feature-flags.ts`, shared by the backend and the frontend. A name absent from that registry **fails the boot parse** rather than being silently ignored. The special flag `*` turns every flag on at once, which is what a dev stack or a CI job normally wants.
+
+Every flag is **off by default** and **temporary**. When its feature ships globally, delete the entry from the registry: every gate still naming it stops compiling, which is how the gates get removed along with it. A flag that has outlived its feature is a bug, not a configuration option.
+
+The backend resolves a flag with `isFeatureEnabled(flag)` and gates an endpoint with `procedure.use(featureFlagged(flag))`, which answers `FORBIDDEN` while the flag is off. A whole backend feature is held back by declaring `featureFlag` on its `registerFeature()` entry; boot then never activates it, and since a feature registers its router from inside `activate()`, its endpoints answer `NOT_FOUND` rather than `FORBIDDEN`. Only the **enabled** list is published to the browser, on the public `authStatus` bootstrap payload — a client learns which features are live, never which unreleased ones exist. The frontend reads it with the `useFeatureFlag(flag)` hook or wraps the gated UI in `<FeatureFlagged flag="...">`, which hide an **element**, not a route: a gated page stays reachable by direct URL, so the tRPC gate is what actually defends the feature.
+
+`FEATURE_FLAGS` is in the
+[configuration reference](https://filigran.io/docs/reference/opencrq/configuration/#feature-flags),
+and what each flag holds back in the [feature flags reference](https://filigran.io/docs/reference/opencrq/feature-flags/).
 
 ## Agent files
 

@@ -137,7 +137,7 @@ export const CrqLossCard: FunctionComponent<{ run: CrqRun }> = ({ run }) => (
           <Trans>per year</Trans>
           <MetricInfo
             title={t`Annualized Loss Expectancy`}
-            what={<Trans>The mean annual loss over the simulated worlds, priced from the four outcomes, with the p10 to p90 band that holds eight simulated years in ten.</Trans>}
+            what={<Trans>The mean annual loss over the simulated worlds, priced from the four outcomes, with the p10 to p90 band: the range the expected annual loss takes in eight worlds in ten as the uncertain inputs vary. It is not the range of a single year's loss.</Trans>}
             how={<Trans>Frequency times the outcome split times the loss magnitude, per world: an eviction costs the response, a noticed impact a fraction of the magnitude, an unnoticed one all of it.</Trans>}
             caveat={<Trans>The p90 is a lower bound: it rests on the unnoticed share, which is itself a lower bound. The mean is the figure that adds up across scenarios, the band is not.</Trans>}
           />

@@ -123,7 +123,7 @@ cd back && yarn seed:setup-dev   # interactive: prompts email + password
 cd back && yarn dev
 ```
 
-Check the seeded data in the UI or via the PostgreSQL MCP server. Full configuration options (the seeded users' XTM One password, the XTM One administrator the seed creates them with, env-var equivalents for online test platforms) are documented in [`docs/deployment/configuration.md`](../../../docs/deployment/configuration.md#platform-seed-non-production).
+Check the seeded data in the UI or via the PostgreSQL MCP server. Full configuration options (the seeded users' XTM One password, the XTM One administrator the seed creates them with, env-var equivalents for online test platforms) are documented in [`docs/development/development.md`](../../../docs/development/development.md#platform-seed).
 
 ## Rules
 

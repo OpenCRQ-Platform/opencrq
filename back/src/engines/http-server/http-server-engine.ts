@@ -12,6 +12,7 @@ import type { ProtectedProcedure, PublicProcedure, router } from '../../trpc';
 import { config } from '../../config';
 import { createContext, protectedProcedure, publicProcedure, scopeSessionCookieToPort, setMaxResponseItems, trpcInstance } from '../../trpc';
 import { createLogger } from '../../utils/logger';
+import { HTTP_CLOSE_GRACE_MS } from '../../utils/shutdown-budget';
 import { dbEngine } from '../db';
 import { registerEngine } from '../engines-manager';
 import { registerClientErrorsRoute } from './client-errors-route';
@@ -152,7 +153,14 @@ const startHttpServerEngine = async () => {
     }
   };
 
-  return { onEnginesStarted };
+  // close() waits for every request in flight, so a slow one would hold the stop until the child's exit deadline.
+  const stop = async (): Promise<void> => {
+    const forceClose = setTimeout(() => server.server.closeAllConnections(), HTTP_CLOSE_GRACE_MS).unref();
+    await server.close();
+    clearTimeout(forceClose);
+  };
+
+  return { onEnginesStarted, stop };
 };
 
 export const httpServerEngine = registerEngine({

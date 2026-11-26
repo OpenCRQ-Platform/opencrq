@@ -14,7 +14,10 @@ export const CRQ_PRICE_RECOMPUTE_JOB = 'crq-price-recompute';
  */
 export const CRQ_PRICE_PASS_BUDGET_MS = 5 * 60 * 1000;
 
-/** The moved scenarios a run names, in `moved` and `movedAle` alike; `movedCount` keeps counting past it. */
+/**
+ * The moved scenarios a run names, in `moved` and `movedAle` alike; `movedCount` keeps counting past it.
+ * A scenario re-priced to the same ALE mean is in `priced` only, never in `moved` nor `movedCount`.
+ */
 export const CRQ_PRICE_MOVED_IDS_CAP = 100;
 
 /**

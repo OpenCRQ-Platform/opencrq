@@ -2,6 +2,7 @@ import type { CompletedRunObservation, SerializedSlot } from '@app/module';
 import { createServices, deferralPolicyFor, jobLogsService, jobsService, SUBSCRIBE_ALL_SENTINEL, workersService } from '@app/module';
 import { uuidv7 } from 'uuidv7';
 import { config, getProcessName } from '../../config';
+import { JOB_DRAIN_MS } from '../../utils/shutdown-budget';
 import { flushLogCapture } from '../../utils/log-capture';
 import { createLogger } from '../../utils/logger';
 import { dbEngine } from '../db';
@@ -16,7 +17,6 @@ import { createGracefulDrain } from './shutdown';
 const JOB_RUNTIME_ENGINE_KEY = 'job-runtime';
 
 const REAP_INTERVAL_MS = 60_000;
-const GRACEFUL_DRAIN_MS = 60_000;
 const HANDLER_SETTLE_GRACE_MS = 60_000;
 
 const handlerRegistry = new HandlerRegistry();
@@ -34,7 +34,7 @@ const runListeners: Array<RunLifecycleListener> = [];
 
 const startJobRuntimeEngine = (signal: AbortSignal) => {
   const logger = createLogger({ engine: JOB_RUNTIME_ENGINE_KEY });
-  const { logTrace, logFromError } = logger;
+  const { logTrace, logWarn, logFromError } = logger;
 
   const jobsConfig = config().jobs;
   if (!jobsConfig || !jobsConfig.enabled) {
@@ -52,9 +52,9 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
    * The runs whose handler has not settled, which outlives `activeJobs`: a run releases its
    * concurrency slot as soon as `executeJob` returns, and an aborted one returns while its
    * handler is still reading and writing. Shutdown drains on this rather than on the slot, or it
-   * would end the database pools under a handler that is still using them.
+   * would end the database pools under a handler that is still using them. Keyed by job id, holding its kind.
    */
-  const unsettledHandlers = new Set<string>();
+  const unsettledHandlers = new Map<string, string>();
   /*
    * The serialized (kind, tenant) pairs this worker holds, which the queue's own "no sibling is
    * running" test cannot answer for: an aborted run's row goes terminal while its handler is still
@@ -103,7 +103,7 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
     }
 
     activeJobs.add(claimed.id);
-    unsettledHandlers.add(claimed.id);
+    unsettledHandlers.set(claimed.id, claimed.kind);
     reservedSlots -= 1;
 
     const slotKey = `${claimed.kind}\u0000${claimed.tenantId}`;
@@ -347,9 +347,18 @@ const startJobRuntimeEngine = (signal: AbortSignal) => {
 
   signal.addEventListener('abort', stop, { once: true });
 
+  const drainHandlers = createGracefulDrain({ size: () => unsettledHandlers.size + reservedSlots }, JOB_DRAIN_MS);
+
   return {
     onEnginesStarted,
-    onEnginesStopping: createGracefulDrain({ size: () => unsettledHandlers.size + reservedSlots }, GRACEFUL_DRAIN_MS),
+    onEnginesStopping: async () => {
+      if (!await drainHandlers()) {
+        logWarn('Shutdown drain timed out, job handlers still running', {
+          jobs: [...unsettledHandlers].map(([jobId, kind]) => ({ jobId, kind })),
+          reservedSlots,
+        });
+      }
+    },
     stop,
   };
 };

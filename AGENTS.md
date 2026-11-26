@@ -90,7 +90,7 @@ same task.
 
 ## Platform Seed
 
-The platform seed creates realistic test data for manual e2e testing. Triggered by a `platform_seed` config block. Config reference: [docs/deployment/configuration.md](docs/deployment/configuration.md#platform-seed-non-production). Dev setup: [docs/development/development.md](docs/development/development.md). Seeder-authoring rules: [deep-dive](.github/instructions/platform-seed.instructions.md).
+The platform seed creates realistic test data for manual e2e testing. Triggered by a `platform_seed` config block. Config reference and dev setup: [docs/development/development.md](docs/development/development.md#platform-seed). Seeder-authoring rules: [deep-dive](.github/instructions/platform-seed.instructions.md).
 
 ## Feature flags
 
@@ -101,7 +101,7 @@ when the feature ships globally, and every gate still naming it stops compiling.
 with `procedure.use(featureFlagged(flag))`, a whole backend feature with `featureFlag` on its
 `registerFeature()` entry, and UI with `useFeatureFlag(flag)` or `<FeatureFlagged flag="...">`. No
 per-user or per-tenant targeting, no runtime toggling.
-[Configuration](docs/deployment/configuration.md#feature-flags-development).
+[Developer guide](docs/development/development.md#feature-flags).
 
 ## Enterprise Edition license headers
 

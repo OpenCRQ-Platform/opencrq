@@ -38,6 +38,7 @@ const {
   mockGetStreamStates,
   mockListUnreportedAssets,
   mockPruneAssets,
+  mockRetireConnectorSources,
   mockWithOrigin,
   mockSyncMarkingDefinitions,
   mockCreateOpenaevClient,
@@ -58,6 +59,7 @@ const {
   const getReportedOverviewFields = vi.fn().mockResolvedValue(new Map());
   const findCveScopePairsSince = vi.fn().mockResolvedValue([]);
   const findEvidenceScopePairsForConnector = vi.fn().mockResolvedValue([]);
+  const retireConnectorSources = vi.fn().mockResolvedValue({ sources: 0, assets: 0 });
   const getConnectorId = vi.fn().mockResolvedValue('connector-id-abc');
   const getIntegrationSettings = vi.fn().mockResolvedValue({ lastReportedAt: null });
   const markSynced = vi.fn().mockResolvedValue(undefined);
@@ -103,6 +105,7 @@ const {
       getReportedOverviewFields,
       findCveScopePairsSince,
       findEvidenceScopePairsForConnector,
+      retireConnectorSources,
     },
     openaevConnector: {
       upsertAssets: upsertOpenaevAssets,
@@ -144,6 +147,7 @@ const {
     mockGetStreamStates: getStreamStates,
     mockListUnreportedAssets: listUnreportedAssets,
     mockPruneAssets: pruneAssets,
+    mockRetireConnectorSources: retireConnectorSources,
     mockWithOrigin: withOrigin,
     mockSyncMarkingDefinitions: syncMarkingDefinitions,
     mockCreateOpenaevClient: createOpenaevClient,
@@ -1339,6 +1343,34 @@ describe('openaevSyncHandler', () => {
         });
         expect(mockPruneAssets).toHaveBeenCalledExactlyOnceWith({ connectorId: 'connector-id-abc', openaevTenantId: 'oa-tenant-1', sourceAssetIds: ['asset-gone'] });
         expect(callOrder.slice(0, 2)).toEqual(['retireCve', 'prune']);
+        expect(mockRetireConnectorSources).toHaveBeenCalledExactlyOnceWith({ connectorId: 'connector-id-abc', sourceAssetIds: ['asset-gone'] });
+      });
+
+      it('does not upsert an asset its source tags archived or deleted, and retires it with its connector observation', async () => {
+        mockListTags.mockResolvedValueOnce([
+          { tag_id: 'tag-archived', tag_name: 'github-state:archived' },
+          { tag_id: 'tag-deleted', tag_name: 'github-state:deleted' },
+          { tag_id: 'tag-lang', tag_name: 'language:python' },
+        ]);
+        mockSearchAssets.mockResolvedValueOnce({
+          content: [
+            { asset_id: 'asset-live', asset_name: 'live', asset_tags: ['tag-lang'] },
+            { asset_id: 'asset-archived', asset_name: 'archived', asset_tags: ['tag-lang', 'tag-archived'] },
+            { asset_id: 'asset-deleted', asset_name: 'deleted', asset_tags: ['tag-deleted'] },
+          ],
+          last: true,
+          totalElements: 3,
+          number: 0,
+          size: 100,
+        });
+        mockBulkUpsertAssets.mockResolvedValueOnce(new Map([['asset-live', 'sa-live']]));
+
+        await openaevSyncHandler(makeCtx());
+
+        expect(mockBulkUpsertAssets.mock.calls[0][0].map((input: { sourceAssetId: string }) => input.sourceAssetId)).toEqual(['asset-live']);
+        expect(mockListUnreportedAssets.mock.calls[0][0].reportedSourceAssetIds).toEqual(['asset-live', 'asset-archived', 'asset-deleted']);
+        expect(mockPruneAssets).toHaveBeenCalledExactlyOnceWith({ connectorId: 'connector-id-abc', openaevTenantId: 'oa-tenant-1', sourceAssetIds: ['asset-archived', 'asset-deleted'] });
+        expect(mockRetireConnectorSources).toHaveBeenCalledExactlyOnceWith({ connectorId: 'connector-id-abc', sourceAssetIds: ['asset-archived', 'asset-deleted'] });
       });
 
       it('asks OpenAEV for the unreported assets by id, and retires and unregisters only those it no longer lists', async () => {
