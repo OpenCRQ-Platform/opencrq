@@ -12,16 +12,12 @@
     'filigran team',
   ],
   minimumReleaseAge: '3 days',
-  prHourlyLimit: 2,
+  prHourlyLimit: 100,
   prConcurrentLimit: 100,
   branchConcurrentLimit: 100,
   timezone: 'Europe/Paris',
-  schedule: [
-    'after 10pm every weekday',
-    'every weekend',
-    'before 5am every weekday',
-  ],
-  updateNotScheduled: false,
+  // No night window: Mend runs this repository mostly on push and dashboard events, in working
+  // hours, so a schedule outside them holds every update. A weekly one spans a whole weekday.
   rebaseWhen: 'conflicted',
   // Dependabot alerts are off on the repository, so GitHub's advisories never reach Renovate.
   osvVulnerabilityAlerts: true,
@@ -62,7 +58,7 @@
   ],
   lockFileMaintenance: {
     schedule: [
-      'on sunday',
+      'on monday',
     ],
     // A rebase regenerates the whole lockfile, hence only on conflict. No automerge: the organization
     // ruleset requires an approving review on main and lets no bot bypass it.
@@ -120,7 +116,7 @@
       // Weekly: each update is a CI run that holds the router against what XTM One sends now.
       matchDepNames: ['xtm-one-contract'],
       minimumReleaseAge: null,
-      schedule: ['before 9am on monday'],
+      schedule: ['on monday'],
     }
   ],
 }
