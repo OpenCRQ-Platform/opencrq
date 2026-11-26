@@ -41,6 +41,7 @@ vi.mock('./xtm-one-config', () => ({
 vi.mock('./xtm-one-keys', () => ({ buildJwks: vi.fn(), ensureSigningKey: vi.fn() }));
 
 const { registerXtmOneRoutes } = await import('./xtm-one-http');
+const { ASSISTANT_INTENT } = await import('./xtm-one-registration');
 
 type Handler = (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
 
@@ -746,6 +747,20 @@ describe('the composer routes', () => {
     expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer user-jwt');
     expect(reply.code).toHaveBeenCalledWith(200);
     expect(reply.send).toHaveBeenCalledWith(body);
+  });
+
+  it('lists the agents bound to the intent OpenCRQ declares', async () => {
+    fetchMock.mockResolvedValue(new Response(
+      JSON.stringify([{ agents: [{ agent_id: 'agent-1', agent_name: 'OpenCRQ Assistant', priority: 5 }] }]),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ));
+    const reply = makeReply();
+
+    await callRoute('GET /api/xtm-one/chat/agents', makeReq(), reply);
+
+    const [url] = fetchMock.mock.calls[0] ?? [];
+    expect(new URL(String(url)).searchParams.get('intent')).toBe(ASSISTANT_INTENT);
+    expect(reply.send).toHaveBeenCalledWith([{ id: 'agent-1', name: 'OpenCRQ Assistant', slug: null, description: null }]);
   });
 
   it('refuses a request without a browser session', async () => {

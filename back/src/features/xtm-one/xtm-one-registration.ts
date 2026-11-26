@@ -20,24 +20,17 @@ import { verifyXtmLicense } from '../edition/xtm-license';
  *  derive from the same constant. */
 export const REGISTRATION_INTERVAL_MS = 5 * 60_000;
 
+/** The intent whose bound agents Ask Ariane offers. */
+export const ASSISTANT_INTENT = 'global.assistant';
+
 /**
- * Intents declared at registration - the seven shared `global.*` editing
- * intents plus the `crq.*` capabilities (cyber risk quantification; named
- * `grc.*` before the OpenCRQ rename, which XTM One still reads as `crq.*`).
- * XTM One binds each intent to
- * the best agent (the seeded `opencrq-assistant` by default) and returns
- * the catalog in the registration response.
+ * Intents declared at registration: only those an OpenCRQ request looks up in
+ * XTM One's intent catalog before calling the agent bound to it. XTM One shows
+ * an administrator every declared intent to rebind, so one no request reads
+ * offers a rebinding that changes nothing.
  */
-export const DECLARED_INTENTS: Array<{ name: string, description: string }> = [
-  { name: 'global.assistant', description: 'General-purpose assistant' },
-  { name: 'global.make_it_shorter', description: 'Shorten / summarize content' },
-  { name: 'global.make_it_longer', description: 'Expand / elaborate content' },
-  { name: 'global.fix_spelling', description: 'Fix spelling and grammar' },
-  { name: 'global.change_tone', description: 'Change the tone of content' },
-  { name: 'global.summarize', description: 'Summarize content' },
-  { name: 'global.explain', description: 'Explain content in simple terms' },
-  { name: 'crq.control_gap_analysis', description: 'Analyze control maturity gaps against a compliance framework' },
-  { name: 'crq.risk_scenario_generator', description: 'Draft risk scenarios from business and threat context' },
+const DECLARED_INTENTS: Array<{ name: string, description: string }> = [
+  { name: ASSISTANT_INTENT, description: 'General-purpose assistant' },
 ];
 
 export const registrationResultSchema = z.object({
