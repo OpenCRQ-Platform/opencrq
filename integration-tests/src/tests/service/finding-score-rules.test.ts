@@ -1,5 +1,5 @@
 import type { EventOrigin } from '@app/module';
-import { assetEvidenceHistory, assetEvidenceSources, DETECTION_CREDIT, THREAT_FLOORS } from '@app/module';
+import { assetEvidenceHistory, assetEvidenceSources, DETECTION_CREDIT, findingScores, THREAT_FLOORS } from '@app/module';
 import { eq } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -277,6 +277,53 @@ describe('Finding Score Service', () => {
 
       const detail = await services.withOrigin(adminOrigin).supportingAssets.getEvidenceDetail(evidenceId);
       expect(detail?.history.at(-1)?.dismissalType).toBe('risk_accepted');
+    });
+  });
+
+  describe('an aborted recompute', () => {
+    it('should throw the abort reason and write no score', async () => {
+      const assetId = await createAsset('Edge gateway', { exposure: 'internet_facing', criticality: 'very_high' });
+      await attachCve(assetId, await insertCve('CVE-2026-0001', { epss: 0.5, kev: true }));
+      const controller = new AbortController();
+      controller.abort('engine-shutdown');
+
+      await expect(services.withOrigin(adminOrigin).findingScore.recomputeFindingScores({ signal: controller.signal }))
+        .rejects.toBe('engine-shutdown');
+
+      expect(await db.select({ id: findingScores.assetEvidenceId }).from(findingScores)
+        .where(eq(findingScores.tenantId, adminTenantId))).toEqual([]);
+    });
+
+    it('should roll back every write when the abort comes at its last check before the commit', async () => {
+      // What this guards is a check inside the transaction right before the commit, wherever the count puts it.
+      const assetId = await createAsset('Edge gateway', { exposure: 'internet_facing', criticality: 'very_high' });
+      await attachCve(assetId, await insertCve('CVE-2026-0001', { epss: 0.5, kev: true }));
+      const storedScores = () => db.select({ id: findingScores.assetEvidenceId }).from(findingScores)
+        .where(eq(findingScores.tenantId, adminTenantId));
+      /** A signal aborted by its own `abortAtCheck`-th check, counting every check it is asked for. */
+      const countingSignal = (abortAtCheck: number) => {
+        const controller = new AbortController();
+        const { signal } = controller;
+        const check = signal.throwIfAborted.bind(signal);
+        let checks = 0;
+        signal.throwIfAborted = () => {
+          checks += 1;
+          if (checks === abortAtCheck) {
+            controller.abort('engine-shutdown');
+          }
+          check();
+        };
+        return { signal, checks: () => checks };
+      };
+      const counted = countingSignal(Number.POSITIVE_INFINITY);
+      await services.withOrigin(adminOrigin).findingScore.recomputeFindingScores({ signal: counted.signal });
+      expect(await storedScores()).toHaveLength(1);
+      await db.delete(findingScores).where(eq(findingScores.tenantId, adminTenantId));
+
+      await expect(services.withOrigin(adminOrigin).findingScore.recomputeFindingScores({ signal: countingSignal(counted.checks()).signal }))
+        .rejects.toBe('engine-shutdown');
+
+      expect(await storedScores()).toEqual([]);
     });
   });
 

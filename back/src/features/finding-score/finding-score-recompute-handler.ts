@@ -19,6 +19,7 @@ export const findingScoreRecomputeHandler: JobHandler = async (ctx) => {
     .withOrigin({ type: 'job', tenantId: ctx.tenantId, jobKind: ctx.kind, interactive: ctx.interactive });
   const summary = await services.findingScore.recomputeFindingScores({
     scoreHistoryRetentionDays: config().recompute.score_history_retention_days,
+    signal: ctx.signal,
   });
   await ctx.updateProgress(findingScoreRunProgress(summary));
   logTrace('Finding scores recomputed', { tenantId: ctx.tenantId, ...summary });

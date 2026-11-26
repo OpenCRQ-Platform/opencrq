@@ -49,6 +49,17 @@ describe('CRQ price pass over unchanged inputs', () => {
     expect(await runCount()).toBe(1);
   });
 
+  it('should abandon an aborted pass before a scenario whose inputs did not change, which never reaches the engine', async () => {
+    await seed();
+    expect(await pass()).toMatchObject({ priced: 1 });
+    const controller = new AbortController();
+    controller.abort();
+
+    expect(await services
+      .withOrigin({ type: 'job', tenantId, jobKind: 'crq-price-recompute', interactive: false })
+      .crqIndicators.priceAllScenarios(tenantId, controller.signal)).toBeNull();
+  });
+
   it('should name the scenario it re-priced, and none on a pass over unchanged inputs', async () => {
     await seed();
     const progress: Array<{ walked: number, total: number }> = [];

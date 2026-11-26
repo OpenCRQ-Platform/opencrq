@@ -1607,11 +1607,15 @@ export const findingScoreService = defineService(
   techniqueMappingService,
   attackSurfacesService,
 ]).implement({
-  /** The only writer of `finding_scores`. Runs in the worker: an estate allocates one object per finding. */
+  /**
+   * The only writer of `finding_scores`. Runs in the worker: an estate allocates one object per finding.
+   * An aborted `signal` throws its reason at the next batch, and up to the commit, so the whole run rolls back.
+   */
   recomputeFindingScores: async (
     ctx,
-    params: { scoreHistoryRetentionDays?: number } = {},
+    params: { scoreHistoryRetentionDays?: number, signal?: AbortSignal } = {},
   ): Promise<FindingScoreRecomputeSummary> => {
+    const { signal } = params;
     const tenantId = requireTenantId(ctx.eventOrigin);
     const context = await buildScoringContext(ctx, {});
     const computedAt = new Date();
@@ -1630,6 +1634,7 @@ export const findingScoreService = defineService(
     await ctx.atomic(async ({ repo }) => {
       let afterEvidenceId: string | null = null;
       for (;;) {
+        signal?.throwIfAborted();
         const evidenceIds = await repo.findEvidenceIdBatch({ afterEvidenceId, limit: SCORE_BATCH_SIZE });
         if (evidenceIds.length === 0) {
           break;
@@ -1643,7 +1648,7 @@ export const findingScoreService = defineService(
             openings: techniqueOpeningsOf(context, row, finding),
             entryOpenings: entryOpeningsOf(context, row, finding),
           };
-        });
+        }, signal);
         for (const { openings } of scoredRows) {
           openings.forEach((opening) => holdWorstOpening(heldOpenings, opening));
         }
@@ -1677,6 +1682,7 @@ export const findingScoreService = defineService(
         afterEvidenceId = evidenceIds[evidenceIds.length - 1]!;
       }
 
+      signal?.throwIfAborted();
       // Counted after the walk and inside its transaction, so the day's figure and the scores it
       // counts commit together.
       const counted = await repo.countApplicableFindingsByBand();
@@ -1699,6 +1705,7 @@ export const findingScoreService = defineService(
         };
       });
       for (let i = 0; i < postures.length; i += SCORE_UPSERT_CHUNK_SIZE) {
+        signal?.throwIfAborted();
         const chunk = postures.slice(i, i + SCORE_UPSERT_CHUNK_SIZE);
         const stored = await repo.findStoredAssetPostureScores(chunk.map((posture) => posture.supportingAssetId));
         const movedPostures = posturesOwingAJournalLine(chunk, new Map(stored.map((row) => [row.supportingAssetId, row.score])));
@@ -1718,6 +1725,7 @@ export const findingScoreService = defineService(
 
       const techniqueScores = [...heldOpenings.values()];
       for (let i = 0; i < techniqueScores.length; i += SCORE_UPSERT_CHUNK_SIZE) {
+        signal?.throwIfAborted();
         await repo.upsertAssetTechniqueScoreBatch(techniqueScores.slice(i, i + SCORE_UPSERT_CHUNK_SIZE).map((held) => ({
           tenantId,
           supportingAssetId: held.supportingAssetId,
@@ -1730,6 +1738,7 @@ export const findingScoreService = defineService(
       // cursor leaves the pages ahead untouched.
       let afterCell: TechniqueScoreCellKey | null = null;
       for (;;) {
+        signal?.throwIfAborted();
         const stored = await repo.findAssetTechniqueScoreKeyPage({ after: afterCell, limit: SCORE_BATCH_SIZE });
         if (stored.length === 0) {
           break;
@@ -1739,6 +1748,7 @@ export const findingScoreService = defineService(
       }
       let afterOpening: EntryOpeningKey | null = null;
       for (;;) {
+        signal?.throwIfAborted();
         const stored = await repo.findEntryOpeningKeyPage({ tenantId, after: afterOpening, limit: SCORE_BATCH_SIZE });
         if (stored.length === 0) {
           break;
@@ -1752,12 +1762,14 @@ export const findingScoreService = defineService(
       // An organization left with no applicable finding has no inputs, and its stored rows still have to go.
       const organizationIds = new Set([...inputsByOrganization.keys(), ...await repo.findStoredUniqueFindingOrganizationIds()]);
       for (const organizationId of organizationIds) {
+        signal?.throwIfAborted();
         changedUniqueFindings += await projectUniqueFindingScores(repo, inputsByOrganization.get(organizationId) ?? [], { tenantId, organizationId, computedAt });
       }
 
       await repo.trimFindingScoreHistory(new Date(computedAt.getTime() - retentionDays * 86_400_000));
       await repo.trimAssetPostureHistory(new Date(computedAt.getTime() - POSTURE_HISTORY_RETENTION_DAYS * 86_400_000));
       await repo.trimUniqueFindingScoreHistory(new Date(computedAt.getTime() - UNIQUE_SCORE_HISTORY_RETENTION_DAYS * 86_400_000));
+      signal?.throwIfAborted();
     });
     return {
       scored,

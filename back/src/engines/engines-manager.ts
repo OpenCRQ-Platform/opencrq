@@ -4,6 +4,8 @@ interface EngineHandler {
   onEnginesStarted?: () => void | Promise<void>,
   onEnginesStopping?: () => void | Promise<void>,
   stop?: () => void | Promise<void>,
+  /** Stopped once every other engine has: what the others still use while they stop. */
+  stopsLast?: boolean,
 }
 
 export interface Engine {
