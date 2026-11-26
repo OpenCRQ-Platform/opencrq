@@ -23,12 +23,24 @@ describe('parseMarkingsPage', () => {
     });
   });
 
-  it('should skip a node without its id, type or definition, and default a missing order to 0', () => {
+  it('should skip a node without its id, type or definition, and keep a rank OpenCTI did not give as null', () => {
     const parsed = parseMarkingsPage(page([
       { node: { definition_type: 'TLP', definition: 'TLP:RED' } },
       { node: { standard_id: PAP_RED, definition_type: 'PAP', definition: 'PAP:RED', x_opencti_order: 'high' } },
     ], null, false));
-    expect(parsed?.markings).toEqual([{ stixId: PAP_RED, definitionType: 'PAP', definition: 'PAP:RED', color: null, order: 0 }]);
+    expect(parsed?.markings).toEqual([{ stixId: PAP_RED, definitionType: 'PAP', definition: 'PAP:RED', color: null, order: null }]);
+  });
+
+  it.each([
+    ['absent', undefined],
+    ['a numeric string', '5'],
+    ['a fraction', 2.5],
+    ['null', null],
+  ])('should read a rank that is %s as null', (_label, order) => {
+    const parsed = parseMarkingsPage(page([
+      { node: { standard_id: PAP_RED, definition_type: 'PAP', definition: 'PAP:RED', x_opencti_order: order } },
+    ], null, false));
+    expect(parsed?.markings[0].order).toBeNull();
   });
 
   it('should answer null for an answer that is not a marking connection', () => {
@@ -43,6 +55,21 @@ describe('parseStreamMarking', () => {
       id: PAP_RED, type: 'marking-definition', name: 'PAP:RED', definition_type: 'PAP',
       extensions: { [OCTI_EXTENSION]: { order: 4, color: '#E53935' } },
     })).toEqual({ stixId: PAP_RED, definitionType: 'PAP', definition: 'PAP:RED', color: '#E53935', order: 4 });
+  });
+
+  it.each([
+    ['absent', {}],
+    ['a numeric string', { order: '5' }],
+    ['a fraction', { order: 2.5 }],
+  ])('should read a stream marking whose rank is %s as null', (_label, extension) => {
+    expect(parseStreamMarking({
+      id: PAP_RED, type: 'marking-definition', name: 'PAP:RED', definition_type: 'PAP',
+      extensions: { [OCTI_EXTENSION]: extension },
+    })?.order).toBeNull();
+  });
+
+  it('should read a stream marking with no OpenCTI extension as unranked', () => {
+    expect(parseStreamMarking({ id: PAP_RED, type: 'marking-definition', name: 'PAP:RED', definition_type: 'PAP' })?.order).toBeNull();
   });
 
   it('should answer null for another type or an incomplete marking', () => {

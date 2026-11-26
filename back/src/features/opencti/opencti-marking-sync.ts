@@ -23,7 +23,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> => value !==
 
 const stringOf = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 
-const orderOf = (value: unknown): number => (typeof value === 'number' && Number.isInteger(value) ? value : 0);
+/** The rank OpenCTI states, `null` when it gives none: an absent rank is not rank 0. */
+const orderOf = (value: unknown): number | null => (typeof value === 'number' && Number.isInteger(value) ? value : null);
 
 /** A GraphQL `MarkingDefinition` node, or `null` when it lacks its id, type or definition. */
 export const parseMarkingNode = (node: unknown): SyncedMarkingDefinition | null => {

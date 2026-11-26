@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NonRetryableError } from '@app/module';
+import { NonRetryableError, TimeoutError } from '@app/module';
 import { createOpenaevClient, OpenaevNotFoundError, paginateAll } from './openaev-api-client';
 
 vi.mock('../../utils/logger', () => ({
@@ -149,6 +149,9 @@ describe('createOpenaevClient — inventory calls', () => {
     it.each([
       [['MARKING'], true],
       [['*'], true],
+      [['FEATURE_FLAG_ALL'], true],
+      [[' feature_flag_all '], true],
+      [['BULK_SNAPSHOT_EXPORT', 'FEATURE_FLAG_ALL'], true],
       [['BULK_SNAPSHOT_EXPORT', 'marking'], true],
       [['BULK_SNAPSHOT_EXPORT'], false],
       [[], false],
@@ -169,20 +172,32 @@ describe('createOpenaevClient — inventory calls', () => {
       expect(await client().readMarkingFeature()).toEqual({ active: false, reason: expect.any(String) });
     });
 
-    it.each([
-      [404, 'Not Found'],
-      [500, 'Internal Server Error'],
-      [401, 'Unauthorized'],
-    ])('counts markings off, without failing the sync, on a %i', async (status, body) => {
-      vi.mocked(fetch).mockResolvedValueOnce(new Response(body, { status }));
+    it('counts markings off on a 404, an OpenAEV that does not serve the route', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response('Not Found', { status: 404 }));
 
-      expect(await client().readMarkingFeature()).toEqual({ active: false, reason: expect.stringContaining(`(${status})`) });
+      expect(await client().readMarkingFeature()).toEqual({ active: false, reason: expect.stringContaining('(404)') });
     });
 
-    it('counts markings off when the settings are not JSON', async () => {
+    it.each([
+      [500, 'Internal Server Error'],
+      [401, 'Unauthorized'],
+      [403, 'Forbidden'],
+    ])('fails on a %i, never reading it as markings off', async (status, body) => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response(body, { status }));
+
+      await expect(client().readMarkingFeature()).rejects.toThrow(`(${status})`);
+    });
+
+    it('fails when the settings are not JSON', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('<html></html>', { status: 200 }));
 
-      expect((await client().readMarkingFeature()).active).toBe(false);
+      await expect(client().readMarkingFeature()).rejects.toThrow('non-JSON');
+    });
+
+    it('fails on a timeout', async () => {
+      vi.mocked(fetch).mockRejectedValueOnce(new DOMException('The operation timed out', 'TimeoutError'));
+
+      await expect(client().readMarkingFeature()).rejects.toBeInstanceOf(TimeoutError);
     });
   });
 

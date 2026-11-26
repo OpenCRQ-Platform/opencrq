@@ -13,11 +13,12 @@ import { userIsSuperAdmin } from './super-admin-policies';
 
 /**
  * The OpenCTI markings a client origin may read, or `undefined` when the origin carries no marking
- * scope (a job, a job run borrowing a person's origin, a connector, an internal read, a tenant with
- * no OpenCTI connection): only a person's own request is narrowed, and only by the tenant procedure
- * that asked OpenCTI, so a score still blends every mirrored object (opencrq #31, a stated limit).
- * `null` is a person whose markings OpenCTI did not answer: they hold no clearance, so they read only
- * the unmarked mirrored objects (OpenAEV ADR-009: failing closed means seeing less, never nothing).
+ * scope (a job, a job run borrowing a person's origin, a connector, an internal read): only a person's
+ * own request is narrowed, and only by the tenant procedure that asked OpenCTI, so a score still
+ * blends every mirrored object (opencrq #31, a stated limit).
+ * `null` is a person whose markings OpenCTI did not answer, or whose tenant has no OpenCTI connection
+ * to ask: they hold no clearance, so they read only the unmarked mirrored objects (OpenAEV ADR-009:
+ * failing closed means seeing less, never nothing).
  */
 export const originMarkingScope = (origin: EventOrigin): ReadonlyArray<string> | null | undefined => {
   if (origin.type !== 'client' || origin.job !== undefined) {

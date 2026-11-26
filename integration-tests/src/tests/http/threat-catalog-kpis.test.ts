@@ -33,7 +33,7 @@ describe('threats.getCatalogKpis (HTTP/tRPC)', () => {
   ): Promise<void> => {
     const id = uuidv7();
     await db.insert(threatAnalyses).values([{
-      id, tenantId: tenant, stixId: `intrusion-set--${id}`, entityType: 'intrusion-set', kind: 'connector', name: `Threat ${id}`,
+      id, tenantId: tenant, stixId: `intrusion-set--${id}`, entityType: 'intrusion-set', kind: 'connector', name: `Threat ${id}`, markingRefs: [],
     }]);
     if (options.scores?.length) {
       await db.insert(threatOutcomeScores).values(options.scores.map(({ outcomeId, score, isTop }) => ({

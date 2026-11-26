@@ -22,11 +22,12 @@ export const nativeClearanceReader = (origin: EventOrigin): { userId: string, te
 /**
  * The STIX ids of the markings a member of the tenant is cleared for, as a SQL array: the union over
  * their groups of `group_marking_definitions`, each held marking expanded to the markings of its type
- * ranked at or below it (`order`), as OpenCTI and OpenAEV expand a clearance. It names no column of
+ * ranked at or below it (`order`), as OpenCTI and OpenAEV expand a clearance. A marking nobody ranked
+ * (`order` null) covers only itself and is covered only when held directly. It names no column of
  * the row being filtered, so Postgres evaluates it once per statement. A member of no cleared group
  * is cleared for nothing and reads only unmarked rows.
  */
-export const clearedMarkings = (userId: string, tenantId: string): SQL => sql`array(select cleared.stix_id from marking_definitions as cleared where cleared.tenant_id = ${tenantId} and exists(select 1 from group_marking_definitions as clearance inner join marking_definitions as held on held.id = clearance.marking_definition_id and held.tenant_id = clearance.tenant_id inner join group_users as member on member.group_id = clearance.group_id where clearance.tenant_id = ${tenantId} and member.user_id = ${userId} and held.definition_type = cleared.definition_type and held."order" >= cleared."order"))`;
+export const clearedMarkings = (userId: string, tenantId: string): SQL => sql`array(select cleared.stix_id from marking_definitions as cleared where cleared.tenant_id = ${tenantId} and exists(select 1 from group_marking_definitions as clearance inner join marking_definitions as held on held.id = clearance.marking_definition_id and held.tenant_id = clearance.tenant_id inner join group_users as member on member.group_id = clearance.group_id where clearance.tenant_id = ${tenantId} and member.user_id = ${userId} and (held.id = cleared.id or (held.definition_type = cleared.definition_type and held."order" >= cleared."order"))))`;
 
 const textArray = (values: ReadonlyArray<string>): SQL =>
   (values.length === 0

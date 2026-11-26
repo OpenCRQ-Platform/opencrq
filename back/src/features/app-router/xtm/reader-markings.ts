@@ -22,8 +22,9 @@ const { logWarn } = createLogger({ feature: 'reader-markings' });
  * timeout, a malformed answer): the reader then holds no clearance and no membership, and sees only
  * unmarked, unrestricted mirrored objects (fail closed means seeing less, never nothing, as OpenAEV
  * ADR-009), and the issue says which category of failure it was.
- * `undefined` when the tenant has no OpenCTI connection: there is no OpenCTI to ask and nothing to
- * enforce, so nothing is narrowed.
+ * `undefined` when the tenant has no OpenCTI connection: there is no OpenCTI to ask, and what it
+ * mirrored stays in the database after the connection is removed, so `withReaderScope` narrows it as
+ * if OpenCTI had not answered, without telling the reader an issue.
  *
  * Every tenant request reads it, so it is never waited for once known: a reader's last answer is
  * served at once and, past a minute, asked again in the background, so a right changed in OpenCTI
@@ -315,7 +316,7 @@ export const withReaderScope = (
   threatVisibility: OpenctiThreatVisibility,
 ): { origin: Extract<EventOrigin, { type: 'client' }>, readerAccessIssue: ThreatAccessIssue | null } => {
   if (answer === undefined) {
-    return { origin, readerAccessIssue: null };
+    return { origin: { ...origin, markings: null, openctiAccess: null }, readerAccessIssue: null };
   }
   const read = 'scope' in answer ? answer.scope : null;
   const issue = 'issue' in answer ? answer.issue : null;

@@ -1102,7 +1102,7 @@ describe('openaevSyncHandler', () => {
       expect(mockListAssignableMarkingDefinitions).toHaveBeenCalledWith('oa-tenant-1');
       expect(mockSyncMarkingDefinitions).toHaveBeenCalledWith('tenant-abc', [
         { stixId: tlpRed, definitionType: 'TLP', definition: 'TLP:RED', color: '#c62828', order: 4 },
-      ]);
+      ], 'openaev');
       const markingRefsOf = (sourceAssetId: string): unknown => mockBulkUpsertAssets.mock.calls[0][0]
         .find((input: { sourceAssetId: string }) => input.sourceAssetId === sourceAssetId)?.markingRefs;
       // An OpenAEV id with no definition stays as it is: no clearance names it, so the asset fails closed.
@@ -1146,6 +1146,14 @@ describe('openaevSyncHandler', () => {
       // No refs on the input: the source row is written with an empty `reported_marking_refs`, which
       // clears the OpenAEV ids an earlier run on this instance wrote.
       expect(inputs.find((input) => input.sourceAssetId === 'asset-openaev-1')?.markingRefs).toBeUndefined();
+    });
+
+    it('fails the run without writing an asset when OpenAEV\'s marking feature cannot be read', async () => {
+      mockReadMarkingFeature.mockRejectedValueOnce(new Error('OpenAEV error (500): boom'));
+
+      await expect(openaevSyncHandler(makeCtx())).rejects.toThrow('OpenAEV error (500): boom');
+
+      expect(mockBulkUpsertAssets).not.toHaveBeenCalled();
     });
 
     it('reads OpenAEV\'s marking feature once per run, whatever the number of OpenAEV tenants', async () => {

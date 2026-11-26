@@ -9,8 +9,8 @@ import { tenants } from '../tenants';
  * The marking definitions of a tenant (CTEM marking parity, G2): one row per marking, identified
  * across the products by its OpenCTI STIX `standard_id`, so a marking on an OpenCTI object, an
  * OpenAEV asset and an OpenCRQ object is the same marking. `order` ranks the markings of one type
- * as OpenCTI's `x_opencti_order` and OpenAEV's ordinal do. Every member reads them; a security
- * manager writes them.
+ * as OpenCTI's `x_opencti_order` and OpenAEV's ordinal do; `null` is a marking nobody ranked, cleared
+ * only when held directly. Every member reads them; a security manager writes them.
  */
 export const markingDefinitions = pgTable('marking_definitions', {
   id: uuid('id').primaryKey(),
@@ -19,7 +19,7 @@ export const markingDefinitions = pgTable('marking_definitions', {
   definitionType: text('definition_type').notNull(),
   definition: text('definition').notNull(),
   color: text('color'),
-  order: integer('order').notNull().default(0),
+  order: integer('order'),
 }, (table) => [
   unique('marking_definitions_tenant_stix_id_uq').on(table.tenantId, table.stixId),
   unique('marking_definitions_id_tenant_id_uq').on(table.id, table.tenantId),

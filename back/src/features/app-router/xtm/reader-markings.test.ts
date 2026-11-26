@@ -100,8 +100,13 @@ describe('withReaderScope', () => {
   const ORIGIN = { type: 'client', userId: 'u-1', tenantId: 't-1' } as const;
   const SCOPE = { markings: ['m-1'], access: { userId: 'octi-user', individualId: null, organizationIds: [], groupIds: [], bypass: false, platformOrganizationId: null } };
 
-  it('should leave the origin and tell nothing when the tenant has no OpenCTI connection', () => {
-    expect(withReaderScope(ORIGIN, undefined, 'per_member')).toEqual({ origin: ORIGIN, readerAccessIssue: null });
+  it('should leave the reader no clearance and tell nothing when the tenant has no OpenCTI connection', () => {
+    for (const visibility of ['per_member', 'service_account'] as const) {
+      expect(withReaderScope(ORIGIN, undefined, visibility)).toEqual({
+        origin: { ...ORIGIN, markings: null, openctiAccess: null },
+        readerAccessIssue: null,
+      });
+    }
   });
 
   it('should narrow the origin by what OpenCTI answered, and tell nothing', () => {
