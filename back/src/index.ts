@@ -40,6 +40,7 @@ import './features/recompute-dispatcher';
 import './features/cve-feeds-on-entry';
 import './features/job-scheduler';
 import './features/openaev-sync';
+import './features/db-table-metrics';
 import './features/web-app/web-app-feature';
 
 boot();

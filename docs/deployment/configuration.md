@@ -126,6 +126,15 @@ See [Metrics](metrics.md) for the full contract of every family the Prometheus a
 | `TELEMETRY__OBSERVABILITY__PROMETHEUS__MIN_INTERVAL_MS`      |    No    | `5000`        | Minimum interval between two collections. Requests arriving inside it are served the cached document, failures included. | None |
 | `TELEMETRY__OBSERVABILITY__PROMETHEUS__MAX_REPLY_BYTES`      |    No    | `2097152`     | Maximum size of one process's contribution. A larger one is refused and reported as a collection outcome. | None |
 
+#### Database table statistics
+
+The size, row counts and update counters of every table of the application schema, as metrics on both transports above ([Database tables](metrics.md#database-tables-worker-process-opt-in)). Off by default, since the row counts tell a reader of the unauthenticated scrape endpoint how large the estate an instance holds is.
+
+| Variable                                                  | Required | Default Value | Architectural/Functional Impact | OpenCTI equivalent |
+|:----------------------------------------------------------|:--------:|:--------------|:--------------------------------|:-------------------|
+| `TELEMETRY__OBSERVABILITY__TABLE_STATISTICS__ENABLED`     |    No    | `false`       | Turns the database table metric families on, and needs `TELEMETRY__OBSERVABILITY__PROMETHEUS__ENABLED` or `TELEMETRY__OBSERVABILITY__OTLP__METRICS__ENABLED`: the process refuses to boot otherwise. The `worker` process in `split`, `main` in `monolith`, then reads `pg_stat_user_tables` and the size functions on a timer; a scrape or a push never queries the database. | None |
+| `TELEMETRY__OBSERVABILITY__TABLE_STATISTICS__INTERVAL_MS` |    No    | `300000`      | Interval between two readings, at least `10000`. Every reading runs the size functions on every table of the schema. | None |
+
 #### Pyroscope
 
 | Variable                                              | Required | Default Value | Architectural/Functional Impact | OpenCTI equivalent |

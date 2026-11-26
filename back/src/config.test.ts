@@ -48,11 +48,11 @@ describe('pmConfig telemetry.observability', () => {
     if (!pmConfig.telemetry) {
       throw new Error('Expected the telemetry block to parse');
     }
-    const { service_name: serviceName, otlp, prometheus, pyroscope } = pmConfig.telemetry.observability;
+    const { service_name: serviceName, otlp, prometheus, pyroscope, table_statistics: tableStatistics } = pmConfig.telemetry.observability;
 
     expect(serviceName).toBe('opencrq-platform');
-    expect([otlp.traces.enabled, otlp.metrics.enabled, otlp.logs.enabled, prometheus.enabled, pyroscope.enabled])
-      .toEqual([false, false, false, false, false]);
+    expect([otlp.traces.enabled, otlp.metrics.enabled, otlp.logs.enabled, prometheus.enabled, pyroscope.enabled, tableStatistics.enabled])
+      .toEqual([false, false, false, false, false, false]);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
@@ -67,6 +67,15 @@ describe('pmConfig telemetry.observability', () => {
 
     expect(prometheus.collect_timeout_ms).toBe(2_500);
     expect(prometheus.round_deadline_ms).toBe(4_500);
+  });
+
+  it('reads the table statistics every five minutes when they are enabled with no interval set', async () => {
+    rawConfig = withObservability({ prometheus: { enabled: true }, table_statistics: { enabled: true } });
+
+    const { pmConfig } = await import('./config');
+    const tableStatistics = pmConfig.telemetry?.observability.table_statistics;
+
+    expect(tableStatistics).toEqual({ enabled: true, interval_ms: 300_000 });
   });
 
   it('keeps the two collection bounds distinguishable: the round deadline is not a multiple of the per-child timeout', async () => {
@@ -106,10 +115,28 @@ describe('pmConfig telemetry.observability', () => {
     ['an empty Pyroscope address', { pyroscope: { enabled: true, server_address: '' } }],
     ['a malformed transport beside a valid one', { otlp: { metrics: { enabled: true, exporter: 'http://127.0.0.1:4317' } }, prometheus: { enabled: true, port: 'not-a-number' } }],
     ['a non-object otlp block', { otlp: null }],
+    ['a table statistics interval short enough to read the size of every table every few seconds', { prometheus: { enabled: true }, table_statistics: { enabled: true, interval_ms: '1000' } }],
   ])('refuses %s, and fails fast rather than booting with a configuration that disables the endpoint silently', async (_case, observability) => {
     rawConfig = withObservability(observability);
 
     await expect(import('./config')).rejects.toThrow();
+  });
+
+  it('refuses the table statistics while no metric transport is on, naming the setting, rather than reading them for no reader', async () => {
+    rawConfig = withObservability({ table_statistics: { enabled: true } });
+
+    await expect(import('./config')).rejects.toThrow(/table_statistics/);
+  });
+
+  it.each([
+    ['prometheus', { prometheus: { enabled: true } }],
+    ['an OTLP metrics push', { otlp: { metrics: { enabled: true, exporter: 'http://127.0.0.1:4317' } } }],
+  ])('boots with the table statistics beside %s', async (_case, transport) => {
+    rawConfig = withObservability({ ...transport, table_statistics: { enabled: true } });
+
+    const { pmConfig } = await import('./config');
+
+    expect(pmConfig.telemetry?.observability.table_statistics.enabled).toBe(true);
   });
 
   it('throws a schema validation error, not a raw TypeError, when telemetry itself is a non-object value', async () => {

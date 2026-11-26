@@ -77,3 +77,14 @@ describe('boot entrypoints keep the recompute trigger paths in the job-running p
     }
   });
 });
+
+describe('boot entrypoints read the database table statistics from one process per container', () => {
+  it('the job-running entrypoints import the reader', () => {
+    expect(getStaticImportSpecifiers(join(here, 'index-worker.ts'))).toContain('./features/db-table-metrics');
+    expect(getStaticImportSpecifiers(join(here, 'index.ts'))).toContain('./features/db-table-metrics');
+  });
+
+  it('index-http.ts does not, so a split container reads them once', () => {
+    expect(getStaticImportSpecifiers(join(here, 'index-http.ts'))).not.toContain('./features/db-table-metrics');
+  });
+});
