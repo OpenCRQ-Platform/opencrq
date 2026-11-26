@@ -336,11 +336,14 @@ describe('opencti-connector-manager', () => {
     // Otherwise silently denied (0 rows, no error) by the tenant security policy under the
     // connector's own origin, rather than actually stopping like a disabled connector does.
     mockGetServiceAccount.mockResolvedValue({ active: false });
+    vi.useFakeTimers();
 
     startAll(controller.signal);
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await vi.advanceTimersByTimeAsync(2 * STREAM_TIMING.maxReconnectDelayMs);
     expect(mockConsumeOpenCtiStream).not.toHaveBeenCalled();
+    // Only the boot reconciliation's read: no consumer was started to check the account on every loop.
+    expect(mockGetServiceAccount).toHaveBeenCalledOnce();
   });
 
   it('asks for recover when reconnecting before the live tail has been reached, to resume precisely instead of skipping ahead', async () => {
@@ -1336,6 +1339,19 @@ describe('opencti-connector-manager', () => {
       expect(errors().length).toBeGreaterThanOrEqual(1);
     });
 
+    it('logs nothing for a consumer that finds nothing to consume, the stream never opened', async () => {
+      // Active when the consumer is started, inactive by the time it reads the account itself.
+      mockGetServiceAccount.mockResolvedValueOnce({ active: true }).mockResolvedValue({ active: false });
+
+      startAll(controller.signal);
+      await vi.advanceTimersByTimeAsync(STREAM_TIMING.unreachableAlertMs + 2 * STREAM_TIMING.maxReconnectDelayMs);
+
+      expect(mockGetServiceAccount.mock.calls.length).toBeGreaterThan(2);
+      expect(mockConsumeOpenCtiStream).not.toHaveBeenCalled();
+      expect(mockLogWarnFromError).not.toHaveBeenCalled();
+      expect(mockLogFromError).not.toHaveBeenCalled();
+    });
+
     it('counts a connection the server ends cleanly as a failed one', async () => {
       mockConsumeOpenCtiStream.mockImplementation(() => fakeStream([connected]));
 
@@ -1451,11 +1467,12 @@ describe('opencti-connector-manager', () => {
 
     // Reconcile stops the old consumer and does not start a replacement (the account is inactive)
     // — no wasted restart-then-immediately-noop cycle: a restart would call `getSettings`/
-    // `getServiceAccount` a 3rd time (once more from the new consumer's own check).
+    // `getServiceAccount` a 4th time (once more from the new consumer's own check), after the boot
+    // reconciliation, the first consumer and this reconciliation.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(mockConsumeOpenCtiStream).toHaveBeenCalledTimes(1);
-    expect(mockGetSettings).toHaveBeenCalledTimes(2);
-    expect(mockGetServiceAccount).toHaveBeenCalledTimes(2);
+    expect(mockGetSettings).toHaveBeenCalledTimes(3);
+    expect(mockGetServiceAccount).toHaveBeenCalledTimes(3);
   });
 
   it('stops a stale tenant consumer that was disabled while the LISTEN connection was down, once reconciled on the next connect', async () => {
