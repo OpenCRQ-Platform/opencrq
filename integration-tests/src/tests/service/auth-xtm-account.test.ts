@@ -14,7 +14,7 @@ const emailOf = async (userId: string): Promise<string> => (
   (await db.execute<{ email: string }>(sql`SELECT email FROM users WHERE id = ${userId}`)).rows[0].email
 );
 
-// An account is the XTM One user (`sub`) it was created for; the email never finds one.
+// An account is the XTM One user (`sub`) it is tied to; the email finds only a pending account, one tied to nobody.
 describe('Auth Service: XTM One accounts', () => {
   beforeEach(async () => {
     await truncateAllTables(db);
@@ -49,6 +49,38 @@ describe('Auth Service: XTM One accounts', () => {
 
     expect(await auth().createXtmAccount({ id: uuidv7(), xtmSubject: 'xtm-user-1', email: 'jane@example.com', name: null, title: null })).toBeNull();
     expect(await auth().getUserIdByXtmSubject('xtm-user-1')).toBeNull();
+  });
+
+  it('should create nothing when another account took the email meanwhile in another case', async () => {
+    await createUser(db, 'Jane@Example.com');
+
+    expect(await auth().createXtmAccount({ id: uuidv7(), xtmSubject: 'xtm-user-1', email: 'jane@example.com', name: null, title: null })).toBeNull();
+    expect(await auth().getUserIdByXtmSubject('xtm-user-1')).toBeNull();
+  });
+
+  it('should give a pending account to the first XTM One user signing in with its email, whatever its case, and to no later one', async () => {
+    const { userId } = await createUser(db, 'Jane@Example.com');
+
+    expect(await auth().linkPendingAccount('xtm-user-1', 'jane@example.com')).toBe(userId);
+    expect(await auth().getUserIdByXtmSubject('xtm-user-1')).toBe(userId);
+    expect(await auth().linkPendingAccount('xtm-user-2', 'jane@example.com')).toBeNull();
+    expect(await auth().getUserIdByXtmSubject('xtm-user-2')).toBeNull();
+  });
+
+  it('should give a pending account to one of two XTM One users racing for it', async () => {
+    const { userId } = await createUser(db, 'jane@example.com');
+
+    const linked = await Promise.all([auth().linkPendingAccount('xtm-user-1', 'jane@example.com'), auth().linkPendingAccount('xtm-user-2', 'jane@example.com')]);
+
+    expect(linked.filter((id) => id !== null)).toEqual([userId]);
+  });
+
+  it('should link nothing for an XTM One user who already has an account', async () => {
+    await auth().createXtmAccount({ id: uuidv7(), xtmSubject: 'xtm-user-1', email: 'marc@example.com', name: null, title: null });
+    const { userId } = await createUser(db, 'jane@example.com');
+
+    expect(await auth().linkPendingAccount('xtm-user-1', 'jane@example.com')).toBeNull();
+    expect((await db.execute<{ xtm_subject: string | null }>(sql`SELECT xtm_subject FROM users WHERE id = ${userId}`)).rows[0].xtm_subject).toBeNull();
   });
 
   it('should throw any other database error', async () => {

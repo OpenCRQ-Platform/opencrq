@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renewsSessionNow, signInPage, xtmJoinHref, xtmSignInHref } from './xtm-sign-in-utils';
+import { renewsSessionNow, signInPage, xtmSignInHref } from './xtm-sign-in-utils';
 
 describe('xtmSignInHref', () => {
   it('points at the sign-in route', () => {
@@ -9,12 +9,6 @@ describe('xtmSignInHref', () => {
   it('carries the page to land on, encoded', () => {
     expect(xtmSignInHref('http://localhost:3000/risks?tab=open&x=1'))
       .toBe('/api/auth/xtm/login?redirect=http%3A%2F%2Flocalhost%3A3000%2Frisks%3Ftab%3Dopen%26x%3D1');
-  });
-});
-
-describe('xtmJoinHref', () => {
-  it('signs in carrying the token of the invitation link', () => {
-    expect(xtmJoinHref('abc_DEF-123')).toBe('/api/auth/xtm/login?join=abc_DEF-123');
   });
 });
 

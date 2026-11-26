@@ -3,16 +3,18 @@ import { uuidv7 } from 'uuidv7';
 import type { InferRepository } from '../../registry';
 import type { AccessNoticeAnswer, MemberAddResult, MemberRefusal, MemberToAdd, SendAccessNotice } from './access-notice';
 import type { MemberAccount } from './repository';
+import { isUniqueViolationOf } from '../../db/pg-errors';
 import { originUserId, requireClientTenantId } from '../../security';
 import { defineService } from '../../registry';
 import { capabilitiesService } from '../capabilities/service';
 import { notificationsService } from '../notifications';
 import { PlatformCapability_ManageUsers } from '../platform-capabilities';
 import { platformCapabilitiesService } from '../platform-capabilities/service';
-import { hashJoinToken, joinPath, newJoinToken } from './join-token';
 import { membersRepository } from './repository';
 
 type Repo = InferRepository<typeof membersRepository>;
+
+const USERS_XTM_SUBJECT_UNIQUE = 'users_xtm_subject_unique';
 
 export const MEMBER_ADDED_NOTIFICATION = 'member-added';
 /** Where a platform member lands once signed in. */
@@ -28,36 +30,41 @@ interface Delivery {
 }
 
 type Placement =
-  | Delivery & { userId: string, joinTokenHash: string | null }
+  | Delivery & { userId: string }
   | { refusal: MemberRefusal };
 
-/** The account placed, and whether it is still pending: one that only its own `/join/` link can tie to XTM One. */
-interface Placed {
-  id: string,
-  pending: boolean,
-}
-
-/** Who XTM One said this person is: their account by that id, else the pending account holding the email, else a new one. */
+/**
+ * Who XTM One said this person is: their account by that id, else the pending account holding the
+ * email, which takes that id, else a new one. `null` when the email belongs to another XTM One user.
+ */
 const placeNotified = async (
   repo: Repo,
   member: MemberToAdd & { email: string },
   byEmail: MemberAccount | null,
   xtmUserId: string,
-): Promise<Placed | null> => {
+): Promise<string | null> => {
   const linked = await repo.findAccountByXtmSubject(xtmUserId);
   if (linked) {
-    return { id: linked.id, pending: false };
+    return linked.id;
   }
-  if (byEmail) {
-    // A pending account only ever gets its XTM One id from its own `/join/` link, never from here.
-    return byEmail.xtmSubject === null ? { id: byEmail.id, pending: true } : null;
+  if (byEmail?.xtmSubject) {
+    return null;
   }
-  const id = uuidv7();
-  if (await repo.insertAccount({ id, email: member.email, xtmSubject: xtmUserId, name: member.fullName?.trim() || null, joinTokenHash: null })) {
-    return { id, pending: false };
+  const id = byEmail?.id ?? uuidv7();
+  const placed = byEmail
+    ? await repo.linkPendingAccount(id, xtmUserId)
+    : await repo.insertAccount({ id, email: member.email, xtmSubject: xtmUserId, name: member.fullName?.trim() || null });
+  if (placed) {
+    return id;
   }
+  // The person signed in meanwhile, which tied an account to them.
   const raced = await repo.findAccountByXtmSubject(xtmUserId);
-  return raced ? { id: raced.id, pending: false } : null;
+  if (raced || byEmail) {
+    return raced?.id ?? null;
+  }
+  // Or an account took the email meanwhile: a pending one is theirs.
+  const tookEmail = await repo.findAccountByEmail(member.email);
+  return tookEmail?.xtmSubject === null ? placeNotified(repo, member, tookEmail, xtmUserId) : null;
 };
 
 const placePending = async (repo: Repo, email: string, byEmail: MemberAccount | null): Promise<string | null> => {
@@ -65,7 +72,7 @@ const placePending = async (repo: Repo, email: string, byEmail: MemberAccount | 
     return byEmail.xtmSubject === null ? byEmail.id : null;
   }
   const id = uuidv7();
-  if (await repo.insertAccount({ id, email, xtmSubject: null, name: null, joinTokenHash: null })) {
+  if (await repo.insertAccount({ id, email, xtmSubject: null, name: null })) {
     return id;
   }
   const raced = await repo.findAccountByEmail(email);
@@ -75,27 +82,16 @@ const placePending = async (repo: Repo, email: string, byEmail: MemberAccount | 
 /**
  * What one answer of XTM One makes of one person. XTM One is asked before anything is written, and
  * a notice it could not send never undoes the add of someone OpenCRQ already ties to the email.
- * A pending account is reached only through its join link, so whoever has one is told as an
- * invitation is, whatever XTM One answered: the generic access link would end on a conflict.
  */
 const place = async (
   repo: Repo,
   member: MemberToAdd & { email: string },
   byEmail: MemberAccount | null,
-  joinToken: string | null,
   answer: AccessNoticeAnswer,
-  linkTo: (path: string) => string,
 ): Promise<Placement> => {
-  const rotated = joinToken === null ? null : hashJoinToken(joinToken);
-  const joinLink = joinToken === null ? null : linkTo(joinPath(joinToken));
-  const placed = (account: Placed | null, emailSent: boolean): Placement => {
-    if (account === null) {
-      return { refusal: 'not-addable' };
-    }
-    return account.pending
-      ? { userId: account.id, joinTokenHash: rotated, emailSent, invited: true, invitationLink: emailSent ? null : joinLink }
-      : { userId: account.id, joinTokenHash: rotated, emailSent, invited: false, invitationLink: null };
-  };
+  const placed = (userId: string | null, emailSent: boolean): Placement => (userId === null
+    ? { refusal: 'not-addable' }
+    : { userId, emailSent, invited: false, invitationLink: null });
   switch (answer.outcome) {
     case 'notified':
       return placed(await placeNotified(repo, member, byEmail, answer.xtmUserId), answer.emailSent);
@@ -103,7 +99,7 @@ const place = async (
       const userId = await placePending(repo, member.email, byEmail);
       return userId === null
         ? { refusal: 'not-addable' }
-        : { userId, joinTokenHash: rotated, emailSent: answer.emailSent, invited: true, invitationLink: answer.emailSent ? null : (answer.link ?? joinLink) };
+        : { userId, emailSent: answer.emailSent, invited: true, invitationLink: answer.emailSent ? null : answer.link };
     }
     case 'refused':
       return { refusal: 'not-addable' };
@@ -154,7 +150,6 @@ const addMember = async (
   member: MemberToAdd & { email: string },
   scope: Scope,
   sendAccessNotice: SendAccessNotice,
-  linkTo: (path: string) => string,
 ): Promise<AddedMember> => {
   const byEmail = await repo.findAccountByEmail(member.email);
   const known = member.xtmUserId ? await repo.findAccountByXtmSubject(member.xtmUserId) : null;
@@ -167,18 +162,21 @@ const addMember = async (
   if (member.xtmUserId && !known && byEmail?.xtmSubject && byEmail.xtmSubject !== member.xtmUserId) {
     return notAdded(member.email, 'not-addable');
   }
-  const mayBeInvited = !known && byEmail?.xtmSubject == null;
-  const joinToken = mayBeInvited ? newJoinToken() : null;
-  const answer = await sendAccessNotice({ email: member.email, path: joinToken ? joinPath(joinToken) : scope.path, scopeName: scope.noticeName });
-  const placement = await atomic(async ({ repo: tx }) => {
-    const where = await place(tx, member, byEmail, joinToken, answer, linkTo);
+  const answer = await sendAccessNotice({ email: member.email, path: scope.path, scopeName: scope.noticeName });
+  const placeAndJoin = () => atomic(async ({ repo: tx }) => {
+    const where = await place(tx, member, byEmail, answer);
     if ('userId' in where) {
-      if (where.joinTokenHash !== null) {
-        await tx.setJoinTokenHash(where.userId, where.joinTokenHash);
-      }
       await scope.join(tx, where.userId);
     }
     return where;
+  });
+  // Another account took the XTM One id between its lookup and the pending account's link: placed
+  // again, the person lands on that account, and XTM One is not asked a second time.
+  const placement = await placeAndJoin().catch((error: unknown) => {
+    if (!isUniqueViolationOf(error, USERS_XTM_SUBJECT_UNIQUE)) {
+      throw error;
+    }
+    return placeAndJoin();
   });
   if (!('userId' in placement)) {
     return notAdded(member.email, placement.refusal);
@@ -187,18 +185,12 @@ const addMember = async (
   return { userId, result: { email: member.email, added: true, emailSent, invited, invitationLink, refusal: null } };
 };
 
-/**
- * Adds each person and tells each through XTM One, a few at a time, the results in the order given.
- * Someone who may be invited (no account tied to an XTM One id yet) gets a fresh single-use
- * `/join/<token>` link, of which only the hash is kept: XTM One reissues its invitation on each
- * call, so the link it held before stops working anyway.
- */
+/** Adds each person and tells each through XTM One, a few at a time, the results in the order given. */
 const addMembers = async (
   context: { repo: Repo, atomic: Atomic },
   members: Array<MemberToAdd>,
   scope: Scope,
   sendAccessNotice: SendAccessNotice,
-  linkTo: (path: string) => string,
 ): Promise<Array<AddedMember>> => {
   const people = normalized(members);
   const added: Array<AddedMember> = [];
@@ -207,7 +199,7 @@ const addMembers = async (
     while (next < people.length) {
       const index = next;
       next += 1;
-      added[index] = await addMember(context, people[index], scope, sendAccessNotice, linkTo);
+      added[index] = await addMember(context, people[index], scope, sendAccessNotice);
     }
   };
   await Promise.all(Array.from({ length: Math.min(NOTICE_CONCURRENCY, people.length) }, worker));
@@ -229,7 +221,6 @@ export const membersService = defineService(
     members: Array<MemberToAdd>,
     groupIds: Array<string>,
     sendAccessNotice: SendAccessNotice,
-    linkTo: (path: string) => string,
   ) => {
     const tenantId = requireClientTenantId(eventOrigin);
     // Before XTM One is asked anything: a refused write would come only after the person was told.
@@ -251,7 +242,7 @@ export const membersService = defineService(
         await tx.addTenantMembership(tenantId, userId);
         await tx.addGroupMemberships(uniqueGroupIds, userId);
       },
-    }, sendAccessNotice, linkTo);
+    }, sendAccessNotice);
     const actor = await repo.findActorName(originUserId(eventOrigin) ?? '') ?? '';
     for (const { userId } of added) {
       if (userId !== null) {
@@ -272,7 +263,6 @@ export const membersService = defineService(
     members: Array<MemberToAdd>,
     platformGroupIds: Array<string>,
     sendAccessNotice: SendAccessNotice,
-    linkTo: (path: string) => string,
   ) => {
     if (!await deps.platformCapabilities.hasPlatformCapability(PlatformCapability_ManageUsers)) {
       throw newError('Adding platform members requires the MANAGE_USERS platform capability');
@@ -288,7 +278,7 @@ export const membersService = defineService(
       noticeName,
       path: PLATFORM_SCOPE_PATH,
       join: (tx, userId) => tx.addPlatformGroupMemberships(uniqueGroupIds, userId),
-    }, sendAccessNotice, linkTo);
+    }, sendAccessNotice);
     const actor = await repo.findActorName(originUserId(eventOrigin) ?? '') ?? '';
     for (const { userId } of added) {
       if (userId !== null) {

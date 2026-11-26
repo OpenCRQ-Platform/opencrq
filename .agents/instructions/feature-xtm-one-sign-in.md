@@ -10,13 +10,18 @@ administrator, whom OpenCRQ takes as its super administrator.
 
 ## Accounts
 
-- An account is the XTM One user it was created for: `users.xtm_subject` holds the ID token's
-  `sub`, and the sign-in (`xtm-sign-in-routes.ts`, `decideSignIn`) and XTM One's per-user JWTs
-  (`xtm-one-auth.ts`) both look an account up by it, never by email alone: the one other way in is
-  a pending account's own join link (below).
+- An account is the XTM One user it is tied to: `users.xtm_subject` holds the ID token's `sub`,
+  and the sign-in (`xtm-sign-in-routes.ts`, `decideSignIn`) and XTM One's per-user JWTs
+  (`xtm-one-auth.ts`) both look an account up by it.
+- A pending account (no `xtm_subject`: a person added before OpenCRQ knew their XTM One id) is taken by the first sign-in whose email is its
+  own, whatever the case (`auth.linkPendingAccount`, in `findLinkedAccount`), in one conditional
+  update on `xtm_subject is null`; when it links nothing, the `sub` is looked up again, so two
+  first callbacks of one person both sign in to the account. `users.email` is unique whatever its
+  case (`users_email_unique`, on `lower(email)`), so an email names at most one account. XTM One owns the email: whether a user
+  may change it unverified is its concern, not OpenCRQ's.
 - An XTM One user OpenCRQ does not know gets an account at their first sign-in, with no password
-  and no tenant (`auth.createXtmAccount`). One whose email another account holds, whatever its
-  case, is refused with `conflict`.
+  and no tenant (`auth.createXtmAccount`). One whose email an account tied to another XTM One user
+  holds, whatever its case, is refused with `conflict`.
 - Every sign-in applies what XTM One says (`auth.applyXtmSignIn`): `is_super_admin`, set and
   cleared, the full name (`name`), the title (`xtm_title`, or `GET /api/v1/auth/me` with the per-user
   JWT when the claim is absent, `fetchXtmOneTitle`), `last_signed_in_at`, and the email unless
@@ -41,15 +46,17 @@ asks XTM One, as the acting administrator (`buildXtmOneHeaders`), to tell them (
 
 | XTM One answers | OpenCRQ |
 |---|---|
-| `notified`, an XTM One id | the account of that id, else the pending account holding the email, else a new one tied to that id |
-| `invited` | a pending account: the email, no `xtm_subject`, no password; when XTM One could not email the invitation, the drawer shows its own registration `link` to send ("Copy the invitation link"), else the person's join link, never the access link, which leads nowhere without an XTM One account |
+| `notified`, an XTM One id | the account of that id, else the pending account holding the email, which takes that id (`members.linkPendingAccount`), else a new one tied to that id |
+| `invited` | a pending account: the email, no `xtm_subject`, no password; when XTM One could not email the invitation, the drawer shows its own registration `link` to send ("Copy the invitation link"), never the access link, which leads nowhere without an XTM One account |
 | 403, or 404 for a typed email | nothing for that email: `not-addable`, "cannot be added here" |
 | 409: an invitation no platform made (an XTM One administrator's own) is pending for the email | nothing for that email, and XTM One leaves that invitation as it is: "an XTM One invitation is already pending" |
 | 404, 429, an outage, for an email whose account is already tied to an XTM One id | added by that id, the email marked not sent ("Copy the access link"); the XTM One id the caller sent is never trusted, so anyone else is refused |
 
-Whoever ends on a pending account is told as an invitation is, whatever XTM One answered: a pending
-account is reached only through its join link, so when no email went out the drawer gives that
-link, and the generic access link would end on a conflict. XTM One's super administrators are marked
+The notice's `path` is the scope's own (`/<tenantId>`, or the platform's), for everyone: an invited
+person creates their XTM One account, then signs in and takes their pending account by its email.
+`/join/<token>` (front), the path of invitations sent before, only starts the sign-in and ignores
+the token.
+XTM One's super administrators are marked
 "Already a member" in both scopes and left out by the service, with no notice and no row: they hold
 every right from the claim, and a membership written here would outlive it. An email whose account
 is tied to another XTM One user is refused as `not-addable` too, the code XTM One's refusal to
@@ -64,19 +71,6 @@ refused caller never makes XTM One email anyone; the policies on `tenant_users`,
 `platform_group_users` stay the floor. The in-app notification (`member-added`) follows the commit;
 its stored title is English, and the front renders it from its `data` in the reader's language, a
 tenant's linking to that tenant.
-
-A pending account is linked by its join link only. Whenever the person may be invited (no account
-tied to an XTM One id holds the email), the notice's `path` is `/join/<token>`, a fresh random token
-of which `users.join_token_hash` keeps the SHA-256: XTM One sends the person there after
-registration, and links there in its access email. `/join/<token>` (front) goes to
-`/api/auth/xtm/login?join=<token>`, which carries the token in the flow cookie through XTM One. At
-the callback, after the `sub` lookup, `auth.linkPendingAccount` gives the `sub` to the account whose
-hash matches, which has no `xtm_subject` and whose email is the ID token's (case-insensitive), and
-clears the hash, in one conditional update; when it links nothing, the `sub` is looked up again
-(`findLinkedAccount`), so two callbacks of one link both sign in to the account. Never the email alone: XTM One lets a user change their
-own email unverified, so a match on it would let anyone take a pending account. A token that matches
-nothing is ignored, and the sign-in goes on as without one. Neither the token nor the path is
-logged.
 
 ## The super administrator bypass
 

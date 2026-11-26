@@ -30,7 +30,6 @@ export type { DependencyRuleNamePatternKind, SupportToPrimaryLinkSource } from '
 export { CRITERION_GRADE_VALUES, IMPACT_HOP_FACTOR, wholePercent } from './modules/risk-scenarios/impact';
 export { SCENARIO_FINDING_SEVERITY_FILTERS, SCENARIO_FINDING_SORT_KEYS, SCENARIO_FINDING_STATE_FILTERS, SCENARIO_SUPPORTING_ASSET_SORT_KEYS } from './modules/risk-scenarios/scenario-lists';
 export type { ScenarioFindingSortKey, ScenarioSupportingAssetSortKey } from './modules/risk-scenarios/scenario-lists';
-export { JOIN_TOKEN_PATTERN } from './modules/members/join-token-pattern';
 export { CLIENT_ERROR_REPORT_LIMITS } from './client-error-reports';
 export type { ClientErrorKind, ClientErrorReport } from './client-error-reports';
 export { ATTACK_PATH_KEYS } from './modules/attack-outcomes/data/attack-paths-data';

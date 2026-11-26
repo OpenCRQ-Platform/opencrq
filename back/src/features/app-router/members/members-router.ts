@@ -111,7 +111,7 @@ export const membersRouter = (securityProcedure: TenantSecurityProcedure, db: Dr
     .output(AddMembersResultSchema)
     .mutation(async ({ input, ctx: { services, origin, user } }) => {
       const xtmOne = await xtmOneAs(db, requireUser(user));
-      const added = await services.withOrigin(origin).members.addTenantMembers(input.members, input.groupIds, xtmOne.send, xtmOne.linkTo);
+      const added = await services.withOrigin(origin).members.addTenantMembers(input.members, input.groupIds, xtmOne.send);
       return { scopeName: added.scopeName, accessLink: xtmOne.linkTo(added.scopePath), results: added.results };
     }),
 });
@@ -134,7 +134,7 @@ export const platformMembersRouter = (securityProcedure: PlatformSecurityProcedu
     .output(AddMembersResultSchema)
     .mutation(async ({ input, ctx: { services, origin, user } }) => {
       const xtmOne = await xtmOneAs(db, requireUser(user));
-      const added = await services.withOrigin(origin).members.addPlatformMembers(input.members, input.platformGroupIds, xtmOne.send, xtmOne.linkTo);
+      const added = await services.withOrigin(origin).members.addPlatformMembers(input.members, input.platformGroupIds, xtmOne.send);
       return { scopeName: added.scopeName, accessLink: xtmOne.linkTo(added.scopePath), results: added.results };
     }),
 });

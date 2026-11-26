@@ -34,12 +34,13 @@ export const membersRepository = defineRepository({
     return rows[0] ?? null;
   },
   /** `false` when another account took the email or the XTM One id meanwhile. */
-  insertAccount: async ({ db }, account: { id: string, email: string, xtmSubject: string | null, name: string | null, joinTokenHash: string | null }) =>
+  insertAccount: async ({ db }, account: { id: string, email: string, xtmSubject: string | null, name: string | null }) =>
     (await db.insert(users).values(account).onConflictDoNothing().returning()).length > 0,
-  /** On a pending account only: once it has an XTM One id, no link can ever reach it again. */
-  setJoinTokenHash: async ({ rawDb }, userId: string, joinTokenHash: string) => {
+  /** On a pending account only, so one an XTM One user already took keeps its id: `false` when none was tied. */
+  linkPendingAccount: async ({ rawDb }, userId: string, xtmSubject: string) => {
     // eslint-disable-next-line no-restricted-syntax -- the pending account is not the caller's own row, which the users policy alone lets a client update
-    await rawDb().update(users).set({ joinTokenHash }).where(and(eq(users.id, userId), isNull(users.xtmSubject)));
+    const linked = await rawDb().update(users).set({ xtmSubject }).where(and(eq(users.id, userId), isNull(users.xtmSubject))).returning({ id: users.id });
+    return linked.length > 0;
   },
   findTenantName: async ({ db, views }, tenantId: string) => {
     const rows = await db.select({ name: views.tenants.name }).from(views.tenants).where(eq(views.tenants.id, tenantId)).limit(1);

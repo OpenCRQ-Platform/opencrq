@@ -2,7 +2,6 @@ import { uuidv7 } from 'uuidv7';
 import type { XtmProfile } from './repository';
 import { isUniqueViolationOf } from '../../db/pg-errors';
 import { defineService } from '../../registry';
-import { hashJoinToken } from '../members/join-token';
 import { authRepository } from './repository';
 
 const USERS_XTM_SUBJECT_UNIQUE = 'users_xtm_subject_unique';
@@ -15,17 +14,16 @@ export const authService = defineService(
   invalidateSession: ({ repo }, sessionId: string) => repo.invalidateSession(sessionId),
   // Cross-platform authentication (XTM One): the account of the XTM One user a verified JWT names (`sub`).
   getUserByXtmSubject: ({ repo }, subject: string) => repo.getUserByXtmSubject(subject),
-  // Sign in with XTM One: an account is the XTM One user (`sub`) it was created for, never an email.
+  // Sign in with XTM One: an account is the XTM One user (`sub`) it is tied to.
   getUserIdByXtmSubject: ({ repo }, subject: string) => repo.getUserIdByXtmSubject(subject),
   isEmailTaken: ({ repo }, email: string) => repo.isEmailTaken(email),
   /**
-   * The pending account an invitation link names, taken by the XTM One user signing in through it
-   * with the account's email: `null` for any other token or email, and for an XTM One user that
-   * already has an account.
+   * The pending account holding this email, taken by the XTM One user signing in with it: `null`
+   * when no pending account holds it, and for an XTM One user that already has an account.
    */
-  linkPendingAccount: async ({ repo }, xtmSubject: string, joinToken: string, email: string) => {
+  linkPendingAccount: async ({ repo }, xtmSubject: string, email: string) => {
     try {
-      return await repo.linkPendingAccount(xtmSubject, hashJoinToken(joinToken), email);
+      return await repo.linkPendingAccount(xtmSubject, email);
     } catch (error) {
       if (isUniqueViolationOf(error, USERS_XTM_SUBJECT_UNIQUE)) {
         return null;

@@ -9,7 +9,6 @@ const UsersSchema = createSelectSchema(users).omit({
   passwordHash: true,
   xtmSubject: true,
   lastSignedInAt: true,
-  joinTokenHash: true,
 });
 
 const NamedRefSchema = z.object({ id: z.string(), name: z.string() });

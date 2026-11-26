@@ -2,7 +2,6 @@ import { createHash, randomBytes } from 'node:crypto';
 import { errors, jwtVerify } from 'jose';
 import type { JWTPayload } from 'jose';
 import { z } from 'zod';
-import { JOIN_TOKEN_PATTERN } from '@app/module/client';
 import { newError } from '@app/utils';
 import type { XtmOneSettings } from '../xtm-one/xtm-one-config';
 import { isXtmOneIssuer } from '../xtm-one/xtm-one-identity';
@@ -117,18 +116,15 @@ export interface SignInFlow {
   verifier: string,
   /** Where to land once signed in: a path on this platform. */
   redirect: string,
-  /** The single-use token of the invitation link the sign-in started from, which only this browser's cookie carries. */
-  joinToken?: string,
 }
 
 const randomToken = (): string => randomBytes(32).toString('base64url');
 
-export const newSignInFlow = (redirect: string, joinToken?: string): SignInFlow => ({
+export const newSignInFlow = (redirect: string): SignInFlow => ({
   state: randomToken(),
   nonce: randomToken(),
   verifier: randomToken(),
   redirect,
-  ...(joinToken !== undefined && { joinToken }),
 });
 
 const flowSchema = z.object({
@@ -136,7 +132,6 @@ const flowSchema = z.object({
   nonce: z.string().min(1),
   verifier: z.string().min(1),
   redirect: z.string(),
-  joinToken: z.string().regex(JOIN_TOKEN_PATTERN).optional(),
 });
 
 /** The flow travels in a short-lived HttpOnly cookie: random values only this browser holds. */
@@ -333,39 +328,36 @@ export type SignInDecision =
   | { action: 'refuse', reason: SignInRefusal };
 
 export interface LocalAccounts {
-  /** The account of this XTM One user (`sub`). */
+  /** The account of this XTM One user (`sub`), the pending account they just took included. */
   linkedUserId: string | null,
-  /** Whether another account holds the ID token's email, case-insensitive. */
+  /** Whether an account tied to another XTM One user holds the ID token's email, case-insensitive. */
   emailTaken: boolean,
 }
 
 export interface AccountLookups {
   getUserIdByXtmSubject: (xtmSubject: string) => Promise<string | null>,
-  linkPendingAccount: (xtmSubject: string, joinToken: string, email: string) => Promise<string | null>,
+  linkPendingAccount: (xtmSubject: string, email: string) => Promise<string | null>,
 }
 
 /**
- * The account of the XTM One user `sub`, else the pending account their join link names, which it
- * then holds. A link that links nothing is read again by `sub`: two callbacks of one link (two tabs)
- * both find no account first, and the one that links second must find the account the first linked.
+ * The account of the XTM One user `sub`, else the pending account holding their email, which it
+ * then holds. A pending account that links nothing is read again by `sub`: two first callbacks of
+ * one person (two tabs) both find no account first, and the one that links second must find the
+ * account the first linked.
  */
 export const findLinkedAccount = async (
   auth: AccountLookups,
   claims: { sub: string, email: string },
-  joinToken: string | undefined,
-): Promise<string | null> => {
-  const linked = await auth.getUserIdByXtmSubject(claims.sub);
-  if (linked !== null || joinToken === undefined) {
-    return linked;
-  }
-  return await auth.linkPendingAccount(claims.sub, joinToken, claims.email) ?? await auth.getUserIdByXtmSubject(claims.sub);
-};
+): Promise<string | null> => (
+  await auth.getUserIdByXtmSubject(claims.sub)
+  ?? await auth.linkPendingAccount(claims.sub, claims.email)
+  ?? await auth.getUserIdByXtmSubject(claims.sub)
+);
 
 /**
- * Who the verified XTM One user is here: the account created for their `sub`, or the pending
- * account their invitation link opened (see `auth.linkPendingAccount`), never one found by email
- * alone, which an XTM One user can change. An XTM One user OpenCRQ does not know gets an account,
- * with access to nothing, unless their email belongs to another account.
+ * Who the verified XTM One user is here: the account tied to their `sub`. An XTM One user OpenCRQ
+ * does not know gets an account, with access to nothing, unless their email belongs to an account
+ * tied to another XTM One user.
  */
 export const decideSignIn = ({ linkedUserId, emailTaken }: LocalAccounts): SignInDecision => {
   if (linkedUserId) {

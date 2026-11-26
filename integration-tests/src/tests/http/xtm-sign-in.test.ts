@@ -10,7 +10,6 @@ import { encodeSignInFlow, resetXtmDiscoveries } from '@app/back/src/features/xt
 import { registerXtmSignInRoutes } from '@app/back/src/features/xtm-sign-in/xtm-sign-in-routes';
 import { getSessionCookieName } from '@app/back/src/trpc';
 import type * as Logger from '@app/back/src/utils/logger';
-import { hashJoinToken } from '@app/module';
 import { sql } from 'drizzle-orm';
 import { fastify } from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -165,8 +164,8 @@ describe('Sign in with XTM One (HTTP)', () => {
   const flowCookieName = (state: string) => `${getSessionCookieName()}::xtm_sign_in.${state.slice(0, 16)}`;
 
   /** The login route: where it sends the browser, and the flow cookie it leaves. */
-  const startSignIn = async (redirect = '/risks', join?: string) => {
-    const query = new URLSearchParams({ redirect, ...(join !== undefined && { join }) });
+  const startSignIn = async (redirect = '/risks') => {
+    const query = new URLSearchParams({ redirect });
     const login = await app.inject({ method: 'GET', url: `/api/auth/xtm/login?${query}`, headers: { host: PLATFORM_HOST } });
     const authorize = new URL(String(login.headers.location));
     const state = String(authorize.searchParams.get('state'));
@@ -264,8 +263,8 @@ describe('Sign in with XTM One (HTTP)', () => {
       expect(await countOf('users')).toBe(1);
     });
 
-    it('should never find an account by its email: an unknown XTM One user with an email another account holds is refused', async () => {
-      const { userId } = await createUser(db, 'Jane@Example.com');
+    it('should never take an account tied to another XTM One user by its email: an unknown XTM One user with that email is refused', async () => {
+      const userId = await linkedUser('Jane@Example.com', 'xtm-user-1');
 
       const result = await signIn({ sub: 'xtm-user-2', email: 'jane@example.com' });
 
@@ -273,7 +272,7 @@ describe('Sign in with XTM One (HTTP)', () => {
       expect(result.location).toBe('/login?xtm_sign_in_error=conflict&redirect=%2Frisks');
       expect(result.session).toBeUndefined();
       expect(await accountOf('xtm-user-2')).toBeUndefined();
-      expect((await db.execute<{ xtm_subject: string | null }>(sql`SELECT xtm_subject FROM users WHERE id = ${userId}`)).rows[0].xtm_subject).toBeNull();
+      expect(await accountOf('xtm-user-1')).toMatchObject({ id: userId });
       expect(logWarn).toHaveBeenCalledWith(expect.stringMatching(/email of another account/), { sub: 'xtm-user-2' });
     });
 
@@ -363,112 +362,59 @@ describe('Sign in with XTM One (HTTP)', () => {
     });
   });
 
-  describe('pending account of an invitation', () => {
-    const TOKEN = `${'a'.repeat(21)}_${'B'.repeat(21)}`;
-
-    /** An account `members.addTenantMembers` leaves for someone XTM One invited: an email and its join link's hash. */
-    const pendingAccount = async (email: string, token = TOKEN) => {
+  describe('pending account', () => {
+    /** An account with no XTM One id: someone XTM One invited, or an account from before sign-in through XTM One. */
+    const pendingAccount = async (email: string) => {
       const { userId } = await createUser(db, email);
-      await db.execute(sql`UPDATE users SET password_hash = NULL, join_token_hash = ${hashJoinToken(token)} WHERE id = ${userId}`);
+      await db.execute(sql`UPDATE users SET password_hash = NULL WHERE id = ${userId}`);
       return userId;
     };
 
-    const joinTokenHashOf = async (userId: string): Promise<string | null> => (
-      await db.execute<{ join_token_hash: string | null }>(sql`SELECT join_token_hash FROM users WHERE id = ${userId}`)
-    ).rows[0].join_token_hash;
-
-    const signInThroughJoin = async (claims: Record<string, unknown>, token = TOKEN) => finishSignIn(await startSignIn('/', token), claims);
-
-    it('should give the pending account the XTM One id of the sign-in that comes back through its join link with its email, and spend the token', async () => {
+    it('should give the pending account the XTM One id of the first sign-in with its email, whatever its case', async () => {
       const userId = await pendingAccount('jane@acme.com');
 
-      const result = await signInThroughJoin({ sub: 'xtm-jane', email: 'Jane@acme.com', name: 'Jane Martin' });
+      const result = await signIn({ sub: 'xtm-jane', email: 'Jane@acme.com', name: 'Jane Martin' });
 
       expect(result.session).toBeTruthy();
-      expect(result.location).toBe('/');
+      expect(result.location).toBe('/risks');
       expect(await accountOf('xtm-jane')).toMatchObject({ id: userId, name: 'Jane Martin' });
-      expect(await joinTokenHashOf(userId)).toBeNull();
       expect(await countOf('users')).toBe(1);
+      expect(logWarn).not.toHaveBeenCalled();
     });
 
-    it('should not link it by its email alone, without its token', async () => {
+    it('should link it once: another XTM One user signing in with its email later is refused', async () => {
       const userId = await pendingAccount('jane@acme.com');
+      await signIn({ sub: 'xtm-jane', email: 'jane@acme.com' });
 
-      const result = await signIn({ sub: 'xtm-jane', email: 'jane@acme.com' });
-
-      expect(new URL(result.location, PLATFORM_URL).searchParams.get('xtm_sign_in_error')).toBe('conflict');
-      expect(await accountOf('xtm-jane')).toBeUndefined();
-      expect(await joinTokenHashOf(userId)).toBe(hashJoinToken(TOKEN));
-    });
-
-    it('should not link it with its token and another email, which gets an account of its own with no tenant', async () => {
-      const userId = await pendingAccount('jane@acme.com');
-
-      const result = await signInThroughJoin({ sub: 'xtm-mallory', email: 'mallory@acme.com' });
-
-      expect(result.session).toBeTruthy();
-      expect(await accountOf('xtm-mallory')).toMatchObject({ email: 'mallory@acme.com' });
-      expect((await accountOf('xtm-mallory'))?.id).not.toBe(userId);
-      expect(await joinTokenHashOf(userId)).toBe(hashJoinToken(TOKEN));
-    });
-
-    it('should not link it with another token', async () => {
-      const userId = await pendingAccount('jane@acme.com');
-
-      const result = await signInThroughJoin({ sub: 'xtm-jane', email: 'jane@acme.com' }, 'z'.repeat(43));
-
-      expect(new URL(result.location, PLATFORM_URL).searchParams.get('xtm_sign_in_error')).toBe('conflict');
-      expect(await joinTokenHashOf(userId)).toBe(hashJoinToken(TOKEN));
-    });
-
-    it('should link it once: its spent token links no later sign-in', async () => {
-      await pendingAccount('jane@acme.com');
-      await signInThroughJoin({ sub: 'xtm-jane', email: 'jane@acme.com' });
-
-      const again = await signInThroughJoin({ sub: 'xtm-other', email: 'jane@acme.com' });
+      const again = await signIn({ sub: 'xtm-other', email: 'jane@acme.com' });
 
       expect(new URL(again.location, PLATFORM_URL).searchParams.get('xtm_sign_in_error')).toBe('conflict');
+      expect(await accountOf('xtm-jane')).toMatchObject({ id: userId });
       expect(await accountOf('xtm-other')).toBeUndefined();
     });
 
-    it('should never relink an account that has an XTM One id, even through a link with its email', async () => {
-      const userId = await linkedUser('jane@acme.com', 'xtm-jane');
-      await db.execute(sql`UPDATE users SET join_token_hash = ${hashJoinToken(TOKEN)} WHERE id = ${userId}`);
+    it('should let two tabs of the same person sign in to it, the second finding the account the first linked', async () => {
+      const userId = await pendingAccount('jane@acme.com');
+      const first = await startSignIn('/risks');
+      const second = await startSignIn('/assets');
 
-      const result = await signInThroughJoin({ sub: 'xtm-impostor', email: 'jane@acme.com' });
+      const a = await finishSignIn(first, { sub: 'xtm-jane', email: 'jane@acme.com' });
+      const b = await finishSignIn(second, { sub: 'xtm-jane', email: 'jane@acme.com' });
 
-      expect(new URL(result.location, PLATFORM_URL).searchParams.get('xtm_sign_in_error')).toBe('conflict');
+      expect(a.session && b.session).toBeTruthy();
       expect(await accountOf('xtm-jane')).toMatchObject({ id: userId });
-      expect(await accountOf('xtm-impostor')).toBeUndefined();
+      expect(await countOf('users')).toBe(1);
     });
 
-    it('should sign in an XTM One user who already has an account as that account, leaving the link unspent', async () => {
+    it('should sign in an XTM One user who already has an account as that account, leaving a pending account with their new email alone', async () => {
       const linkedId = await linkedUser('marc@acme.com', 'xtm-marc');
       const pendingId = await pendingAccount('jane@acme.com');
 
-      const result = await signInThroughJoin({ sub: 'xtm-marc', email: 'jane@acme.com' });
+      const result = await signIn({ sub: 'xtm-marc', email: 'jane@acme.com' });
 
       expect(result.session).toBeTruthy();
-      expect(await accountOf('xtm-marc')).toMatchObject({ id: linkedId });
-      expect(await joinTokenHashOf(pendingId)).toBe(hashJoinToken(TOKEN));
-    });
-
-    it('should drop a malformed token, signing in as if there were none', async () => {
-      const started = await startSignIn('/', 'not a token');
-
-      const result = await finishSignIn(started, { sub: 'xtm-jane', email: 'jane@acme.com' });
-
-      expect(result.session).toBeTruthy();
-      expect(await accountOf('xtm-jane')).toMatchObject({ email: 'jane@acme.com' });
-    });
-
-    it('should never write the token in a log', async () => {
-      await pendingAccount('jane@acme.com');
-
-      await signInThroughJoin({ sub: 'xtm-jane', email: 'jane.other@acme.com' });
-      await signIn({ sub: 'xtm-jane-2', email: 'jane@acme.com' });
-
-      expect(JSON.stringify(logWarn.mock.calls)).not.toContain(TOKEN);
+      expect(await accountOf('xtm-marc')).toMatchObject({ id: linkedId, email: 'marc@acme.com' });
+      expect((await db.execute<{ xtm_subject: string | null }>(sql`SELECT xtm_subject FROM users WHERE id = ${pendingId}`)).rows[0].xtm_subject).toBeNull();
     });
   });
 
