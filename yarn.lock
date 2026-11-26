@@ -99,7 +99,7 @@ __metadata:
     "@types/node": "npm:26.6.6"
     "@types/react": "npm:19.3.0"
     "@types/react-dom": "npm:19.3.0"
-    "@uiw/react-md-editor": "npm:4.2.3"
+    "@uiw/react-md-editor": "npm:4.2.4"
     "@vitejs/plugin-react": "npm:6.3.0"
     apexcharts: "npm:4.7.0"
     babel-plugin-react-compiler: "npm:1.0.0"
@@ -7759,9 +7759,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@uiw/react-md-editor@npm:4.2.3":
-  version: 4.2.3
-  resolution: "@uiw/react-md-editor@npm:4.2.3"
+"@uiw/react-md-editor@npm:4.2.4":
+  version: 4.2.4
+  resolution: "@uiw/react-md-editor@npm:4.2.4"
   dependencies:
     "@babel/runtime": "npm:^7.14.6"
     "@uiw/react-markdown-preview": "npm:^5.2.0"
@@ -7770,7 +7770,7 @@ __metadata:
   peerDependencies:
     react: ">=16.8.0"
     react-dom: ">=16.8.0"
-  checksum: 10c0/93895f08a00b01a02835575dae68f34e9d8ba4b86b15e60a90ab2c1700a5ef8d90c00cef0fca11f10d6d4c7ca998d8b8cbf0327ec6007b98705a0e0e38718a7c
+  checksum: 10c0/03060e603044829d1b37122aea10b0f866bbf9ffaeb34099f43f252ac4b90a16f8781c155cdecd1d8283553929fceeecaf17049c47a0fc8aee0cad8e12794e8c
   languageName: node
   linkType: hard
 
