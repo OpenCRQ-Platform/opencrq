@@ -4,6 +4,7 @@ import type { Logger as StatementObserver } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { PreservedMetadata, SeedSkipReason } from './db-reset';
+import type { DatabaseStatistics } from './db-table-metrics';
 import { config } from '../../config';
 import { seedDefaultThreatsLoad } from '../../features/default-threats/default-threats-dataset';
 import { sleep } from '../../utils';
@@ -44,6 +45,7 @@ registerDbPoolMetrics(controlPool, CONTROL_POOL_NAME);
 instrumentPoolAcquisition(controlPool, CONTROL_POOL_NAME);
 
 let statementObserver: StatementObserver | null = null;
+let tableMetricsRegistered = false;
 
 const drizzleDB = drizzle(pool, { schema, logger: { logQuery: (query, params) => statementObserver?.logQuery(query, params) } });
 const controlDB = drizzle(controlPool, { schema });
@@ -222,7 +224,6 @@ export const dbEngine = registerEngine({
     pool,
     checkConnection: () => reconnecting.size === 0,
     readTableStatistics: () => readDatabaseStatistics(pool),
-    registerTableMetrics: registerDbTableMetrics,
   },
   registrationApi: {
     // Every statement the shared instance issues, transactions included, reaches the observer.
@@ -231,6 +232,14 @@ export const dbEngine = registerEngine({
         throw newError('The shared database instance already has a statement observer');
       }
       statementObserver = observer;
+    },
+    // A second registration would add a second set of callbacks to the same instruments.
+    registerTableMetrics: (lastReading: () => DatabaseStatistics | null): void => {
+      if (tableMetricsRegistered) {
+        throw newError('The database table metrics are already registered');
+      }
+      tableMetricsRegistered = true;
+      registerDbTableMetrics(lastReading);
     },
   },
 });

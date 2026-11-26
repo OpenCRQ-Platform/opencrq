@@ -131,7 +131,7 @@ The size, row counts and update counters of every table of the application schem
 
 | Variable                                                  | Required | Default Value | Architectural/Functional Impact | OpenCTI equivalent |
 |:----------------------------------------------------------|:--------:|:--------------|:--------------------------------|:-------------------|
-| `TELEMETRY__OBSERVABILITY__TABLE_STATISTICS__ENABLED`     |    No    | `false`       | Turns the database table metric families on. The process running the job runtime then reads `pg_stat_user_tables` and the size functions on a timer; a scrape or a push never queries the database. | None |
+| `TELEMETRY__OBSERVABILITY__TABLE_STATISTICS__ENABLED`     |    No    | `false`       | Turns the database table metric families on, and needs `TELEMETRY__OBSERVABILITY__PROMETHEUS__ENABLED` or `TELEMETRY__OBSERVABILITY__OTLP__METRICS__ENABLED`: the process refuses to boot otherwise. The `worker` process in `split`, `main` in `monolith`, then reads `pg_stat_user_tables` and the size functions on a timer; a scrape or a push never queries the database. | None |
 | `TELEMETRY__OBSERVABILITY__TABLE_STATISTICS__INTERVAL_MS` |    No    | `300000`      | Interval between two readings, at least `10000`. Every reading runs the size functions on every table of the schema. | None |
 
 #### Pyroscope

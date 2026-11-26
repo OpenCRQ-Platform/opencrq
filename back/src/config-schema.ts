@@ -162,6 +162,10 @@ export const featureConfigs = {
         switchedOff(pyroscopeFields),
         pyroscopeFields.extend({ enabled: z.literal(true) }),
       ]).default({ enabled: false }),
+    }).refine(({ table_statistics, prometheus, otlp }) => !table_statistics.enabled || prometheus.enabled || otlp.metrics.enabled, {
+      // No metric reader is installed then, so every reading would size each table for nothing.
+      error: 'table_statistics needs prometheus or otlp.metrics enabled',
+      path: ['table_statistics', 'enabled'],
     }).prefault({}),
   }),
 

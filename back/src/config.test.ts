@@ -70,7 +70,7 @@ describe('pmConfig telemetry.observability', () => {
   });
 
   it('reads the table statistics every five minutes when they are enabled with no interval set', async () => {
-    rawConfig = withObservability({ table_statistics: { enabled: true } });
+    rawConfig = withObservability({ prometheus: { enabled: true }, table_statistics: { enabled: true } });
 
     const { pmConfig } = await import('./config');
     const tableStatistics = pmConfig.telemetry?.observability.table_statistics;
@@ -115,11 +115,28 @@ describe('pmConfig telemetry.observability', () => {
     ['an empty Pyroscope address', { pyroscope: { enabled: true, server_address: '' } }],
     ['a malformed transport beside a valid one', { otlp: { metrics: { enabled: true, exporter: 'http://127.0.0.1:4317' } }, prometheus: { enabled: true, port: 'not-a-number' } }],
     ['a non-object otlp block', { otlp: null }],
-    ['a table statistics interval short enough to read the size of every table every few seconds', { table_statistics: { enabled: true, interval_ms: '1000' } }],
+    ['a table statistics interval short enough to read the size of every table every few seconds', { prometheus: { enabled: true }, table_statistics: { enabled: true, interval_ms: '1000' } }],
   ])('refuses %s, and fails fast rather than booting with a configuration that disables the endpoint silently', async (_case, observability) => {
     rawConfig = withObservability(observability);
 
     await expect(import('./config')).rejects.toThrow();
+  });
+
+  it('refuses the table statistics while no metric transport is on, naming the setting, rather than reading them for no reader', async () => {
+    rawConfig = withObservability({ table_statistics: { enabled: true } });
+
+    await expect(import('./config')).rejects.toThrow(/table_statistics/);
+  });
+
+  it.each([
+    ['prometheus', { prometheus: { enabled: true } }],
+    ['an OTLP metrics push', { otlp: { metrics: { enabled: true, exporter: 'http://127.0.0.1:4317' } } }],
+  ])('boots with the table statistics beside %s', async (_case, transport) => {
+    rawConfig = withObservability({ ...transport, table_statistics: { enabled: true } });
+
+    const { pmConfig } = await import('./config');
+
+    expect(pmConfig.telemetry?.observability.table_statistics.enabled).toBe(true);
   });
 
   it('throws a schema validation error, not a raw TypeError, when telemetry itself is a non-object value', async () => {

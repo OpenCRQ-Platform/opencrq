@@ -1,3 +1,4 @@
+import type { DatabaseStatistics } from '../../engines/db';
 import { config } from '../../config';
 import { dbEngine } from '../../engines/db';
 import { registerEngine } from '../../engines/engines-manager';
@@ -5,8 +6,8 @@ import { createLogger } from '../../utils/logger';
 
 const { logTrace, logFromError } = createLogger({ engine: 'db-table-metrics' });
 
-// Only the job-running entrypoints (worker and monolith) import this module: the statistics are the
-// database's, the same from every process, so one process per container reads them.
+// Only the worker and monolith entrypoints import this module: the statistics are the database's,
+// the same from every process, so one process per container reads them.
 registerEngine({
   key: 'db-table-metrics',
   start: (signal) => {
@@ -16,7 +17,7 @@ registerEngine({
     }
     const intervalMs = tableStatistics.interval_ms;
 
-    let lastReading: Awaited<ReturnType<typeof dbEngine.readTableStatistics>> | null = null;
+    let lastReading: DatabaseStatistics | null = null;
     dbEngine.registerTableMetrics(() => lastReading);
 
     let reading: Promise<void> | null = null;

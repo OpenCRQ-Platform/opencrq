@@ -5,10 +5,11 @@ import { describe, expect, it } from 'vitest';
 
 // An engine's only public surface is the <engine>Engine object returned by
 // registerEngine(). Its barrel must therefore re-export exactly that object and
-// nothing else — no `export *` (which would leak any internal export) and no
-// extra named exports. Combined with the no-restricted-imports rule (see
-// local.eslint.config.ts) that forbids deep imports, the barrel is the engine's
-// whole public API. This test is the guard against that surface widening.
+// nothing else at runtime — no `export *` (which would leak any internal export)
+// and no extra named exports. A type-only re-export carries no runtime value, so
+// it may name the types of that object's API. Combined with the
+// no-restricted-imports rule (see local.eslint.config.ts) that forbids deep
+// imports, the barrel is the engine's whole public API. This test is the guard against that surface widening.
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe('engine barrels expose only their <engine>Engine object', () => {
@@ -22,7 +23,7 @@ describe('engine barrels expose only their <engine>Engine object', () => {
     const exportLines = source
       .split('\n')
       .map((line) => line.trim())
-      .filter((line) => line.startsWith('export'));
+      .filter((line) => line.startsWith('export') && !line.startsWith('export type '));
     expect(exportLines).toEqual([`export { ${surface} } from './${engine}-engine';`]);
   });
 });
