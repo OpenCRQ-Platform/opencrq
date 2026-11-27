@@ -99,6 +99,59 @@
     - back/src/features/opencti/opencti-marking-sync.ts
     - front/src/features/members/**
 
+- doc: docs/content/opencrq/administer/telemetry.md
+  watches:
+    - back/src/engines/filigran-telemetry/**
+    - back/src/features/filigran-telemetry/index.ts
+    - back/src/utils/platform-identity.ts
+    - back/src/features/app-router/app-router-feature.ts
+    - back/src/features/xtm-one/xtm-one-feature.ts
+    - back/src/index-http.ts
+    - back/src/index-worker.ts
+    - back/src/config-schema.ts
+    - back/config/default.json
+    - docker/prod.dockerfile
+
+- doc: docs/content/opencrq/concepts/architecture.md
+  watches:
+    - back/src/index-pm.ts
+    - back/src/utils/health-check.ts
+    - back/src/utils/process-profile.ts
+    - back/src/utils/pg-connection.ts
+    - back/src/config-schema.ts
+    - back/config/default.json
+    - docker/prod.dockerfile
+    - back/src/engines/job-runtime/execution-loop.ts
+    - back/src/engines/job-runtime/job-runtime-engine.ts
+    - module/src/modules/workers/**
+    - back/src/features/edition/entitlement-ipc.ts
+    - back/src/features/xtm-one/xtm-one-registration.ts
+    - back/src/features/job-scheduler/daily-schedule.ts
+    - back/src/features/job-scheduler/connector-schedule.ts
+    - back/src/features/app-router/connectors/connector-configuration.ts
+    - module/src/modules/default-threats/service.ts
+    - back/src/features/microsoft-graph/graph-auth.ts
+    - back/src/tracing.ts
+    - back/src/utils/metrics-server.ts
+
+- doc: docs/content/opencrq/concepts/asset-consolidation.md
+  watches:
+    - module/src/modules/supporting-assets/asset-identity.ts
+    - module/src/modules/supporting-assets/identity-families.ts
+    - module/src/modules/supporting-assets/matchers/**
+    - module/src/modules/supporting-assets/normalization.ts
+    - module/src/modules/supporting-assets/attribute-resolution.ts
+    - module/src/modules/supporting-assets/source-authority.ts
+    - module/src/modules/supporting-assets/criticality-lift.ts
+    - module/src/modules/supporting-assets/derived-name.ts
+    - module/src/modules/supporting-assets/evidence-activity.ts
+    - module/src/modules/supporting-assets/tag-merge.ts
+    - module/src/modules/supporting-assets/tag-resolution.ts
+    - module/src/modules/supporting-assets/asset-group-resolution.ts
+    - module/src/modules/supporting-assets/owner-resolution.ts
+    - module/src/modules/supporting-assets/constants.ts
+    - back/src/features/app-router/supporting-assets/supporting-assets-router.ts
+
 - doc: docs/content/opencrq/concepts/how-risk-is-quantified.md
   watches:
     - module/src/modules/crq-indicators/engine/attack-run-constants.ts
@@ -674,36 +727,23 @@
 
 # Shared deployment pages: only their OpenCRQ sections are this repository's to check.
 
-- doc: docs/content/deploy/install/opencrq.md
-  watches:
-    - back/src/config-schema.ts
-    - back/config/default.json
-    - docker/prod.dockerfile
-    - back/src/index-pm.ts
-    - back/src/trpc.ts
-    - back/src/features/xtm-one/xtm-one-client.ts
-    - back/src/features/xtm-one/xtm-one-registration.ts
-    - back/src/features/xtm-sign-in/xtm-sign-in.ts
-    - back/src/features/xtm-sign-in/xtm-sign-in-routes.ts
-    - back/src/engines/db/initial-tenant.ts
-    - module/src/modules/tenants/repository.ts
-    - back/src/features/deployment-integrations/**
-    - back/src/engines/filigran-telemetry/filigran-telemetry-engine.ts
-    - back/src/features/app-router/connectors/connector-configuration.ts
-    - front/src/routes/login.tsx
-    - front/src/routes/_auth/index.tsx
-
 - doc: docs/content/deploy/configure/opencrq.md
   watches:
     - back/src/config-schema.ts
     - back/src/config.ts
     - back/config/default.json
+    - docker/prod.dockerfile
     - back/src/index-pm.ts
     - back/src/boot/boot.ts
     - back/src/utils/pg-connection.ts
     - back/src/engines/db/db-engine.ts
     - back/src/engines/db/db-reset.ts
     - back/src/engines/db/initial-tenant.ts
+    - module/src/modules/tenants/repository.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in-routes.ts
+    - front/src/routes/login.tsx
+    - front/src/routes/_auth/index.tsx
     - back/src/engines/http-server/http-server-engine.ts
     - back/src/utils/trpc-telemetry.ts
     - back/src/clients/file-storage/**
@@ -793,6 +833,12 @@
 - doc: docs/content/deploy/operate/backup.md
   watches:
     - back/src/config-schema.ts
+
+- doc: docs/content/deploy/operate/harden.md
+  watches:
+    - back/src/features/xtm-sign-in/xtm-sign-in.ts
+    - back/src/features/xtm-sign-in/xtm-sign-in-routes.ts
+    - front/src/routes/_auth/index.tsx
 
 - doc: docs/content/deploy/plan/sizing.md
   watches:
