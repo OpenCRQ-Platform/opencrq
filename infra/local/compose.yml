@@ -86,7 +86,7 @@ services:
 
   # Catches every email XTM One sends: nothing leaves the machine, and the web UI shows them.
   mailpit:
-    image: axllent/mailpit:v1.33.1
+    image: axllent/mailpit:v1.34.0
     container_name: app-dev-mailpit${INSTANCE_SUFFIX:-}
     ports:
       - '${MAILPIT_PORT:-8025}:8025'
