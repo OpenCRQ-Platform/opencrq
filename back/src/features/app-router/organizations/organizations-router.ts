@@ -99,7 +99,7 @@ const AssetMappingEventAssetSchema = z.object({
 const mappingIds = z.array(z.uuid())
   .transform((ids) => [...new Set(ids)])
   .refine((ids) => ids.length <= MAX_SCOPE_MAPPING_IDS, {
-    message: `A single save maps or unmaps at most ${MAX_SCOPE_MAPPING_IDS} assets`,
+    error: `A single save maps or unmaps at most ${MAX_SCOPE_MAPPING_IDS} assets`,
   });
 
 const hasCoherentReactionTime = (data: {
@@ -132,7 +132,7 @@ const UpdateOrganizationInputSchema = OrganizationValuesSchema
       removed: mappingIds.optional(),
     }).optional(),
   })
-  .refine(hasCoherentReactionTime, { message: REACTION_TIME_MESSAGE });
+  .refine(hasCoherentReactionTime, { error: REACTION_TIME_MESSAGE });
 
 /**
  * `name` is required here and optional on update because the column is NOT NULL, and it is
@@ -141,7 +141,7 @@ const UpdateOrganizationInputSchema = OrganizationValuesSchema
  */
 const CreateOrganizationInputSchema = OrganizationValuesSchema
   .extend({ id: z.uuid(), name: z.string().trim().min(1), mappedAssetIds: mappingIds.optional() })
-  .refine(hasCoherentReactionTime, { message: REACTION_TIME_MESSAGE });
+  .refine(hasCoherentReactionTime, { error: REACTION_TIME_MESSAGE });
 
 /**
  * A save races the lists its ids were picked from, so these refusals are the caller's to act on,

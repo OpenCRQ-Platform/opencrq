@@ -121,7 +121,7 @@ const EstimateEntrySchema = z.discriminatedUnion('action', [SetEstimateEntrySche
     }
     return true;
   },
-  { message: 'Values must satisfy: min ≤ likely ≤ max' },
+  { error: 'Values must satisfy: min ≤ likely ≤ max' },
 );
 
 export const scenarioLossEstimatesRouter = (procedure: TenantProcedure) => router({

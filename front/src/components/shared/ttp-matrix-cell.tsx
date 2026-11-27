@@ -245,8 +245,7 @@ const TechniqueLabel = ({ externalId, name, highlight }: {
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="font-mono txt-mini text-muted-foreground">{externalId}</span>
             <span
-              className={cn('txt-sub-content', highlight!.outlined === true && 'text-muted-foreground')}
-              style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2rem' }}
+              className={cn('txt-sub-content line-clamp-2 min-h-8', highlight!.outlined === true && 'text-muted-foreground')}
             >
               {name}
             </span>

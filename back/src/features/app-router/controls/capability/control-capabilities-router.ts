@@ -218,11 +218,11 @@ export const controlCapabilitiesRouter = (authProcedure: TenantProcedure) => rou
       comment: z.string().trim().min(1).nullable(),
     }).refine(
       (input) => input.strengthRung !== null || input.coverageBucket !== null || input.reattach.length > 0,
-      { message: 'A save names at least one axis' },
+      { error: 'A save names at least one axis' },
     ).refine(
       (input) => !(input.reattach.includes('strength') && input.strengthRung !== null)
         && !(input.reattach.includes('coverage') && input.coverageBucket !== null),
-      { message: 'An axis is either declared or re-attached' },
+      { error: 'An axis is either declared or re-attached' },
     ))
     .output(z.void())
     .mutation(async ({ input, ctx: { services, origin, tenantId } }) => {
@@ -339,7 +339,7 @@ export const controlCapabilitiesRouter = (authProcedure: TenantProcedure) => rou
       comment: z.string().trim().min(1).nullable(),
     }).refine(
       (input) => input.strengthRung !== null || input.coverageBucket !== null,
-      { message: 'A declaration names at least one dimension' },
+      { error: 'A declaration names at least one dimension' },
     ))
     .output(z.void())
     .mutation(async ({ input, ctx: { services, origin, tenantId } }) => {

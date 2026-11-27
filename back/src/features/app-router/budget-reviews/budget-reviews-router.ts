@@ -192,7 +192,7 @@ const BudgetReviewLineValuesSchema = z.object({
   amortizationYears: z.number().int().min(1).max(BUDGET_LINE_MAX_AMORTIZATION_YEARS).nullable().optional(),
   capabilityIds: z.array(z.uuid()).refine(
     (capabilityIds) => new Set(capabilityIds).size === capabilityIds.length,
-    { message: 'A budget line names each control once' },
+    { error: 'A budget line names each control once' },
   ),
 });
 

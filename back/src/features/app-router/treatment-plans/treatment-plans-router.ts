@@ -75,12 +75,12 @@ const MoveTargetsSchema = z.object({
   targetCoverageBucket: CoverageEnum.nullable(),
 }).refine(
   (move) => move.targetStrengthRung !== null || move.targetCoverageBucket !== null,
-  { message: 'A move must set a target strength or coverage' },
+  { error: 'A move must set a target strength or coverage' },
 );
 
 const MovesSchema = z.array(MoveTargetsSchema).refine(
   (moves) => new Set(moves.map((move) => move.capabilityId)).size === moves.length,
-  { message: 'A plan takes one move per capability' },
+  { error: 'A plan takes one move per capability' },
 );
 
 // The scope is taken on create and left off the update: a plan's targets and the figures priced
