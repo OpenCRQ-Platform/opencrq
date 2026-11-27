@@ -66,7 +66,7 @@
     "jiti": "2.7.0",
     "knip": "6.48.0",
     "pg": "8.23.1",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "typescript-eslint": "8.74.0",
     "yaml": "2.9.1"
   }
