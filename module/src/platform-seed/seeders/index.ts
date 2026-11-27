@@ -32,5 +32,6 @@ import './large-estate-seeder';
 import './treatment-plans-seeder';
 import './budget-reviews-seeder';
 import './compliance-assessments-seeder';
+import './requirements-seeder';
 // Last of the estate: the mixtures read every scenario and threat the estate seeders wrote.
 import './crq-mixtures-seeder';

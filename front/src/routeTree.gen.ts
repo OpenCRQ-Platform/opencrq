@@ -30,6 +30,7 @@ import { Route as AuthTenantIdChar123OrganizationIdChar125IntegrationsRouteRoute
 import { Route as AuthTenantIdChar123OrganizationIdChar125NotificationsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/notifications/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/primary-assets/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125ProfileRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/profile'
+import { Route as AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/requirements/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scenarios/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scopes/route'
 import { Route as AuthTenantIdChar123OrganizationIdChar125SearchRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/search'
@@ -79,6 +80,7 @@ import { Route as AuthTenantIdChar123OrganizationIdChar125IntegrationsDeployedRo
 import { Route as AuthTenantIdChar123OrganizationIdChar125NotificationsIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/notifications/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/primary-assets/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsPrimaryAssetIdRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/primary-assets/$primaryAssetId'
+import { Route as AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/requirements/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScenariosIndexRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scenarios/index'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScenariosRiskScenarioIdRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scenarios/$riskScenarioId'
 import { Route as AuthTenantIdChar123OrganizationIdChar125RiskScenariosCreateRouteImport } from './routes/_auth/$tenantId/{-$organizationId}/risk-scenarios/create'
@@ -366,6 +368,12 @@ const AuthTenantIdChar123OrganizationIdChar125ProfileRoute =
   AuthTenantIdChar123OrganizationIdChar125ProfileRouteImport.update({
     id: '/profile',
     path: '/profile',
+    getParentRoute: () => AuthTenantIdChar123OrganizationIdChar125RouteRoute,
+  } as any)
+const AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRoute =
+  AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteImport.update({
+    id: '/requirements',
+    path: '/requirements',
     getParentRoute: () => AuthTenantIdChar123OrganizationIdChar125RouteRoute,
   } as any)
 const AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRoute =
@@ -733,6 +741,13 @@ const AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsPrimaryAssetIdRoute =
         AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRoute,
     } as any,
   )
+const AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRoute =
+  AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRoute,
+  } as any)
 const AuthTenantIdChar123OrganizationIdChar125RiskScenariosIndexRoute =
   AuthTenantIdChar123OrganizationIdChar125RiskScenariosIndexRouteImport.update({
     id: '/',
@@ -2239,6 +2254,7 @@ export interface FileRoutesByFullPath {
   '/$tenantId/{-$organizationId}/integrations': typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/notifications': typeof AuthTenantIdChar123OrganizationIdChar125NotificationsRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/primary-assets': typeof AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteWithChildren
+  '/$tenantId/{-$organizationId}/requirements': typeof AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/risk-scenarios': typeof AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/risk-scopes': typeof AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteWithChildren
   '/$tenantId/{-$organizationId}/settings': typeof AuthTenantIdChar123OrganizationIdChar125SettingsRouteRouteWithChildren
@@ -2302,6 +2318,7 @@ export interface FileRoutesByFullPath {
   '/$tenantId/{-$organizationId}/integrations/': typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsIndexRoute
   '/$tenantId/{-$organizationId}/notifications/': typeof AuthTenantIdChar123OrganizationIdChar125NotificationsIndexRoute
   '/$tenantId/{-$organizationId}/primary-assets/': typeof AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsIndexRoute
+  '/$tenantId/{-$organizationId}/requirements/': typeof AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRoute
   '/$tenantId/{-$organizationId}/risk-scenarios/': typeof AuthTenantIdChar123OrganizationIdChar125RiskScenariosIndexRoute
   '/$tenantId/{-$organizationId}/risk-scopes/': typeof AuthTenantIdChar123OrganizationIdChar125RiskScopesIndexRoute
   '/$tenantId/{-$organizationId}/settings/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsIndexRoute
@@ -2501,6 +2518,7 @@ export interface FileRoutesByTo {
   '/$tenantId/{-$organizationId}/integrations': typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsIndexRoute
   '/$tenantId/{-$organizationId}/notifications': typeof AuthTenantIdChar123OrganizationIdChar125NotificationsIndexRoute
   '/$tenantId/{-$organizationId}/primary-assets': typeof AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsIndexRoute
+  '/$tenantId/{-$organizationId}/requirements': typeof AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRoute
   '/$tenantId/{-$organizationId}/risk-scenarios': typeof AuthTenantIdChar123OrganizationIdChar125RiskScenariosIndexRoute
   '/$tenantId/{-$organizationId}/risk-scopes': typeof AuthTenantIdChar123OrganizationIdChar125RiskScopesIndexRoute
   '/$tenantId/{-$organizationId}/settings': typeof AuthTenantIdChar123OrganizationIdChar125SettingsIndexRoute
@@ -2653,6 +2671,7 @@ export interface FileRoutesById {
   '/_auth/$tenantId/{-$organizationId}/integrations': typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/notifications': typeof AuthTenantIdChar123OrganizationIdChar125NotificationsRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/primary-assets': typeof AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteWithChildren
+  '/_auth/$tenantId/{-$organizationId}/requirements': typeof AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/risk-scenarios': typeof AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/risk-scopes': typeof AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteWithChildren
   '/_auth/$tenantId/{-$organizationId}/settings': typeof AuthTenantIdChar123OrganizationIdChar125SettingsRouteRouteWithChildren
@@ -2716,6 +2735,7 @@ export interface FileRoutesById {
   '/_auth/$tenantId/{-$organizationId}/integrations/': typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsIndexRoute
   '/_auth/$tenantId/{-$organizationId}/notifications/': typeof AuthTenantIdChar123OrganizationIdChar125NotificationsIndexRoute
   '/_auth/$tenantId/{-$organizationId}/primary-assets/': typeof AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsIndexRoute
+  '/_auth/$tenantId/{-$organizationId}/requirements/': typeof AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRoute
   '/_auth/$tenantId/{-$organizationId}/risk-scenarios/': typeof AuthTenantIdChar123OrganizationIdChar125RiskScenariosIndexRoute
   '/_auth/$tenantId/{-$organizationId}/risk-scopes/': typeof AuthTenantIdChar123OrganizationIdChar125RiskScopesIndexRoute
   '/_auth/$tenantId/{-$organizationId}/settings/': typeof AuthTenantIdChar123OrganizationIdChar125SettingsIndexRoute
@@ -2895,6 +2915,7 @@ export interface FileRouteTypes {
     | '/$tenantId/{-$organizationId}/integrations'
     | '/$tenantId/{-$organizationId}/notifications'
     | '/$tenantId/{-$organizationId}/primary-assets'
+    | '/$tenantId/{-$organizationId}/requirements'
     | '/$tenantId/{-$organizationId}/risk-scenarios'
     | '/$tenantId/{-$organizationId}/risk-scopes'
     | '/$tenantId/{-$organizationId}/settings'
@@ -2958,6 +2979,7 @@ export interface FileRouteTypes {
     | '/$tenantId/{-$organizationId}/integrations/'
     | '/$tenantId/{-$organizationId}/notifications/'
     | '/$tenantId/{-$organizationId}/primary-assets/'
+    | '/$tenantId/{-$organizationId}/requirements/'
     | '/$tenantId/{-$organizationId}/risk-scenarios/'
     | '/$tenantId/{-$organizationId}/risk-scopes/'
     | '/$tenantId/{-$organizationId}/settings/'
@@ -3157,6 +3179,7 @@ export interface FileRouteTypes {
     | '/$tenantId/{-$organizationId}/integrations'
     | '/$tenantId/{-$organizationId}/notifications'
     | '/$tenantId/{-$organizationId}/primary-assets'
+    | '/$tenantId/{-$organizationId}/requirements'
     | '/$tenantId/{-$organizationId}/risk-scenarios'
     | '/$tenantId/{-$organizationId}/risk-scopes'
     | '/$tenantId/{-$organizationId}/settings'
@@ -3308,6 +3331,7 @@ export interface FileRouteTypes {
     | '/_auth/$tenantId/{-$organizationId}/integrations'
     | '/_auth/$tenantId/{-$organizationId}/notifications'
     | '/_auth/$tenantId/{-$organizationId}/primary-assets'
+    | '/_auth/$tenantId/{-$organizationId}/requirements'
     | '/_auth/$tenantId/{-$organizationId}/risk-scenarios'
     | '/_auth/$tenantId/{-$organizationId}/risk-scopes'
     | '/_auth/$tenantId/{-$organizationId}/settings'
@@ -3371,6 +3395,7 @@ export interface FileRouteTypes {
     | '/_auth/$tenantId/{-$organizationId}/integrations/'
     | '/_auth/$tenantId/{-$organizationId}/notifications/'
     | '/_auth/$tenantId/{-$organizationId}/primary-assets/'
+    | '/_auth/$tenantId/{-$organizationId}/requirements/'
     | '/_auth/$tenantId/{-$organizationId}/risk-scenarios/'
     | '/_auth/$tenantId/{-$organizationId}/risk-scopes/'
     | '/_auth/$tenantId/{-$organizationId}/settings/'
@@ -3683,6 +3708,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/$tenantId/{-$organizationId}/profile'
       preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125ProfileRouteImport
+      parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RouteRoute
+    }
+    '/_auth/$tenantId/{-$organizationId}/requirements': {
+      id: '/_auth/$tenantId/{-$organizationId}/requirements'
+      path: '/requirements'
+      fullPath: '/$tenantId/{-$organizationId}/requirements'
+      preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteImport
       parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RouteRoute
     }
     '/_auth/$tenantId/{-$organizationId}/risk-scenarios': {
@@ -4027,6 +4059,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$tenantId/{-$organizationId}/primary-assets/$primaryAssetId'
       preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsPrimaryAssetIdRouteImport
       parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRoute
+    }
+    '/_auth/$tenantId/{-$organizationId}/requirements/': {
+      id: '/_auth/$tenantId/{-$organizationId}/requirements/'
+      path: '/'
+      fullPath: '/$tenantId/{-$organizationId}/requirements/'
+      preLoaderRoute: typeof AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRouteImport
+      parentRoute: typeof AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRoute
     }
     '/_auth/$tenantId/{-$organizationId}/risk-scenarios/': {
       id: '/_auth/$tenantId/{-$organizationId}/risk-scenarios/'
@@ -5802,6 +5841,21 @@ const AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteWithChildre
     AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteChildren,
   )
 
+interface AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteChildren {
+  AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRoute: typeof AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRoute
+}
+
+const AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteChildren: AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteChildren =
+  {
+    AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRoute:
+      AuthTenantIdChar123OrganizationIdChar125RequirementsIndexRoute,
+  }
+
+const AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteWithChildren =
+  AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRoute._addFileChildren(
+    AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteChildren,
+  )
+
 interface AuthTenantIdChar123OrganizationIdChar125RiskScenariosRiskScenarioIdRouteChildren {
   AuthTenantIdChar123OrganizationIdChar125RiskScenariosRiskScenarioIdChangesRoute: typeof AuthTenantIdChar123OrganizationIdChar125RiskScenariosRiskScenarioIdChangesRoute
   AuthTenantIdChar123OrganizationIdChar125RiskScenariosRiskScenarioIdControlsRoute: typeof AuthTenantIdChar123OrganizationIdChar125RiskScenariosRiskScenarioIdControlsRoute
@@ -6573,6 +6627,7 @@ interface AuthTenantIdChar123OrganizationIdChar125RouteRouteChildren {
   AuthTenantIdChar123OrganizationIdChar125IntegrationsRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125IntegrationsRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125NotificationsRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125NotificationsRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteWithChildren
+  AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRouteWithChildren
   AuthTenantIdChar123OrganizationIdChar125SettingsRouteRoute: typeof AuthTenantIdChar123OrganizationIdChar125SettingsRouteRouteWithChildren
@@ -6608,6 +6663,8 @@ const AuthTenantIdChar123OrganizationIdChar125RouteRouteChildren: AuthTenantIdCh
       AuthTenantIdChar123OrganizationIdChar125NotificationsRouteRouteWithChildren,
     AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRoute:
       AuthTenantIdChar123OrganizationIdChar125PrimaryAssetsRouteRouteWithChildren,
+    AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRoute:
+      AuthTenantIdChar123OrganizationIdChar125RequirementsRouteRouteWithChildren,
     AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRoute:
       AuthTenantIdChar123OrganizationIdChar125RiskScenariosRouteRouteWithChildren,
     AuthTenantIdChar123OrganizationIdChar125RiskScopesRouteRoute:

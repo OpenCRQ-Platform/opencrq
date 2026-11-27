@@ -21,6 +21,7 @@ export * from './mitre-attack';
 export * from './controls';
 export * from './business-value-categories';
 export * from './primary-assets';
+export * from './requirements';
 export * from './supporting-assets';
 export * from './asset-dependencies';
 export * from './cve';

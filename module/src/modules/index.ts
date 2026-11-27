@@ -58,6 +58,7 @@ import { connectorsService } from './connectors';
 import { workersService } from './workers';
 import { jobLogsService } from './job-logs';
 import { treatmentPlansService } from './treatment-plans';
+import { requirementsService } from './requirements';
 import { budgetReviewsService } from './budget-reviews';
 import { complianceAssessmentsService } from './compliance-assessments';
 import { globalSearchService } from './global-search';
@@ -121,6 +122,7 @@ export * from './drata';
 export * from './workers';
 export * from './job-logs';
 export * from './treatment-plans';
+export * from './requirements';
 export * from './budget-reviews';
 export * from './compliance-assessments';
 export * from './global-search';
@@ -184,6 +186,7 @@ export const allServiceDefinitions = [
   workersService,
   jobLogsService,
   treatmentPlansService,
+  requirementsService,
   budgetReviewsService,
   complianceAssessmentsService,
   globalSearchService,

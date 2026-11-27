@@ -1235,6 +1235,10 @@ msgstr "{removed, plural, one {−# retiré} other {−# retirés}}"
 msgid "{removedCount, plural, one {# asset removed} other {# assets removed}}"
 msgstr "{removedCount, plural, one {# actif retiré} other {# actifs retirés}}"
 
+#. js-lingui-explicit-id
+msgid "{requirement}, owed to {party}"
+msgstr "{requirement}, envers {party}"
+
 msgid "{resolvedName} resolved. Worst finding: {name}, exploitability {exploitability}."
 msgstr "{resolvedName} résolu. Pire finding : {name}, exploitabilité {exploitability}."
 
@@ -3270,6 +3274,9 @@ msgstr "Fil d'Ariane"
 msgid "breadth"
 msgstr "largeur"
 
+msgid "Breaks"
+msgstr "Enfreint"
+
 msgid "Bridges IoT or OT devices to a network"
 msgstr "Relie des équipements IoT ou OT à un réseau"
 
@@ -3536,6 +3543,12 @@ msgstr "Choisissez un plan, ou créez-en un nouveau."
 
 msgid "Choose a primary asset to see the assets this rule links."
 msgstr "Choisissez un actif primaire pour voir les actifs que cette règle lie."
+
+msgid "Choose at least one loss driver"
+msgstr "Choisissez au moins un inducteur de pertes"
+
+msgid "Choose at least one primary asset or business resource"
+msgstr "Choisissez au moins un actif primaire ou une ressource métier"
 
 msgid "Choose the controls"
 msgstr "Choisir les contrôles"
@@ -4209,6 +4222,9 @@ msgstr "Créer un nouveau rôle de plateforme"
 msgid "Create a new primary asset"
 msgstr "Créer un nouvel actif primaire"
 
+msgid "Create a new requirement"
+msgstr "Créer une exigence"
+
 msgid "Create a new role"
 msgstr "Créer un nouveau rôle"
 
@@ -4617,6 +4633,9 @@ msgstr "Supprimer le rôle plateforme"
 msgid "Delete primary asset"
 msgstr "Supprimer l'actif primaire"
 
+msgid "Delete requirement"
+msgstr "Supprimer l'exigence"
+
 msgid "Delete risk scenario"
 msgstr "Supprimer le scénario de risque"
 
@@ -4937,6 +4956,9 @@ msgstr "ex. 2.0"
 msgid "e.g. 5.0"
 msgstr "ex. 5.0"
 
+msgid "e.g. a customer, a partner, a regulator"
+msgstr "ex. un client, un partenaire, un régulateur"
+
 msgid "e.g. AA:BB:CC:DD:EE:FF"
 msgstr "ex. AA:BB:CC:DD:EE:FF"
 
@@ -4951,6 +4973,9 @@ msgstr "ex. Finance"
 
 msgid "e.g. Global Administrator, Security Reader"
 msgstr "ex. Global Administrator, Security Reader"
+
+msgid "e.g. Hosting availability commitment"
+msgstr "ex. Engagement de disponibilité de l'hébergement"
 
 msgid "Each amount is a ceiling measured on that technique alone. Amounts overlap, so they do not add up across techniques and none of them is a share of the scenario's exposure."
 msgstr "Chaque montant est un plafond mesuré sur cette seule technique. Les montants se recouvrent : ils ne s'additionnent pas d'une technique à l'autre, et aucun n'est une part de la perte annuelle attendue du scénario."
@@ -5017,6 +5042,10 @@ msgstr "Ne rapporte rien au score ici"
 
 msgid "Edit"
 msgstr "Modifier"
+
+#. js-lingui-explicit-id
+msgid "Edit {name}"
+msgstr "Modifier {name}"
 
 msgid "Edit {planName}"
 msgstr "Modifier {planName}"
@@ -5366,6 +5395,9 @@ msgstr "Tous les membres du tenant voient ce que lit le connecteur dans OpenCTI,
 
 msgid "Every pair some capability of the catalogue could contest, minus the pairs at least one of your deployed controls covers on that family."
 msgstr "Toutes les paires qu'une capacité du catalogue pourrait contester, moins les paires qu'au moins un de vos contrôles déployés couvre sur cette famille."
+
+msgid "Every primary asset carrying one of them"
+msgstr "Tout actif primaire qui en porte une"
 
 msgid "Every primary asset is hidden: show one above."
 msgstr "Tous les actifs primaires sont masqués : affichez-en un ci-dessus."
@@ -6588,6 +6620,9 @@ msgstr "Intégrité"
 msgid "Intellectual property"
 msgstr "Propriété intellectuelle"
 
+msgid "Interested party"
+msgstr "Partie intéressée"
+
 msgid "Intermediate"
 msgstr "Intermédiaire"
 
@@ -7146,6 +7181,9 @@ msgstr "Les inducteurs de pertes sont des données de référence de la platefor
 
 msgid "Loss drivers from the catalog"
 msgstr "Inducteurs de pertes du catalogue"
+
+msgid "Loss drivers opened when broken"
+msgstr "Inducteurs de pertes ouverts en cas de manquement"
 
 msgid "Loss Event Frequency"
 msgstr "Fréquence des événements de perte"
@@ -8248,6 +8286,9 @@ msgstr "Aucun inducteur de pertes recommandé"
 
 msgid "No loss drivers are available in this tenant's catalog."
 msgstr "Aucun inducteur de pertes n'est disponible dans le catalogue de ce tenant."
+
+msgid "No loss drivers found"
+msgstr "Aucun inducteur de pertes trouvé"
 
 msgid "No loss drivers yet."
 msgstr "Aucun inducteur de pertes pour l'instant."
@@ -9833,6 +9874,9 @@ msgstr "Actif primaire auquel lier des actifs"
 msgid "Primary asset updated successfully."
 msgstr "Actif primaire mis à jour avec succès."
 
+msgid "Primary assets"
+msgstr "Actifs primaires"
+
 msgid "Primary Assets"
 msgstr "Actifs primaires"
 
@@ -9946,6 +9990,9 @@ msgstr "Familles d'actifs protégées"
 
 msgid "Protected by"
 msgstr "Protégé par"
+
+msgid "Protects"
+msgstr "Protège"
 
 msgid "Provider"
 msgstr "Fournisseur"
@@ -10450,11 +10497,24 @@ msgstr "Rapports"
 msgid "required"
 msgstr "requise"
 
+#. js-lingui-explicit-id
+msgid "Required by {requirements}, which this scenario breaks"
+msgstr "Exigé par {requirements}, que ce scénario enfreint"
+
 msgid "Requirement"
 msgstr "Exigence"
 
 msgid "Requirement {code}"
 msgstr "Exigence {code}"
+
+msgid "Requirement created successfully."
+msgstr "Exigence créée avec succès."
+
+msgid "Requirement deleted successfully."
+msgstr "Exigence supprimée avec succès."
+
+msgid "Requirement updated successfully."
+msgstr "Exigence mise à jour avec succès."
 
 msgid "Requirements"
 msgstr "Exigences"
@@ -11314,6 +11374,9 @@ msgstr "Sélectionner l'exposition"
 
 msgid "Select groups"
 msgstr "Sélectionner des groupes"
+
+msgid "Select loss drivers"
+msgstr "Sélectionner des inducteurs de pertes"
 
 msgid "Select notification"
 msgstr "Sélectionner la notification"
@@ -13521,6 +13584,9 @@ msgstr "Cela supprimera définitivement ce rôle plateforme et le retirera de to
 msgid "This will permanently delete this primary asset and everything attached to it. This action cannot be undone."
 msgstr "Cette action supprimera définitivement cet actif primaire et tout ce qui lui est rattaché. Cette action est irréversible."
 
+msgid "This will permanently delete this requirement. The scenarios that break it stop proposing its loss drivers. This action cannot be undone."
+msgstr "Cette exigence sera définitivement supprimée. Les scénarios qui l'enfreignent ne proposeront plus ses inducteurs de pertes. Cette action est irréversible."
+
 msgid "This will permanently delete this risk scenario and all associated data. This action cannot be undone."
 msgstr "Cette action supprimera définitivement ce scénario de risque et toutes les données associées. Cette action est irréversible."
 
@@ -13655,6 +13721,9 @@ msgstr "Montant du seuil"
 
 msgid "Threshold applied"
 msgstr "Seuil appliqué"
+
+msgid "Tick at least one criterion"
+msgstr "Cochez au moins un critère"
 
 msgid "Tier {tierNumber}"
 msgstr "Palier {tierNumber}"

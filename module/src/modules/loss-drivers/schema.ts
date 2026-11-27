@@ -1,4 +1,4 @@
-import { integer, pgTable, primaryKey, text, uuid } from 'drizzle-orm/pg-core';
+import { integer, pgTable, primaryKey, text, unique, uuid } from 'drizzle-orm/pg-core';
 import type { DwellSensitivity, ScalingVariable } from './data/loss-drivers-constants';
 import { attackOutcomeTenantIsolationPolicy, defineSecurityPolicies, tenantIsolationPolicy } from '../../security';
 import { attackOutcomes } from '../attack-outcomes/schema';
@@ -28,7 +28,9 @@ export const lossDrivers = pgTable('loss_drivers', {
   dwellSensitivity: text('dwell_sensitivity').notNull().$type<DwellSensitivity>(),
   /** The business quantity the driver scales with. */
   scalingVariable: text('scaling_variable').notNull().$type<ScalingVariable>(),
-});
+}, (table) => [
+  unique('loss_drivers_id_tenant_id_uq').on(table.id, table.tenantId),
+]);
 
 defineSecurityPolicies(lossDrivers, tenantIsolationPolicy);
 

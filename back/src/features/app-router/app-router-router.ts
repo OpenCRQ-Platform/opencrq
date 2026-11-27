@@ -53,6 +53,7 @@ import { openctiRouter } from './opencti/opencti-router';
 import { defaultThreatsRouter } from './default-threats/default-threats-router';
 import { drataRouter } from './drata/drata-router';
 import { treatmentPlansRouter } from './treatment-plans';
+import { requirementsRouter } from './requirements';
 import { budgetReviewsRouter } from './budget-reviews';
 import { complianceAssessmentsRouter } from './compliance-assessments';
 import { usersRouter } from './users';
@@ -225,6 +226,7 @@ export const appRouter = (
     controlCapabilities: controlCapabilitiesRouter(authProcedure),
     controlValidation: controlValidationRouter(authProcedure),
     primaryAssets: primaryAssetsRouter(authProcedure),
+    requirements: requirementsRouter(authProcedure),
     supportingAssets: supportingAssetsRouter(authProcedure),
     assetDependencies: assetDependenciesRouter(authProcedure),
     threatRelevanceSettings: threatRelevanceSettingsRouter(tenantSecurityProcedure),

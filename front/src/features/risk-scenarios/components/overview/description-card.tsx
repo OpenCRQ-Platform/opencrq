@@ -4,15 +4,17 @@ import { Trans } from '@lingui/react/macro';
 import type { FunctionComponent } from 'react';
 import { SectionCard } from '../../../../components/shared';
 import { EMPTY_VALUE } from '../../../../utils/empty-value';
+import { BrokenRequirements } from '../../../requirements/components/broken-requirements';
 
 type DescriptionCardProps = {
+  riskScenarioId: string,
   description: string | null,
   primaryAssets: Array<{ id: string, name: string }>,
   attackOutcome: { name: string } | null,
   owner: { name: string | null } | null,
 };
 
-export const DescriptionCard: FunctionComponent<DescriptionCardProps> = ({ description, primaryAssets, attackOutcome, owner }) => (
+export const DescriptionCard: FunctionComponent<DescriptionCardProps> = ({ riskScenarioId, description, primaryAssets, attackOutcome, owner }) => (
   <SectionCard title={t`Description`} cardClassName="p-4">
     {description && <p>{description}</p>}
     <div className="flex flex-wrap items-center gap-4">
@@ -42,6 +44,7 @@ export const DescriptionCard: FunctionComponent<DescriptionCardProps> = ({ descr
         </span>
         {owner?.name ? <Chip label={owner.name} /> : <span className="txt-body2">{EMPTY_VALUE}</span>}
       </div>
+      <BrokenRequirements riskScenarioId={riskScenarioId} />
     </div>
   </SectionCard>
 );

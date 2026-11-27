@@ -1235,6 +1235,10 @@ msgstr "{removed, plural, one {−# removed} other {−# removed}}"
 msgid "{removedCount, plural, one {# asset removed} other {# assets removed}}"
 msgstr "{removedCount, plural, one {# asset removed} other {# assets removed}}"
 
+#. js-lingui-explicit-id
+msgid "{requirement}, owed to {party}"
+msgstr "{requirement}, owed to {party}"
+
 msgid "{resolvedName} resolved. Worst finding: {name}, exploitability {exploitability}."
 msgstr "{resolvedName} resolved. Worst finding: {name}, exploitability {exploitability}."
 
@@ -3270,6 +3274,9 @@ msgstr "Breadcrumb"
 msgid "breadth"
 msgstr "breadth"
 
+msgid "Breaks"
+msgstr "Breaks"
+
 msgid "Bridges IoT or OT devices to a network"
 msgstr "Bridges IoT or OT devices to a network"
 
@@ -3536,6 +3543,12 @@ msgstr "Choose a plan, or create a new one."
 
 msgid "Choose a primary asset to see the assets this rule links."
 msgstr "Choose a primary asset to see the assets this rule links."
+
+msgid "Choose at least one loss driver"
+msgstr "Choose at least one loss driver"
+
+msgid "Choose at least one primary asset or business resource"
+msgstr "Choose at least one primary asset or business resource"
 
 msgid "Choose the controls"
 msgstr "Choose the controls"
@@ -4209,6 +4222,9 @@ msgstr "Create a new platform role"
 msgid "Create a new primary asset"
 msgstr "Create a new primary asset"
 
+msgid "Create a new requirement"
+msgstr "Create a new requirement"
+
 msgid "Create a new role"
 msgstr "Create a new role"
 
@@ -4617,6 +4633,9 @@ msgstr "Delete platform role"
 msgid "Delete primary asset"
 msgstr "Delete primary asset"
 
+msgid "Delete requirement"
+msgstr "Delete requirement"
+
 msgid "Delete risk scenario"
 msgstr "Delete risk scenario"
 
@@ -4937,6 +4956,9 @@ msgstr "e.g. 2.0"
 msgid "e.g. 5.0"
 msgstr "e.g. 5.0"
 
+msgid "e.g. a customer, a partner, a regulator"
+msgstr "e.g. a customer, a partner, a regulator"
+
 msgid "e.g. AA:BB:CC:DD:EE:FF"
 msgstr "e.g. AA:BB:CC:DD:EE:FF"
 
@@ -4951,6 +4973,9 @@ msgstr "e.g. Finance"
 
 msgid "e.g. Global Administrator, Security Reader"
 msgstr "e.g. Global Administrator, Security Reader"
+
+msgid "e.g. Hosting availability commitment"
+msgstr "e.g. Hosting availability commitment"
 
 msgid "Each amount is a ceiling measured on that technique alone. Amounts overlap, so they do not add up across techniques and none of them is a share of the scenario's exposure."
 msgstr "Each amount is a ceiling measured on that technique alone. Amounts overlap, so they do not add up across techniques and none of them is a share of the scenario's exposure."
@@ -5017,6 +5042,10 @@ msgstr "Earns the score nothing here"
 
 msgid "Edit"
 msgstr "Edit"
+
+#. js-lingui-explicit-id
+msgid "Edit {name}"
+msgstr "Edit {name}"
 
 msgid "Edit {planName}"
 msgstr "Edit {planName}"
@@ -5366,6 +5395,9 @@ msgstr "Every member of the tenant sees what the connector reads in OpenCTI, wha
 
 msgid "Every pair some capability of the catalogue could contest, minus the pairs at least one of your deployed controls covers on that family."
 msgstr "Every pair some capability of the catalogue could contest, minus the pairs at least one of your deployed controls covers on that family."
+
+msgid "Every primary asset carrying one of them"
+msgstr "Every primary asset carrying one of them"
 
 msgid "Every primary asset is hidden: show one above."
 msgstr "Every primary asset is hidden: show one above."
@@ -6588,6 +6620,9 @@ msgstr "Integrity"
 msgid "Intellectual property"
 msgstr "Intellectual property"
 
+msgid "Interested party"
+msgstr "Interested party"
+
 msgid "Intermediate"
 msgstr "Intermediate"
 
@@ -7146,6 +7181,9 @@ msgstr "Loss drivers are platform reference data and cannot be edited."
 
 msgid "Loss drivers from the catalog"
 msgstr "Loss drivers from the catalog"
+
+msgid "Loss drivers opened when broken"
+msgstr "Loss drivers opened when broken"
 
 msgid "Loss Event Frequency"
 msgstr "Loss Event Frequency"
@@ -8248,6 +8286,9 @@ msgstr "No loss driver is recommended"
 
 msgid "No loss drivers are available in this tenant's catalog."
 msgstr "No loss drivers are available in this tenant's catalog."
+
+msgid "No loss drivers found"
+msgstr "No loss drivers found"
 
 msgid "No loss drivers yet."
 msgstr "No loss drivers yet."
@@ -9833,6 +9874,9 @@ msgstr "Primary asset to link assets to"
 msgid "Primary asset updated successfully."
 msgstr "Primary asset updated successfully."
 
+msgid "Primary assets"
+msgstr "Primary assets"
+
 msgid "Primary Assets"
 msgstr "Primary Assets"
 
@@ -9946,6 +9990,9 @@ msgstr "Protected asset families"
 
 msgid "Protected by"
 msgstr "Protected by"
+
+msgid "Protects"
+msgstr "Protects"
 
 msgid "Provider"
 msgstr "Provider"
@@ -10450,11 +10497,24 @@ msgstr "Reports"
 msgid "required"
 msgstr "required"
 
+#. js-lingui-explicit-id
+msgid "Required by {requirements}, which this scenario breaks"
+msgstr "Required by {requirements}, which this scenario breaks"
+
 msgid "Requirement"
 msgstr "Requirement"
 
 msgid "Requirement {code}"
 msgstr "Requirement {code}"
+
+msgid "Requirement created successfully."
+msgstr "Requirement created successfully."
+
+msgid "Requirement deleted successfully."
+msgstr "Requirement deleted successfully."
+
+msgid "Requirement updated successfully."
+msgstr "Requirement updated successfully."
 
 msgid "Requirements"
 msgstr "Requirements"
@@ -11314,6 +11374,9 @@ msgstr "Select exposure"
 
 msgid "Select groups"
 msgstr "Select groups"
+
+msgid "Select loss drivers"
+msgstr "Select loss drivers"
 
 msgid "Select notification"
 msgstr "Select notification"
@@ -13521,6 +13584,9 @@ msgstr "This will permanently delete this platform role and remove it from all g
 msgid "This will permanently delete this primary asset and everything attached to it. This action cannot be undone."
 msgstr "This will permanently delete this primary asset and everything attached to it. This action cannot be undone."
 
+msgid "This will permanently delete this requirement. The scenarios that break it stop proposing its loss drivers. This action cannot be undone."
+msgstr "This will permanently delete this requirement. The scenarios that break it stop proposing its loss drivers. This action cannot be undone."
+
 msgid "This will permanently delete this risk scenario and all associated data. This action cannot be undone."
 msgstr "This will permanently delete this risk scenario and all associated data. This action cannot be undone."
 
@@ -13655,6 +13721,9 @@ msgstr "Threshold amount"
 
 msgid "Threshold applied"
 msgstr "Threshold applied"
+
+msgid "Tick at least one criterion"
+msgstr "Tick at least one criterion"
 
 msgid "Tier {tierNumber}"
 msgstr "Tier {tierNumber}"

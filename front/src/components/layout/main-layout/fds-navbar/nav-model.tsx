@@ -173,6 +173,7 @@ const scopeEntries = (tenantId: string, organizationId: string): Array<NavEntry>
     { id: 'treatment-plans', label: t`Treatment Plans`, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/treatment-plans', params })) },
     { id: 'budget-reviews', label: t`Budget Reviews`, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/budget-reviews', params })) },
     { id: 'primary-assets', label: t`Primary Assets`, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/primary-assets', params })) },
+    { id: 'requirements', label: t`Requirements`, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/requirements', params })) },
     { id: 'assets', label: t`Assets`, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/assets', params })) },
     { id: 'findings', label: t`Findings`, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/findings', params })) },
     { id: 'threat-event-frequency', label: t`Threat Event Frequency`, link: scopedLink(linkOptions({ to: '/$tenantId/{-$organizationId}/threat-event-frequency', params })) },

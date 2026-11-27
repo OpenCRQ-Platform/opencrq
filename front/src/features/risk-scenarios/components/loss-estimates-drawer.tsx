@@ -17,7 +17,7 @@ import type { FunctionComponent } from 'react';
 import { useEffect } from 'react';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import type { Control } from 'react-hook-form';
-import type { AutomaticEstimate, DraftEstimateRow, EstimateSource, LossEstimateRow, RecommendationCell } from '../scenario-loss-utils';
+import type { AutomaticEstimate, DraftEstimateRow, DriverRecommendation, EstimateSource, LossEstimateRow, RecommendationCell, RecommendationRequirement } from '../scenario-loss-utils';
 import type { IconButtonGroupItem } from '../../../components/ui/icon-button-group';
 import {
   ComboboxPanel,
@@ -44,6 +44,7 @@ import {
   initialEstimateSource,
   partitionEstimateRows,
   planEstimatesSave,
+  recommendationsOrCatalog,
   reconcileDraftRows,
   sameDraftRow,
   sumEstimateTotals,
@@ -77,6 +78,7 @@ interface EstimateRowEditorProps {
   catalogRow: LossEstimateRow,
   automatic: AutomaticEstimate | undefined,
   viaCells: ReadonlyArray<RecommendationCell>,
+  viaRequirements: ReadonlyArray<RecommendationRequirement>,
   savedMeanwhile: DraftEstimateRow | undefined,
   onSourceChange: (source: EstimateSource) => void,
   onUseSaved: () => void,
@@ -86,7 +88,7 @@ interface EstimateRowEditorProps {
 const formatEstimate = (value: string) => (value === '' ? <EmptyValue /> : formatDollar(Number(value)));
 
 const EstimateRowEditor: FunctionComponent<EstimateRowEditorProps> = ({
-  control, index, row, catalogRow, automatic, viaCells, savedMeanwhile, onSourceChange, onUseSaved, onRemove,
+  control, index, row, catalogRow, automatic, viaCells, viaRequirements, savedMeanwhile, onSourceChange, onUseSaved, onRemove,
 }) => {
   const effective = getEffectiveValues(row, automatic);
   const isAuto = row.source === 'auto';
@@ -110,7 +112,7 @@ const EstimateRowEditor: FunctionComponent<EstimateRowEditorProps> = ({
       <div className={ROW_GRID_CLASSNAME}>
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate">{catalogRow.lossDriverName}</span>
-          <LossDriverInfo lossDriverName={catalogRow.lossDriverName} description={catalogRow.lossDriverDescription} viaCells={viaCells} />
+          <LossDriverInfo lossDriverName={catalogRow.lossDriverName} description={catalogRow.lossDriverDescription} viaCells={viaCells} viaRequirements={viaRequirements} />
           <LowConfidenceIndicator lowConfidence={lowConfidence} />
         </div>
         <IconButtonGroup items={sourceItems} value={row.source} onChange={onSourceChange} />
@@ -173,7 +175,7 @@ const EstimateRowEditor: FunctionComponent<EstimateRowEditorProps> = ({
 interface LossEstimatesFormProps {
   riskScenarioId: string,
   catalogRows: Array<LossEstimateRow>,
-  recommendations: Array<{ lossDriverId: string, viaCells: Array<RecommendationCell> }>,
+  recommendations: Array<DriverRecommendation>,
   storedEstimates: Array<{ lossDriverId: string, updatedAt: string }>,
   focusLossDriverId: string | null,
 }
@@ -190,7 +192,7 @@ const LossEstimatesForm: FunctionComponent<LossEstimatesFormProps> = ({
   const automaticById = new Map((automaticEstimates ?? []).map((estimate) => [estimate.lossDriverId, estimate]));
 
   const catalogById = new Map(catalogRows.map((row) => [row.lossDriverId, row]));
-  const viaCellsById = new Map(recommendations.map((entry) => [entry.lossDriverId, entry.viaCells]));
+  const recommendationById = new Map(recommendations.map((entry) => [entry.lossDriverId, entry]));
   const { recommended, notRecommended } = partitionEstimateRows(catalogRows, recommendations);
   const serverRows: Array<DraftEstimateRow> = [...recommended, ...notRecommended].map((row) => ({
     lossDriverId: row.lossDriverId,
@@ -321,7 +323,8 @@ const LossEstimatesForm: FunctionComponent<LossEstimatesFormProps> = ({
           row={row}
           catalogRow={catalogById.get(field.lossDriverId)!}
           automatic={automaticById.get(field.lossDriverId)}
-          viaCells={viaCellsById.get(field.lossDriverId) ?? []}
+          viaCells={recommendationById.get(field.lossDriverId)?.viaCells ?? []}
+          viaRequirements={recommendationById.get(field.lossDriverId)?.viaRequirements ?? []}
           savedMeanwhile={savedMeanwhileById.get(field.lossDriverId)}
           onSourceChange={(source) => changeSource(index, row, source)}
           onUseSaved={() => {
@@ -475,9 +478,7 @@ const LossEstimatesDrawerBody: FunctionComponent<{ riskScenarioId: string, focus
   }
 
   const catalogRows = buildLossEstimateRows(lossDrivers, storedEstimates);
-  const recommendations = recommendation.compatibleCellCount > 0
-    ? recommendation.recommendations
-    : catalogRows.map((row) => ({ lossDriverId: row.lossDriverId, viaCells: [] }));
+  const recommendations = recommendationsOrCatalog(recommendation, catalogRows);
 
   return (
     <LossEstimatesForm

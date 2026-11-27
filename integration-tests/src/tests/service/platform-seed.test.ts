@@ -430,6 +430,26 @@ describe('Platform Seed', () => {
     }
   });
 
+  it('should seed requirements that some scenarios break and one that only an unrelated outcome reaches', async () => {
+    const services = createTestServices(db);
+    const [admin] = await db.select().from(users).where(eq(users.email, TEST_ADMIN_EMAIL));
+    const brokenByScenario = new Map<string, Array<string>>();
+    for (const tenant of await db.select().from(tenants).where(inArray(tenants.name, ['Acme Bank', 'Tarnwick Industries']))) {
+      const scoped = services.withOrigin({ type: 'client', userId: admin.id, tenantId: tenant.id });
+      for (const scenario of await db.select().from(riskScenarios).where(eq(riskScenarios.tenantId, tenant.id))) {
+        const broken = await scoped.requirements.getBrokenRequirements(scenario.id);
+        if (broken.length > 0) {
+          brokenByScenario.set(scenario.name, broken.map((requirement) => requirement.name));
+        }
+      }
+    }
+
+    expect(Object.fromEntries(brokenByScenario)).toEqual({
+      'Data Breach / Exfiltration on Core Banking Database': ['GDPR on customer data'],
+      'Physical Damage / Safety Impact on Manufacturing Control System': ['48-hour delivery'],
+    });
+  });
+
   it('should price every scenario on drivers the activation matrix recommends, bar one deliberate departure', async () => {
     // The demonstration data is what a prospect sees first: a scenario contradicting the model would
     // put the "not recommended" warning on the product's own showcase. Exactly one estimate is kept
