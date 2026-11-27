@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 import type { Logger } from './logger';
-import { buildPgConnectionConfig } from './pg-connection';
+import { buildPgConnectionConfig, checkReleaseOnConnect } from './pg-connection';
 import { sleep } from './utils';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
@@ -43,6 +43,7 @@ export const startPgListenLoop = async <T>({ channel, signal, parse, onNotify, o
     try {
       client = buildClient();
       await client.connect();
+      await checkReleaseOnConnect(client, logger);
       logger.logTrace(`LISTEN ${channel} connection established`);
 
       onNotification = (msg) => {

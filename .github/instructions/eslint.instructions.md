@@ -28,7 +28,7 @@ Rules are **not** defined inline in config files. They live in the `eslint-rules
 | `import.ts` | `importRules` | All | Import ordering, no CommonJS, no duplicates, alphabetical sort |
 | `file-format.ts` | `fileFormat` | All `src/` | KEBAB_CASE for files and folders |
 | `node.ts` | `nodeRules` | All | `node:` prefix for builtins |
-| `app-version.ts` | `appVersionRules` | `.ts/.tsx`, tests and `back/src/utils/platform-version.ts` excepted | `no-restricted-properties` on `APP_VERSION`: the version is read through `imageVersion()` or `platformVersion()` |
+| `app-version.ts` | `appVersionRules` | `.ts/.tsx`, tests and `back/src/utils/platform-version.ts` excepted | `no-restricted-properties` on `APP_VERSION` and `APP_COMMIT_TIME`: the version is read through `imageVersion()`, `platformVersion()` or `imageRelease()` |
 | `lingui.ts` | `linguiRules` | Frontend only | i18n string detection (see [i18n doc](.github/instructions/i18n.instructions.md)) |
 
 `index.ts` re-exports everything as a barrel.

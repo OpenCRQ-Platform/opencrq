@@ -88,6 +88,8 @@ COPY --from=deps /app/node_modules /app/node_modules
 # Last: the version changes on every commit, and every layer after it would be rebuilt.
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
+ARG APP_COMMIT_TIME
+ENV APP_COMMIT_TIME=$APP_COMMIT_TIME
 
 EXPOSE 3002
 EXPOSE 8444
