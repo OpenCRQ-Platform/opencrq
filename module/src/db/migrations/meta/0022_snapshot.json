@@ -1,5 +1,5 @@
 {
-  "id": "9445f61f-288a-46fb-be22-a5911d850203",
+  "id": "9af6ef02-32ca-4179-ab34-4d77d0bc5283",
   "prevId": "353c9bfd-e3be-4cac-bb9c-3ab0bb2a18f6",
   "version": "7",
   "dialect": "postgresql",
@@ -1056,37 +1056,33 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
-        },
-        "join_token_hash": {
-          "name": "join_token_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "columns": [
+            {
+              "expression": "lower(\"email\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "users_email_unique": {
-          "name": "users_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        },
         "users_xtm_subject_unique": {
           "name": "users_xtm_subject_unique",
           "nullsNotDistinct": false,
           "columns": [
             "xtm_subject"
-          ]
-        },
-        "users_join_token_hash_unique": {
-          "name": "users_join_token_hash_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "join_token_hash"
           ]
         }
       },
@@ -17452,180 +17448,6 @@
           "columns": [
             "connector_id",
             "observation_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.openaev_scan_measurements": {
-      "name": "openaev_scan_measurements",
-      "schema": "",
-      "columns": {
-        "tenant_id": {
-          "name": "tenant_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "connector_id": {
-          "name": "connector_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "supporting_asset_id": {
-          "name": "supporting_asset_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "scenario_id": {
-          "name": "scenario_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "scenario_name": {
-          "name": "scenario_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "simulation_id": {
-          "name": "simulation_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "observation_id": {
-          "name": "observation_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "platform_types": {
-          "name": "platform_types",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result": {
-          "name": "result",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "evaluated_at": {
-          "name": "evaluated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "openaev_scan_measurements_asset_idx": {
-          "name": "openaev_scan_measurements_asset_idx",
-          "columns": [
-            {
-              "expression": "supporting_asset_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "evaluated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "openaev_scan_measurements_tenant_evaluated_idx": {
-          "name": "openaev_scan_measurements_tenant_evaluated_idx",
-          "columns": [
-            {
-              "expression": "tenant_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "evaluated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "openaev_scan_measurements_tenant_id_tenants_id_fk": {
-          "name": "openaev_scan_measurements_tenant_id_tenants_id_fk",
-          "tableFrom": "openaev_scan_measurements",
-          "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "openaev_scan_measurements_connector_id_integration_settings_id_fk": {
-          "name": "openaev_scan_measurements_connector_id_integration_settings_id_fk",
-          "tableFrom": "openaev_scan_measurements",
-          "tableTo": "integration_settings",
-          "columnsFrom": [
-            "connector_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "openaev_scan_measurements_supporting_asset_tenant_fk": {
-          "name": "openaev_scan_measurements_supporting_asset_tenant_fk",
-          "tableFrom": "openaev_scan_measurements",
-          "tableTo": "supporting_assets",
-          "columnsFrom": [
-            "supporting_asset_id",
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id",
-            "tenant_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "openaev_scan_measurements_pk": {
-          "name": "openaev_scan_measurements_pk",
-          "columns": [
-            "connector_id",
-            "supporting_asset_id",
-            "scenario_id"
           ]
         }
       },
