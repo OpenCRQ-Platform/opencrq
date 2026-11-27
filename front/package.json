@@ -25,7 +25,7 @@
   "dependencies": {
     "@app/module": "workspace:*",
     "@app/utils": "workspace:*",
-    "@filigran/chatbot": "7.0.0",
+    "@filigran/chatbot": "11.0.0",
     "@filigran/design-system": "1.13.0",
     "@filigran/icon": "0.24.3",
     "@filigran/ui": "1.6.13",
