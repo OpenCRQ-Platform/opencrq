@@ -431,7 +431,7 @@ export const crqIndicatorsRouter = (procedure: TenantProcedure, telemetry: AppRo
       likely: z.number().positive(),
       max: z.number().positive(),
     }).refine((d) => d.likely >= d.min && d.max >= d.likely, {
-      message: 'Must satisfy: min <= likely <= max',
+      error: 'Must satisfy: min <= likely <= max',
     }))
     .mutation(({ input, ctx: { services, origin } }) =>
       services.withOrigin(origin).crqIndicators.upsertTefInput(input)),

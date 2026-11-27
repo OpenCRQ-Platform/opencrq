@@ -46,6 +46,11 @@ developing features or fixing bugs yourself.
 
 * To report a bug or request a feature, open an issue using the provided
   templates.
+* To report a missing or wrong page of the
+  [documentation](https://filigran.io/docs/opencrq/), click **Give us
+  feedback** on it, or open an issue in
+  [FiligranHQ/xtm-docs](https://github.com/FiligranHQ/xtm-docs/issues/new/choose),
+  the site's mirror.
 * You can look through opened issues and help triage them (ask for more
   information, suggest workarounds, suggest labels, etc.).
 * If you are interested in contributing code, fork the repository, create a

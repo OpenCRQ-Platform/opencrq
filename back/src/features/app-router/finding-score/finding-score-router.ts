@@ -590,7 +590,7 @@ export const findingScoreRouter = (procedure: TenantProcedure) => router({
       technique: z.string().regex(TECHNIQUE_EXTERNAL_ID_PATTERN).nullable().default(null),
       search: z.string().trim().min(1).max(FINDINGS_SEARCH_MAX_LENGTH).nullable().default(null),
     }).refine((input) => input.technique === null || input.vulnerability?.kind === 'cve', {
-      message: 'A technique narrows the findings of one CVE',
+      error: 'A technique narrows the findings of one CVE',
       path: ['technique'],
     }))
     .output(pagedOutput(FindingListRowSchema).extend({ unscored: z.number().int() }))

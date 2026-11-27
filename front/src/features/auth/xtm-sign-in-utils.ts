@@ -8,12 +8,6 @@ export const xtmSignInHref = (redirect?: string): string => (
 export type SignInPage = 'redirect' | 'sign-in' | 'unavailable' | 'refused';
 
 /**
- * The sign-in an invitation link starts (`/join/<token>`): the token rides along to XTM One and
- * back, where it lets the person take the account they were invited to, then the landing page.
- */
-export const xtmJoinHref = (token: string): string => `${XTM_SIGN_IN_PATH}?${new URLSearchParams({ join: token }).toString()}`;
-
-/**
  * What a browser with no session sees: why the last attempt did not go through; XTM One at once when
  * a session of this browser ended, since its XTM One session renews it with no click; else the
  * button to sign in with XTM One. Never XTM One on its own after a sign-out or on a first visit:

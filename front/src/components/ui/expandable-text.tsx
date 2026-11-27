@@ -1,5 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { t } from '@lingui/core/macro';
+import { cn } from '../../utils';
 
 interface ExpandableTextProps {
   text: string,
@@ -14,6 +16,7 @@ export const ExpandableText = ({ text, className: classNameProp, lineClamp: line
   const [canExpand, setCanExpand] = useState(false);
   const textRef = useRef<HTMLDivElement>(null);
   const textId = useId();
+  const clampStyle: CSSProperties & { '--line-clamp': number } = { '--line-clamp': lineClamp };
 
   useLayoutEffect(() => {
     const el = textRef.current;
@@ -40,13 +43,8 @@ export const ExpandableText = ({ text, className: classNameProp, lineClamp: line
       <div
         id={textId}
         ref={textRef}
-        className={`${className}`}
-        style={{
-          display: '-webkit-box',
-          WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: isExpanded ? 'unset' : lineClamp,
-          overflow: 'hidden',
-        }}
+        className={cn(isExpanded ? 'line-clamp-none' : 'line-clamp-(--line-clamp)', className)}
+        style={isExpanded ? undefined : clampStyle}
       >
         {text}
       </div>

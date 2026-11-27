@@ -1,7 +1,7 @@
 /** What OpenCRQ asks XTM One for each person added: tell them where to sign in, or invite them. */
 export interface AccessNoticeRequest {
   email: string,
-  /** A path on this platform, which the email links to (`/join/<token>` for someone who may be invited). */
+  /** A path on this platform, which the email links to. */
   path: string,
   /** The place opened to them, as the email names it: a tenant, or the platform groups. */
   scopeName: string,
@@ -46,9 +46,9 @@ export interface MemberAddResult {
   email: string,
   added: boolean,
   emailSent: boolean,
-  /** XTM One invited them, having no XTM One account: the generic access link leads them nowhere. */
+  /** XTM One invited them, having no XTM One account: they sign in once they created it. */
   invited: boolean,
-  /** The invitation's own link, or the pending account's join link, for the administrator to send when XTM One could not email it. */
+  /** The invitation's own link, for the administrator to send when XTM One could not email it. */
   invitationLink: string | null,
   refusal: MemberRefusal | null,
 }

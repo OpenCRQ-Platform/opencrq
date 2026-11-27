@@ -39,14 +39,12 @@ export const authRepository = defineGlobalRepository({
   },
   /**
    * One conditional update, so two sign-ins racing cannot both take the account: the pending
-   * account (no XTM One id) whose link token this is and whose email is the ID token's takes the
-   * `sub`, and the token is spent with it.
+   * account (no XTM One id) whose email is the ID token's, whatever its case, takes the `sub`.
    */
-  linkPendingAccount: async ({ db }, xtmSubject: string, joinTokenHash: string, email: string) => {
+  linkPendingAccount: async ({ db }, xtmSubject: string, email: string) => {
     const linked = await db.update(users)
-      .set({ xtmSubject, joinTokenHash: null })
+      .set({ xtmSubject })
       .where(and(
-        eq(users.joinTokenHash, joinTokenHash),
         isNull(users.xtmSubject),
         eq(sql`lower(${users.email})`, email.toLowerCase()),
       ))

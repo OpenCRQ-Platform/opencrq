@@ -36,4 +36,4 @@ export type DeclaredEstateAnswer = z.infer<typeof declaredEstateAnswerSchema>;
 /** A partial save: the kinds it leaves out keep their answer. */
 export const declaredEstateAnswersSchema = z.array(declaredEstateAnswerSchema)
   .max(DECLARED_ESTATE_KIND_VALUES.length)
-  .refine((answers) => new Set(answers.map((answer) => answer.kind)).size === answers.length, { message: 'A kind is answered twice' });
+  .refine((answers) => new Set(answers.map((answer) => answer.kind)).size === answers.length, { error: 'A kind is answered twice' });

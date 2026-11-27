@@ -44,9 +44,9 @@ export interface MemberAddResult {
   email: string,
   added: boolean,
   emailSent: boolean,
-  /** XTM One invited them, having no XTM One account: only their invitation leads them in. */
+  /** XTM One invited them, having no XTM One account: they sign in once they created it. */
   invited: boolean,
-  /** Their invitation's own link, or their join link, when XTM One could not email it. */
+  /** Their invitation's own link, when XTM One could not email it. */
   invitationLink: string | null,
   refusal: MemberRefusal | null,
 }
