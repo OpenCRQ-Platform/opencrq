@@ -280,8 +280,10 @@ export const createOpenaevClient = (baseUrl: string, token: string, signal: Abor
 
     /**
      * Whether the instance enforces markings, from `GET /api/settings/public` (no capability, no
-     * tenant). An OpenAEV that predates the field or the route, or answers anything but a 2xx with
-     * JSON, counts as markings off: this read never fails the sync.
+     * tenant). Only an answer says it is off: a missing route (404), a missing field or a list
+     * without `MARKING`. Any other failure (5xx, 401, 403, a timeout, a network error, a body that
+     * is not JSON) is rethrown, since reading it as off would sync every marked asset unmarked and
+     * show it to every member.
      */
     readMarkingFeature: async (): Promise<OpenaevMarkingFeature> => {
       try {
@@ -289,7 +291,10 @@ export const createOpenaevClient = (baseUrl: string, token: string, signal: Abor
         const features = raw !== null && typeof raw === 'object' && 'enabled_dev_features' in raw ? raw.enabled_dev_features : undefined;
         return openaevMarkingFeatureOf(features);
       } catch (err) {
-        return { active: false, reason: `OpenAEV public settings unreadable: ${err instanceof Error ? err.message : String(err)}` };
+        if (err instanceof OpenaevNotFoundError) {
+          return { active: false, reason: `OpenAEV serves no public settings: ${err.message}` };
+        }
+        throw err;
       }
     },
 

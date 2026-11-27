@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { TenantProcedure, TenantSecurityProcedure } from '../app-router-router';
+import { MarkingDefinitionNotFoundError, ProtectedMarkingDefinitionError } from '@app/module';
 import { router } from '../../../trpc';
+import { withBadRequestOn, withNotFoundOn } from '../structured-error-conflict';
 
 const MarkingDefinitionSchema = z.object({
   id: z.string(),
@@ -8,7 +10,7 @@ const MarkingDefinitionSchema = z.object({
   definitionType: z.string(),
   definition: z.string(),
   color: z.string().nullable(),
-  order: z.number(),
+  order: z.number().int().nullable(),
 });
 
 const GroupMarkingSchema = MarkingDefinitionSchema.pick({ id: true, stixId: true, definitionType: true, definition: true });
@@ -41,16 +43,16 @@ export const markingDefinitionsRouter = (procedure: TenantProcedure, securityPro
     .input(z.object({ id: z.uuid(), color: z.string().nullable().optional(), order: z.number().int().optional() }))
     .output(z.void())
     .mutation(async ({ input: { id, ...values }, ctx: { services, origin } }) => {
-      await services.withOrigin(origin)
-        .markingDefinitions.updateMarkingDefinition(id, values);
+      await withBadRequestOn(ProtectedMarkingDefinitionError, () => services.withOrigin(origin)
+        .markingDefinitions.updateMarkingDefinition(id, values));
     }),
   // eslint-disable-next-line app/no-unused-router-endpoint -- XTM One and API clients manage markings and clearance by name; the settings screen comes in a later slice
   deleteMarkingDefinition: securityProcedure
     .input(z.object({ id: z.uuid() }))
     .output(z.void())
     .mutation(async ({ input, ctx: { services, origin } }) => {
-      await services.withOrigin(origin)
-        .markingDefinitions.deleteMarkingDefinition(input.id);
+      await withNotFoundOn(MarkingDefinitionNotFoundError, () => withBadRequestOn(ProtectedMarkingDefinitionError, () =>
+        services.withOrigin(origin).markingDefinitions.deleteMarkingDefinition(input.id)));
     }),
   // bounded-by: the tenant's markings, each once
   // eslint-disable-next-line app/no-unused-router-endpoint -- XTM One and API clients manage markings and clearance by name; the settings screen comes in a later slice

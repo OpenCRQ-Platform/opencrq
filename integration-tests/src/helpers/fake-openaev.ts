@@ -72,6 +72,8 @@ export interface FakeGenericAsset {
   url?: string | null,
   /** An OpenAEV user id, as OpenAEV serves it; the name comes from the tenant's users (`setUsers`). */
   linkedPerson?: string | null,
+  /** The OpenAEV marking ids `asset_markings` carries; resolved to STIX ids through `setMarkingDefinitions`. */
+  markings?: Array<string>,
 }
 
 export interface FakeUser {
@@ -93,6 +95,23 @@ export interface FakeEndpoint {
   hostname: string,
   /** Served by `/endpoints/find`: two endpoints sharing a hostname and a MAC address are one machine to the matcher. */
   macAddresses?: Array<string>,
+  /** The OpenAEV marking ids `asset_markings` carries; resolved to STIX ids through `setMarkingDefinitions`. */
+  markings?: Array<string>,
+}
+
+/** One definition `GET /marking_definitions/assignable` serves. */
+export interface FakeMarkingDefinition {
+  id: string,
+  type: string,
+  definition: string,
+  order?: number | null,
+  stixId?: string | null,
+}
+
+/** What `GET /api/settings/public` answers. */
+export interface FakePublicSettings {
+  status: number,
+  body: unknown,
 }
 
 /** What a test says about one attack document; the rest of the wire shape is filled in. */
@@ -268,6 +287,8 @@ export interface FakeOpenaevTenant {
   setGenericAssets: (assets: Array<FakeGenericAsset>) => void,
   /** Replaces the users `POST /users/find` answers for. */
   setUsers: (users: Array<FakeUser>) => void,
+  /** Replaces what `GET /marking_definitions/assignable` serves; until it is called the route is unknown (404), as on an OpenAEV without it. */
+  setMarkingDefinitions: (markings: Array<FakeMarkingDefinition>) => void,
   /** Caps the page size an unfiltered `/assets/search` serves below what the client asks for, to force several pages. */
   assetPageSize: number,
   /** Called once an unfiltered `/assets/search` has served a page, with its index: changing the inventory there changes it during a read. */
@@ -300,6 +321,8 @@ export interface FakeOpenaev {
   url: string,
   token: string,
   addTenant: (id: string, name: string) => FakeOpenaevTenant,
+  /** Replaces the answer of `GET /api/settings/public`; until it is called the route is unknown (404), as on an OpenAEV that predates it. */
+  setPublicSettings: (settings: FakePublicSettings) => void,
   /** Every request received, in order, except the probes. */
   requests: Array<FakeOpenaevRequest>,
   /** The probes received: a snapshot request for a single observation, with which the connector checks that the route exists. */
@@ -324,7 +347,7 @@ const readBody = (chunks: Array<Buffer>): unknown => {
  * are what a test exercises.
  */
 export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
-  const tenants = new Map<string, { tenant: FakeOpenaevTenant, answerPosture: (request: unknown) => SnapshotAnswer, endpoints: () => Array<FakeEndpoint>, genericAssets: () => Array<FakeGenericAsset>, users: () => Array<FakeUser>, answerAttack: (request: unknown) => SnapshotAnswer, answerVulnerability: (request: unknown) => SnapshotAnswer }>();
+  const tenants = new Map<string, { tenant: FakeOpenaevTenant, answerPosture: (request: unknown) => SnapshotAnswer, endpoints: () => Array<FakeEndpoint>, genericAssets: () => Array<FakeGenericAsset>, users: () => Array<FakeUser>, markingDefinitions: () => Array<FakeMarkingDefinition> | null, answerAttack: (request: unknown) => SnapshotAnswer, answerVulnerability: (request: unknown) => SnapshotAnswer }>();
   const requests: Array<FakeOpenaevRequest> = [];
   const probes: Array<FakeOpenaevRequest> = [];
   let tick = 0;
@@ -337,6 +360,7 @@ export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
     let endpoints: Array<FakeEndpoint> = [];
     let genericAssets: Array<FakeGenericAsset> = [];
     let users: Array<FakeUser> = [];
+    let markingDefinitions: Array<FakeMarkingDefinition> | null = null;
     let posture: Record<string, FakePostureCounts> = {};
     let postureStatus = 200;
     const attack = createSnapshotStream<FakeAttackDocument>(nextTimestamp);
@@ -350,6 +374,9 @@ export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
       },
       setGenericAssets: (next) => {
         genericAssets = next;
+      },
+      setMarkingDefinitions: (next) => {
+        markingDefinitions = next;
       },
       setUsers: (next) => {
         users = next;
@@ -437,6 +464,7 @@ export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
       endpoints: () => endpoints,
       genericAssets: () => genericAssets,
       users: () => users,
+      markingDefinitions: () => markingDefinitions,
       answerAttack: attack.answer,
       answerVulnerability: vulnerability.answer,
     });
@@ -458,7 +486,12 @@ export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
     };
   };
 
+  let publicSettings: FakePublicSettings = { status: 404, body: { message: 'no such route GET /api/settings/public' } };
+
   const route = (method: string, path: string, body: unknown): SnapshotAnswer => {
+    if (method === 'GET' && path === '/api/settings/public') {
+      return publicSettings;
+    }
     if (method === 'GET' && path === '/api/me/tenants') {
       return { status: 200, body: [...tenants.values()].map(({ tenant }) => ({ tenant_id: tenant.id, tenant_name: tenant.name })) };
     }
@@ -471,6 +504,21 @@ export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
     const endpoints = entry.endpoints();
     if (method === 'GET' && subPath === '/tags') {
       return { status: 200, body: [] };
+    }
+    if (method === 'GET' && subPath === '/marking_definitions/assignable') {
+      const definitions = entry.markingDefinitions();
+      return definitions === null
+        ? { status: 404, body: { message: `no such route ${method} ${path}` } }
+        : {
+          status: 200,
+          body: definitions.map((marking) => ({
+            marking_definition_id: marking.id,
+            marking_definition_type: marking.type,
+            marking_definition_definition: marking.definition,
+            marking_definition_order: marking.order ?? null,
+            marking_definition_stix_id: marking.stixId ?? null,
+          })),
+        };
     }
     if (method === 'POST' && subPath === '/assets/search') {
       const unsortable = assetSortPropertiesOf(body).find((property) => !SORTABLE_ASSET_PROPERTIES.has(property));
@@ -486,6 +534,7 @@ export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
           asset_tags: [],
           asset_agents: [],
           endpoint_platform: 'Linux',
+          ...(endpoint.markings === undefined ? {} : { asset_markings: endpoint.markings }),
         })),
         ...entry.genericAssets().map((asset) => ({
           asset_id: asset.id,
@@ -494,6 +543,7 @@ export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
           asset_category: asset.category,
           asset_tags: [],
           asset_agents: [],
+          ...(asset.markings === undefined ? {} : { asset_markings: asset.markings }),
         })),
       ];
       if (idFilter !== null) {
@@ -586,6 +636,9 @@ export const startFakeOpenaev = (): Promise<FakeOpenaev> => {
         url: `http://127.0.0.1:${port}`,
         token: TOKEN,
         addTenant,
+        setPublicSettings: (settings) => {
+          publicSettings = settings;
+        },
         requests,
         probes,
         requestsTo: (method, routeName, tenantId) => requests.filter((request) =>

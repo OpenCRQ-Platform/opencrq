@@ -43,7 +43,7 @@ describe('nativeMarkingPolicy.read', () => {
       const { sql, params } = render(nativeMarkingPolicy.read?.(client, columns));
 
       expect(sql).toContain(`"${table}"."marking_refs" <@ array(select cleared.stix_id from marking_definitions as cleared`);
-      expect(sql).toContain('held."order" >= cleared."order"');
+      expect(sql).toContain('held.id = cleared.id or (held.definition_type = cleared.definition_type and held."order" >= cleared."order")');
       expect(sql).toContain('member.user_id = $');
       expect(sql).toContain('is_super_admin');
       expect(params).toContain(userId);

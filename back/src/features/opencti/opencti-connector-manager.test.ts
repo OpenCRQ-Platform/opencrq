@@ -378,7 +378,7 @@ describe('opencti-connector-manager', () => {
 
       await vi.waitFor(() => expect(mockConsumeOpenCtiStream).toHaveBeenCalled());
       expect(mockFetchOpenCtiMarkingDefinitions).toHaveBeenCalledWith('https://opencti.example.com', 'tok');
-      expect(mockSyncMarkingDefinitions).toHaveBeenCalledWith('tenant-a', [papRed]);
+      expect(mockSyncMarkingDefinitions).toHaveBeenCalledWith('tenant-a', [papRed], 'opencti');
     });
 
     it('still reads the stream when OpenCTI refuses the marking read', async () => {
@@ -407,7 +407,7 @@ describe('opencti-connector-manager', () => {
 
       startAll(controller.signal);
 
-      await vi.waitFor(() => expect(mockSyncMarkingDefinitions).toHaveBeenCalledWith('tenant-a', [papRed]));
+      await vi.waitFor(() => expect(mockSyncMarkingDefinitions).toHaveBeenCalledWith('tenant-a', [papRed], 'opencti'));
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(mockSyncMarkingDefinitions).toHaveBeenCalledTimes(2);
       expect(mockUpsertStreamObject).not.toHaveBeenCalled();

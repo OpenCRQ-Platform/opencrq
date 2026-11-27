@@ -56,6 +56,16 @@ describe('syncOpenaevMarkings', () => {
     expect(phase.warn).not.toHaveBeenCalled();
   });
 
+  it('passes a marking OpenAEV gives no rank as unranked, never as rank 0', async () => {
+    const unranked: OpenaevMarkingDefinition = { ...marking('oaev-5', 'PAP', 'PAP:RED'), marking_definition_order: undefined };
+    const phase = deps({ available: true, markings: [unranked, { ...unranked, marking_definition_id: 'oaev-6', marking_definition_definition: 'PAP:AMBER', marking_definition_order: null }] });
+    await syncOpenaevMarkings(phase, 'oaev-tenant');
+    expect(phase.syncMarkingDefinitions).toHaveBeenCalledWith([
+      expect.objectContaining({ definition: 'PAP:RED', order: null }),
+      expect.objectContaining({ definition: 'PAP:AMBER', order: null }),
+    ]);
+  });
+
   it('writes nothing for an OpenAEV whose vocabulary is empty', async () => {
     const phase = deps({ available: true, markings: [] });
     const map = await syncOpenaevMarkings(phase, 'oaev-tenant');

@@ -102,7 +102,8 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
   });
 
   // Read once per run, on the first inventory that needs it: an OpenAEV with its MARKING preview
-  // feature off enforces no marking and shows every asset to everyone, so neither does OpenCRQ.
+  // feature off enforces no marking and shows every asset to everyone, so neither does OpenCRQ. A read
+  // that fails is not an answer: it fails the run before any asset is written.
   let markingFeature: Promise<boolean> | null = null;
   const markingsActive = (): Promise<boolean> => {
     markingFeature ??= client.readMarkingFeature().then((feature) => {
@@ -162,7 +163,7 @@ export const openaevSyncHandler: JobHandler<OpenaevSyncPayload, OpenaevSyncState
       await ctx.updateProgress({ message: `Syncing OpenAEV marking definitions for tenant ${openaevTenantId}` });
       markingStixIdByOpenaevId = await syncOpenaevMarkings({
         listAssignableMarkingDefinitions: client.listAssignableMarkingDefinitions,
-        syncMarkingDefinitions: (markings) => systemServices.markingDefinitions.syncMarkingDefinitions(ctx.tenantId, markings),
+        syncMarkingDefinitions: (markings) => systemServices.markingDefinitions.syncMarkingDefinitions(ctx.tenantId, markings, 'openaev'),
         warn: logWarn,
         signal: ctx.signal,
       }, openaevTenantId);

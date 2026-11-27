@@ -12,7 +12,7 @@ export type OpenaevMarkingVocabulary =
 
 /**
  * Whether OpenAEV enforces markings: its `MARKING` preview feature is on (`enabled_dev_features`
- * holds `MARKING`, or `*` for every preview feature). Off, OpenAEV filters nothing and shows every
+ * holds `MARKING`, or `FEATURE_FLAG_ALL` for every preview feature). Off, OpenAEV filters nothing and shows every
  * asset unmarked, even one that carries `asset_markings` (a marking write is not feature-gated).
  */
 export type OpenaevMarkingFeature =
@@ -22,12 +22,21 @@ export type OpenaevMarkingFeature =
 /** The preview feature that turns markings on in OpenAEV (`PreviewFeature.MARKING`). */
 export const OPENAEV_MARKING_FEATURE = 'MARKING';
 
-/** Reads `enabled_dev_features` of `GET /api/settings/public`: anything but a list naming `MARKING` or `*` is off. */
+/**
+ * The preview feature that stands for every other one. OpenAEV serializes `enabled_dev_features` as
+ * the enum names (its `*` is only the configured value), so the public settings carry this name.
+ */
+const OPENAEV_ALL_FEATURES = 'FEATURE_FLAG_ALL';
+
+/** Reads `enabled_dev_features` of `GET /api/settings/public`: anything but a list naming `MARKING`, `FEATURE_FLAG_ALL` or `*` is off. */
 export const openaevMarkingFeatureOf = (enabledDevFeatures: unknown): OpenaevMarkingFeature => {
   if (!Array.isArray(enabledDevFeatures)) {
     return { active: false, reason: 'OpenAEV states no enabled_dev_features' };
   }
-  const enabled = enabledDevFeatures.some((feature) => typeof feature === 'string' && (feature.trim().toUpperCase() === OPENAEV_MARKING_FEATURE || feature.trim() === '*'));
+  const enabled = enabledDevFeatures.some((feature) => {
+    const name = typeof feature === 'string' ? feature.trim().toUpperCase() : '';
+    return name === OPENAEV_MARKING_FEATURE || name === OPENAEV_ALL_FEATURES || name === '*';
+  });
   return enabled ? { active: true } : { active: false, reason: `the ${OPENAEV_MARKING_FEATURE} preview feature is off` };
 };
 
@@ -87,7 +96,7 @@ export const syncOpenaevMarkings = async (deps: OpenaevMarkingPhaseDeps, openaev
       definitionType: marking.marking_definition_type,
       definition: marking.marking_definition_definition,
       color: marking.marking_definition_color ?? null,
-      order: marking.marking_definition_order ?? 0,
+      order: marking.marking_definition_order ?? null,
     });
   }
   if (synced.length > 0 && !deps.signal.aborted) {

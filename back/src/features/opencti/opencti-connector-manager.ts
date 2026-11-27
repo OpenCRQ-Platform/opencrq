@@ -156,7 +156,7 @@ const consumeTenantStream = async (
   // connector holds no security capability, and the tenant is named on every row. A failed read
   // keeps what the tenant holds; the stream's marking objects keep them in step afterwards.
   const syncMarkings = async (markings: Array<SyncedMarkingDefinition>): Promise<void> => {
-    const { synced, skipped } = await systemServices.markingDefinitions.syncMarkingDefinitions(tenantId, markings);
+    const { synced, skipped } = await systemServices.markingDefinitions.syncMarkingDefinitions(tenantId, markings, 'opencti');
     if (skipped > 0) {
       logTrace('OpenCTI marking definitions skipped: no STIX id, type or definition', { tenantId, synced, skipped });
     }

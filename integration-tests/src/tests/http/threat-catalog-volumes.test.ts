@@ -38,6 +38,7 @@ describe('threats.getCatalogVolumes (HTTP/tRPC)', () => {
       entityType,
       kind: 'connector',
       name: `Threat ${id}`,
+      markingRefs: [],
       lastObservedAt: observedAgeMs === null ? null : new Date(Date.now() - observedAgeMs),
     }]);
     if (options.cveIds?.length) {
