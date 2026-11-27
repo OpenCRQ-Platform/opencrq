@@ -1,10 +1,10 @@
-import type { AttackObservationMirror, EvidenceWrittenEntry, FullWalkTimestamps, ObservationPair, OpenaevStream } from '@app/module';
+import type { AttackObservationMirror, EvidenceWrittenEntry, FullWalkTimestamps, ObservationPair, OpenaevStream, ScanMeasurementInput } from '@app/module';
 import { isFullWalkDue } from '@app/module';
 import type { createOpenaevClient } from './openaev-api-client';
 import type { CveFindingsTransaction } from './cve-findings-transaction';
 import type { AttackObservation, CveEvidenceRow, ExpectationEvidenceRow, SnapshotPage, VulnerabilityObservation } from './openaev-types';
 import { createLogger } from '../../utils/logger';
-import { buildAttackEvidenceRows, buildVulnerabilityEvidenceRows, cveIdentifierOfObservation } from './openaev-mapping-utils';
+import { buildAttackEvidenceRows, buildScanMeasurements, buildVulnerabilityEvidenceRows, cveIdentifierOfObservation } from './openaev-mapping-utils';
 
 const { logTrace } = createLogger({ feature: 'openaev-sync' });
 
@@ -36,6 +36,7 @@ export interface ObservationPhaseServices {
     }) => Promise<void>,
     findCurrentObservations: (input: { connectorId: string, pairs: Array<ObservationPair> }) => Promise<Array<{ observationId: string }>>,
     markEvidenceWritten: (input: { connectorId: string, entries: Array<EvidenceWrittenEntry>, writtenAt: Date }) => Promise<void>,
+    upsertScanMeasurements: (input: { connectorId: string, measurements: Array<ScanMeasurementInput> }) => Promise<void>,
   },
   supportingAssets: {
     bulkUpsertEvidence: (evidences: Array<ExpectationEvidenceRow | CveEvidenceRow>) => Promise<unknown>,
@@ -100,6 +101,8 @@ export interface ObservationPhaseCounts {
   read: number,
   /** Finding evidence rows written. */
   written: number,
+  /** Vulnerability scan measurements written (opencrq #332): a finished scan, clean or not, of a known asset. */
+  scans: number,
   /** Observations that wrote nothing: an asset unknown after the inventory, a technique or CVE unknown, a superseded document. */
   skipped: number,
 }
@@ -146,7 +149,7 @@ const toMirror = (observation: AttackObservation): AttackObservationMirror => {
 export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promise<ObservationPhaseResult> => {
   const { svc, client, connectorId, openaevTenantId, runStartedAt, signal, now, onProgress, inCveFindingsTransaction } = deps;
   const assets = { map: deps.assetIdMap, inventoryRan: false };
-  const counts: ObservationPhaseCounts = { read: 0, written: 0, skipped: 0 };
+  const counts: ObservationPhaseCounts = { read: 0, written: 0, scans: 0, skipped: 0 };
 
   // The inventory can return a partial map when it aborts, and a page written against it would
   // skip assets and still advance the cursor: the caller must not write once `signal` is aborted.
@@ -212,13 +215,24 @@ export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promis
       await svc.supportingAssets.bulkUpsertEvidence(evidenceRows);
       await svc.openaevConnector.markEvidenceWritten({ connectorId, entries: written, writtenAt: now() });
     }
+    // A VULNERABILITY document is a scan of the asset, not a technique test: it writes a measurement
+    // (clean or findings) and never a finding. Every delivery is offered, current or not: the upsert
+    // keeps the newest scan of each (asset, scenario).
+    const measurements = buildScanMeasurements({ observations, assetIdMap });
+    if (measurements.length > 0) {
+      await svc.openaevConnector.upsertScanMeasurements({ connectorId, measurements });
+    }
     counts.read += observations.length;
     counts.written += evidenceRows.length;
-    counts.skipped += observations.length - written.length;
+    counts.scans += measurements.length;
+    const measured = new Set(measurements.map((measurement) => measurement.observationId));
+    counts.skipped += observations.filter((observation) =>
+      !measured.has(observation.id) && !written.some((entry) => entry.observationId === observation.id)).length;
     logTrace('Attack observations written', {
       openaevTenantId,
       observations: observations.length,
       evidenceRows: evidenceRows.length,
+      scanMeasurements: measurements.length,
       skippedUnknownTechniques: skippedTechniques.size,
     });
     return true;

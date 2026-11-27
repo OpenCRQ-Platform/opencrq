@@ -124,6 +124,64 @@ export const resolveOpenaevCategory = (asset: {
   return { categoryId, subcategoryId };
 };
 
+/** Whether an attack-stream document is a vulnerability scan (a `VULNERABILITY` expectation), whatever its case. */
+export const isVulnerabilityExpectation = (rawType: string): boolean => rawType.toUpperCase() === 'VULNERABILITY';
+
+/** One finished vulnerability scan of a known asset, as `buildScanMeasurements` reads it off the attack stream. */
+export interface ScanMeasurementRow {
+  supportingAssetId: string,
+  scenarioId: string,
+  scenarioName: string | null,
+  simulationId: string | null,
+  observationId: string,
+  platformTypes: Array<string>,
+  result: 'clean' | 'findings',
+  evaluatedAt: Date,
+}
+
+/**
+ * The scan measurements a page of the attack stream carries (opencrq #332): one per `VULNERABILITY`
+ * document of a `FINISHED` simulation on a known asset. `SUCCESS` means the scanner found nothing
+ * (`clean`); any other verdict, `PARTIAL` included, means it found something (`findings`). A
+ * pending verdict, a simulation not finished, an unknown asset or an unreadable date writes
+ * nothing. A measurement is never a technique finding: `buildAttackEvidenceRows` keeps skipping
+ * these documents.
+ */
+export const buildScanMeasurements = (params: {
+  observations: ReadonlyArray<AttackObservation>,
+  assetIdMap: ReadonlyMap<string, string>,
+}): Array<ScanMeasurementRow> => {
+  const rows: Array<ScanMeasurementRow> = [];
+  for (const observation of params.observations) {
+    if (!isVulnerabilityExpectation(observation.expectation_type) || observation.last_simulation_status !== 'FINISHED') {
+      continue;
+    }
+    const status = observation.expectation_status.toUpperCase();
+    if (status === 'PENDING' || status === 'UNKNOWN' || status === '') {
+      continue;
+    }
+    const supportingAssetId = params.assetIdMap.get(observation.asset_id);
+    const evaluatedAt = new Date(observation.last_verified_at);
+    if (!supportingAssetId || Number.isNaN(evaluatedAt.getTime())) {
+      continue;
+    }
+    const platformTypes = [...new Set(
+      observation.platform_types_reporting.map((type) => type.trim()).filter((type) => type !== ''),
+    )].sort();
+    rows.push({
+      supportingAssetId,
+      scenarioId: observation.scenario_id,
+      scenarioName: observation.scenario_name,
+      simulationId: observation.last_simulation_id,
+      observationId: observation.id,
+      platformTypes: platformTypes.length > 0 ? platformTypes : ['unknown'],
+      result: status === 'SUCCESS' ? 'clean' : 'findings',
+      evaluatedAt,
+    });
+  }
+  return rows;
+};
+
 export const mapExpectationType = (rawType: string): ExpectationType | null => {
   const t = rawType.toUpperCase();
   if (t === 'DETECTION') {

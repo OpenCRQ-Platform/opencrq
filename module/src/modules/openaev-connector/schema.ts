@@ -1,7 +1,12 @@
 import { boolean, index, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { defineSecurityPolicies, tenantIsolationPolicy } from '../../security';
 import { integrationSettings } from '../integration-settings/schema';
+import { supportingAssets } from '../supporting-assets/schema';
 import { tenants } from '../tenants';
+
+/** What a finished vulnerability scan found on an asset: nothing (`clean`), or at least one vulnerability (`findings`). */
+export const SCAN_RESULTS = ['clean', 'findings'] as const;
+export type ScanResult = (typeof SCAN_RESULTS)[number];
 
 export const OPENAEV_STREAMS = ['attack', 'vulnerability'] as const;
 export type OpenaevStream = (typeof OPENAEV_STREAMS)[number];
@@ -72,3 +77,31 @@ export const openaevAssets = pgTable('openaev_assets', {
 ]);
 
 defineSecurityPolicies(openaevAssets, tenantIsolationPolicy);
+
+/**
+ * The latest finished vulnerability scan (an OpenAEV `VULNERABILITY` expectation of the attack
+ * stream) of each (asset, scenario), one row per pair: when the scanner looked at the asset and
+ * whether it found anything. A clean scan writes no finding, so without this row a scanned asset
+ * reads exactly like one nobody scans (opencrq #332). It is a measurement, never a finding: it
+ * feeds no technique evidence and no CVE row, and it never moves a finding's score by itself.
+ */
+export const openaevScanMeasurements = pgTable('openaev_scan_measurements', {
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  connectorId: uuid('connector_id').notNull().references(() => integrationSettings.id, { onDelete: 'cascade' }),
+  supportingAssetId: uuid('supporting_asset_id').notNull().references(() => supportingAssets.id, { onDelete: 'cascade' }),
+  scenarioId: text('scenario_id').notNull(),
+  scenarioName: text('scenario_name'),
+  simulationId: text('simulation_id'),
+  observationId: text('observation_id').notNull(),
+  // The security platform types that reported the scan (the scanner), `unknown` when none did.
+  platformTypes: text('platform_types').array().notNull(),
+  result: text('result').notNull().$type<ScanResult>(),
+  evaluatedAt: timestamp('evaluated_at', { withTimezone: true, mode: 'date' }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ name: 'openaev_scan_measurements_pk', columns: [table.connectorId, table.supportingAssetId, table.scenarioId] }),
+  index('openaev_scan_measurements_asset_idx').on(table.supportingAssetId, table.evaluatedAt),
+  index('openaev_scan_measurements_tenant_evaluated_idx').on(table.tenantId, table.evaluatedAt),
+]);
+
+defineSecurityPolicies(openaevScanMeasurements, tenantIsolationPolicy);

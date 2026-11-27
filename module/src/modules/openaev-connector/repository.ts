@@ -1,8 +1,8 @@
 import { newError } from '@app/utils';
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
-import type { OpenaevStream } from './schema';
+import type { OpenaevStream, ScanResult } from './schema';
 import { defineRepository } from '../../registry';
-import { openaevAssets, openaevAttackObservations, openaevSyncStreams } from './schema';
+import { openaevAssets, openaevAttackObservations, openaevScanMeasurements, openaevSyncStreams } from './schema';
 
 export interface StreamKey {
   connectorId: string,
@@ -30,6 +30,33 @@ export interface ObservationPair {
 export interface EvidenceWrittenEntry {
   observationId: string,
   platformTypes: Array<string>,
+}
+
+/** One finished vulnerability scan of a supporting asset, as the sync writes it. */
+export interface ScanMeasurementInput {
+  supportingAssetId: string,
+  scenarioId: string,
+  scenarioName: string | null,
+  simulationId: string | null,
+  observationId: string,
+  platformTypes: Array<string>,
+  result: ScanResult,
+  evaluatedAt: Date,
+}
+
+/** The latest scan of an asset across its scenarios. */
+export interface LastScan {
+  evaluatedAt: Date,
+  result: ScanResult,
+  scenarioId: string,
+  scenarioName: string | null,
+  platformTypes: Array<string>,
+}
+
+/** How many scanned assets of the tenant there are, and how many of them were scanned since a given instant. */
+export interface ScanCoverageCounts {
+  scanned: number,
+  recent: number,
 }
 
 export interface OpenaevAssetInput {
@@ -364,6 +391,73 @@ export const openaevConnectorRepository = defineRepository({
     .limit(limit)
     .then((rows) => rows.map((row) => row.sourceAssetId)),
 
+  /**
+   * One row per (connector, asset, scenario); a delivery older than the stored scan leaves it alone,
+   * so a full walk replaying an old document never rolls the measurement back.
+   */
+  upsertScanMeasurementRows: async (
+    { db }, tenantId: string, connectorId: string, rows: Array<ScanMeasurementInput>,
+  ): Promise<void> => {
+    // A statement cannot touch the same conflict key twice: the newest scan of a pair wins.
+    const byKey = new Map<string, ScanMeasurementInput>();
+    for (const row of rows) {
+      const key = `${row.supportingAssetId}\u0000${row.scenarioId}`;
+      const kept = byKey.get(key);
+      if (kept === undefined || kept.evaluatedAt.getTime() <= row.evaluatedAt.getTime()) {
+        byKey.set(key, row);
+      }
+    }
+    for (const chunk of chunked([...byKey.values()], UPSERT_CHUNK_SIZE)) {
+      await db.insert(openaevScanMeasurements)
+        .values(chunk.map((row) => ({ ...row, tenantId, connectorId, updatedAt: dbNow() })))
+        .onConflictDoUpdate({
+          target: [openaevScanMeasurements.connectorId, openaevScanMeasurements.supportingAssetId, openaevScanMeasurements.scenarioId],
+          set: {
+            scenarioName: sql`excluded.scenario_name`,
+            simulationId: sql`excluded.simulation_id`,
+            observationId: sql`excluded.observation_id`,
+            platformTypes: sql`excluded.platform_types`,
+            result: sql`excluded.result`,
+            evaluatedAt: sql`excluded.evaluated_at`,
+            updatedAt: dbNow(),
+          },
+          setWhere: sql`excluded.evaluated_at >= ${openaevScanMeasurements.evaluatedAt}`,
+        });
+    }
+  },
+
+  findLastScan: async (
+    { db, views }, supportingAssetId: string,
+  ): Promise<LastScan | null> => {
+    const scans = views.openaevScanMeasurements;
+    const [row] = await db
+      .select({
+        evaluatedAt: scans.evaluatedAt,
+        result: scans.result,
+        scenarioId: scans.scenarioId,
+        scenarioName: scans.scenarioName,
+        platformTypes: scans.platformTypes,
+      })
+      .from(scans)
+      .where(eq(scans.supportingAssetId, supportingAssetId))
+      .orderBy(sql`${scans.evaluatedAt} desc`, asc(scans.scenarioId))
+      .limit(1);
+    return row ?? null;
+  },
+
+  countScanCoverage: async (
+    { db, views }, recentSince: Date,
+  ): Promise<ScanCoverageCounts> => {
+    const scans = views.openaevScanMeasurements;
+    const [row] = await db
+      .select({
+        scanned: sql<number>`count(distinct ${scans.supportingAssetId})`.mapWith(Number),
+        recent: sql<number>`count(distinct ${scans.supportingAssetId}) filter (where ${scans.evaluatedAt} >= ${recentSince})`.mapWith(Number),
+      })
+      .from(scans);
+    return row ?? { scanned: 0, recent: 0 };
+  },
+
   findStoredPosture: async (
     { db, views }, supportingAssetId: string,
   ): Promise<StoredPostureCounts | null> => {
@@ -410,5 +504,6 @@ export const openaevConnectorRepository = defineRepository({
     await db.delete(openaevSyncStreams).where(eq(openaevSyncStreams.connectorId, connectorId));
     await db.delete(openaevAttackObservations).where(eq(openaevAttackObservations.connectorId, connectorId));
     await db.delete(openaevAssets).where(eq(openaevAssets.connectorId, connectorId));
+    await db.delete(openaevScanMeasurements).where(eq(openaevScanMeasurements.connectorId, connectorId));
   },
 });
