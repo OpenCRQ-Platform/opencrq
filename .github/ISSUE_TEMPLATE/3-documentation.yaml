@@ -1,5 +1,5 @@
 name: Documentation request
-description: Request new or improved documentation for OpenCRQ.
+description: Request new or improved documentation in this repository (its README or docs/ folder). A page of filigran.io/docs is reported in FiligranHQ/xtm-docs.
 title: "docs: "
 labels:
   - needs triage
