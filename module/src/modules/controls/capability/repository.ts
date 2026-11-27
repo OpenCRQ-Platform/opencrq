@@ -931,7 +931,7 @@ export const controlCapabilityRepository = defineRepository({
   findTechniqueOverride: async (
     { db, views },
     { capabilityId, tenantId, techniqueId, function: fn }:
-    { capabilityId: string, tenantId: string, techniqueId: string, function: CapabilityFunction },
+      { capabilityId: string, tenantId: string, techniqueId: string, function: CapabilityFunction },
   ) =>
     db
       .select({
@@ -953,7 +953,7 @@ export const controlCapabilityRepository = defineRepository({
   upsertTechniqueOverride: (
     { db },
     { capabilityId, tenantId, techniqueId, function: fn }:
-    { capabilityId: string, tenantId: string, techniqueId: string, function: CapabilityFunction },
+      { capabilityId: string, tenantId: string, techniqueId: string, function: CapabilityFunction },
     { kind }: { kind: TechniqueOverrideKind },
   ) =>
     db.insert(controlCapabilityTechniqueOverrides)
@@ -971,7 +971,7 @@ export const controlCapabilityRepository = defineRepository({
   deleteTechniqueOverride: (
     { db },
     { capabilityId, tenantId, techniqueId, function: fn }:
-    { capabilityId: string, tenantId: string, techniqueId: string, function: CapabilityFunction },
+      { capabilityId: string, tenantId: string, techniqueId: string, function: CapabilityFunction },
   ) =>
     db.delete(controlCapabilityTechniqueOverrides).where(and(
       eq(controlCapabilityTechniqueOverrides.capabilityId, capabilityId),
@@ -984,7 +984,7 @@ export const controlCapabilityRepository = defineRepository({
   deleteTechniqueOverridesForCapability: (
     { db },
     { capabilityId, tenantId, function: fn }:
-    { capabilityId: string, tenantId: string, function?: CapabilityFunction },
+      { capabilityId: string, tenantId: string, function?: CapabilityFunction },
   ) =>
     db.delete(controlCapabilityTechniqueOverrides).where(and(
       eq(controlCapabilityTechniqueOverrides.capabilityId, capabilityId),
