@@ -7,6 +7,7 @@ import { splitDuration } from './primary-asset-fields-utils';
 
 export const securityNeedLabel = (level: SecurityNeedLevel): string => {
   switch (level) {
+    case 'not_applicable': return t`Not applicable`;
     case 'low': return t`Low`;
     case 'medium': return t`Medium`;
     case 'high': return t`High`;

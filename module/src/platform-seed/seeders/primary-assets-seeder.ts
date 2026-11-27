@@ -154,6 +154,7 @@ registerPlatformSeed('primary-assets', async ({ db }) => {
       organizationId: Organization_Tarnwick,
       name: 'Production Planning Process',
       description: 'End-to-end production planning and scheduling process coordinating 150+ suppliers across APAC.',
+      confidentiality: 'not_applicable',
     },
   ]);
 

@@ -23,11 +23,22 @@ describe('overallSecurityNeed', () => {
   it('should count traceability like the three others', () => {
     expect(overallSecurityNeed({ availability: 'low', integrity: null, confidentiality: 'low', traceability: 'very_high' })).toBe('very_high');
   });
+
+  it('should be not applicable when every criterion is', () => {
+    const notApplicable = 'not_applicable' as const;
+    expect(overallSecurityNeed({ availability: notApplicable, integrity: notApplicable, confidentiality: notApplicable, traceability: notApplicable })).toBe('not_applicable');
+  });
+
+  it('should rank not applicable above an unset criterion and below any rating', () => {
+    expect(overallSecurityNeed({ availability: 'not_applicable', integrity: null, confidentiality: null, traceability: null })).toBe('not_applicable');
+    expect(overallSecurityNeed({ availability: 'not_applicable', integrity: 'low', confidentiality: 'not_applicable', traceability: null })).toBe('low');
+  });
 });
 
 describe('securityNeedRank', () => {
-  it('should rank an unset level below low', () => {
-    expect(securityNeedRank(null)).toBeLessThan(securityNeedRank('low'));
+  it('should rank an unset level below not applicable, and not applicable below low', () => {
+    expect(securityNeedRank(null)).toBeLessThan(securityNeedRank('not_applicable'));
+    expect(securityNeedRank('not_applicable')).toBeLessThan(securityNeedRank('low'));
     expect(securityNeedRank('high')).toBeLessThan(securityNeedRank('very_high'));
   });
 });
@@ -125,11 +136,12 @@ describe('filterByNativeFields', () => {
     { id: 'payroll', businessFunction: 'finance ', ...unset, confidentiality: 'medium' as const },
     { id: 'deploy', businessFunction: 'Engineering', ...unset },
     { id: 'blank', businessFunction: null, ...unset },
+    { id: 'pricelist', businessFunction: 'Sales', availability: 'not_applicable' as const, integrity: 'not_applicable' as const, confidentiality: 'not_applicable' as const, traceability: 'not_applicable' as const },
   ];
   const ids = (filtered: Array<{ id: string }>) => filtered.map((row) => row.id);
 
   it('should keep every row with no filter', () => {
-    expect(ids(filterByNativeFields(rows, { businessFunction: '', level: 'all' }))).toEqual(['billing', 'payroll', 'deploy', 'blank']);
+    expect(ids(filterByNativeFields(rows, { businessFunction: '', level: 'all' }))).toEqual(['billing', 'payroll', 'deploy', 'blank', 'pricelist']);
   });
 
   it('should match a business function whatever its case and spaces', () => {
@@ -142,6 +154,10 @@ describe('filterByNativeFields', () => {
 
   it('should keep the rows with no level set for not_set', () => {
     expect(ids(filterByNativeFields(rows, { businessFunction: '', level: 'not_set' }))).toEqual(['deploy', 'blank']);
+  });
+
+  it('should keep the rows rated not applicable apart from the unset ones', () => {
+    expect(ids(filterByNativeFields(rows, { businessFunction: '', level: 'not_applicable' }))).toEqual(['pricelist']);
   });
 
   it('should combine both filters', () => {

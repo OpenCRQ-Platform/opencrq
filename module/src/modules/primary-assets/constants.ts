@@ -1,5 +1,5 @@
 /** Ordered lowest first, so the highest of several is the one with the highest index. */
-export const SECURITY_NEED_LEVELS = ['low', 'medium', 'high', 'very_high'] as const;
+export const SECURITY_NEED_LEVELS = ['not_applicable', 'low', 'medium', 'high', 'very_high'] as const;
 export type SecurityNeedLevel = (typeof SECURITY_NEED_LEVELS)[number];
 
 export const SECURITY_NEED_CRITERIA = ['availability', 'integrity', 'confidentiality', 'traceability'] as const;

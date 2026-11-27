@@ -10,6 +10,7 @@ const SECURITY_NEED_SEVERITY: Record<SecurityNeedLevel, ChipSeverity> = {
   high: 'high',
   medium: 'medium',
   low: 'low',
+  not_applicable: 'neutral',
 };
 
 export const SecurityNeedChip: FunctionComponent<{ level: SecurityNeedLevel }> = ({ level }) => (
