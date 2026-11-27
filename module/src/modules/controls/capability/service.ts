@@ -11,6 +11,7 @@ import type {
 import type { AnswerCapabilityReading, DrataCapabilityReading, PooledAssessment } from './pooled-derivation';
 import type { AssessmentSourceRow, AssessmentValue } from './repository';
 import type { ResolvedCapabilityPosture, ResolvedPosture, ScopePostureOverrideInput, TenantPostureInput } from './scope-posture';
+import type { ScanCapabilityReading, ScanCoverage } from './scan-reading';
 import type { InferRepository } from '../../../registry';
 import type { EventOrigin } from '../../../security';
 import { originTenantId, requireClientTenantId, requireTenantId } from '../../../security';
@@ -19,12 +20,14 @@ import { attackOutcomesService } from '../../attack-outcomes';
 import { complianceAssessmentsService } from '../../compliance-assessments/service';
 import { deriveCapabilityAssessments, DRATA_EVIDENCED_CAPABILITY_EXTERNAL_IDS } from '../../drata/capability-derivation';
 import { drataService } from '../../drata/service';
+import { openaevConnectorService } from '../../openaev-connector/service';
 import { riskScenariosService } from '../../risk-scenarios';
 import { computeControlLinks } from '../control-links-utils';
 import { ASSESSMENT_AXES, DERIVATION_WRITER, DRATA_SOURCE } from './constants';
 import { isScoredEdge } from './effective-coverage';
 import { replayEffectivenessHistory } from './effectiveness-history';
 import { poolCapabilityAssessments } from './pooled-derivation';
+import { readScanCapability, SCAN_EVIDENCED_CAPABILITY_EXTERNAL_ID, SCAN_RECENCY_DAYS } from './scan-reading';
 import { rewindScopePosture } from './posture-at-date';
 import { controlCapabilityRepository } from './repository';
 import { resolveScopePosture, resolveScopePostures } from './scope-posture';
@@ -167,7 +170,19 @@ const modeSwitches = (before: AxisModes | undefined, after: AxisModes): { [K in 
 interface PoolingDeps {
   drata: { getLiveControlReadiness: () => Promise<Array<{ code: string, isReady: boolean }>> },
   complianceAssessments: { getPublishedControlReadings: () => Promise<Array<AnswerCapabilityReading>> },
+  openaevConnector: { getScanCoverage: (recentSince: Date) => Promise<ScanCoverage> },
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The patch management reading of the tenant's recurring OpenAEV vulnerability scans (opencrq #332), if any. */
+const readScans = async (repo: Repo, deps: Pick<PoolingDeps, 'openaevConnector'>, now: Date): Promise<Array<ScanCapabilityReading>> => {
+  const coverage = await deps.openaevConnector.getScanCoverage(new Date(now.getTime() - SCAN_RECENCY_DAYS * DAY_MS));
+  const ids = await repo.findCapabilityIdsByExternalIds([SCAN_EVIDENCED_CAPABILITY_EXTERNAL_ID]);
+  const capabilityId = ids.get(SCAN_EVIDENCED_CAPABILITY_EXTERNAL_ID);
+  const reading = capabilityId === undefined ? null : readScanCapability(capabilityId, coverage);
+  return reading === null ? [] : [reading];
+};
 
 type DerivedValue = Omit<AssessmentValue, 'comment'>;
 
@@ -200,11 +215,12 @@ const readDrata = async (repo: Repo, deps: Pick<PoolingDeps, 'drata'>): Promise<
 };
 
 const computePooled = async (repo: Repo, deps: PoolingDeps): Promise<Array<PooledAssessment>> => {
-  const [readings, answers] = await Promise.all([
+  const [readings, answers, scans] = await Promise.all([
     readDrata(repo, deps),
     deps.complianceAssessments.getPublishedControlReadings(),
+    readScans(repo, deps, new Date()),
   ]);
-  return poolCapabilityAssessments(readings, answers);
+  return poolCapabilityAssessments(readings, answers, scans);
 };
 
 const fedAxesOf = (entry: PooledAssessment): Array<AssessmentAxis> =>
@@ -588,7 +604,7 @@ const writeScopeOverride = async (
 export const controlCapabilityService = defineService(
   'controlCapabilities',
   controlCapabilityRepository,
-).dependsOn(() => [attackOutcomesService, riskScenariosService, drataService, complianceAssessmentsService]).implement({
+).dependsOn(() => [attackOutcomesService, riskScenariosService, drataService, complianceAssessmentsService, openaevConnectorService]).implement({
   // ─── Engine inputs (consumed by crq-indicators) ──────────────────────────────
   queryCapabilityResistanceInputs: async ({ repo }, scenarioTechniqueIds: Array<string>, tenantId: string) =>
     repo.queryCapabilityResistanceInputs(scenarioTechniqueIds, tenantId),

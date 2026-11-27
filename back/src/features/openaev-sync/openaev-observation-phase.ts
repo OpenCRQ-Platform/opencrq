@@ -101,8 +101,6 @@ export interface ObservationPhaseCounts {
   read: number,
   /** Finding evidence rows written. */
   written: number,
-  /** Vulnerability scan measurements written (opencrq #332): a finished scan, clean or not, of a known asset. */
-  scans: number,
   /** Observations that wrote nothing: an asset unknown after the inventory, a technique or CVE unknown, a superseded document. */
   skipped: number,
 }
@@ -149,7 +147,7 @@ const toMirror = (observation: AttackObservation): AttackObservationMirror => {
 export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promise<ObservationPhaseResult> => {
   const { svc, client, connectorId, openaevTenantId, runStartedAt, signal, now, onProgress, inCveFindingsTransaction } = deps;
   const assets = { map: deps.assetIdMap, inventoryRan: false };
-  const counts: ObservationPhaseCounts = { read: 0, written: 0, scans: 0, skipped: 0 };
+  const counts: ObservationPhaseCounts = { read: 0, written: 0, skipped: 0 };
 
   // The inventory can return a partial map when it aborts, and a page written against it would
   // skip assets and still advance the cursor: the caller must not write once `signal` is aborted.
@@ -224,10 +222,9 @@ export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promis
     }
     counts.read += observations.length;
     counts.written += evidenceRows.length;
-    counts.scans += measurements.length;
-    const measured = new Set(measurements.map((measurement) => measurement.observationId));
-    counts.skipped += observations.filter((observation) =>
-      !measured.has(observation.id) && !written.some((entry) => entry.observationId === observation.id)).length;
+    // A document that wrote a scan measurement wrote something: it is not a skip.
+    const wroteSomething = new Set([...written.map((entry) => entry.observationId), ...measurements.map((row) => row.observationId)]);
+    counts.skipped += observations.filter((observation) => !wroteSomething.has(observation.id)).length;
     logTrace('Attack observations written', {
       openaevTenantId,
       observations: observations.length,

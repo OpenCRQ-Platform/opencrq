@@ -53,10 +53,16 @@ export interface LastScan {
   platformTypes: Array<string>,
 }
 
-/** How many scanned assets of the tenant there are, and how many of them were scanned since a given instant. */
+/**
+ * The tenant's vulnerability scan coverage: the OpenAEV assets the connector knows (`known`), those
+ * ever scanned, those scanned since a given instant, and among the latter those whose latest scan
+ * since then came back clean.
+ */
 export interface ScanCoverageCounts {
+  known: number,
   scanned: number,
   recent: number,
+  recentClean: number,
 }
 
 export interface OpenaevAssetInput {
@@ -449,13 +455,33 @@ export const openaevConnectorRepository = defineRepository({
     { db, views }, recentSince: Date,
   ): Promise<ScanCoverageCounts> => {
     const scans = views.openaevScanMeasurements;
-    const [row] = await db
+    // The latest scan of each asset across its scenarios decides whether it is clean. Counted whole,
+    // never joined on a key: the aggregate reads every row of the subquery anyway.
+    // bounded-by: the tenant view, one row per (connector, asset, scenario) of the caller's tenant
+    const latest = db.selectDistinctOn([scans.supportingAssetId], {
+      supportingAssetId: scans.supportingAssetId,
+      evaluatedAt: scans.evaluatedAt,
+      result: scans.result,
+    })
+      .from(scans)
+      .orderBy(scans.supportingAssetId, sql`${scans.evaluatedAt} desc`)
+      .as('latest_scan');
+    const [counts] = await db
       .select({
-        scanned: sql<number>`count(distinct ${scans.supportingAssetId})`.mapWith(Number),
-        recent: sql<number>`count(distinct ${scans.supportingAssetId}) filter (where ${scans.evaluatedAt} >= ${recentSince})`.mapWith(Number),
+        scanned: sql<number>`count(*)`.mapWith(Number),
+        recent: sql<number>`count(*) filter (where ${latest.evaluatedAt} >= ${recentSince})`.mapWith(Number),
+        recentClean: sql<number>`count(*) filter (where ${latest.evaluatedAt} >= ${recentSince} and ${latest.result} = 'clean')`.mapWith(Number),
       })
-      .from(scans);
-    return row ?? { scanned: 0, recent: 0 };
+      .from(latest);
+    const [known] = await db
+      .select({ known: sql<number>`count(*)`.mapWith(Number) })
+      .from(views.openaevAssets);
+    return {
+      known: known?.known ?? 0,
+      scanned: counts?.scanned ?? 0,
+      recent: counts?.recent ?? 0,
+      recentClean: counts?.recentClean ?? 0,
+    };
   },
 
   findStoredPosture: async (
