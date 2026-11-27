@@ -10,11 +10,10 @@ import { capabilitiesService } from '../capabilities/service';
 import { notificationsService } from '../notifications';
 import { PlatformCapability_ManageUsers } from '../platform-capabilities';
 import { platformCapabilitiesService } from '../platform-capabilities/service';
+import { USERS_XTM_SUBJECT_UNIQUE } from '../users/schema';
 import { membersRepository } from './repository';
 
 type Repo = InferRepository<typeof membersRepository>;
-
-const USERS_XTM_SUBJECT_UNIQUE = 'users_xtm_subject_unique';
 
 export const MEMBER_ADDED_NOTIFICATION = 'member-added';
 /** Where a platform member lands once signed in. */
@@ -52,7 +51,7 @@ const placeNotified = async (
   }
   const id = byEmail?.id ?? uuidv7();
   const placed = byEmail
-    ? await repo.linkPendingAccount(id, xtmUserId)
+    ? await repo.tiePendingAccount(id, xtmUserId)
     : await repo.insertAccount({ id, email: member.email, xtmSubject: xtmUserId, name: member.fullName?.trim() || null });
   if (placed) {
     return id;

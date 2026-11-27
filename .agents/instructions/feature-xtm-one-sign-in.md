@@ -13,12 +13,13 @@ administrator, whom OpenCRQ takes as its super administrator.
 - An account is the XTM One user it is tied to: `users.xtm_subject` holds the ID token's `sub`,
   and the sign-in (`xtm-sign-in-routes.ts`, `decideSignIn`) and XTM One's per-user JWTs
   (`xtm-one-auth.ts`) both look an account up by it.
-- A pending account (no `xtm_subject`: a person added before OpenCRQ knew their XTM One id) is taken by the first sign-in whose email is its
-  own, whatever the case (`auth.linkPendingAccount`, in `findLinkedAccount`), in one conditional
-  update on `xtm_subject is null`; when it links nothing, the `sub` is looked up again, so two
-  first callbacks of one person both sign in to the account. `users.email` is unique whatever its
-  case (`users_email_unique`, on `lower(email)`), so an email names at most one account. XTM One owns the email: whether a user
-  may change it unverified is its concern, not OpenCRQ's.
+- A pending account (no `xtm_subject`: a person added before OpenCRQ knew their XTM One id) is
+  taken by the first sign-in whose email is its own, whatever the case (`auth.linkPendingAccount`,
+  in `findLinkedAccount`), in one conditional update on `xtm_subject is null`; when it links
+  nothing, the `sub` is looked up again, so two first callbacks of one person both sign in to the
+  account. `users.email` is unique whatever its case (`users_email_unique`, on `lower(email)`), so
+  an email names at most one account. XTM One owns the email: whether a user may change it
+  unverified is its concern, not OpenCRQ's.
 - An XTM One user OpenCRQ does not know gets an account at their first sign-in, with no password
   and no tenant (`auth.createXtmAccount`). One whose email an account tied to another XTM One user
   holds, whatever its case, is refused with `conflict`.
@@ -46,7 +47,7 @@ asks XTM One, as the acting administrator (`buildXtmOneHeaders`), to tell them (
 
 | XTM One answers | OpenCRQ |
 |---|---|
-| `notified`, an XTM One id | the account of that id, else the pending account holding the email, which takes that id (`members.linkPendingAccount`), else a new one tied to that id |
+| `notified`, an XTM One id | the account of that id, else the pending account holding the email, which takes that id (`members.tiePendingAccount`), else a new one tied to that id |
 | `invited` | a pending account: the email, no `xtm_subject`, no password; when XTM One could not email the invitation, the drawer shows its own registration `link` to send ("Copy the invitation link"), never the access link, which leads nowhere without an XTM One account |
 | 403, or 404 for a typed email | nothing for that email: `not-addable`, "cannot be added here" |
 | 409: an invitation no platform made (an XTM One administrator's own) is pending for the email | nothing for that email, and XTM One leaves that invitation as it is: "an XTM One invitation is already pending" |
@@ -56,15 +57,15 @@ The notice's `path` is the scope's own (`/<tenantId>`, or the platform's), for e
 person creates their XTM One account, then signs in and takes their pending account by its email.
 `/join/<token>` (front), the path of invitations sent before, only starts the sign-in and ignores
 the token.
-XTM One's super administrators are marked
-"Already a member" in both scopes and left out by the service, with no notice and no row: they hold
-every right from the claim, and a membership written here would outlive it. An email whose account
-is tied to another XTM One user is refused as `not-addable` too, the code XTM One's refusal to
-invite gets, so the answer never tells a caller that an account they cannot see holds the email; a
-person picked from the directory is refused so before XTM One is asked, a typed email once it has
-answered. On the platform, the
-scope is named "Platform administration (<groups>)", in the drawer, the notification and XTM One's
-email, since a tenant has groups of the same names.
+
+XTM One's super administrators are marked "Already a member" in both scopes and left out by the
+service, with no notice and no row: they hold every right from the claim, and a membership written
+here would outlive it. An email whose account is tied to another XTM One user is refused as
+`not-addable` too, the code XTM One's refusal to invite gets, so the answer never tells a caller
+that an account they cannot see holds the email; a person picked from the directory is refused so
+before XTM One is asked, a typed email once it has answered. On the platform, the scope is named
+"Platform administration (<groups>)", in the drawer, the notification and XTM One's email, since a
+tenant has groups of the same names.
 
 The capability (`MANAGE_SECURITY`, `MANAGE_USERS`) is checked before XTM One is asked anything, so a
 refused caller never makes XTM One email anyone; the policies on `tenant_users`, `group_users` and

@@ -37,7 +37,7 @@ export const membersRepository = defineRepository({
   insertAccount: async ({ db }, account: { id: string, email: string, xtmSubject: string | null, name: string | null }) =>
     (await db.insert(users).values(account).onConflictDoNothing().returning()).length > 0,
   /** On a pending account only, so one an XTM One user already took keeps its id: `false` when none was tied. */
-  linkPendingAccount: async ({ rawDb }, userId: string, xtmSubject: string) => {
+  tiePendingAccount: async ({ rawDb }, userId: string, xtmSubject: string) => {
     // eslint-disable-next-line no-restricted-syntax -- the pending account is not the caller's own row, which the users policy alone lets a client update
     const linked = await rawDb().update(users).set({ xtmSubject }).where(and(eq(users.id, userId), isNull(users.xtmSubject))).returning({ id: users.id });
     return linked.length > 0;

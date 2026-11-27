@@ -15,7 +15,7 @@ import { fastify } from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createUser } from '../../helpers/factories';
-import { db } from '../../setup/db';
+import { db, pool } from '../../setup/db';
 import { truncateAllTables } from '../../setup/test-context';
 
 // Spied: a refused takeover must leave a warning, for operators to see. The sign-in's own logger only.
@@ -50,10 +50,11 @@ const idToken = (issuer: string, claims: Record<string, unknown>): string => {
 
 /**
  * XTM One as OpenCRQ reaches it: identity, discovery, keys and the token endpoint, which answers
- * the ID token the test sets. A real socket, so OpenCRQ's own requests are what is exercised.
+ * each code with the ID token the test set for it, so callbacks can run at once. A real socket, so
+ * OpenCRQ's own requests are what is exercised.
  */
 const startXtmOne = async () => {
-  let tokenAnswer: Record<string, unknown> = {};
+  const tokenAnswers = new Map<string, Record<string, unknown>>();
   let meTitle: string | null = null;
   let discoveryAnswered = true;
   const meCalls: Array<string | undefined> = [];
@@ -81,8 +82,12 @@ const startXtmOne = async () => {
       return json({ keys: [{ ...publicJwk, kid: KID, alg: 'EdDSA', use: 'sig' }] });
     }
     if (path === '/mcp/oauth/token' && req.method === 'POST') {
-      req.resume();
-      return req.on('end', () => json(tokenAnswer));
+      let body = '';
+      req.setEncoding('utf8');
+      req.on('data', (chunk: string) => {
+        body += chunk;
+      });
+      return req.on('end', () => json(tokenAnswers.get(new URLSearchParams(body).get('code') ?? '') ?? {}));
     }
     if (path === '/api/v1/auth/me') {
       meCalls.push(req.headers.authorization);
@@ -95,8 +100,8 @@ const startXtmOne = async () => {
   const issuer = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return {
     issuer,
-    answerToken: (answer: Record<string, unknown>) => {
-      tokenAnswer = answer;
+    answerToken: (code: string, answer: Record<string, unknown>) => {
+      tokenAnswers.set(code, answer);
     },
     answerTitle: (title: string | null) => {
       meTitle = title;
@@ -178,8 +183,9 @@ describe('Sign in with XTM One (HTTP)', () => {
     claims: Record<string, unknown>,
     { tamper, flow = started.flow, session }: { tamper?: (query: URLSearchParams) => void, flow?: string, session?: string } = {},
   ) => {
-    xtmOne.answerToken({ id_token: idToken(xtmOne.issuer, { nonce: started.authorize.searchParams.get('nonce'), ...claims }), access_token: 'a', token_type: 'bearer' });
-    const query = new URLSearchParams({ code: 'the-code', state: started.state, iss: xtmOne.issuer });
+    const code = `code-${started.state}`;
+    xtmOne.answerToken(code, { id_token: idToken(xtmOne.issuer, { nonce: started.authorize.searchParams.get('nonce'), ...claims }), access_token: 'a', token_type: 'bearer' });
+    const query = new URLSearchParams({ code, state: started.state, iss: xtmOne.issuer });
     tamper?.(query);
     const callback = await app.inject({ method: 'GET', url: `/api/auth/xtm/callback?${query}`, headers: { host: PLATFORM_HOST }, cookies: {
       ...(flow ? { [flowCookieName(started.state)]: flow } : {}),
@@ -393,13 +399,28 @@ describe('Sign in with XTM One (HTTP)', () => {
       expect(await accountOf('xtm-other')).toBeUndefined();
     });
 
-    it('should let two tabs of the same person sign in to it, the second finding the account the first linked', async () => {
+    it('should let two tabs of the same person signing in at once both sign in to it', async () => {
       const userId = await pendingAccount('jane@acme.com');
       const first = await startSignIn('/risks');
       const second = await startSignIn('/assets');
 
-      const a = await finishSignIn(first, { sub: 'xtm-jane', email: 'jane@acme.com' });
-      const b = await finishSignIn(second, { sub: 'xtm-jane', email: 'jane@acme.com' });
+      // Writes to `users` wait until both callbacks are linking, so both looked the `sub` up first.
+      const lock = await pool.connect();
+      await lock.query('BEGIN; LOCK TABLE users IN EXCLUSIVE MODE');
+      const both = Promise.all([
+        finishSignIn(first, { sub: 'xtm-jane', email: 'jane@acme.com' }),
+        finishSignIn(second, { sub: 'xtm-jane', email: 'jane@acme.com' }),
+      ]);
+      try {
+        await vi.waitFor(async () => {
+          const waiting = await db.execute<{ count: string }>(sql`SELECT count(*) AS count FROM pg_locks WHERE relation = 'users'::regclass AND NOT granted`);
+          expect(Number(waiting.rows[0].count)).toBe(2);
+        }, { timeout: 10_000 });
+      } finally {
+        await lock.query('COMMIT');
+        lock.release();
+      }
+      const [a, b] = await both;
 
       expect(a.session && b.session).toBeTruthy();
       expect(await accountOf('xtm-jane')).toMatchObject({ id: userId });

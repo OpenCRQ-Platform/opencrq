@@ -2,10 +2,8 @@ import { uuidv7 } from 'uuidv7';
 import type { XtmProfile } from './repository';
 import { isUniqueViolationOf } from '../../db/pg-errors';
 import { defineService } from '../../registry';
+import { USERS_EMAIL_UNIQUE, USERS_XTM_SUBJECT_UNIQUE } from '../users/schema';
 import { authRepository } from './repository';
-
-const USERS_XTM_SUBJECT_UNIQUE = 'users_xtm_subject_unique';
-const USERS_EMAIL_UNIQUE = 'users_email_unique';
 
 export const authService = defineService(
   'auth',
