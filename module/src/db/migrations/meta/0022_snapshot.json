@@ -17603,15 +17603,17 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "openaev_scan_measurements_supporting_asset_id_supporting_assets_id_fk": {
-          "name": "openaev_scan_measurements_supporting_asset_id_supporting_assets_id_fk",
+        "openaev_scan_measurements_supporting_asset_tenant_fk": {
+          "name": "openaev_scan_measurements_supporting_asset_tenant_fk",
           "tableFrom": "openaev_scan_measurements",
           "tableTo": "supporting_assets",
           "columnsFrom": [
-            "supporting_asset_id"
+            "supporting_asset_id",
+            "tenant_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "tenant_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"

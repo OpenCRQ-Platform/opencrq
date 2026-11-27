@@ -15,7 +15,7 @@ CREATE TABLE "openaev_scan_measurements" (
 --> statement-breakpoint
 ALTER TABLE "openaev_scan_measurements" ADD CONSTRAINT "openaev_scan_measurements_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "openaev_scan_measurements" ADD CONSTRAINT "openaev_scan_measurements_connector_id_integration_settings_id_fk" FOREIGN KEY ("connector_id") REFERENCES "public"."integration_settings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "openaev_scan_measurements" ADD CONSTRAINT "openaev_scan_measurements_supporting_asset_id_supporting_assets_id_fk" FOREIGN KEY ("supporting_asset_id") REFERENCES "public"."supporting_assets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "openaev_scan_measurements" ADD CONSTRAINT "openaev_scan_measurements_supporting_asset_tenant_fk" FOREIGN KEY ("supporting_asset_id","tenant_id") REFERENCES "public"."supporting_assets"("id","tenant_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "openaev_scan_measurements_asset_idx" ON "openaev_scan_measurements" USING btree ("supporting_asset_id","evaluated_at");--> statement-breakpoint
 CREATE INDEX "openaev_scan_measurements_tenant_evaluated_idx" ON "openaev_scan_measurements" USING btree ("tenant_id","evaluated_at");--> statement-breakpoint
-CREATE TRIGGER openaev_scan_measurements_notify_data_changed AFTER INSERT OR DELETE OR UPDATE ON public.openaev_scan_measurements FOR EACH ROW EXECUTE FUNCTION public.notify_data_changed_tenant('updated_at');
+CREATE TRIGGER openaev_scan_measurements_notify_data_changed AFTER INSERT OR DELETE OR UPDATE ON public.openaev_scan_measurements FOR EACH ROW EXECUTE FUNCTION public.notify_data_changed_tenant();

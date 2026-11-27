@@ -87,6 +87,7 @@ const PLAIN_TENANT_REFERENCES: Record<string, string> = {
   'loss_drivers.loss_category_id -> loss_categories': 'Derived from the row\'s own tenant id, and written by no product path.',
   'openaev_assets.connector_id -> integration_settings': CONNECTOR_CHECKED,
   'openaev_attack_observations.connector_id -> integration_settings': CONNECTOR_CHECKED,
+  'openaev_scan_measurements.connector_id -> integration_settings': CONNECTOR_OF_THE_SYNC,
   'openaev_sync_streams.connector_id -> integration_settings': CONNECTOR_CHECKED,
   'opencti_connector_settings.service_account_id -> service_accounts': 'Checked through views.serviceAccounts by the OpenCTI router before the write.',
   'service_account_tokens.service_account_id -> service_accounts': 'Checked through views.serviceAccounts against the origin\'s tenant before a token is issued.',

@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, foreignKey, index, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { defineSecurityPolicies, tenantIsolationPolicy } from '../../security';
 import { integrationSettings } from '../integration-settings/schema';
 import { supportingAssets } from '../supporting-assets/schema';
@@ -88,7 +88,7 @@ defineSecurityPolicies(openaevAssets, tenantIsolationPolicy);
 export const openaevScanMeasurements = pgTable('openaev_scan_measurements', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   connectorId: uuid('connector_id').notNull().references(() => integrationSettings.id, { onDelete: 'cascade' }),
-  supportingAssetId: uuid('supporting_asset_id').notNull().references(() => supportingAssets.id, { onDelete: 'cascade' }),
+  supportingAssetId: uuid('supporting_asset_id').notNull(),
   scenarioId: text('scenario_id').notNull(),
   scenarioName: text('scenario_name'),
   simulationId: text('simulation_id'),
@@ -100,6 +100,12 @@ export const openaevScanMeasurements = pgTable('openaev_scan_measurements', {
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => [
   primaryKey({ name: 'openaev_scan_measurements_pk', columns: [table.connectorId, table.supportingAssetId, table.scenarioId] }),
+  // On (asset, tenant), so the database refuses a measurement naming another tenant's asset.
+  foreignKey({
+    name: 'openaev_scan_measurements_supporting_asset_tenant_fk',
+    columns: [table.supportingAssetId, table.tenantId],
+    foreignColumns: [supportingAssets.id, supportingAssets.tenantId],
+  }).onDelete('cascade'),
   index('openaev_scan_measurements_asset_idx').on(table.supportingAssetId, table.evaluatedAt),
   index('openaev_scan_measurements_tenant_evaluated_idx').on(table.tenantId, table.evaluatedAt),
 ]);
