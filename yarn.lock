@@ -35,7 +35,7 @@ __metadata:
     "@opentelemetry/winston-transport": "npm:0.35.0"
     "@pyroscope/nodejs": "npm:0.7.1"
     "@smithy/node-http-handler": "npm:4.14.2"
-    "@trpc/server": "npm:11.28.3"
+    "@trpc/server": "npm:11.31.0"
     "@types/nconf": "npm:0.10.7"
     "@types/pg": "npm:8.23.1"
     drizzle-orm: "npm:0.45.4"
@@ -91,9 +91,9 @@ __metadata:
     "@testing-library/dom": "npm:10.4.2"
     "@testing-library/react": "npm:16.3.3"
     "@testing-library/user-event": "npm:14.6.13"
-    "@trpc/client": "npm:11.28.3"
-    "@trpc/server": "npm:11.28.3"
-    "@trpc/tanstack-react-query": "npm:11.28.3"
+    "@trpc/client": "npm:11.31.0"
+    "@trpc/server": "npm:11.31.0"
+    "@trpc/tanstack-react-query": "npm:11.31.0"
     "@types/babel__core": "npm:7.20.5"
     "@types/nconf": "npm:0.10.7"
     "@types/node": "npm:26.6.6"
@@ -139,7 +139,7 @@ __metadata:
     "@app/module": "workspace:*"
     "@app/utils": "workspace:*"
     "@fastify/cookie": "npm:11.1.5"
-    "@trpc/server": "npm:11.28.3"
+    "@trpc/server": "npm:11.31.0"
     "@types/nconf": "npm:0.10.7"
     "@types/pg": "npm:8.23.1"
     drizzle-orm: "npm:0.45.4"
@@ -7111,19 +7111,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@trpc/client@npm:11.28.3":
-  version: 11.28.3
-  resolution: "@trpc/client@npm:11.28.3"
+"@trpc/client@npm:11.31.0":
+  version: 11.31.0
+  resolution: "@trpc/client@npm:11.31.0"
   peerDependencies:
-    "@trpc/server": 11.28.3
+    "@trpc/server": 11.31.0
     typescript: ">=5.7.2"
-  checksum: 10c0/8a41413226a4e6a9dfe2d086142f2cb8ada2e2fcfb8d2308fede59d96908f8d1f3283251468b7bd99958ff4133a8380068ced14de1ecb9851d8c84927546c78d
+  checksum: 10c0/75810cbe6fda12313056b71ceb42c3b43e12e23bd4fd446b87b5c534191de70e8f92c48caad33f7355f64979117eea54b28659787cde764b877593a61a1a6738
   languageName: node
   linkType: hard
 
-"@trpc/server@npm:11.28.3":
-  version: 11.28.3
-  resolution: "@trpc/server@npm:11.28.3"
+"@trpc/server@npm:11.31.0":
+  version: 11.31.0
+  resolution: "@trpc/server@npm:11.31.0"
   peerDependencies:
     "@types/aws-lambda": "*"
     "@types/express": "*"
@@ -7142,20 +7142,20 @@ __metadata:
       optional: true
     next:
       optional: true
-  checksum: 10c0/af340380d5b3bc6f1e0173e42cf785be2017208dc71da3d354014c4db86e898920b84f9938254152ca5f155a7b77c2a14755045b35eb446fb94e2ab0f7b1b293
+  checksum: 10c0/8eda4261660779368d7cf0a0d7917eabbc6bb3cfe089e136d8396eaa502ee61284105e9103602d5a2ec22efa89b85bfcc6bdd0ba3219a8c4d1c7e18214d44056
   languageName: node
   linkType: hard
 
-"@trpc/tanstack-react-query@npm:11.28.3":
-  version: 11.28.3
-  resolution: "@trpc/tanstack-react-query@npm:11.28.3"
+"@trpc/tanstack-react-query@npm:11.31.0":
+  version: 11.31.0
+  resolution: "@trpc/tanstack-react-query@npm:11.31.0"
   peerDependencies:
     "@tanstack/react-query": ^5.106.0
-    "@trpc/client": 11.28.3
-    "@trpc/server": 11.28.3
+    "@trpc/client": 11.31.0
+    "@trpc/server": 11.31.0
     react: ">=18.2.0"
     typescript: ">=5.7.2"
-  checksum: 10c0/d87bc922a787bf10d40178ab638c6dd44627723bf616a23ecc3b59a04829912a5a8d4966a51430c145896bd64fc73f081aa95b548127f1199081af55bfc9df94
+  checksum: 10c0/71ef6edb75100de2e3100cb6e5ffd8a3e2ae49190d1aaf0dbf381e11150a574cd520011b09bb2da0bba69ae1d0cc6b447f8bb501456116c4c326ddbb3197c53a
   languageName: node
   linkType: hard
 
