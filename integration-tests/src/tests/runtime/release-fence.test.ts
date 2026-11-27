@@ -1,4 +1,4 @@
-import { applicationNameFor, assertNotFenced, claimDatabase, readRecordedRelease, ReleaseFencedError } from '@app/back/src/utils/release-fence';
+import { applicationNameFor, assertNotFenced, claimDatabase, DB_INITIALIZATION_LOCK, readRecordedRelease, ReleaseFencedError } from '@app/back/src/utils/release-fence';
 import type { ImageRelease } from '@app/back/src/utils/platform-version';
 import pg from 'pg';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -77,6 +77,25 @@ describe('fencing an older release out of the database', () => {
 
     const sameCommit = await connect(applicationNameFor(newerTagged));
     await expect(assertNotFenced(sameCommit, newerTagged)).resolves.toBeUndefined();
+  });
+
+  it('refuses a new connection of an older release while a newer one initializes the database, with nothing recorded', async () => {
+    const initializing = await connect(applicationNameFor(newer));
+    await initializing.query('SELECT pg_advisory_lock(hashtext($1))', [DB_INITIALIZATION_LOCK]);
+
+    const stale = await connect(applicationNameFor(older));
+    await expect(assertNotFenced(stale, older)).rejects.toBeInstanceOf(ReleaseFencedError);
+
+    const sameCommit = await connect(applicationNameFor(newerTagged));
+    await expect(assertNotFenced(sameCommit, newerTagged)).resolves.toBeUndefined();
+  });
+
+  it('lets a newer release connect while an older one initializes the database', async () => {
+    const initializing = await connect(applicationNameFor(older));
+    await initializing.query('SELECT pg_advisory_lock(hashtext($1))', [DB_INITIALIZATION_LOCK]);
+
+    const client = await connect(applicationNameFor(newer));
+    await expect(assertNotFenced(client, newer)).resolves.toBeUndefined();
   });
 
   it('lets any release connect while none is recorded', async () => {

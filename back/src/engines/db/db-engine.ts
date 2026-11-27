@@ -13,7 +13,7 @@ import { createLogger } from '../../utils/logger';
 import { buildPgConnectionConfig, buildPgControlConnectionConfig, checkReleaseOnConnect } from '../../utils/pg-connection';
 import { registerEngine } from '../engines-manager';
 import { imageRelease, imageVersion } from '../../utils/platform-version';
-import { claimDatabase } from '../../utils/release-fence';
+import { claimDatabase, DB_INITIALIZATION_LOCK } from '../../utils/release-fence';
 import { probeConnection } from './db-connection-probe';
 import { computePoolName, instrumentPoolAcquisition, recordReconnectionAttempt, registerDbPoolMetrics } from './db-metrics';
 import { readDatabaseStatistics, registerDbTableMetrics } from './db-table-metrics';
@@ -75,7 +75,7 @@ const fenceOlderReleases = async () => {
   }
   try {
     const claimed = await claimDatabase(pool, release);
-    if (claimed && claimed.terminated > 0) {
+    if (claimed.terminated > 0) {
       logWarn('Terminated the database connections of older releases', { terminated: claimed.terminated, release: release.version });
     }
   } catch (error) {
@@ -89,8 +89,12 @@ const startDbEngine = async () => {
   logTrace('Database is ready.', { postgres: serverVersion ?? 'unknown' });
 
   logTrace('Acquiring database initialization lock...');
-  await withSessionLock(pool, 'db_initialization', async () => {
+  await withSessionLock(pool, DB_INITIALIZATION_LOCK, async () => {
     logTrace('Acquired database initialization lock.');
+
+    // Before the reset, which a transaction of an older release would block, and before the
+    // migrations, which it would run against; again after them, on the table they just created.
+    await fenceOlderReleases();
 
     const resetEnabled = Boolean(config().platform?.reset_on_version_change);
 
@@ -102,9 +106,6 @@ const startDbEngine = async () => {
       logFromFatalError(error, 'Database reset failed');
     }
 
-    // Before the migrations, which an older release still writing would run against; again after them,
-    // on a database the migrations have just created.
-    await fenceOlderReleases();
     try {
       logTrace('Applying migrations.');
       await runMigration(drizzleDB);

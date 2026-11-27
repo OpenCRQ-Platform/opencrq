@@ -10,6 +10,10 @@ import type { ImageRelease } from './platform-version';
 
 const APPLICATION_NAME = 'opencrq';
 const RELEASE_KEY = 'release_fence';
+const APPLICATION_NAME_PATTERN = new RegExp(`^${APPLICATION_NAME}:([0-9]{1,15}):(.+)$`);
+
+/** The session lock a release holds while it resets and migrates the database. */
+export const DB_INITIALIZATION_LOCK = 'db_initialization';
 // PostgreSQL error code for "undefined_table": a database no release has migrated yet.
 const UNDEFINED_TABLE = '42P01';
 
@@ -17,6 +21,11 @@ const UNDEFINED_TABLE = '42P01';
 export const applicationNameFor = (release: ImageRelease | undefined): string => (
   release === undefined ? APPLICATION_NAME : `${APPLICATION_NAME}:${release.committedAt}:${release.version}`
 );
+
+const releaseOf = (applicationName: string): ImageRelease | null => {
+  const match = APPLICATION_NAME_PATTERN.exec(applicationName);
+  return match ? { committedAt: Number(match[1]), version: match[2] } : null;
+};
 
 export class ReleaseFencedError extends Error {
   constructor(readonly release: ImageRelease, readonly recorded: ImageRelease) {
@@ -51,8 +60,26 @@ export const readRecordedRelease = async (client: Pick<ClientBase, 'query'>): Pr
   }
 };
 
-/** Refuses a connection of a release older than the one recorded: what keeps a fenced process from writing again. */
+/**
+ * Refuses a connection of a release older than the one recorded, or than the one initializing the
+ * database: a reset drops the record, and the migrations only bring it back once they are done.
+ */
 export const assertNotFenced = async (client: Pick<ClientBase, 'query'>, release: ImageRelease): Promise<void> => {
+  const { rows } = await client.query<{ application_name: string }>(
+    `SELECT a.application_name
+     FROM pg_locks l
+     JOIN pg_stat_activity a ON a.pid = l.pid
+     CROSS JOIN (SELECT hashtext($1)::bigint AS key) k
+     WHERE l.locktype = 'advisory' AND l.granted AND l.objsubid = 1
+       AND l.database = (SELECT oid FROM pg_database WHERE datname = current_database())
+       AND l.classid = ((k.key >> 32) & 4294967295)::oid
+       AND l.objid = (k.key & 4294967295)::oid`,
+    [DB_INITIALIZATION_LOCK],
+  );
+  const initializing = rows[0] ? releaseOf(rows[0].application_name) : null;
+  if (initializing && initializing.committedAt > release.committedAt) {
+    throw new ReleaseFencedError(release, initializing);
+  }
   const recorded = await readRecordedRelease(client);
   if (recorded && recorded.committedAt > release.committedAt) {
     throw new ReleaseFencedError(release, recorded);
@@ -61,19 +88,16 @@ export const assertNotFenced = async (client: Pick<ClientBase, 'query'>, release
 
 /**
  * Records `release` as the database's and terminates the connections of every older release, rolling
- * back their transactions in flight. Throws `ReleaseFencedError` when a newer release is recorded.
- * Returns null on a database no release has migrated yet, where nothing can be recorded nor fenced.
+ * back their transactions in flight. Throws `ReleaseFencedError` when a newer release is recorded. On
+ * a database no release has migrated yet, there is nothing to record, but still connections to end.
  */
-export const claimDatabase = async (pool: Pool, release: ImageRelease): Promise<{ terminated: number } | null> => {
+export const claimDatabase = async (pool: Pool, release: ImageRelease): Promise<{ terminated: number }> => {
   const recorded = await readRecordedRelease(pool);
-  if (recorded === undefined) {
-    return null;
-  }
   if (recorded && recorded.committedAt > release.committedAt) {
     throw new ReleaseFencedError(release, recorded);
   }
   const value = JSON.stringify({ version: release.version, committedAt: release.committedAt });
-  if (recorded?.version !== release.version) {
+  if (recorded !== undefined && recorded?.version !== release.version) {
     await pool.query(
       `INSERT INTO platform_metadata (key, value) VALUES ($1, $2)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -89,7 +113,7 @@ export const claimDatabase = async (pool: Pool, release: ImageRelease): Promise<
        AND pid <> pg_backend_pid()
        AND CASE WHEN application_name ~ $1 THEN split_part(application_name, ':', 2)::bigint < $2 ELSE false END
        AND pg_has_role(usesysid, 'MEMBER')`,
-    [`^${APPLICATION_NAME}:[0-9]{1,15}:`, release.committedAt],
+    [APPLICATION_NAME_PATTERN.source, release.committedAt],
   );
   return { terminated: rows[0]?.terminated ?? 0 };
 };
