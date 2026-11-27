@@ -18,7 +18,7 @@
     "@app/module": "workspace:*",
     "@app/utils": "workspace:*",
     "@fastify/cookie": "11.1.5",
-    "@trpc/server": "11.31.0",
+    "@trpc/server": "11.31.2",
     "@types/nconf": "0.10.7",
     "@types/pg": "8.23.1",
     "drizzle-orm": "0.45.4",
