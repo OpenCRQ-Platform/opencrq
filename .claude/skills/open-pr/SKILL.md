@@ -48,7 +48,9 @@ Fill `.github/PULL_REQUEST_TEMPLATE.md`, keep its section order, delete its HTML
 it to a file and pass `--body-file`: a body typed inline gets mangled by quoting.
 
 - **Proposed changes**: what the diff does, in the reviewer's terms. Two or three bullets.
-- **Related issues**: `Closes #<issue>`. Every pull request is linked to an issue.
+- **Related issues**: `Closes #<issue>`, or `Part of #<issue>` on a `-chunkN` branch that is not
+  the last chunk, so that the issue stays open until the last one closes it. Every pull request is
+  linked to an issue.
 - **Type of change**: tick the one box that applies.
 - **Screenshots / recordings**: write `_Attached below._` when there is evidence to drop, or state
   that the change has no UI surface.

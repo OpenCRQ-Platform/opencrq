@@ -16,7 +16,7 @@ jobs:
     # A docs-drift pull request names its tracking issue in the title and must not close it.
     if: github.event.pull_request.user.login != 'docs-drift[bot]'
     steps:
-      - name: Count the issues the PR closes
+      - name: Find the issue the PR closes or is part of
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
 
           # Read now rather than from the event: Renovate labels a pull request after opening it.
-          pr=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels,closingIssuesReferences)
+          pr=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels,closingIssuesReferences,body)
 
           if jq -e 'any(.labels[]; .name == "dependencies")' <<<"$pr" >/dev/null; then
             echo "Dependency update, no linked issue required."
@@ -40,6 +40,18 @@ jobs:
             exit 0
           fi
 
-          echo "::error::The pull request closes no issue of this repository."
-          echo "Write 'Closes #123' in its description."
+          # A pull request that is one step of a larger change leaves its issue open for the last step to close.
+          # HTML comments are dropped so that the template's own guidance never stands for a reference.
+          parts=$(jq -r '(.body // "") | gsub("<!--[\\s\\S]*?-->"; "") | [scan("(?i)\\bpart of #([0-9]+)\\b") | .[0]] | unique | .[]' <<<"$pr")
+
+          for number in $parts; do
+            if gh api "repos/$REPO/issues/$number" 2>/dev/null \
+              | jq -e --arg repo "$REPO" '.pull_request == null and .state == "open" and (.repository_url | endswith("/repos/" + $repo))' >/dev/null; then
+              echo "Part of issue #$number"
+              exit 0
+            fi
+          done
+
+          echo "::error::The pull request closes no issue of this repository and is part of none of its open issues."
+          echo "Write 'Closes #123' in its description, or 'Part of #123' when it is one step of a larger change."
           exit 1
