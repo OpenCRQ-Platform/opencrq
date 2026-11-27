@@ -27,6 +27,8 @@ export {
   DEPENDENCY_RULE_PREVIEW_LIMIT,
 } from './modules/asset-dependencies/rule-matching';
 export type { DependencyRuleNamePatternKind, SupportToPrimaryLinkSource } from './modules/asset-dependencies/rule-matching';
+export { PRIMARY_TO_PRIMARY_LINK_STRENGTHS } from './modules/asset-dependencies/link-strengths';
+export type { PrimaryToPrimaryLinkStrength } from './modules/asset-dependencies/link-strengths';
 export { CRITERION_GRADE_VALUES, IMPACT_HOP_FACTOR, wholePercent } from './modules/risk-scenarios/impact';
 export { SCENARIO_FINDING_SEVERITY_FILTERS, SCENARIO_FINDING_SORT_KEYS, SCENARIO_FINDING_STATE_FILTERS, SCENARIO_SUPPORTING_ASSET_SORT_KEYS } from './modules/risk-scenarios/scenario-lists';
 export type { ScenarioFindingSortKey, ScenarioSupportingAssetSortKey } from './modules/risk-scenarios/scenario-lists';

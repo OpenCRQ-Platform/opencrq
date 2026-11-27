@@ -590,6 +590,33 @@ export const assetDependenciesRepository = defineRepository({
       .innerJoin(views.primaryAssets, eq(views.primaryAssets.id, other))
       .where(eq(own, primaryAssetId));
   },
+  /** One row per link of the given primary assets at `ownEnd`, with the visible primary asset at its other end. */
+  findPrimaryToPrimaryNeighboursBatch: async ({ db, views }, primaryAssetIds: ReadonlyArray<string>, ownEnd: 'dependent' | 'provider') => {
+    if (primaryAssetIds.length === 0) {
+      return [];
+    }
+    const own = ownEnd === 'dependent' ? views.primaryToPrimaryLinks.dependentAssetId : views.primaryToPrimaryLinks.providerAssetId;
+    const other = ownEnd === 'dependent' ? views.primaryToPrimaryLinks.providerAssetId : views.primaryToPrimaryLinks.dependentAssetId;
+    return db.select({ ownAssetId: own, otherAssetId: other, otherAssetName: views.primaryAssets.name })
+      .from(views.primaryToPrimaryLinks)
+      .innerJoin(views.primaryAssets, eq(views.primaryAssets.id, other))
+      .where(inUuids(own, primaryAssetIds));
+  },
+  findPrimaryToPrimaryLinksAmong: async ({ db, views }, primaryAssetIds: ReadonlyArray<string>) => {
+    if (primaryAssetIds.length === 0) {
+      return [];
+    }
+    return db.select({
+      id: views.primaryToPrimaryLinks.id,
+      dependentId: views.primaryToPrimaryLinks.dependentAssetId,
+      providerId: views.primaryToPrimaryLinks.providerAssetId,
+      strength: views.primaryToPrimaryLinks.strength,
+    }).from(views.primaryToPrimaryLinks)
+      .where(and(
+        inUuids(views.primaryToPrimaryLinks.dependentAssetId, primaryAssetIds),
+        inUuids(views.primaryToPrimaryLinks.providerAssetId, primaryAssetIds),
+      ));
+  },
 
   findPrimaryAssetsForReach: ({ db, views }) =>
     db.select({ id: views.primaryAssets.id, organizationId: views.primaryAssets.organizationId }).from(views.primaryAssets),

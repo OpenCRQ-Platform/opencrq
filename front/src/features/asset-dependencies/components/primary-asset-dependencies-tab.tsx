@@ -29,9 +29,13 @@ export const PrimaryAssetDependenciesTab: FunctionComponent<PrimaryAssetDependen
   const [depth, setDepth] = useState(DEPENDENCY_GRAPH_DEFAULT_DEPTH);
   const [manageOpen, setManageOpen] = useState(false);
 
+  // The list below runs its own query, and these cost a walk per level.
   const { data, isError } = useQuery(trpc.assetDependencies.getPrimaryAssetDependencyGraph.queryOptions(
     { primaryAssetId, depth },
-    // The list below runs its own query, and this one costs a walk per level.
+    { enabled: view === 'graph' },
+  ));
+  const { data: primaryLinkGraph, isError: isPrimaryLinkGraphError } = useQuery(trpc.assetDependencies.getPrimaryToPrimaryLinkGraph.queryOptions(
+    { primaryAssetId, depth },
     { enabled: view === 'graph' },
   ));
 
@@ -40,11 +44,12 @@ export const PrimaryAssetDependenciesTab: FunctionComponent<PrimaryAssetDependen
   /** Kept stable because the graph hands it to a simulation that owns the node objects it holds. */
   // eslint-disable-next-line no-restricted-syntax -- see above: the model's identity is the simulation's state.
   const model = useMemo(
-    () => (data
-      ? buildDependencyGraph([{ id: primaryAssetId, name: primaryAssetName }], data, { unnamedAsset, internet })
+    () => (data && primaryLinkGraph
+      ? buildDependencyGraph([{ id: primaryAssetId, name: primaryAssetName }], data, { unnamedAsset, internet }, 'dependencies', primaryLinkGraph)
       : null),
-    [data, primaryAssetId, primaryAssetName, unnamedAsset, internet],
+    [data, primaryLinkGraph, primaryAssetId, primaryAssetName, unnamedAsset, internet],
   );
+  const linksOtherPrimaryAssets = (primaryLinkGraph?.primaryAssets.length ?? 0) > 0;
 
   const viewItems: Array<IconButtonGroupItem<'graph' | 'list'>> = [
     { value: 'graph', icon: <Network className="h-4 w-4" />, tooltip: t`Graph view` },
@@ -63,7 +68,7 @@ export const PrimaryAssetDependenciesTab: FunctionComponent<PrimaryAssetDependen
       </div>
 
       {view === 'list' && <SupportToPrimaryLinksCard primaryAssetId={primaryAssetId} assetName={primaryAssetName} />}
-      {view === 'graph' && isError && (
+      {view === 'graph' && (isError || isPrimaryLinkGraphError) && (
         <Paper className="flex flex-col items-center gap-4 p-[48px_24px]">
           <ServerOff className="h-12 w-12 text-muted-foreground" />
           <div className="text-center">
@@ -76,12 +81,13 @@ export const PrimaryAssetDependenciesTab: FunctionComponent<PrimaryAssetDependen
           </div>
         </Paper>
       )}
-      {view === 'graph' && !isError && (
+      {view === 'graph' && !isError && !isPrimaryLinkGraphError && (
         <DependencyGraphCard
           model={model}
           depth={depth}
           onDepthChange={setDepth}
           currentAssetId={primaryAssetId}
+          marksCurrentAsset={linksOtherPrimaryAssets}
           emptyState={(
             <>
               <p className="text-default-secondary">

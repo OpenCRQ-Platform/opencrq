@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ASSET_CRITICALITY_VALUES } from '@app/module/client';
-import type { AccessRelationGraphPayload, DependencyGraphPayload, DependencyGraphPayloadAsset } from './dependency-graph-utils';
+import type { AccessRelationGraphPayload, DependencyGraphPayload, DependencyGraphPayloadAsset, PrimaryToPrimaryLinkGraphPayload } from './dependency-graph-utils';
 import {
   aggregateNodeId,
   assetDomain,
@@ -19,9 +19,13 @@ import {
   isDirectedEdge,
   isMutualEdge,
   isSelectableEdge,
+  isUnknownStrengthEdge,
   nodeNeighbours,
   nodePins,
   presentDomains,
+  primaryAggregateNodeId,
+  primaryEdgeAlpha,
+  primaryNeighbours,
   ringAlpha,
 } from './dependency-graph-utils';
 
@@ -365,6 +369,132 @@ describe('buildDependencyGraph', () => {
     expect(levelOf(model.nodes, 'gateway')).toBe(0);
     expect(levelOf(model.nodes, 'db')).toBe(2);
     expect(levelOf(model.nodes, 'san')).toBe(3);
+  });
+});
+
+const primaryLinks = (over: Partial<PrimaryToPrimaryLinkGraphPayload> = {}): PrimaryToPrimaryLinkGraphPayload => ({
+  primaryAssets: [],
+  links: [],
+  truncated: [],
+  ...over,
+});
+
+/** Two levels each way: `downstream` depends on `dependent`, which depends on the first one, which depends on `provider`, which depends on `upstream`. */
+const PRIMARY_CHAIN = primaryLinks({
+  primaryAssets: [
+    { id: 'dependent', name: 'Card payments' },
+    { id: 'downstream', name: 'Merchant onboarding' },
+    { id: 'provider', name: 'Core ledger' },
+    { id: 'upstream', name: 'Market data' },
+  ],
+  links: [
+    { id: 'p1', dependentId: 'dependent', providerId: 'primary', strength: 'critical' },
+    { id: 'p2', dependentId: 'downstream', providerId: 'dependent', strength: 'minor' },
+    { id: 'p3', dependentId: 'primary', providerId: 'provider', strength: 'important' },
+    { id: 'p4', dependentId: 'provider', providerId: 'upstream', strength: 'unknown' },
+  ],
+});
+
+describe('buildDependencyGraph with the links between primary assets', () => {
+  it('draws the primary assets it depends on past it, and the ones depending on it before it', () => {
+    const model = buildDependencyGraph([PRIMARY], payload({
+      assets: [asset('app')],
+      links: [{ id: 'l1', dependentId: 'primary', providerId: 'app', kind: 'depends_on', roles: ['stores'] }],
+    }), LABELS, 'dependencies', PRIMARY_CHAIN);
+
+    expect(['downstream', 'dependent', 'primary', 'provider', 'upstream'].map((id) => levelOf(model.nodes, id))).toEqual([0, 1, 2, 3, 4]);
+    expect(levelOf(model.nodes, 'app')).toBe(3);
+    expect(model.nodes.filter((node) => node.kind === 'primary').map((node) => node.label))
+      .toEqual(['Customer billing', 'Card payments', 'Merchant onboarding', 'Core ledger', 'Market data']);
+  });
+
+  it('draws every link between primary assets from the dependent to its provider, with its strength and no role', () => {
+    const model = buildDependencyGraph([PRIMARY], payload(), LABELS, 'dependencies', PRIMARY_CHAIN);
+
+    expect(model.links).toContainEqual({ id: 'p1', source: 'dependent', target: 'primary', kind: 'primary_dependency', roles: null, strength: 'critical' });
+    expect(model.links.filter((link) => link.kind === 'primary_dependency')).toHaveLength(4);
+  });
+
+  it('hangs the primary assets past the depth off the last asset of each side, on the side they sit', () => {
+    const model = buildDependencyGraph([PRIMARY], payload(), LABELS, 'dependencies', primaryLinks({
+      ...PRIMARY_CHAIN,
+      truncated: [
+        { assetId: 'upstream', hiddenCount: 2, side: 'provider' },
+        { assetId: 'downstream', hiddenCount: 3, side: 'dependent' },
+      ],
+    }));
+
+    const providerFold = primaryAggregateNodeId('upstream', 'provider');
+    const dependentFold = primaryAggregateNodeId('downstream', 'dependent');
+    expect(model.nodes.find((node) => node.id === providerFold)).toMatchObject({ kind: 'aggregate', hiddenProviderCount: 2, foldedBy: 'depth', primaryFoldSide: 'provider' });
+    expect(model.links).toContainEqual({ id: providerFold, source: 'upstream', target: providerFold, kind: 'beyond_depth', roles: null });
+    expect(model.links).toContainEqual({ id: dependentFold, source: dependentFold, target: 'downstream', kind: 'beyond_depth', roles: null });
+    expect(levelOf(model.nodes, dependentFold)).toBe(0);
+    expect(levelOf(model.nodes, 'primary')).toBe(3);
+    expect(levelOf(model.nodes, providerFold)).toBe(6);
+  });
+
+  it('draws two primary assets depending on each other as one selectable edge, in the ink of its stronger link', () => {
+    const model = buildDependencyGraph([PRIMARY], payload(), LABELS, 'dependencies', primaryLinks({
+      primaryAssets: [SECOND_PRIMARY],
+      links: [
+        { id: 'p2', dependentId: 'second', providerId: 'primary', strength: 'minor' },
+        { id: 'p1', dependentId: 'primary', providerId: 'second', strength: 'critical' },
+      ],
+    }));
+
+    const edges = drawnEdges(model);
+    expect(edges).toHaveLength(1);
+    expect(edges[0].links.map((link) => link.id)).toEqual(['p1', 'p2']);
+    expect(isSelectableEdge(edges[0])).toBe(true);
+    expect(primaryEdgeAlpha(edges[0])).toBe(1);
+    expect(isUnknownStrengthEdge(edges[0])).toBe(false);
+  });
+
+  it('tells the four strengths apart by ink, an unknown one dashed', () => {
+    const edges = drawnEdges(buildDependencyGraph([PRIMARY], payload(), LABELS, 'dependencies', PRIMARY_CHAIN));
+    const primaryEdges = ['p1', 'p3', 'p2', 'p4'].flatMap((id) => edges.filter((edge) => edge.id === id));
+
+    expect(primaryEdges.map(primaryEdgeAlpha)).toEqual([1, 0.55, 0.22, 0.7]);
+    expect(primaryEdges.map(isUnknownStrengthEdge)).toEqual([false, false, false, true]);
+  });
+
+  it('keeps the payload of a primary asset with no link between primary assets as it was', () => {
+    const graph = payload({
+      assets: [asset('app')],
+      links: [{ id: 'l1', dependentId: 'primary', providerId: 'app', kind: 'depends_on', roles: ['stores'] }],
+    });
+
+    expect(buildDependencyGraph([PRIMARY], graph, LABELS, 'dependencies', primaryLinks())).toEqual(buildDependencyGraph([PRIMARY], graph, LABELS));
+  });
+});
+
+describe('primaryNeighbours', () => {
+  const model = buildDependencyGraph([PRIMARY], payload({
+    assets: [asset('app')],
+    links: [{ id: 'l1', dependentId: 'primary', providerId: 'app', kind: 'depends_on', roles: ['stores'] }],
+  }), LABELS, 'dependencies', primaryLinks({
+    ...PRIMARY_CHAIN,
+    truncated: [{ assetId: 'dependent', hiddenCount: 4, side: 'dependent' }],
+  }));
+
+  it('splits the primary assets one link away by side, each with its strength', () => {
+    const { dependsOn, dependedOnBy } = primaryNeighbours(model, 'primary');
+
+    expect(dependsOn.map(({ node, strength }) => [node.id, strength])).toEqual([['provider', 'important']]);
+    expect(dependedOnBy.map(({ node, strength }) => [node.id, strength])).toEqual([['dependent', 'critical']]);
+  });
+
+  it('counts the aggregate standing for primary assets past the depth, which has no strength', () => {
+    const { dependedOnBy } = primaryNeighbours(model, 'dependent');
+
+    expect(dependedOnBy.map(({ node, strength }) => [node.id, strength]))
+      .toEqual([['downstream', 'minor'], [primaryAggregateNodeId('dependent', 'dependent'), null]]);
+  });
+
+  it('leaves the primary assets out of the supporting neighbours', () => {
+    expect(nodeNeighbours(model, 'primary').providers.map((node) => node.id)).toEqual(['app']);
+    expect(nodeNeighbours(model, 'dependent')).toEqual({ providers: [], dependents: [] });
   });
 });
 

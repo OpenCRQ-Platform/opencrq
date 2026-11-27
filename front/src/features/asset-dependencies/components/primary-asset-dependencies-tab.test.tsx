@@ -35,15 +35,25 @@ afterEach(() => {
   cleanup();
 });
 
-const renderWith = (answer: typeof FAILED | typeof NEVER) => {
+const renderWith = (answer: typeof FAILED | typeof NEVER, primaryLinksAnswer: typeof FAILED | typeof NEVER = NEVER) => {
   renderWithTrpc(<PrimaryAssetDependenciesTab primaryAssetId="00000000-0000-0000-0000-0000000000a1" primaryAssetName="Ledger" />, {
-    answers: { 'assetDependencies.getPrimaryAssetDependencyGraph': answer },
+    answers: {
+      'assetDependencies.getPrimaryAssetDependencyGraph': answer,
+      'assetDependencies.getPrimaryToPrimaryLinkGraph': primaryLinksAnswer,
+    },
   });
 };
 
 describe('PrimaryAssetDependenciesTab', () => {
   it('should say the graph failed to load instead of leaving the card loading', async () => {
     renderWith(FAILED);
+
+    expect(await screen.findByText('Failed to load the dependency graph')).toBeTruthy();
+    expect(screen.queryByTestId('graph-card')).toBeNull();
+  });
+
+  it('should say the graph failed to load when the links between primary assets do', async () => {
+    renderWith(NEVER, FAILED);
 
     expect(await screen.findByText('Failed to load the dependency graph')).toBeTruthy();
     expect(screen.queryByTestId('graph-card')).toBeNull();
