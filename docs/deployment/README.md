@@ -10,6 +10,9 @@ This folder contains all documentation related to deploying and configuring Open
 - [**Configuration**](configuration.md)  
   Reference for environment variables and configuration settings.
 
+- [**HTTPS and private certificate authorities**](https-and-certificates.md)  
+  Why HTTPS is required beyond localhost, how to make the backend trust a private CA, and a lab recipe with one CA for the whole platform.
+
 - [**Metrics**](metrics.md)  
   Contract for every metric OpenCRQ exposes, plus a scrape recipe and OpenCTI-compatible recording rules.
 
