@@ -53,6 +53,7 @@ jobs:
         run: |
           version=$(node scripts/release.mjs build-version "$GITHUB_REF" "$(git rev-parse HEAD)")
           echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "APP_COMMIT_TIME=$(git show -s --format=%cI HEAD)" >> "$GITHUB_ENV"
 
       # The Flow workflow saves what the registries answered; the notices stage of the build reads it
       # instead of asking again. This job never saves it. The paths and the key are the Flow
@@ -107,6 +108,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             APP_VERSION=${{ env.APP_VERSION }}
+            APP_COMMIT_TIME=${{ env.APP_COMMIT_TIME }}
           cache-from: ${{ steps.cache.outputs.cache_from }}
           cache-to: ${{ steps.cache.outputs.cache_to }}
           pull: true

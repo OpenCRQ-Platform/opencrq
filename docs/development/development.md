@@ -572,6 +572,8 @@ The platform has one version, which an image carries as `APP_VERSION` and `scrip
 
 `yarn release:version` prints the next release number from the tags on origin. A release is cut with the `/release` skill, as [Releases](#releases) describes, never by pushing a tag by hand: a tag without its draft release fails CI and gets no GitHub Release.
 
+An image also carries `APP_COMMIT_TIME`, the date of the commit it was built from (`git show -s --format=%cI`), since two versions of one day do not sort: it orders releases, so that a newer one takes the database over from an older one ([One release at a time](../deployment/configuration.md#database-postgresql)). Code reads both through `imageRelease()`.
+
 The version is what the platform reports: the boot log, the `health` answer, the OpenCRQ platform card of Settings → Parameters, the XTM One registration and `X-Platform-Version` header, `service.version` in traces and usage telemetry. Since it differs on every commit, it also decides whether a boot seeds again or resets the database (`PLATFORM__RESET_ON_VERSION_CHANGE`), and stamps the simulation runs and the default threats load; a process run from source does none of these. Code reads it as `platformVersion()` and `imageVersion()` (`back/src/utils/platform-version.ts`), never `APP_VERSION` directly: a lint rule (`appVersionRules`) flags any other reader of the variable.
 
 ## Code quality

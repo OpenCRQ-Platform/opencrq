@@ -51,6 +51,7 @@ vi.mock('../../utils/logger', () => ({
 vi.mock('../../utils/pg-connection', () => ({
   buildPgConnectionConfig: () => ({}),
   buildPgControlConnectionConfig: () => ({}),
+  checkReleaseOnConnect: () => Promise.resolve(),
 }));
 
 vi.mock('../engines-manager', () => ({

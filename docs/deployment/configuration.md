@@ -24,6 +24,12 @@ This guide details the environment variables and configuration options for deplo
 
 **Shared memory.** A parallel query passes tuples between its workers through `/dev/shm`, and an aggregate over a large asset estate exceeds the 64 MB a container gets by default: the query then fails outright with `could not resize shared memory segment`. Give the PostgreSQL service at least 1 GB (`shm_size: 1gb` in Compose, an `emptyDir` of `medium: Memory` sized to match on Kubernetes); the development stack and the XTM Docker bundle already do.
 
+**One release at a time.** Two releases writing to one database can corrupt it, even when the newer one changed no schema, so the newer one takes the database over from the older one. When it starts, before it migrates, it records its release in the database and terminates the connections of every older release, which rolls back their transactions in flight. An older process then refuses every connection it opens and exits, and an older image refuses to start on that database at all. A release is ordered by the date of the commit its image was built from, which the image carries as `APP_COMMIT_TIME` beside `APP_VERSION`. A process run from source, or an image built without `APP_COMMIT_TIME`, neither takes the database over nor is refused, and nor is an image built before this protection existed. Consequences for an operator:
+
+- **Rolling back** to an older release means restoring the database backup taken before the upgrade, since the migrations have no down step and the older image refuses the database the newer one recorded.
+- **A connection pooler** in transaction mode (PgBouncer and the like) between OpenCRQ and PostgreSQL is not supported: it names its own connections, so the newer release can no longer tell an older one's apart.
+- The connections are told apart by their `application_name` (`opencrq:<commit time>:<version>`), and only those of roles the newer release's own user belongs to are terminated, as PostgreSQL only lets a role terminate those.
+
 **Extensions.** The migrations create the `unaccent` extension. It is trusted, so the database owner can create it without superuser rights, but a managed service that allowlists extensions one by one refuses any it does not list, and the migration then fails at startup. On Azure Database for PostgreSQL Flexible Server, add it to the `azure.extensions` server parameter before the first start.
 
 ## File Storage (RustFS / S3-compatible)

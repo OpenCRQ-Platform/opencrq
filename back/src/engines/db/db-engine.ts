@@ -2,6 +2,7 @@ import { createServices, platformGroupsService, reconcilePlatformSeedUsers, runM
 import { fromError, newError, withSessionLock } from '@app/utils';
 import type { Logger as StatementObserver } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { ClientBase } from 'pg';
 import { Pool } from 'pg';
 import type { PreservedMetadata, SeedSkipReason } from './db-reset';
 import type { DatabaseStatistics } from './db-table-metrics';
@@ -9,9 +10,10 @@ import { config } from '../../config';
 import { seedDefaultThreatsLoad } from '../../features/default-threats/default-threats-dataset';
 import { sleep } from '../../utils';
 import { createLogger } from '../../utils/logger';
-import { buildPgConnectionConfig, buildPgControlConnectionConfig } from '../../utils/pg-connection';
+import { buildPgConnectionConfig, buildPgControlConnectionConfig, checkReleaseOnConnect } from '../../utils/pg-connection';
 import { registerEngine } from '../engines-manager';
-import { imageVersion } from '../../utils/platform-version';
+import { imageRelease, imageVersion } from '../../utils/platform-version';
+import { claimDatabase } from '../../utils/release-fence';
 import { probeConnection } from './db-connection-probe';
 import { computePoolName, instrumentPoolAcquisition, recordReconnectionAttempt, registerDbPoolMetrics } from './db-metrics';
 import { readDatabaseStatistics, registerDbTableMetrics } from './db-table-metrics';
@@ -22,11 +24,13 @@ import { xtmOneSeedDirectoryFromConfig } from './xtm-one-seed-accounts';
 
 const DB_ENGINE_KEY = 'db';
 const logger = createLogger({ engine: DB_ENGINE_KEY });
-const { logTrace, logFromError, logFromFatalError } = logger;
+const { logTrace, logWarn, logFromError, logFromFatalError } = logger;
 
 const reconnecting = new Set<Pool>();
 
-const postgresConfig = buildPgConnectionConfig();
+const onConnect = (client: ClientBase) => checkReleaseOnConnect(client, logger);
+
+const postgresConfig = { ...buildPgConnectionConfig(), onConnect };
 
 const pool = new Pool(postgresConfig);
 const SHARED_POOL_NAME = computePoolName(pool);
@@ -39,7 +43,7 @@ instrumentPoolAcquisition(pool, SHARED_POOL_NAME);
  * lease, and three of those in a row send a healthy job to the dead-letter queue. Unobserved by
  * design, so the bookkeeping of an observed run stays out of its read set.
  */
-const controlPool = new Pool(buildPgControlConnectionConfig());
+const controlPool = new Pool({ ...buildPgControlConnectionConfig(), onConnect });
 const CONTROL_POOL_NAME = `${computePoolName(controlPool)}#control`;
 registerDbPoolMetrics(controlPool, CONTROL_POOL_NAME);
 instrumentPoolAcquisition(controlPool, CONTROL_POOL_NAME);
@@ -64,6 +68,21 @@ const waitForDatabase = async (maxRetries = 30, delayMs = 1_000) => {
   throw fromError(lastErr, `Database not ready after ${maxRetries} attempts`);
 };
 
+const fenceOlderReleases = async () => {
+  const release = imageRelease();
+  if (release === undefined) {
+    return;
+  }
+  try {
+    const claimed = await claimDatabase(pool, release);
+    if (claimed && claimed.terminated > 0) {
+      logWarn('Terminated the database connections of older releases', { terminated: claimed.terminated, release: release.version });
+    }
+  } catch (error) {
+    logFromFatalError(error, 'Could not take over the database from older releases');
+  }
+};
+
 const startDbEngine = async () => {
   logTrace('Starting database initialization...');
   const serverVersion = await waitForDatabase();
@@ -83,6 +102,9 @@ const startDbEngine = async () => {
       logFromFatalError(error, 'Database reset failed');
     }
 
+    // Before the migrations, which an older release still writing would run against; again after them,
+    // on a database the migrations have just created.
+    await fenceOlderReleases();
     try {
       logTrace('Applying migrations.');
       await runMigration(drizzleDB);
@@ -90,6 +112,7 @@ const startDbEngine = async () => {
     } catch (error) {
       logFromFatalError(error, 'Migration failed');
     }
+    await fenceOlderReleases();
 
     // Restore deployment-level metadata (the instance id) wiped
     // by the reset, now that migrations have recreated the table. Runs before

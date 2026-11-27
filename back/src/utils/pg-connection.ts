@@ -1,4 +1,10 @@
+import type { ClientBase } from 'pg';
+import type { Logger } from './logger';
 import { config } from '../config';
+import { imageRelease } from './platform-version';
+import { applicationNameFor, assertNotFenced, ReleaseFencedError } from './release-fence';
+
+const release = imageRelease();
 
 export const DB_CONNECT_TIMEOUT_MS = 5_000;
 export const DB_DEFAULT_POOL_MAX = 20;
@@ -23,7 +29,27 @@ export const buildPgConnectionConfig = () => {
     database: cfg.database,
     connectionTimeoutMillis: DB_CONNECT_TIMEOUT_MS,
     max: cfg.pool_max ?? DB_DEFAULT_POOL_MAX,
+    application_name: applicationNameFor(release),
   };
 };
 
 export const buildPgControlConnectionConfig = () => ({ ...buildPgConnectionConfig(), max: DB_CONTROL_POOL_MAX });
+
+/**
+ * Run on every new connection, before anything uses it. Once a newer release has taken over the
+ * database, this process exits: every connection it opened has been terminated, and every new one
+ * would be refused.
+ */
+export const checkReleaseOnConnect = async (client: ClientBase, logger: Pick<Logger, 'logFromFatalError'>): Promise<void> => {
+  if (release === undefined) {
+    return;
+  }
+  try {
+    await assertNotFenced(client, release);
+  } catch (error) {
+    if (error instanceof ReleaseFencedError) {
+      logger.logFromFatalError(error, 'A newer release has taken over the database, exiting', { recorded: error.recorded.version });
+    }
+    throw error;
+  }
+};
