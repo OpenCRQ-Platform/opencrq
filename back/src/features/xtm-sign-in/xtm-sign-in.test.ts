@@ -184,18 +184,6 @@ describe('sign-in flow cookie', () => {
     expect(decodeSignInFlow(encodeSignInFlow(flow))).toEqual(flow);
   });
 
-  it('carries the token of the invitation link the sign-in started from', () => {
-    const flow = newSignInFlow('/', 'a'.repeat(43));
-
-    expect(decodeSignInFlow(encodeSignInFlow(flow))).toEqual({ ...flow, joinToken: 'a'.repeat(43) });
-  });
-
-  it('reads a flow carrying a token of another form as no flow', () => {
-    const forged = encodeSignInFlow({ ...newSignInFlow('/'), joinToken: 'short' });
-
-    expect(decodeSignInFlow(forged)).toBeNull();
-  });
-
   it.each([undefined, '', 'not-base64-json', Buffer.from('{"state":""}').toString('base64url')])('reads %s as no flow', (value) => {
     expect(decodeSignInFlow(value)).toBeNull();
   });
@@ -426,7 +414,7 @@ describe('who signs in', () => {
     expect(decideSignIn({ linkedUserId: null, emailTaken: false })).toEqual({ action: 'create' });
   });
 
-  it('never finds or takes over an account by its email', () => {
+  it('never takes over an account tied to another XTM One user by its email', () => {
     expect(decideSignIn({ linkedUserId: null, emailTaken: true })).toEqual({ action: 'refuse', reason: 'conflict' });
   });
 });
@@ -434,30 +422,29 @@ describe('who signs in', () => {
 describe('account of the XTM One user', () => {
   const CLAIMS = { sub: 'xtm-jane', email: 'jane@acme.com' };
 
-  it('finds the account of this XTM One id without spending a join link', async () => {
+  it('finds the account of this XTM One id without taking a pending account', async () => {
     const linkPendingAccount = vi.fn();
 
-    expect(await findLinkedAccount({ getUserIdByXtmSubject: () => Promise.resolve('u-1'), linkPendingAccount }, CLAIMS, 'token')).toBe('u-1');
+    expect(await findLinkedAccount({ getUserIdByXtmSubject: () => Promise.resolve('u-1'), linkPendingAccount }, CLAIMS)).toBe('u-1');
     expect(linkPendingAccount).not.toHaveBeenCalled();
   });
 
-  it('links the pending account its join link names', async () => {
+  it('takes the pending account holding the email', async () => {
     const linkPendingAccount = vi.fn().mockResolvedValue('u-pending');
 
-    expect(await findLinkedAccount({ getUserIdByXtmSubject: () => Promise.resolve(null), linkPendingAccount }, CLAIMS, 'token')).toBe('u-pending');
-    expect(linkPendingAccount).toHaveBeenCalledWith('xtm-jane', 'token', 'jane@acme.com');
+    expect(await findLinkedAccount({ getUserIdByXtmSubject: () => Promise.resolve(null), linkPendingAccount }, CLAIMS)).toBe('u-pending');
+    expect(linkPendingAccount).toHaveBeenCalledWith('xtm-jane', 'jane@acme.com');
   });
 
-  it('finds the account another callback of the same join link linked meanwhile, rather than none', async () => {
+  it('finds the account another first callback of the same person linked meanwhile, rather than none', async () => {
     const getUserIdByXtmSubject = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('u-pending');
 
-    expect(await findLinkedAccount({ getUserIdByXtmSubject, linkPendingAccount: () => Promise.resolve(null) }, CLAIMS, 'token')).toBe('u-pending');
+    expect(await findLinkedAccount({ getUserIdByXtmSubject, linkPendingAccount: () => Promise.resolve(null) }, CLAIMS)).toBe('u-pending');
   });
 
-  it('finds none for an unknown XTM One user, with or without a join link that links nothing', async () => {
+  it('finds none for an unknown XTM One user no pending account waits for', async () => {
     const lookups = { getUserIdByXtmSubject: () => Promise.resolve(null), linkPendingAccount: () => Promise.resolve(null) };
 
-    expect(await findLinkedAccount(lookups, CLAIMS, undefined)).toBeNull();
-    expect(await findLinkedAccount(lookups, CLAIMS, 'token')).toBeNull();
+    expect(await findLinkedAccount(lookups, CLAIMS)).toBeNull();
   });
 });

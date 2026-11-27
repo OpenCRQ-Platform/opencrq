@@ -65,7 +65,7 @@ describe('members.addMembers', () => {
   it('hands the drawer an invitation XTM One already holds (409) as a refusal of its own', async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'An invitation is already pending' }), { status: 409 }));
     addTenantMembers.mockImplementation(async (members: Array<{ email: string }>, _groupIds: Array<string>, send: (request: object) => Promise<{ outcome: string }>) => {
-      const answer = await send({ email: members[0].email, path: '/join/token', scopeName: 'Acme Corp' });
+      const answer = await send({ email: members[0].email, path: '/tenant-1', scopeName: 'Acme Corp' });
       expect(answer).toEqual({ outcome: 'invitation-pending' });
       return {
         scopeName: 'Acme Corp',

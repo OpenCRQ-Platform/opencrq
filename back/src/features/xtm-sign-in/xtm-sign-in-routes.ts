@@ -1,5 +1,4 @@
 import { authService, createServices } from '@app/module';
-import { JOIN_TOKEN_PATTERN } from '@app/module/client';
 import type { XtmSignInError } from '@app/utils';
 import type { DrizzleDB } from '@app/module';
 import type { FastifyInstance, FastifyReply } from 'fastify';
@@ -60,8 +59,6 @@ const REFUSALS: ReadonlySet<XtmSignInError> = new Set(['denied', 'conflict']);
 const loginQuerySchema = z.object({
   redirect: z.string().optional(),
   on_platform_url: z.string().optional(),
-  // The token of the invitation link (`/join/<token>`) the person came from: a malformed one is dropped, never refused.
-  join: z.string().optional().transform((token) => (token !== undefined && JOIN_TOKEN_PATTERN.test(token) ? token : undefined)),
 });
 const callbackQuerySchema = z.object({
   code: z.string().optional(),
@@ -86,7 +83,7 @@ export const registerXtmSignInRoutes = (
 
   server.get(SIGN_IN_PATH, async (req, reply) => {
     const parsed = loginQuerySchema.safeParse(req.query);
-    const query: z.infer<typeof loginQuerySchema> = parsed.success ? parsed.data : { join: undefined };
+    const query: z.infer<typeof loginQuerySchema> = parsed.success ? parsed.data : {};
     const landing = safeRedirect(query.redirect, settings.platformUrl);
     const unavailable = () => backToLogin(reply, 'unavailable', query.redirect ? landing : undefined);
     const clientId = getSignInClientId();
@@ -99,11 +96,11 @@ export const registerXtmSignInRoutes = (
       // localhost). Once only: behind a proxy that rewrites the host this host
       // never matches, and the browser is on the platform URL by then anyway.
       if (req.host !== new URL(settings.platformUrl).host && query.on_platform_url !== '1') {
-        const again = new URLSearchParams({ redirect: landing, on_platform_url: '1', ...(query.join !== undefined && { join: query.join }) });
+        const again = new URLSearchParams({ redirect: landing, on_platform_url: '1' });
         return reply.redirect(`${settings.platformUrl}${SIGN_IN_PATH}?${again.toString()}`);
       }
       const discovery = await getXtmDiscovery(settings);
-      const flow = newSignInFlow(landing, query.join);
+      const flow = newSignInFlow(landing);
       reply.setCookie(flowCookieName(flow.state), encodeSignInFlow(flow), FLOW_COOKIE_OPTIONS);
       return reply.redirect(authorizationUrl(discovery, settings, clientId, flow));
     } catch (error) {
@@ -146,8 +143,8 @@ export const registerXtmSignInRoutes = (
       const idToken = await exchangeCode(discovery, settings, clientId, query.data.code, flow);
       const claims = await verifyIdToken(idToken, discovery, settings, clientId, flow);
 
-      const linkedUserId = await findLinkedAccount(auth, claims, flow.joinToken);
-      // The email only matters to an XTM One user OpenCRQ does not know yet.
+      const linkedUserId = await findLinkedAccount(auth, claims);
+      // Past a pending account, the email only matters to an XTM One user OpenCRQ does not know yet.
       const emailTaken = linkedUserId ? false : await auth.isEmailTaken(claims.email);
       const decision = decideSignIn({ linkedUserId, emailTaken });
       if (decision.action === 'refuse') {

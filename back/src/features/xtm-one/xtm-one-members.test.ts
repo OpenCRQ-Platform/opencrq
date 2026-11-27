@@ -11,7 +11,7 @@ const { searchXtmOneDirectory, sendXtmOneAccessNotice } = await import('./xtm-on
 
 const SETTINGS: XtmOneSettings = { url: 'http://xtm-one:4000', token: 'registration-token', platformUrl: 'https://opencrq.example.com' };
 const HEADERS = { Authorization: 'Bearer per-user-jwt' };
-const NOTICE = { email: 'jane@acme.com', path: '/join/secret-token', scopeName: 'Acme Corp' };
+const NOTICE = { email: 'jane@acme.com', path: '/tenant-1', scopeName: 'Acme Corp' };
 
 const fetchMock = vi.fn<typeof fetch>();
 const json = (body: unknown, status = 200): Response => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -62,7 +62,7 @@ describe('access notice', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toBe(`${SETTINGS.url}/api/v1/platform/access-notices`);
     expect(init).toMatchObject({ method: 'POST', headers: { ...HEADERS, 'Content-Type': 'application/json' } });
-    expect(JSON.parse(String(init?.body))).toEqual({ recipient_email: 'jane@acme.com', scope_name: 'Acme Corp', path: '/join/secret-token' });
+    expect(JSON.parse(String(init?.body))).toEqual({ recipient_email: 'jane@acme.com', scope_name: 'Acme Corp', path: '/tenant-1' });
   });
 
   it('reads an invitation, with or without its email sent', async () => {
@@ -103,15 +103,14 @@ describe('access notice', () => {
     expect(await sendXtmOneAccessNotice(SETTINGS, HEADERS, NOTICE)).toEqual({ outcome: 'not-sent' });
   });
 
-  it('never logs the path, which carries the link token, nor the email', async () => {
+  it('never logs the email', async () => {
     fetchMock.mockResolvedValueOnce(json({ detail: 'slow down' }, 429));
-    fetchMock.mockRejectedValueOnce(new Error(`fetch failed for ${NOTICE.path}`));
+    fetchMock.mockRejectedValueOnce(new Error(`fetch failed for ${NOTICE.email}`));
 
     await sendXtmOneAccessNotice(SETTINGS, HEADERS, NOTICE);
     await sendXtmOneAccessNotice(SETTINGS, HEADERS, NOTICE);
 
     const logged = JSON.stringify(logWarn.mock.calls);
-    expect(logged).not.toContain('secret-token');
     expect(logged).not.toContain('jane@acme.com');
   });
 });

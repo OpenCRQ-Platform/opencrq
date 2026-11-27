@@ -73,10 +73,7 @@ const noticeAnswerSchema = z.object({
   link: z.url({ protocol: /^https?$/ }).nullable().optional().catch(null),
 });
 
-/**
- * Asks XTM One to tell one person they were given access, as the user `headers` authenticate. The
- * path can carry a single-use link token, so neither it nor the email is ever logged.
- */
+/** Asks XTM One to tell one person they were given access, as the user `headers` authenticate. The email is never logged. */
 export const sendXtmOneAccessNotice = async (
   settings: XtmOneSettings,
   headers: Record<string, string>,

@@ -1,5 +1,5 @@
 import type { AccessNoticeAnswer, AccessNoticeRequest, EventOrigin, MemberToAdd, SendAccessNotice } from '@app/module';
-import { Capability_ManageSecurity, hashJoinToken } from '@app/module';
+import { Capability_ManageSecurity } from '@app/module';
 import { sql } from 'drizzle-orm';
 import { uuidv7 } from 'uuidv7';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,10 +9,10 @@ import { createTestServices, truncateAllTables } from '../../setup/test-context'
 
 const services = createTestServices(db);
 
-type Row = { id: string, email: string, name: string | null, xtm_subject: string | null, password_hash: string | null, join_token_hash: string | null };
+type Row = { id: string, email: string, name: string | null, xtm_subject: string | null, password_hash: string | null };
 
 const accountByEmail = async (email: string): Promise<Row | undefined> => (
-  await db.execute<Row>(sql`SELECT id, email, name, xtm_subject, password_hash, join_token_hash FROM users WHERE lower(email) = lower(${email})`)
+  await db.execute<Row>(sql`SELECT id, email, name, xtm_subject, password_hash FROM users WHERE lower(email) = lower(${email})`)
 ).rows[0];
 
 const isTenantMember = async (tenantId: string, userId: string): Promise<boolean> => (
@@ -60,17 +60,6 @@ const xtmOneAnswering = (answers: Record<string, AccessNoticeAnswer>) => {
   return { send, requests, requestTo };
 };
 
-const PLATFORM_URL = 'https://opencrq.example.com';
-const linkTo = (path: string): string => `${PLATFORM_URL}${path}`;
-
-const tokenOf = (request: AccessNoticeRequest): string => {
-  const match = /^\/join\/([A-Za-z0-9_-]{43})$/.exec(request.path);
-  if (!match) {
-    throw new Error(`No join link in ${request.path}`);
-  }
-  return match[1];
-};
-
 describe('Members from XTM One', () => {
   let adminOrigin: Extract<EventOrigin, { type: 'client' }>;
   let tenantId: string;
@@ -86,7 +75,7 @@ describe('Members from XTM One', () => {
   });
 
   const addToTenant = (members: Array<MemberToAdd>, send: SendAccessNotice, origin: EventOrigin = adminOrigin) => (
-    services.withOrigin(origin).members.addTenantMembers(members, [groupId], send, linkTo)
+    services.withOrigin(origin).members.addTenantMembers(members, [groupId], send)
   );
 
   describe('adding to a tenant', () => {
@@ -97,14 +86,14 @@ describe('Members from XTM One', () => {
 
       expect(added.results).toEqual([{ email: 'jane@acme.com', added: true, emailSent: true, invited: false, invitationLink: null, refusal: null }]);
       expect(added.scopePath).toBe(`/${tenantId}`);
-      expect(xtmOne.requests).toEqual([{ email: 'jane@acme.com', path: expect.stringMatching(/^\/join\//), scopeName: added.scopeName }]);
+      expect(xtmOne.requests).toEqual([{ email: 'jane@acme.com', path: `/${tenantId}`, scopeName: added.scopeName }]);
       const account = await accountByEmail('jane@acme.com');
-      expect(account).toMatchObject({ xtm_subject: 'xtm-jane', name: 'Jane Martin', password_hash: null, join_token_hash: null });
+      expect(account).toMatchObject({ xtm_subject: 'xtm-jane', name: 'Jane Martin', password_hash: null });
       expect(await isTenantMember(tenantId, account!.id)).toBe(true);
       expect(await groupIdsOf(account!.id)).toEqual([groupId]);
     });
 
-    it('should reuse the account of an XTM One id it already knows, and link to the tenant rather than a join link', async () => {
+    it('should reuse the account of an XTM One id it already knows, and link to the tenant', async () => {
       const { userId } = await createUser(db, 'jane.old@acme.com');
       await db.execute(sql`UPDATE users SET xtm_subject = 'xtm-jane' WHERE id = ${userId}`);
       const xtmOne = xtmOneAnswering({ 'jane@acme.com': { outcome: 'notified', xtmUserId: 'xtm-jane', emailSent: true } });
@@ -116,21 +105,20 @@ describe('Members from XTM One', () => {
       expect(await isTenantMember(tenantId, userId)).toBe(true);
     });
 
-    it('should give a person XTM One invited a pending account: the email, no XTM One id, no password, the hash of its join link only', async () => {
+    it('should give a person XTM One invited a pending account: the email, no XTM One id, no password', async () => {
       const xtmOne = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
 
       const added = await addToTenant([{ email: 'jane@acme.com' }], xtmOne.send);
 
-      expect(added.results[0]).toMatchObject({ added: true, emailSent: true });
-      const token = tokenOf(xtmOne.requests[0]);
+      expect(added.results[0]).toMatchObject({ added: true, emailSent: true, invited: true });
+      expect(xtmOne.requests[0].path).toBe(`/${tenantId}`);
       const account = await accountByEmail('jane@acme.com');
-      expect(account).toMatchObject({ xtm_subject: null, password_hash: null, join_token_hash: hashJoinToken(token) });
-      expect(account!.join_token_hash).not.toContain(token);
+      expect(account).toMatchObject({ xtm_subject: null, password_hash: null });
       expect(await isTenantMember(tenantId, account!.id)).toBe(true);
       expect(await groupIdsOf(account!.id)).toEqual([groupId]);
     });
 
-    it('should give the invitation link XTM One could not email for this person, else their join link, and none once it emailed it', async () => {
+    it('should give the invitation link XTM One could not email for this person, and none once it emailed it or gave none', async () => {
       const link = 'https://xtm-one.example.com/register?invitation=abc';
       const xtmOne = xtmOneAnswering({
         'jane@acme.com': { outcome: 'invited', emailSent: false, link },
@@ -143,13 +131,11 @@ describe('Members from XTM One', () => {
       expect(added.results).toEqual([
         { email: 'jane@acme.com', added: true, emailSent: false, invited: true, invitationLink: link, refusal: null },
         { email: 'paul@acme.com', added: true, emailSent: true, invited: true, invitationLink: null, refusal: null },
-        { email: 'anna@acme.com', added: true, emailSent: false, invited: true, invitationLink: linkTo(xtmOne.requestTo('anna@acme.com').path), refusal: null },
+        { email: 'anna@acme.com', added: true, emailSent: false, invited: true, invitationLink: null, refusal: null },
       ]);
-      expect((await accountByEmail('jane@acme.com'))!.join_token_hash).toBe(hashJoinToken(tokenOf(xtmOne.requestTo('jane@acme.com'))));
-      expect((await accountByEmail('anna@acme.com'))!.join_token_hash).toBe(hashJoinToken(tokenOf(xtmOne.requestTo('anna@acme.com'))));
     });
 
-    it('should keep one pending account for a person invited twice, its link renewed as XTM One reissues the invitation', async () => {
+    it('should keep one pending account for a person invited twice', async () => {
       const xtmOne = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
       await addToTenant([{ email: 'jane@acme.com' }], xtmOne.send);
       const first = await accountByEmail('jane@acme.com');
@@ -158,22 +144,93 @@ describe('Members from XTM One', () => {
 
       const second = await accountByEmail('jane@acme.com');
       expect(second!.id).toBe(first!.id);
-      expect(second!.join_token_hash).toBe(hashJoinToken(tokenOf(xtmOne.requests[1])));
-      expect(second!.join_token_hash).not.toBe(first!.join_token_hash);
+      expect(await countUsers()).toBe(2);
     });
 
-    it('should never give a pending account the XTM One id a notice names: only its own join link links it', async () => {
+    it('should keep one account for an email another case of which an account took meanwhile', async () => {
+      const xtmOne = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
+      const send = vi.fn<SendAccessNotice>(async (request) => {
+        await createUser(db, 'Jane@Acme.com');
+        return xtmOne.send(request);
+      });
+
+      const added = await addToTenant([{ email: 'jane@acme.com' }], send);
+
+      expect(added.results[0]).toMatchObject({ added: true, refusal: null });
+      expect(await countUsers()).toBe(2);
+      expect(await isTenantMember(tenantId, (await accountByEmail('jane@acme.com'))!.id)).toBe(true);
+    });
+
+    it('should tie the pending account that took the email meanwhile to the XTM One id XTM One names', async () => {
+      const xtmOne = xtmOneAnswering({ 'jane@acme.com': { outcome: 'notified', xtmUserId: 'xtm-jane', emailSent: true } });
+      let pendingId = '';
+      const send = vi.fn<SendAccessNotice>(async (request) => {
+        pendingId = (await createUser(db, 'Jane@Acme.com')).userId;
+        return xtmOne.send(request);
+      });
+
+      const added = await addToTenant([{ email: 'jane@acme.com', xtmUserId: 'xtm-jane' }], send);
+
+      expect(added.results[0]).toMatchObject({ added: true, refusal: null });
+      expect(await accountByEmail('jane@acme.com')).toMatchObject({ id: pendingId, xtm_subject: 'xtm-jane' });
+      expect(await countUsers()).toBe(2);
+      expect(await isTenantMember(tenantId, pendingId)).toBe(true);
+    });
+
+    it('should give a pending account the XTM One id XTM One names for its email', async () => {
       const invite = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
       await addToTenant([{ email: 'jane@acme.com' }], invite.send);
-      const notify = xtmOneAnswering({ 'jane@acme.com': { outcome: 'notified', xtmUserId: 'xtm-someone', emailSent: true } });
+      const pendingId = (await accountByEmail('jane@acme.com'))!.id;
+      const notify = xtmOneAnswering({ 'jane@acme.com': { outcome: 'notified', xtmUserId: 'xtm-jane', emailSent: true } });
 
       const added = await addToTenant([{ email: 'jane@acme.com' }], notify.send);
 
-      const account = await accountByEmail('jane@acme.com');
-      expect(added.results[0]).toMatchObject({ added: true, emailSent: true, invited: true, invitationLink: null });
-      expect(account!.xtm_subject).toBeNull();
-      expect(notify.requests[0].path).toMatch(/^\/join\//);
-      expect(account!.join_token_hash).toBe(hashJoinToken(tokenOf(notify.requests[0])));
+      expect(added.results[0]).toEqual({ email: 'jane@acme.com', added: true, emailSent: true, invited: false, invitationLink: null, refusal: null });
+      expect(await accountByEmail('jane@acme.com')).toMatchObject({ id: pendingId, xtm_subject: 'xtm-jane' });
+      expect(notify.requests[0].path).toBe(`/${tenantId}`);
+    });
+
+    it('should leave a pending account an XTM One user took meanwhile to them, never to the XTM One id XTM One names', async () => {
+      const invite = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
+      await addToTenant([{ email: 'jane@acme.com' }], invite.send);
+      const pendingId = (await accountByEmail('jane@acme.com'))!.id;
+      const notify = xtmOneAnswering({ 'jane@acme.com': { outcome: 'notified', xtmUserId: 'xtm-jane', emailSent: true } });
+      const send = vi.fn<SendAccessNotice>(async (request) => {
+        await db.execute(sql`UPDATE users SET xtm_subject = 'xtm-other' WHERE id = ${pendingId}`);
+        return notify.send(request);
+      });
+
+      const added = await addToTenant([{ email: 'jane@acme.com' }], send);
+
+      expect(added.results[0]).toMatchObject({ added: false, refusal: 'not-addable' });
+      expect(await accountByEmail('jane@acme.com')).toMatchObject({ id: pendingId, xtm_subject: 'xtm-other' });
+    });
+
+    it('should place the person again, without a second notice, when the XTM One id went to another account meanwhile', async () => {
+      const invite = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
+      await addToTenant([{ email: 'jane@acme.com' }], invite.send);
+      const notify = xtmOneAnswering({ 'jane@acme.com': { outcome: 'notified', xtmUserId: 'xtm-jane', emailSent: true } });
+      try {
+        // A sequence, since its value outlives the rollback: the first link collides, the retry goes through.
+        await db.execute(sql.raw('CREATE SEQUENCE test_members_link_once'));
+        await db.execute(sql.raw(`CREATE OR REPLACE FUNCTION test_members_link_collides() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+          IF NEW.xtm_subject IS DISTINCT FROM OLD.xtm_subject AND nextval('test_members_link_once') = 1 THEN
+            RAISE EXCEPTION 'taken' USING ERRCODE = 'unique_violation', CONSTRAINT = 'users_xtm_subject_unique';
+          END IF;
+          RETURN NEW;
+        END $$`));
+        await db.execute(sql.raw('CREATE TRIGGER test_members_link_collides BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION test_members_link_collides()'));
+
+        const added = await addToTenant([{ email: 'jane@acme.com' }], notify.send);
+
+        expect(added.results[0]).toMatchObject({ added: true, refusal: null });
+        expect(notify.send).toHaveBeenCalledTimes(1);
+        expect((await accountByEmail('jane@acme.com'))!.xtm_subject).toBe('xtm-jane');
+      } finally {
+        await db.execute(sql.raw('DROP TRIGGER IF EXISTS test_members_link_collides ON users'));
+        await db.execute(sql.raw('DROP FUNCTION IF EXISTS test_members_link_collides()'));
+        await db.execute(sql.raw('DROP SEQUENCE IF EXISTS test_members_link_once'));
+      }
     });
 
     it('should create nothing for an email XTM One refuses to invite (403), and still add the others', async () => {
@@ -263,17 +320,15 @@ describe('Members from XTM One', () => {
       expect(await isTenantMember(tenantId, userId)).toBe(false);
     });
 
-    it('should give the join link of a pending account XTM One knows but could not email, never the access link', async () => {
+    it('should tie a pending account XTM One knows but could not email, for the access link to sign them in', async () => {
       const invite = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
       await addToTenant([{ email: 'jane@acme.com' }], invite.send);
       const notify = xtmOneAnswering({ 'jane@acme.com': { outcome: 'notified', xtmUserId: 'xtm-jane', emailSent: false } });
 
       const added = await addToTenant([{ email: 'jane@acme.com' }], notify.send);
 
-      expect(added.results[0]).toEqual({
-        email: 'jane@acme.com', added: true, emailSent: false, invited: true, invitationLink: linkTo(notify.requests[0].path), refusal: null,
-      });
-      expect((await accountByEmail('jane@acme.com'))!.join_token_hash).toBe(hashJoinToken(tokenOf(notify.requests[0])));
+      expect(added.results[0]).toEqual({ email: 'jane@acme.com', added: true, emailSent: false, invited: false, invitationLink: null, refusal: null });
+      expect((await accountByEmail('jane@acme.com'))!.xtm_subject).toBe('xtm-jane');
     });
 
     it('should add a known person refused by a rate limit (429) with no email sent, and an unknown one not at all', async () => {
@@ -358,7 +413,7 @@ describe('Members from XTM One', () => {
       const other = await anotherTenant(adminOrigin.userId);
       const xtmOne = xtmOneAnswering({});
 
-      await expect(services.withOrigin(adminOrigin).members.addTenantMembers([{ email: 'jane@acme.com' }], [other.groupId], xtmOne.send, linkTo)).rejects.toThrow();
+      await expect(services.withOrigin(adminOrigin).members.addTenantMembers([{ email: 'jane@acme.com' }], [other.groupId], xtmOne.send)).rejects.toThrow();
 
       expect(xtmOne.send).not.toHaveBeenCalled();
     });
@@ -369,7 +424,7 @@ describe('Members from XTM One', () => {
       const other = await anotherTenant(adminOrigin.userId);
       const xtmOne = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
 
-      await expect(services.withOrigin({ ...adminOrigin, tenantId: other.tenantId }).members.addTenantMembers([{ email: 'jane@acme.com' }], [], xtmOne.send, linkTo)).rejects.toThrow();
+      await expect(services.withOrigin({ ...adminOrigin, tenantId: other.tenantId }).members.addTenantMembers([{ email: 'jane@acme.com' }], [], xtmOne.send)).rejects.toThrow();
 
       expect(xtmOne.send).not.toHaveBeenCalled();
       expect(await accountByEmail('jane@acme.com')).toBeUndefined();
@@ -383,7 +438,7 @@ describe('Members from XTM One', () => {
       await services.withOrigin({ type: 'platform', userId: adminOrigin.userId }).platformGroups.createPlatformGroup({ id: platformGroupId, name: 'Platform administrators' });
       const xtmOne = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
 
-      await expect(services.withOrigin({ type: 'platform', userId }).members.addPlatformMembers([{ email: 'jane@acme.com' }], [platformGroupId], xtmOne.send, linkTo)).rejects.toThrow();
+      await expect(services.withOrigin({ type: 'platform', userId }).members.addPlatformMembers([{ email: 'jane@acme.com' }], [platformGroupId], xtmOne.send)).rejects.toThrow();
 
       expect(xtmOne.send).not.toHaveBeenCalled();
       expect(await accountByEmail('jane@acme.com')).toBeUndefined();
@@ -416,7 +471,6 @@ describe('Members from XTM One', () => {
         [{ email: 'paul@acme.com', xtmUserId: 'xtm-paul' }, { email: 'jane@acme.com' }],
         [platformGroupId],
         xtmOne.send,
-        linkTo,
       );
 
       expect(added.scopeName).toBe('Platform administrators');
@@ -428,7 +482,7 @@ describe('Members from XTM One', () => {
         expect((await db.execute(sql`SELECT 1 FROM tenant_users WHERE user_id = ${account!.id}`)).rows).toHaveLength(0);
       }
       expect(xtmOne.requestTo('paul@acme.com').path).toBe('/platform/security/tenants');
-      expect(xtmOne.requestTo('jane@acme.com').path).toMatch(/^\/join\//);
+      expect(xtmOne.requestTo('jane@acme.com').path).toBe('/platform/security/tenants');
     });
 
     it('should list the accounts with no tenant on the platform users list', async () => {
