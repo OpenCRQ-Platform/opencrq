@@ -190,6 +190,22 @@ describe('Members from XTM One', () => {
       expect(notify.requests[0].path).toBe(`/${tenantId}`);
     });
 
+    it('should leave a pending account an XTM One user took meanwhile to them, never to the XTM One id XTM One names', async () => {
+      const invite = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
+      await addToTenant([{ email: 'jane@acme.com' }], invite.send);
+      const pendingId = (await accountByEmail('jane@acme.com'))!.id;
+      const notify = xtmOneAnswering({ 'jane@acme.com': { outcome: 'notified', xtmUserId: 'xtm-jane', emailSent: true } });
+      const send = vi.fn<SendAccessNotice>(async (request) => {
+        await db.execute(sql`UPDATE users SET xtm_subject = 'xtm-other' WHERE id = ${pendingId}`);
+        return notify.send(request);
+      });
+
+      const added = await addToTenant([{ email: 'jane@acme.com' }], send);
+
+      expect(added.results[0]).toMatchObject({ added: false, refusal: 'not-addable' });
+      expect(await accountByEmail('jane@acme.com')).toMatchObject({ id: pendingId, xtm_subject: 'xtm-other' });
+    });
+
     it('should place the person again, without a second notice, when the XTM One id went to another account meanwhile', async () => {
       const invite = xtmOneAnswering({ 'jane@acme.com': { outcome: 'invited', emailSent: true, link: null } });
       await addToTenant([{ email: 'jane@acme.com' }], invite.send);

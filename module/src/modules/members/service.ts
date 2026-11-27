@@ -59,10 +59,10 @@ const placeNotified = async (
   }
   // The person signed in meanwhile, which tied an account to them.
   const raced = await repo.findAccountByXtmSubject(xtmUserId);
-  if (raced || byEmail) {
-    return raced?.id ?? null;
+  if (raced) {
+    return raced.id;
   }
-  // Or an account took the email meanwhile: a pending one is theirs.
+  // Or the account holding the email changed meanwhile: a pending one is theirs.
   const tookEmail = await repo.findAccountByEmail(member.email);
   return tookEmail?.xtmSubject === null ? placeNotified(repo, member, tookEmail, xtmUserId) : null;
 };
