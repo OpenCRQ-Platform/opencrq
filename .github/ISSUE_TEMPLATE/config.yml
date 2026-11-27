@@ -1,1 +1,5 @@
 blank_issues_enabled: true
+contact_links:
+  - name: A page of the documentation site
+    url: https://github.com/FiligranHQ/xtm-docs/issues/new/choose
+    about: Something missing or wrong on filigran.io/docs? Report it in FiligranHQ/xtm-docs, the site's mirror.
