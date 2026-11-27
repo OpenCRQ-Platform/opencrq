@@ -167,9 +167,9 @@ export const collectTsContent = (dir: string): string => {
 };
 
 /** Returns the Identifier-keyed Property nodes of an ObjectExpression. */
-const getIdentifierProperties = (objNode: TSESTree.ObjectExpression): Array<TSESTree.Property & { key: TSESTree.Identifier }> =>
+const getIdentifierProperties = (objNode: TSESTree.ObjectExpression): Array<TSESTree.ObjectExpressionProperty & { key: TSESTree.Identifier }> =>
   objNode.properties.filter(
-    (p): p is TSESTree.Property & { key: TSESTree.Identifier } =>
+    (p): p is TSESTree.ObjectExpressionProperty & { key: TSESTree.Identifier } =>
       p.type === 'Property' && p.key.type === 'Identifier',
   );
 

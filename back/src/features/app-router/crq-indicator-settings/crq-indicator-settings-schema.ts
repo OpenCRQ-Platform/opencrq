@@ -37,5 +37,5 @@ export const UpdateCrqIndicatorSettingsSchema = z.object({
 }).refine(
   (input) => (input.phishingFailureRate === undefined) === (input.phishingFailureMeasuredOn === undefined)
     && (input.phishingFailureRate === null) === (input.phishingFailureMeasuredOn === null),
-  { message: 'A phishing failure rate and the day it was measured are given together, or cleared together', path: ['phishingFailureMeasuredOn'] },
+  { error: 'A phishing failure rate and the day it was measured are given together, or cleared together', path: ['phishingFailureMeasuredOn'] },
 );

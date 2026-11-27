@@ -35,14 +35,14 @@ const buildFormSchema = () => z.object({
   namePatternKind: z.enum(['glob', 'regex']),
   tagId: z.uuid().nullable(),
   source: z.enum(INTEGRATION_SOURCES).nullable(),
-}).refine((values) => values.primaryAssetId !== null, { path: ['primaryAssetId'], message: t`Choose the primary asset the rule links to` })
+}).refine((values) => values.primaryAssetId !== null, { path: ['primaryAssetId'], error: t`Choose the primary asset the rule links to` })
   .refine((values) => values.namePatternKind !== 'regex' || values.namePattern.trim() === '' || isReadableRegex(values.namePattern.trim()), {
     path: ['namePattern'],
-    message: t`This regular expression cannot be read`,
+    error: t`This regular expression cannot be read`,
   })
   .refine((values) => [values.categoryId, values.subcategoryId, values.namePattern.trim() === '' ? null : values.namePattern, values.tagId, values.source].some((value) => value !== null), {
     path: ['categoryId'],
-    message: t`A rule needs at least one condition`,
+    error: t`A rule needs at least one condition`,
   });
 
 type FormValues = z.infer<ReturnType<typeof buildFormSchema>>;
