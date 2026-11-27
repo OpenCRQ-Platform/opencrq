@@ -164,6 +164,13 @@ export const SupportingToSupportingLink_LbServesPortal = '61a1b2c3-d4e5-4f6a-8b7
 export const SupportingToSupportingLink_WanConnectsDc = '62b2c3d4-e5f6-4a7b-9c8d-3e4f5a6b7c8d';
 export const SupportingToSupportingLink_BackupProtectsOracle = '63c3d4e5-f6a7-4b8c-ad0e-4f5a6b7c8d9e';
 
+// Primary-to-primary links
+export const PrimaryToPrimaryLink_PaymentOnCreditDecision = '73a1b2c3-d4e5-4f6a-8b7c-5a6b7c8d9e01';
+export const PrimaryToPrimaryLink_AccountDataOnCreditDecision = '74b2c3d4-e5f6-4a7b-9c8d-6b7c8d9e0f12';
+export const PrimaryToPrimaryLink_EuDataOnAmlKyc = '75c3d4e5-f6a7-4b8c-ad0e-7c8d9e0f1a23';
+export const PrimaryToPrimaryLink_TradingOnPortfolio = '76d4e5f6-a7b8-4c9d-be1f-8d9e0f1a2b34';
+export const PrimaryToPrimaryLink_PlanningOnManufacturing = '77e5f6a7-b8c9-4d0e-8f2a-9e0f1a2b3c45';
+
 // Biz Interruption E-commerce loss estimates
 export const ScenarioLossEstimate_EcommerceDowntime = 'e3f4a5b6-c7d8-4e9f-b0a1-2c3d4e5f6a7b';
 export const ScenarioLossEstimate_EcommerceCrisis = 'f4a5b6c7-d8e9-4f0a-81b2-3d4e5f6a7b8c';

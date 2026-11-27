@@ -6,10 +6,11 @@ import type { SupportToPrimaryLinkRole } from './link-roles';
 import type { DependencyRuleConditions } from './rule-matching';
 import type { PrimaryToPrimaryLinkStrength } from './link-strengths';
 import type { ReachRow } from './reach';
+import { orderByFolded } from '../../db/fold-text';
 import { inUuids, notInUuids } from '../../db/uuid-array';
 import { defineRepository } from '../../registry';
 import { namePatternRegex } from './rule-matching';
-import { dependencyRules, dependencyRuleSuppressions, primaryAssetReach, primaryToPrimaryLinks, supportToPrimaryLinks, supportToSupportLinks } from './schema';
+import { dependencyResourceTypes, dependencyRules, dependencyRuleSuppressions, primaryAssetReach, primaryToPrimaryLinks, supportToPrimaryLinks, supportToSupportLinks } from './schema';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Drizzle: sql template literal must be cast to Date for timestamp columns
 const dbNow = () => sql`now()` as unknown as Date;
@@ -565,8 +566,8 @@ export const assetDependenciesRepository = defineRepository({
       .onConflictDoNothing({ target: [primaryToPrimaryLinks.dependentAssetId, primaryToPrimaryLinks.providerAssetId] })
       .returning()).map((row) => row.id),
   /** The ids of the links updated, which leaves out one gone or out of the caller's reach. */
-  updatePrimaryToPrimaryLinkStrength: async ({ db }, ids: Array<string>, strength: PrimaryToPrimaryLinkStrength) =>
-    (await db.update(primaryToPrimaryLinks).set({ strength }).where(inArray(primaryToPrimaryLinks.id, ids)).returning())
+  updatePrimaryToPrimaryLinkFields: async ({ db }, ids: Array<string>, values: { strength?: PrimaryToPrimaryLinkStrength, dependencyResourceTypeId?: string | null }) =>
+    (await db.update(primaryToPrimaryLinks).set(values).where(inArray(primaryToPrimaryLinks.id, ids)).returning())
       .map((row) => row.id),
   /** Row locks for the rest of the caller's transaction, taken in id order. */
   lockPrimaryToPrimaryLinks: async ({ db, views }, ids: Array<string>) => {
@@ -586,9 +587,55 @@ export const assetDependenciesRepository = defineRepository({
       relatedAssetId: other,
       relatedAssetName: views.primaryAssets.name,
       strength: views.primaryToPrimaryLinks.strength,
+      dependencyResourceTypeId: views.primaryToPrimaryLinks.dependencyResourceTypeId,
+      dependencyResourceTypeName: views.dependencyResourceTypes.name,
     }).from(views.primaryToPrimaryLinks)
       .innerJoin(views.primaryAssets, eq(views.primaryAssets.id, other))
+      .leftJoin(views.dependencyResourceTypes, eq(views.dependencyResourceTypes.id, views.primaryToPrimaryLinks.dependencyResourceTypeId))
       .where(eq(own, primaryAssetId));
+  },
+
+  findDependencyResourceTypes: async ({ db, views }) => {
+    const linkCount = db.select({ typeId: views.primaryToPrimaryLinks.dependencyResourceTypeId, linkCount: count().as('link_count') })
+      .from(views.primaryToPrimaryLinks)
+      .where(isNotNull(views.primaryToPrimaryLinks.dependencyResourceTypeId))
+      .groupBy(views.primaryToPrimaryLinks.dependencyResourceTypeId)
+      .as('type_link_count');
+    return db.select({
+      id: views.dependencyResourceTypes.id,
+      name: views.dependencyResourceTypes.name,
+      linkCount: sql<number>`coalesce(${linkCount.linkCount}, 0)::int`,
+    }).from(views.dependencyResourceTypes)
+      .leftJoin(linkCount, eq(linkCount.typeId, views.dependencyResourceTypes.id))
+      .orderBy(...orderByFolded(views.dependencyResourceTypes.nameFolded, views.dependencyResourceTypes.name, false));
+  },
+  /**
+   * The ids among `ids` the caller can see, each row locked for the rest of the caller's transaction
+   * in id order: `key share` holds a type against its deletion while a link names it, `update` holds
+   * it against a link naming it while it is deleted.
+   */
+  lockVisibleDependencyResourceTypes: async ({ db, views }, ids: ReadonlyArray<string>, strength: 'key share' | 'update'): Promise<Set<string>> => {
+    if (ids.length === 0) {
+      return new Set();
+    }
+    const rows = await db.select({ id: views.dependencyResourceTypes.id }).from(views.dependencyResourceTypes)
+      .where(inArray(views.dependencyResourceTypes.id, [...ids]))
+      .orderBy(views.dependencyResourceTypes.id)
+      .for(strength);
+    return new Set(rows.map((row) => row.id));
+  },
+  insertDependencyResourceType: async ({ db }, values: typeof dependencyResourceTypes.$inferInsert) => {
+    await db.insert(dependencyResourceTypes).values(values);
+  },
+  /** False when the type is gone or out of the caller's reach. */
+  renameDependencyResourceType: async ({ db }, id: string, name: string): Promise<boolean> =>
+    (await db.update(dependencyResourceTypes).set({ name }).where(eq(dependencyResourceTypes.id, id)).returning()).length > 0,
+  clearDependencyResourceTypeFromLinks: async ({ db }, id: string) => {
+    await db.update(primaryToPrimaryLinks).set({ dependencyResourceTypeId: null })
+      .where(eq(primaryToPrimaryLinks.dependencyResourceTypeId, id));
+  },
+  deleteDependencyResourceType: async ({ db }, id: string) => {
+    await db.delete(dependencyResourceTypes).where(eq(dependencyResourceTypes.id, id));
   },
 
   findPrimaryAssetsForReach: ({ db, views }) =>

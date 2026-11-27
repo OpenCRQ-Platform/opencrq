@@ -1,4 +1,5 @@
-import { supportToPrimaryLinks, supportToSupportLinks } from '../../modules/asset-dependencies/schema';
+import { and, eq, inArray } from 'drizzle-orm';
+import { dependencyResourceTypes, primaryToPrimaryLinks, supportToPrimaryLinks, supportToSupportLinks } from '../../modules/asset-dependencies/schema';
 import {
   PrimaryAsset_AmlKycProcess,
   PrimaryAsset_CardTransactionData,
@@ -7,7 +8,14 @@ import {
   PrimaryAsset_EuCustomerData,
   PrimaryAsset_InterbankPayment,
   PrimaryAsset_InvestmentPortfolio,
+  PrimaryAsset_ManufacturingData,
+  PrimaryAsset_ProductionPlanning,
   PrimaryAsset_SecuritiesTrading,
+  PrimaryToPrimaryLink_AccountDataOnCreditDecision,
+  PrimaryToPrimaryLink_EuDataOnAmlKyc,
+  PrimaryToPrimaryLink_PaymentOnCreditDecision,
+  PrimaryToPrimaryLink_PlanningOnManufacturing,
+  PrimaryToPrimaryLink_TradingOnPortfolio,
   SupportingAsset_AmlPlatform,
   SupportingAsset_AzureCloud,
   SupportingAsset_BackupDr,
@@ -54,6 +62,7 @@ import {
   SupportingToSupportingLink_LbServesPortal,
   SupportingToSupportingLink_WanConnectsDc,
   Tenant_Acme,
+  Tenant_Tarnwick,
 } from '../data/ids';
 import { registerPlatformSeed } from '../platform-seed-registry';
 
@@ -90,5 +99,23 @@ registerPlatformSeed('asset-dependencies', async ({ db }) => {
     { id: SupportingToSupportingLink_LbServesPortal, tenantId: Tenant_Acme, providerAssetId: SupportingAsset_LoadBalancer, dependentAssetId: SupportingAsset_InternetBanking },
     { id: SupportingToSupportingLink_WanConnectsDc, tenantId: Tenant_Acme, providerAssetId: SupportingAsset_CorporateWan, dependentAssetId: SupportingAsset_DatacenterParis },
     { id: SupportingToSupportingLink_BackupProtectsOracle, tenantId: Tenant_Acme, providerAssetId: SupportingAsset_BackupDr, dependentAssetId: SupportingAsset_OracleExadata },
+  ]);
+
+  // The tenant was given its resource types, in English, when it was created.
+  const acmeTypes = await db.select({ id: dependencyResourceTypes.id, name: dependencyResourceTypes.name }).from(dependencyResourceTypes)
+    .where(and(eq(dependencyResourceTypes.tenantId, Tenant_Acme), inArray(dependencyResourceTypes.name, ['Finance', 'Information', 'Supplier', 'IT'])));
+  const acmeType = (name: string) => {
+    const type = acmeTypes.find((candidate) => candidate.name === name);
+    if (type === undefined) {
+      throw new Error(`[platform-seed] Acme Bank has no dependency resource type ${name}`);
+    }
+    return type.id;
+  };
+  await db.insert(primaryToPrimaryLinks).values([
+    { id: PrimaryToPrimaryLink_PaymentOnCreditDecision, tenantId: Tenant_Acme, dependentAssetId: PrimaryAsset_InterbankPayment, providerAssetId: PrimaryAsset_CreditDecisionProcess, strength: 'important', dependencyResourceTypeId: acmeType('Finance') },
+    { id: PrimaryToPrimaryLink_AccountDataOnCreditDecision, tenantId: Tenant_Acme, dependentAssetId: PrimaryAsset_CustomerAccountData, providerAssetId: PrimaryAsset_CreditDecisionProcess, strength: 'minor', dependencyResourceTypeId: acmeType('Information') },
+    { id: PrimaryToPrimaryLink_EuDataOnAmlKyc, tenantId: Tenant_Acme, dependentAssetId: PrimaryAsset_EuCustomerData, providerAssetId: PrimaryAsset_AmlKycProcess, strength: 'critical', dependencyResourceTypeId: acmeType('Supplier') },
+    { id: PrimaryToPrimaryLink_TradingOnPortfolio, tenantId: Tenant_Acme, dependentAssetId: PrimaryAsset_SecuritiesTrading, providerAssetId: PrimaryAsset_InvestmentPortfolio, strength: 'critical', dependencyResourceTypeId: acmeType('IT') },
+    { id: PrimaryToPrimaryLink_PlanningOnManufacturing, tenantId: Tenant_Tarnwick, dependentAssetId: PrimaryAsset_ProductionPlanning, providerAssetId: PrimaryAsset_ManufacturingData, strength: 'unknown' },
   ]);
 });

@@ -26,6 +26,10 @@ vi.mock('./support-to-primary-links-card', () => ({
   SupportToPrimaryLinksCard: () => null,
 }));
 
+vi.mock('./primary-to-primary-links-card', () => ({
+  PrimaryToPrimaryLinksCard: () => null,
+}));
+
 beforeAll(() => {
   i18n.load('en', {});
   i18n.activate('en');

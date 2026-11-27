@@ -35,8 +35,11 @@ export {
   globToRegex,
 } from './rule-matching';
 export type { DependencyRuleConditions, DependencyRuleNamePatternKind, SupportToPrimaryLinkSource } from './rule-matching';
+export { DEFAULT_DEPENDENCY_RESOURCE_TYPES, DEPENDENCY_RESOURCE_TYPE_NAME_MAX_LENGTH, defaultDependencyResourceTypeNames } from './dependency-resource-types';
 export {
   assetDependenciesService,
+  DependencyResourceTypeNameTakenError,
+  DependencyResourceTypeNotFoundError,
   DependencyRuleNotFoundError,
   DependencyRuleRefusedError,
   PrimaryAssetNotFoundError,

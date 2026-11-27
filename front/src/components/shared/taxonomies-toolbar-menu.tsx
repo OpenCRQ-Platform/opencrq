@@ -11,6 +11,7 @@ export const TaxonomiesToolbarMenu: FunctionComponent = () => {
     { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}', to: 'settings/taxonomies/business-value-categories' }), label: t`Business Resources`, icon: <Icon name="briefcase" size={16} /> },
     { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}', to: 'settings/taxonomies/supporting-asset-categories' }), label: t`Supporting Asset Categories`, icon: <Icon name="server" size={16} /> },
     { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}', to: 'settings/taxonomies/tags' }), label: t`Tags`, icon: <Icon name="tag" size={16} /> },
+    { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}', to: 'settings/taxonomies/dependency-resource-types' }), label: t`Dependency Resource Types`, icon: <Icon name="route" size={16} /> },
     { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}', to: 'settings/taxonomies/countries' }), label: t`Countries`, icon: <Icon name="flag" size={16} /> },
     { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}', to: 'settings/taxonomies/sectors' }), label: t`Sectors`, icon: <Icon name="custom/city" size={16} /> },
     { linkOption: linkOptions({ from: '/$tenantId/{-$organizationId}', to: 'settings/taxonomies/loss-drivers' }), label: t`Loss Drivers`, icon: <Icon name="arrow-down-left" size={16} /> },

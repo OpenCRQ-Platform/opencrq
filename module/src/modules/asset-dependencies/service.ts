@@ -31,6 +31,7 @@ import { canonicalLinkRoles, isStorableLinkRoleSet, UNKNOWN_LINK_ROLE } from './
 import { UNKNOWN_LINK_STRENGTH } from './link-strengths';
 import { diffReach, walkReach } from './reach';
 import { assetDependenciesRepository } from './repository';
+import { DEPENDENCY_RESOURCE_TYPE_NAME_UNIQUE } from './schema';
 import { DEPENDENCY_RULE_PREVIEW_LIMIT, hasCondition, pairKey, wantedRuleLinks } from './rule-matching';
 
 type Repo = InferRepository<typeof assetDependenciesRepository>;
@@ -78,6 +79,44 @@ export class PrimaryToPrimaryLinkRefusedError extends StructuredError {
     super(reason, { data: {} });
   }
 }
+
+/** A dependency resource type the caller's tenant cannot see: unknown, deleted, or another tenant's. */
+export class DependencyResourceTypeNotFoundError extends StructuredError {
+  override readonly name: string = 'DependencyResourceTypeNotFoundError';
+
+  constructor() {
+    super('Dependency resource type not found', { data: {} });
+  }
+}
+
+/** Two types of one tenant whose names differ only by case or accents are taken for the same. */
+export class DependencyResourceTypeNameTakenError extends StructuredError {
+  override readonly name: string = 'DependencyResourceTypeNameTakenError';
+
+  constructor() {
+    super('This dependency resource type name is already taken', { data: {} });
+  }
+}
+
+const withResourceTypeNameFree = async <T>(write: () => Promise<T>): Promise<T> => {
+  try {
+    return await write();
+  } catch (error) {
+    if (isUniqueViolationOf(error, DEPENDENCY_RESOURCE_TYPE_NAME_UNIQUE)) {
+      throw new DependencyResourceTypeNameTakenError();
+    }
+    throw error;
+  }
+};
+
+/** Refuses the batch when a link names a type the caller's tenant cannot see, and holds the others until it commits. */
+const holdResourceTypes = async (repo: Repo, typeIds: ReadonlyArray<string | null | undefined>) => {
+  const named = [...new Set(typeIds.filter((id): id is string => typeof id === 'string'))];
+  const visible = await repo.lockVisibleDependencyResourceTypes(named, 'key share');
+  if (named.some((id) => !visible.has(id))) {
+    throw new PrimaryToPrimaryLinkRefusedError('A dependency resource type must be one of this tenant');
+  }
+};
 
 /** A rule the caller's tenant cannot see: unknown, deleted, or another tenant's. */
 export class DependencyRuleNotFoundError extends StructuredError {
@@ -840,6 +879,7 @@ export const assetDependenciesService = defineService(
     dependentAssetId: string,
     providerAssetId: string,
     strength?: PrimaryToPrimaryLinkStrength,
+    dependencyResourceTypeId?: string | null,
   }>): Promise<DependencyWriteOutcome & DependencyCreateOutcome> => {
     // Postgres hands ids back in lower case, and the outcome is told apart by comparing them.
     const links = requested.map((link) => ({
@@ -847,6 +887,7 @@ export const assetDependenciesService = defineService(
       id: link.id.toLowerCase(),
       dependentAssetId: link.dependentAssetId.toLowerCase(),
       providerAssetId: link.providerAssetId.toLowerCase(),
+      dependencyResourceTypeId: link.dependencyResourceTypeId?.toLowerCase() ?? null,
     }));
     if (links.some((link) => link.dependentAssetId === link.providerAssetId)) {
       throw new PrimaryToPrimaryLinkRefusedError('A primary asset cannot depend on itself');
@@ -865,24 +906,43 @@ export const assetDependenciesService = defineService(
       if (reachable.length === 0) {
         return { ...NOTHING_SKIPPED, goneIds };
       }
+      await holdResourceTypes(repo, reachable.map((link) => link.dependencyResourceTypeId));
       const ordered = inPairOrder(reachable, (link) => [link.dependentAssetId, link.providerAssetId])
         .map(({ strength = UNKNOWN_LINK_STRENGTH, ...link }) => ({ ...link, strength, tenantId }));
       return { ...skippedAmong(reachable, await repo.insertPrimaryToPrimaryLinks(ordered)), goneIds };
     });
   },
-  /** A link gone or out of reach is skipped, since it may have been deleted after the caller read it. */
-  updatePrimaryToPrimaryLinks: async ({ atomic }, requested: ReadonlyArray<{ id: string, strength: PrimaryToPrimaryLinkStrength }>): Promise<DependencyWriteOutcome> => {
+  /**
+   * A field left out keeps its stored value, and a null resource type clears it. A link gone or out
+   * of reach is skipped, since it may have been deleted after the caller read it.
+   */
+  updatePrimaryToPrimaryLinks: async ({ atomic }, requested: ReadonlyArray<{
+    id: string,
+    strength?: PrimaryToPrimaryLinkStrength,
+    dependencyResourceTypeId?: string | null,
+  }>): Promise<DependencyWriteOutcome> => {
+    if (requested.some((link) => link.strength === undefined && link.dependencyResourceTypeId === undefined)) {
+      throw new PrimaryToPrimaryLinkRefusedError('A link update needs a strength or a dependency resource type');
+    }
     if (requested.length === 0) {
       return NOTHING_SKIPPED;
     }
-    const links = requested.map((link) => ({ ...link, id: link.id.toLowerCase() }));
-    const idsByStrength = Map.groupBy(links, (link) => link.strength);
+    const links = requested.map((link) => ({
+      id: link.id.toLowerCase(),
+      values: {
+        ...(link.strength === undefined ? {} : { strength: link.strength }),
+        ...(link.dependencyResourceTypeId === undefined ? {} : { dependencyResourceTypeId: link.dependencyResourceTypeId?.toLowerCase() ?? null }),
+      },
+    }));
+    const linksByValues = Map.groupBy(links, (link) => JSON.stringify(link.values));
     return atomic(async ({ repo }) => {
-      // One statement per strength would lock the links in the order of the strengths, which two batches can cross.
+      // Types before links, the order a type's deletion takes them in.
+      await holdResourceTypes(repo, links.map((link) => link.values.dependencyResourceTypeId));
+      // One statement per value would lock the links in the order of the values, which two batches can cross.
       await repo.lockPrimaryToPrimaryLinks(links.map((link) => link.id));
       const updated: Array<string> = [];
-      for (const [strength, group] of idsByStrength) {
-        updated.push(...await repo.updatePrimaryToPrimaryLinkStrength(group.map((link) => link.id), strength));
+      for (const group of linksByValues.values()) {
+        updated.push(...await repo.updatePrimaryToPrimaryLinkFields(group.map((link) => link.id), group[0].values));
       }
       return skippedAmong(links, updated);
     });
@@ -899,6 +959,32 @@ export const assetDependenciesService = defineService(
       ...dependsOn.map((link) => ({ ...link, direction: 'depends' as const })),
       ...dependedOnBy.map((link) => ({ ...link, direction: 'provides' as const })),
     ].sort((a, b) => a.relatedAssetName.localeCompare(b.relatedAssetName));
+  },
+
+  listDependencyResourceTypes: async ({ repo }) => repo.findDependencyResourceTypes(),
+  createDependencyResourceType: async ({ atomic, eventOrigin }, type: { id: string, name: string }) => {
+    const tenantId = requireTenantId(eventOrigin);
+    await withResourceTypeNameFree(() => atomic(async ({ repo }) => {
+      await repo.insertDependencyResourceType({ id: type.id, tenantId, name: type.name.trim() });
+    }));
+  },
+  renameDependencyResourceType: async ({ atomic }, id: string, name: string) => {
+    await withResourceTypeNameFree(() => atomic(async ({ repo }) => {
+      if (!await repo.renameDependencyResourceType(id, name.trim())) {
+        throw new DependencyResourceTypeNotFoundError();
+      }
+    }));
+  },
+  /** The links that named the type stay, with no type. */
+  deleteDependencyResourceType: async ({ atomic }, id: string) => {
+    await atomic(async ({ repo }) => {
+      const typeId = id.toLowerCase();
+      if (!(await repo.lockVisibleDependencyResourceTypes([typeId], 'update')).has(typeId)) {
+        throw new DependencyResourceTypeNotFoundError();
+      }
+      await repo.clearDependencyResourceTypeFromLinks(typeId);
+      await repo.deleteDependencyResourceType(typeId);
+    });
   },
   /**
    * Brings the stored reach of every primary asset to the one its links give it, writing only the

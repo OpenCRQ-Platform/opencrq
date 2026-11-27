@@ -13,6 +13,7 @@ import { useTRPC } from '../../../lib';
 import { buildDependencyGraph } from '../dependency-graph-utils';
 import { DependencyGraphCard, DependencyGraphDepthSelect } from './dependency-graph-card';
 import { ManagePrimaryAssetDependenciesDrawer } from './manage-dependencies-drawer';
+import { PrimaryToPrimaryLinksCard } from './primary-to-primary-links-card';
 import { SupportToPrimaryLinksCard } from './support-to-primary-links-card';
 
 interface PrimaryAssetDependenciesTabProps {
@@ -62,7 +63,12 @@ export const PrimaryAssetDependenciesTab: FunctionComponent<PrimaryAssetDependen
         </Button>
       </div>
 
-      {view === 'list' && <SupportToPrimaryLinksCard primaryAssetId={primaryAssetId} assetName={primaryAssetName} />}
+      {view === 'list' && (
+        <>
+          <SupportToPrimaryLinksCard primaryAssetId={primaryAssetId} assetName={primaryAssetName} />
+          <PrimaryToPrimaryLinksCard primaryAssetId={primaryAssetId} />
+        </>
+      )}
       {view === 'graph' && isError && (
         <Paper className="flex flex-col items-center gap-4 p-[48px_24px]">
           <ServerOff className="h-12 w-12 text-muted-foreground" />

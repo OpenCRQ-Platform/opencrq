@@ -17,6 +17,7 @@ import { MAX_REACH_DEPTH } from './reach';
 const SUPPORT_TO_PRIMARY_PAIR_UNIQUE = 'support_to_primary_links_pair_uq';
 const SUPPORT_TO_SUPPORT_PAIR_UNIQUE = 'support_to_support_links_pair_uq';
 const PRIMARY_TO_PRIMARY_PAIR_UNIQUE = 'primary_to_primary_links_pair_uq';
+export const DEPENDENCY_RESOURCE_TYPE_NAME_UNIQUE = 'dependency_resource_types_tenant_name_uq';
 
 const LINK_ROLE_LITERALS = sql.raw(SUPPORT_TO_PRIMARY_LINK_ROLES.map((role) => `'${role}'`).join(', '));
 const LINK_STRENGTH_LITERALS = sql.raw(PRIMARY_TO_PRIMARY_LINK_STRENGTHS.map((strength) => `'${strength}'`).join(', '));
@@ -151,6 +152,19 @@ export const supportToSupportLinks = pgTable('support_to_support_links', {
 
 defineSecurityPolicies(supportToSupportLinks, tenantIsolationPolicy);
 
+/** What a dependency between primary assets runs through. Read by display and filters only. */
+export const dependencyResourceTypes = pgTable('dependency_resource_types', {
+  id: uuid('id').primaryKey(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  nameFolded: text('name_folded').generatedAlwaysAs(sql`fold_text(name)`),
+}, (table) => [
+  unique('dependency_resource_types_id_tenant_id_uq').on(table.id, table.tenantId),
+  unique(DEPENDENCY_RESOURCE_TYPE_NAME_UNIQUE).on(table.tenantId, table.nameFolded),
+]);
+
+defineSecurityPolicies(dependencyResourceTypes, tenantIsolationPolicy);
+
 /** Both ends belong to one organization, which the service checks and the database does not. */
 export const primaryToPrimaryLinks = pgTable('primary_to_primary_links', {
   id: uuid('id').primaryKey(),
@@ -158,8 +172,18 @@ export const primaryToPrimaryLinks = pgTable('primary_to_primary_links', {
   dependentAssetId: uuid('dependent_asset_id').notNull(),
   providerAssetId: uuid('provider_asset_id').notNull(),
   strength: text('strength').$type<PrimaryToPrimaryLinkStrength>().notNull().default(UNKNOWN_LINK_STRENGTH),
+  dependencyResourceTypeId: uuid('dependency_resource_type_id'),
 }, (table) => [
   unique(PRIMARY_TO_PRIMARY_PAIR_UNIQUE).on(table.dependentAssetId, table.providerAssetId),
+  // No `set null`: on this composite key it would null `tenant_id` too, so deleting a type clears it
+  // from its links first (`deleteDependencyResourceType`).
+  foreignKey({
+    name: 'primary_to_primary_links_resource_type_tenant_fk',
+    columns: [table.dependencyResourceTypeId, table.tenantId],
+    foreignColumns: [dependencyResourceTypes.id, dependencyResourceTypes.tenantId],
+  }),
+  index('primary_to_primary_links_resource_type_idx').on(table.dependencyResourceTypeId, table.tenantId)
+    .where(sql`${table.dependencyResourceTypeId} IS NOT NULL`),
   foreignKey({
     name: 'primary_to_primary_links_dependent_asset_tenant_fk',
     columns: [table.dependentAssetId, table.tenantId],

@@ -5,6 +5,8 @@ import type { Transaction } from '../../db';
 import type { SupportedLocale } from '../users/validation';
 import { defineRepository } from '../../registry';
 import { businessValueCategories } from '../business-value-categories/schema';
+import { defaultDependencyResourceTypeNames } from '../asset-dependencies/dependency-resource-types';
+import { dependencyResourceTypes } from '../asset-dependencies/schema';
 import {
   buildApplicableTechniqueRows,
   buildAttackSurfaceRows,
@@ -85,6 +87,10 @@ const provisionTenant = async (tx: Transaction, tenant: typeof tenants.$inferIns
   await tx.insert(lossDrivers).values(buildLossDriverRows(tenant.id)).onConflictDoNothing();
   // Depends on all three catalogs above, so it comes last.
   await tx.insert(lossDriverActivations).values(buildLossActivationRows(tenant.id)).onConflictDoNothing();
+
+  // Pre-filled once: the tenant owns the list from then on, and nothing ever writes it back.
+  await tx.insert(dependencyResourceTypes)
+    .values(defaultDependencyResourceTypeNames(tenant.defaultLocale).map((name) => ({ id: uuidv7(), tenantId: tenant.id, name })));
 
   if (options.provisionOnboarding) {
     const organizationId = uuidv7();

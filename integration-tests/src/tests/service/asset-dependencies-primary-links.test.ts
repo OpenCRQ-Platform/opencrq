@@ -57,10 +57,10 @@ describe('Primary-to-primary links', () => {
       }]);
 
       expect(await linksOf(billingId)).toEqual([
-        { id, direction: 'depends', relatedAssetId: ordersId, relatedAssetName: 'Order management', strength: 'critical' },
+        { id, direction: 'depends', relatedAssetId: ordersId, relatedAssetName: 'Order management', strength: 'critical', dependencyResourceTypeId: null, dependencyResourceTypeName: null },
       ]);
       expect(await linksOf(ordersId)).toEqual([
-        { id, direction: 'provides', relatedAssetId: billingId, relatedAssetName: 'Billing', strength: 'critical' },
+        { id, direction: 'provides', relatedAssetId: billingId, relatedAssetName: 'Billing', strength: 'critical', dependencyResourceTypeId: null, dependencyResourceTypeName: null },
       ]);
     });
 
