@@ -530,7 +530,7 @@ const resolveWeakestTechniques = async (
 const seedFindings = async (
   ctx: SeedContext,
   { assetCount, findingCount, now, firstSeenDaysAgo }:
-  { assetCount: number, findingCount: number, now: Date, firstSeenDaysAgo: Int16Array },
+    { assetCount: number, findingCount: number, now: Date, firstSeenDaysAgo: Int16Array },
 ): Promise<void> => {
   const { db } = ctx;
   const cveRows = await db
