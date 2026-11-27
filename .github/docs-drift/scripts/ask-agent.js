@@ -6,6 +6,10 @@
  *   node ask-agent.js context <detect|fix> <file.json>   # prints the context, calls nothing
  *   node ask-agent.js check                 # fails unless the key reaches the agent
  *
+ * DOC_ROOT reads the documents from a checkout of the documentation site's
+ * mirror rather than from this repository, and DETECT_PROMPT names the prompt
+ * a detection sends (`detect` by default).
+ *
  * The agent answers text and touches nothing: this script writes the files.
  */
 import fs from 'node:fs';
@@ -134,7 +138,7 @@ const detect = async (pair) => {
   const failedCalls = [];
   for (const [k, { context, files }] of contexts.entries()) {
     try {
-      const answer = parseAnswer(await callAgent(prompt('detect'), context));
+      const answer = parseAnswer(await callAgent(prompt(process.env.DETECT_PROMPT || 'detect'), context));
       if (!Array.isArray(answer.findings)) {
         throw new Error('the answer has no findings array');
       }

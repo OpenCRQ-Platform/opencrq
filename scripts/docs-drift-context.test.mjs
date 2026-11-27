@@ -147,6 +147,24 @@ describe('docs drift detection contexts', () => {
     assert.deepEqual(unaudited, ['src/long.ts (a line longer than one call)']);
   });
 
+  it('reads a page of the site from DOC_ROOT and names none of its paths as files of this repository', () => {
+    const site = fs.mkdtempSync(path.join(os.tmpdir(), 'docs-drift-site-'));
+    const page = 'docs/content/opencrq/page.md';
+    fs.mkdirSync(path.join(site, path.dirname(page)), { recursive: true });
+    fs.writeFileSync(path.join(site, page), '# Page\n\nSee `src/gone.ts` and [the guide](../guide/).\n');
+    fs.writeFileSync(path.join(repo, 'site-map.yml'), `- doc: ${page}\n  watches:\n    - src/small.ts\n`);
+    fs.writeFileSync(path.join(repo, 'pair.json'), JSON.stringify({ doc: page, changed: [] }));
+    const run = spawnSync('node', [ASK_AGENT, 'context', 'detect', 'pair.json'], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: { ...process.env, MAX_CONTEXT_BYTES: String(MAX), MAP_FILE: 'site-map.yml', DOC_ROOT: site },
+    });
+    assert.equal(run.status, 0, run.stderr);
+    assert.match(run.stdout, /## Document `docs\/content\/opencrq\/page\.md`\n\n```markdown\n# Page\n/);
+    assert.doesNotMatch(run.stdout, /## Paths named in the document/);
+    assert.deepEqual(sentLines([run.stdout], 'src/small.ts'), numbered(linesOf('small', 5)));
+  });
+
   it('still sends the current content of a changed file whose diff cannot be cut', async () => {
     const { contexts: found, unaudited } = await detect(['src/minified.ts']);
     const calls = found.map((c) => c.context);

@@ -4,28 +4,50 @@
  *
  *   node .github/docs-drift/scripts/dry-run.js             # deep mode
  *   node .github/docs-drift/scripts/dry-run.js <since-sha> # incremental mode
+ *   node .github/docs-drift/scripts/dry-run.js --site <dir> # the site map, deep mode
+ *
+ * <dir> holds the documentation site's mirror, or at least its docs/content:
+ * the site map's pages are read there, and the code from this repository's
+ * working tree.
  */
 import fs from 'node:fs';
+import path from 'node:path';
 
 import { detectContexts, gitLines as git, parseMap } from './drift-context.js';
+import { unmapped as unmappedSitePages } from './site-findings.js';
 
-const MAP = '.github/docs-drift/docs-map.yml';
-
-const since = process.argv[2] || null;
-const entries = parseMap(fs.readFileSync(MAP, 'utf8'));
+const site = process.argv[2] === '--site' ? path.resolve(process.argv[3] || '') : null;
+if (site && !fs.existsSync(path.join(site, 'docs/content'))) {
+  console.error(`${process.argv[3] || '(none)'} is not a checkout of the documentation site's mirror`);
+  process.exit(2);
+}
+const MAP = site ? '.github/docs-drift/site-map.yml' : '.github/docs-drift/docs-map.yml';
+if (site) {
+  process.env.DOC_ROOT = site;
+  process.env.MAP_FILE = MAP;
+}
+const since = site ? null : process.argv[2] || null;
+const mapText = fs.readFileSync(MAP, 'utf8');
+const entries = parseMap(mapText);
 let problems = 0;
 let audited = 0;
 
 const mapped = new Set(entries.map((e) => e.doc));
-const unmapped = git(['ls-files', '--', ':(glob)docs/**/*.md']).filter((f) => !mapped.has(f));
+const unmapped = site
+  ? unmappedSitePages(site, mapText)
+  : git(['ls-files', '--', ':(glob)docs/**/*.md']).filter((f) => !mapped.has(f));
 if (unmapped.length > 0) {
-  console.log('UNMAPPED  every markdown file under docs/ has to be in the map');
+  console.log(
+    site
+      ? 'UNMAPPED  every OpenCRQ page of the site, and every deploy page naming OpenCRQ, has to be in the map or listed as unaudited'
+      : 'UNMAPPED  every markdown file under docs/ has to be in the map',
+  );
   unmapped.forEach((f) => console.log(`          ${f}`));
   problems += unmapped.length;
 }
 
 for (const { doc, watches } of entries) {
-  if (!fs.existsSync(doc)) {
+  if (!fs.existsSync(path.join(site || '.', doc))) {
     console.log(`BROKEN  ${doc}  <-- document does not exist`);
     problems++;
     continue;
