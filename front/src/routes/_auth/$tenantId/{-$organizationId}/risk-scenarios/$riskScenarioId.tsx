@@ -1,6 +1,5 @@
 import { t } from '@lingui/core/macro';
 import { createFileRoute, linkOptions, notFound, Outlet, redirect, useMatch } from '@tanstack/react-router';
-import { FileX2 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { RiskScenarioEditFocus } from '../../../../../features/risk-scenarios';
@@ -8,7 +7,7 @@ import { riskScopeHref } from '../../../../../features/organizations/scope-path-
 import { canRunScenario } from '../../../../../features/risk-scenarios/risk-scenario-utils';
 import { RiskScenarioSimulateAction } from '../../../../../features/risk-scenarios/components/risk-scenario-simulate-action';
 import { useCrqSimulationOrchestrator } from '../../../../../features/risk-scenarios/use-crq-simulation-orchestrator';
-import { ErrorPage } from '../../../../../components/layout';
+import { EntityUnavailable } from '../../../../../components/layout';
 import { DetailPageLayout, RouteTabs } from '../../../../../components/shared';
 import {
   RiskScenarioActions,
@@ -20,16 +19,12 @@ import {
 import { trpcClient, useTRPC } from '../../../../../lib';
 
 const RiskScenarioNotFound = () => (
-  <ErrorPage>
-    <div className="relative mb-m mx-auto w-fit">
-      <div className="absolute inset-0 rounded-full blur-xl bg-red/15" />
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-red/10">
-        <FileX2 className="h-8 w-8 text-red/80" />
-      </div>
-    </div>
-    <h1 className="mb-s">{t`Risk scenario unavailable`}</h1>
-    <p className="txt-sub-content text-muted-foreground">{t`This risk scenario has been deleted or is no longer accessible.`}</p>
-  </ErrorPage>
+  <EntityUnavailable
+    title={t`Risk scenario unavailable`}
+    description={t`This risk scenario has been deleted or is no longer accessible.`}
+    listLabel={t`See all risk scenarios`}
+    listLink={linkOptions({ from: '/$tenantId/{-$organizationId}/risk-scenarios/$riskScenarioId', to: '..' })}
+  />
 );
 
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/risk-scenarios/$riskScenarioId')({

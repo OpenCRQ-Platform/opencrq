@@ -2,11 +2,21 @@ import { Button } from '@filigran/design-system';
 import { useState } from 'react';
 import { createFileRoute, linkOptions, notFound, Outlet } from '@tanstack/react-router';
 import { t } from '@lingui/core/macro';
+import { EntityUnavailable } from '../../../../../../components/layout';
 import { ControlIdPill, DetailPageLayout, RouteTabs } from '../../../../../../components/shared';
 import { trpcClient } from '../../../../../../lib';
 import { CapabilityAssessmentEditDrawer } from '../../../../../../features/controls/capability/components/capability-assessment-edit-drawer';
 import { useCapabilityValidation } from '../../../../../../features/controls/capability/hooks/use-capability-validation';
 import { isSimulationReachable } from '../../../../../../features/controls/capability/utils/function-posture-utils';
+
+const ControlNotFound = () => (
+  <EntityUnavailable
+    title={t`Control unavailable`}
+    description={t`This control has been deleted or is no longer accessible.`}
+    listLabel={t`See all controls`}
+    listLink={linkOptions({ from: '/$tenantId/{-$organizationId}/controls/$controlId', to: '..' })}
+  />
+);
 
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/controls/$controlId')({
   loader: async ({ params }) => {
@@ -16,6 +26,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/contro
     }
     return { capability, crumb: `${capability.externalId} - ${capability.name}` };
   },
+  notFoundComponent: ControlNotFound,
   component: function CapabilityLayout() {
     const { capability } = Route.useLoaderData();
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);

@@ -1,7 +1,17 @@
 import { t } from '@lingui/core/macro';
 import { createFileRoute, linkOptions, notFound, Outlet } from '@tanstack/react-router';
+import { EntityUnavailable } from '../../../../../../../../components/layout';
 import { trpcClient } from '../../../../../../../../lib';
 import { DetailPageLayout, RouteTabs } from '../../../../../../../../components/shared';
+
+const AttackOutcomeNotFound = () => (
+  <EntityUnavailable
+    title={t`Attack outcome unavailable`}
+    description={t`This attack outcome has been deleted or is no longer accessible.`}
+    listLabel={t`See all attack outcomes`}
+    listLink={linkOptions({ from: '/$tenantId/{-$organizationId}/settings/taxonomies/attack-outcomes/$attackOutcomeId', to: '..' })}
+  />
+);
 
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/settings/taxonomies/attack-outcomes/$attackOutcomeId')({
   loader: async ({ params }) => {
@@ -11,6 +21,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/settin
     }
     return { attackOutcome, crumb: attackOutcome.name };
   },
+  notFoundComponent: AttackOutcomeNotFound,
   component: function AttackOutcomeLayout() {
     const { attackOutcome } = Route.useLoaderData();
 

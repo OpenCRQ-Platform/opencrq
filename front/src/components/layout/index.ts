@@ -1,3 +1,4 @@
+export * from './entity-unavailable';
 export * from './error-page';
 export * from './main-layout';
 export * from './organization-not-found';

@@ -2,6 +2,7 @@ import { t } from '@lingui/core/macro';
 import { createFileRoute, linkOptions, notFound, Outlet } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { scopePath } from '../../../../../../components/layout/scope-path-utils';
+import { EntityUnavailable } from '../../../../../../components/layout';
 import { RouteTabs } from '../../../../../../components/shared';
 import { UniqueCveFindingHeader } from '../../../../../../features/unique-cve-finding';
 import { trpcClient, useTRPC } from '../../../../../../lib';
@@ -19,7 +20,7 @@ const UniqueCveFindingLayout = () => {
   ));
 
   if (!finding) {
-    return null;
+    throw notFound();
   }
 
   const tabs = [
@@ -56,6 +57,15 @@ const UniqueCveFindingLayout = () => {
   );
 };
 
+const UniqueCveFindingNotFound = () => (
+  <EntityUnavailable
+    title={t`Finding unavailable`}
+    description={t`This finding has been deleted or is no longer accessible.`}
+    listLabel={t`See all unique findings`}
+    listLink={linkOptions({ from: UNIQUE_CVE_FINDING_ROUTE, to: '../../unique' })}
+  />
+);
+
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/findings/cve/$cveId')({
   loader: async ({ params }) => {
     const finding = await trpcClient.findingScore.getUniqueCveFinding.query({
@@ -69,5 +79,6 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/findin
     const ancestorCrumbs = [{ label: t`Unique findings`, to: scopePath(params.tenantId, params.organizationId, 'findings/unique') }];
     return { finding, ancestorCrumbs, crumb: finding.cveId };
   },
+  notFoundComponent: UniqueCveFindingNotFound,
   component: UniqueCveFindingLayout,
 });

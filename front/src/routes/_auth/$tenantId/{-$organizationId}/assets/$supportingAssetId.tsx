@@ -5,6 +5,7 @@ import { createFileRoute, linkOptions, notFound, Outlet } from '@tanstack/react-
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { XtmCounterpart, XtmProduct } from '../../../../../features/xtm/xtm-counterparts';
+import { EntityUnavailable } from '../../../../../components/layout';
 import { RouteTabs } from '../../../../../components/shared';
 import { AssetActionsMenu, AssetHeaderPanel, assetManualAttributeLabel, AssetResyncAction, manualPropertyFieldLabels } from '../../../../../features/supporting-assets';
 import { SupportingAssetUpdateSheet } from '../../../../../features';
@@ -20,6 +21,15 @@ const assetHostname = (properties: unknown): string | null => {
   return typeof hostname === 'string' && hostname.length > 0 ? hostname : null;
 };
 
+const SupportingAssetNotFound = () => (
+  <EntityUnavailable
+    title={t`Asset unavailable`}
+    description={t`This asset has been deleted or is no longer accessible.`}
+    listLabel={t`See all assets`}
+    listLink={linkOptions({ from: '/$tenantId/{-$organizationId}/assets/$supportingAssetId', to: '..' })}
+  />
+);
+
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets/$supportingAssetId')({
   loader: async ({ params }) => {
     const supportingAsset = await trpcClient.supportingAssets.getSupportingAsset.query({ id: params.supportingAssetId });
@@ -28,6 +38,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
     }
     return { supportingAsset, crumb: assetNameText(supportingAsset, t`Unnamed asset`) };
   },
+  notFoundComponent: SupportingAssetNotFound,
   component: function SupportingAssetLayout() {
     const trpc = useTRPC();
     const { tenantId } = Route.useParams();
@@ -47,7 +58,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/assets
     const { data: connectors } = useQuery(trpc.connectors.listConnectors.queryOptions());
 
     if (!supportingAsset) {
-      return null;
+      throw notFound();
     }
 
     // Techniques are attached to the category, not to the asset: the tile is labelled accordingly.

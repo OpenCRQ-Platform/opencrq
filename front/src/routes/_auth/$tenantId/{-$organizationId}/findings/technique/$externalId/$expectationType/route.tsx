@@ -1,6 +1,7 @@
 import { t } from '@lingui/core/macro';
 import { createFileRoute, linkOptions, notFound, Outlet, redirect } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { EntityUnavailable } from '../../../../../../../../components/layout';
 import { RouteTabs } from '../../../../../../../../components/shared';
 import { parseVulnerabilityToken, vulnerabilityFilterLabel } from '../../../../../../../../features/findings-home/vulnerability-filter-utils';
 import { canonicalExternalIdHref } from '../../../../../../../../features/mitre-attack/external-id-path-utils';
@@ -19,7 +20,7 @@ const UniqueTechniqueFindingLayout = () => {
   ));
 
   if (!finding) {
-    return null;
+    throw notFound();
   }
 
   const tabs = [
@@ -43,6 +44,15 @@ const UniqueTechniqueFindingLayout = () => {
   );
 };
 
+const UniqueTechniqueFindingNotFound = () => (
+  <EntityUnavailable
+    title={t`Finding unavailable`}
+    description={t`This finding has been deleted or is no longer accessible.`}
+    listLabel={t`See all unique findings`}
+    listLink={linkOptions({ from: UNIQUE_TECHNIQUE_FINDING_ROUTE, to: '../../../unique' })}
+  />
+);
+
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/findings/technique/$externalId/$expectationType')({
   beforeLoad: ({ params, location }) => {
     const href = canonicalExternalIdHref(location, params.externalId);
@@ -65,5 +75,6 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/findin
     }
     return { finding, crumb: vulnerabilityFilterLabel(filter) };
   },
+  notFoundComponent: UniqueTechniqueFindingNotFound,
   component: UniqueTechniqueFindingLayout,
 });
