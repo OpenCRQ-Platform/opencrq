@@ -137,7 +137,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ## Git Workflow & PR Conventions
 
 - **Base branch**: branch from `main` (there is no long-lived `release/*` branch).
-- **Branch naming**: `<issue#>-<short-description>` in kebab-case (e.g. `638-refactor-jobs-push-events`); add a `-chunkN` suffix for large multi-part features. Non-issue chores may use a `type/slug` prefix (e.g. `chore/conventions-alignment`).
+- **Branch naming**: `<issue#>-<short-description>` in kebab-case (e.g. `638-refactor-jobs-push-events`); add a `-chunkN` suffix for large multi-part features, where every chunk but the last writes `Part of #<issue>` instead of `Closes #<issue>`, so that the issue stays open until the last one merges. Non-issue chores may use a `type/slug` prefix (e.g. `chore/conventions-alignment`).
 - **Commit & PR titles**: see the **Commit, PR & issue conventions** section below.
 - **Merge strategy**: squash & merge only.
 - **Approvals**: 1 required, **2 required** for security-sensitive changes (auth, permissions, secrets, crypto).

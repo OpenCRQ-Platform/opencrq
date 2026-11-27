@@ -17,7 +17,7 @@ Examples:
 *
 
 ### Related issues
-<!-- Link the GitHub issue(s) this PR addresses. Use "Closes #123" to auto-close on merge. Never link a private repository other than this one. -->
+<!-- Link the GitHub issue(s) this PR addresses. Use "Closes #123" to auto-close on merge, or "Part of #123" when this PR is one step of a larger change that a later PR closes. Never link a private repository other than this one. -->
 * Closes #
 *
 
