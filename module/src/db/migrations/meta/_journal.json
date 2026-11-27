@@ -160,6 +160,13 @@
       "when": 1795715721060,
       "tag": "0022_warm_ezekiel_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795792158069,
+      "tag": "0023_openaev_scan_measurements",
+      "breakpoints": true
     }
   ],
   "version": "7",

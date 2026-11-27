@@ -88,6 +88,7 @@ const makeSvc = (states: Array<ObservationStreamState>) => {
         () => Promise.resolve((upsertAttackObservations.mock.lastCall?.[0].observations ?? []).map(({ observationId }) => ({ observationId }))),
       ),
       markEvidenceWritten: vi.fn<ObservationPhaseServices['openaevConnector']['markEvidenceWritten']>().mockResolvedValue(undefined),
+      upsertScanMeasurements: vi.fn<ObservationPhaseServices['openaevConnector']['upsertScanMeasurements']>().mockResolvedValue(undefined),
     },
     supportingAssets: {
       bulkUpsertEvidence: vi.fn<ObservationPhaseServices['supportingAssets']['bulkUpsertEvidence']>().mockResolvedValue(undefined),
@@ -739,6 +740,67 @@ describe('syncObservationStreams', () => {
         { stream: 'attack', pages: 2, observations: 3 },
         { stream: 'vulnerability', pages: 1, observations: 1 },
       ]);
+    });
+  });
+
+  describe('vulnerability scans (opencrq #332)', () => {
+    const scan = (overrides: Partial<AttackObservation> = {}) => makeAttack({
+      id: 'scan-1',
+      expectation_type: 'VULNERABILITY',
+      attack_pattern_external_id: 'T1595.002',
+      platform_types_reporting: ['VULNERABILITY_SCANNER'],
+      ...overrides,
+    });
+
+    it('records a clean and a failed finished scan as measurements and writes no technique evidence for them', async () => {
+      const { svc, client, deps } = makeHarness();
+      client.searchAttackObservations.mockResolvedValueOnce(makePage([
+        scan({ id: 'scan-clean', expectation_status: 'SUCCESS' }),
+        scan({ id: 'scan-failed', scenario_id: 'scenario-2', expectation_status: 'FAILED' }),
+      ], { next: 'a1' }));
+
+      const result = await syncObservationStreams(deps);
+
+      expect(svc.openaevConnector.upsertScanMeasurements).toHaveBeenCalledWith({
+        connectorId: CONNECTOR_ID,
+        measurements: [
+          expect.objectContaining({ observationId: 'scan-clean', supportingAssetId: 'sa-1', scenarioId: 'scenario-1', result: 'clean', platformTypes: ['VULNERABILITY_SCANNER'] }),
+          expect.objectContaining({ observationId: 'scan-failed', supportingAssetId: 'sa-1', scenarioId: 'scenario-2', result: 'findings' }),
+        ],
+      });
+      expect(svc.supportingAssets.bulkUpsertEvidence).not.toHaveBeenCalled();
+      expect(svc.openaevConnector.markEvidenceWritten).not.toHaveBeenCalled();
+      expect(result.counts).toEqual({ read: 2, written: 0, skipped: 0 });
+    });
+
+    it('leaves DETECTION and PREVENTION evidence as it was when a page mixes them with scans', async () => {
+      const { svc, client, deps } = makeHarness();
+      client.searchAttackObservations.mockResolvedValueOnce(makePage([
+        makeAttack({ id: 'obs-detect' }),
+        scan({ id: 'scan-1', expectation_status: 'SUCCESS' }),
+      ], { next: 'a1' }));
+
+      await syncObservationStreams(deps);
+
+      const evidence = svc.supportingAssets.bulkUpsertEvidence.mock.calls.flatMap(([rows]) => rows);
+      expect(evidence).toHaveLength(1);
+      expect(evidence[0]).toEqual(expect.objectContaining({ expectationType: 'detection', mitreTechniqueId: 'tech-uuid-1' }));
+      expect(svc.openaevConnector.upsertScanMeasurements.mock.calls.flatMap(([input]) => input.measurements.map((row) => row.observationId)))
+        .toEqual(['scan-1']);
+    });
+
+    it('records nothing for a scan of a simulation not finished, a pending verdict or an unknown asset', async () => {
+      const { svc, client, deps } = makeHarness();
+      client.searchAttackObservations.mockResolvedValueOnce(makePage([
+        scan({ id: 'scan-running', last_simulation_status: 'RUNNING', expectation_status: 'SUCCESS' }),
+        scan({ id: 'scan-pending', expectation_status: 'PENDING' }),
+        scan({ id: 'scan-unknown', asset_id: 'asset-unknown', expectation_status: 'SUCCESS' }),
+      ], { next: 'a1' }));
+
+      const result = await syncObservationStreams(deps);
+
+      expect(svc.openaevConnector.upsertScanMeasurements).not.toHaveBeenCalled();
+      expect(result.counts.skipped).toBe(3);
     });
   });
 });

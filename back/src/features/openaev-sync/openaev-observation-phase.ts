@@ -1,10 +1,10 @@
-import type { AttackObservationMirror, EvidenceWrittenEntry, FullWalkTimestamps, ObservationPair, OpenaevStream } from '@app/module';
+import type { AttackObservationMirror, EvidenceWrittenEntry, FullWalkTimestamps, ObservationPair, OpenaevStream, ScanMeasurementInput } from '@app/module';
 import { isFullWalkDue } from '@app/module';
 import type { createOpenaevClient } from './openaev-api-client';
 import type { CveFindingsTransaction } from './cve-findings-transaction';
 import type { AttackObservation, CveEvidenceRow, ExpectationEvidenceRow, SnapshotPage, VulnerabilityObservation } from './openaev-types';
 import { createLogger } from '../../utils/logger';
-import { buildAttackEvidenceRows, buildVulnerabilityEvidenceRows, cveIdentifierOfObservation } from './openaev-mapping-utils';
+import { buildAttackEvidenceRows, buildScanMeasurements, buildVulnerabilityEvidenceRows, cveIdentifierOfObservation } from './openaev-mapping-utils';
 
 const { logTrace } = createLogger({ feature: 'openaev-sync' });
 
@@ -36,6 +36,7 @@ export interface ObservationPhaseServices {
     }) => Promise<void>,
     findCurrentObservations: (input: { connectorId: string, pairs: Array<ObservationPair> }) => Promise<Array<{ observationId: string }>>,
     markEvidenceWritten: (input: { connectorId: string, entries: Array<EvidenceWrittenEntry>, writtenAt: Date }) => Promise<void>,
+    upsertScanMeasurements: (input: { connectorId: string, measurements: Array<ScanMeasurementInput> }) => Promise<void>,
   },
   supportingAssets: {
     bulkUpsertEvidence: (evidences: Array<ExpectationEvidenceRow | CveEvidenceRow>) => Promise<unknown>,
@@ -212,13 +213,23 @@ export const syncObservationStreams = async (deps: ObservationPhaseDeps): Promis
       await svc.supportingAssets.bulkUpsertEvidence(evidenceRows);
       await svc.openaevConnector.markEvidenceWritten({ connectorId, entries: written, writtenAt: now() });
     }
+    // A VULNERABILITY document is a scan of the asset, not a technique test: it writes a measurement
+    // (clean or findings) and never a finding. Every delivery is offered, current or not: the upsert
+    // keeps the newest scan of each (asset, scenario).
+    const measurements = buildScanMeasurements({ observations, assetIdMap });
+    if (measurements.length > 0) {
+      await svc.openaevConnector.upsertScanMeasurements({ connectorId, measurements });
+    }
     counts.read += observations.length;
     counts.written += evidenceRows.length;
-    counts.skipped += observations.length - written.length;
+    // A document that wrote a scan measurement wrote something: it is not a skip.
+    const wroteSomething = new Set([...written.map((entry) => entry.observationId), ...measurements.map((row) => row.observationId)]);
+    counts.skipped += observations.filter((observation) => !wroteSomething.has(observation.id)).length;
     logTrace('Attack observations written', {
       openaevTenantId,
       observations: observations.length,
       evidenceRows: evidenceRows.length,
+      scanMeasurements: measurements.length,
       skippedUnknownTechniques: skippedTechniques.size,
     });
     return true;

@@ -1,6 +1,15 @@
 import { newError } from '@app/utils';
 import { uuidv7 } from 'uuidv7';
-import type { AttackObservationMirror, EvidenceWrittenEntry, ObservationPair, OpenaevAssetInput, StoredPostureCounts } from './repository';
+import type {
+  AttackObservationMirror,
+  EvidenceWrittenEntry,
+  LastScan,
+  ObservationPair,
+  OpenaevAssetInput,
+  ScanCoverageCounts,
+  ScanMeasurementInput,
+  StoredPostureCounts,
+} from './repository';
 import type { OpenaevStream } from './schema';
 import { defineService } from '../../registry';
 import { openaevConnectorRepository } from './repository';
@@ -226,6 +235,30 @@ export const openaevConnectorService = defineService(
   getStoredPosture: async (
     { repo }, supportingAssetId: string,
   ): Promise<StoredPostureCounts | null> => repo.findStoredPosture(supportingAssetId),
+
+  /**
+   * Records the finished vulnerability scans of one attack-stream page (opencrq #332), one row per
+   * (asset, scenario): an older delivery never replaces a newer scan. Throws `Access Denied` for a
+   * connector the caller's tenant does not own.
+   */
+  upsertScanMeasurements: async (
+    { repo, eventOrigin }, input: { connectorId: string, measurements: Array<ScanMeasurementInput> },
+  ): Promise<void> => {
+    if (input.measurements.length === 0) {
+      return;
+    }
+    await repo.assertConnectorVisible(input.connectorId);
+    await repo.upsertScanMeasurementRows(tenantOf(eventOrigin), input.connectorId, input.measurements);
+  },
+
+  /**
+   * The asset's latest vulnerability scan as the sync stored it (date, scanner, clean or findings),
+   * read under the caller's tenant isolation; `null` while no scan of it was imported.
+   */
+  getLastScan: async ({ repo }, supportingAssetId: string): Promise<LastScan | null> => repo.findLastScan(supportingAssetId),
+
+  /** The tenant's scanned assets, and those scanned since `recentSince`, for the scan coverage of the patch capability. */
+  getScanCoverage: async ({ repo }, recentSince: Date): Promise<ScanCoverageCounts> => repo.countScanCoverage(recentSince),
 
   /**
    * Stamps `description_fetched_at` on the given registered assets, sending them to the back of the

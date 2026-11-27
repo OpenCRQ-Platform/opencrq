@@ -1,6 +1,8 @@
 import type { CoverageBasis, CoverageBucket, StrengthRung } from './constants';
 import type { ControlLinkAxis } from '../../compliance-assessments/constants';
+import type { ScanCapabilityReading } from './scan-reading';
 import { COVERAGE_BUCKETS, DRATA_SOURCE, STRENGTH_RUNGS } from './constants';
+import { OPENAEV_SCAN_SOURCE } from './scan-reading';
 
 export interface DrataCapabilityReading {
   capabilityId: string,
@@ -48,6 +50,9 @@ const STEP_BY_LEVEL: ReadonlyArray<number> = [0, 1, 1, 2, 3, 3];
 
 const DRATA_WEIGHT = 1;
 
+/** Recurring scans are a connector measurement too: they weigh like Drata. */
+const SCAN_WEIGHT = 1;
+
 /** Self-declared process maturity: however many answers back it, it never outweighs a connector reading. */
 const ASSESSMENT_WEIGHT = 0.5;
 
@@ -63,6 +68,8 @@ const compareCodeUnits = (a: string, b: string): number => {
 };
 
 const DRATA_FEED: DerivationFeed = { source: DRATA_SOURCE, complianceAssessmentId: null, complianceAssessmentName: null };
+
+const SCAN_FEED: DerivationFeed = { source: OPENAEV_SCAN_SOURCE, complianceAssessmentId: null, complianceAssessmentName: null };
 
 const feedsOf = (answers: ReadonlyArray<AnswerCapabilityReading>): Array<DerivationFeed> =>
   [...new Map(answers.map((answer) => [`${answer.source}:${answer.assessmentId}`, {
@@ -82,20 +89,29 @@ const bucketOf = (answers: ReadonlyArray<AnswerCapabilityReading>): CoverageBuck
 type PooledCoverage = Pick<PooledAssessment, 'coverageBucket' | 'coverageBasis' | 'coverageFeeds' | 'assumedFromLevel'>;
 
 /**
- * Measured, then typed, then assumed from the rounded mean level of the capability answers, then
- * Drata's own default. The last step only ever serves a control no answer reaches, which is what
- * keeps a Drata-only tenant's coverage where Drata alone put it.
+ * Measured (Drata, then recurring scans), then typed, then assumed from the rounded mean level of
+ * the capability answers, then Drata's own default. The last step only ever serves a control no
+ * answer reaches, which is what keeps a Drata-only tenant's coverage where Drata alone put it.
  */
 const cascadeCoverage = (
   reading: DrataCapabilityReading | undefined,
   capabilityAnswers: ReadonlyArray<AnswerCapabilityReading>,
   coverageAnswers: ReadonlyArray<AnswerCapabilityReading>,
+  scan?: ScanCapabilityReading,
 ): PooledCoverage | null => {
   if (reading?.coverageMeasured) {
     return {
       coverageBucket: reading.coverageBucket,
       coverageBasis: 'measured',
       coverageFeeds: [DRATA_FEED],
+      assumedFromLevel: null,
+    };
+  }
+  if (scan) {
+    return {
+      coverageBucket: scan.coverageBucket,
+      coverageBasis: 'measured',
+      coverageFeeds: [SCAN_FEED],
       assumedFromLevel: null,
     };
   }
@@ -134,18 +150,23 @@ const cascadeCoverage = (
  * rounded to the nearest rung. A reading at Drata's ceiling votes the answers' mean when that is
  * higher, since Drata is silent above it; lower answers still weigh, and can pull the pooled
  * strength below Drata's. A control with no strength reading gets its coverage alone, which
- * feeds a row that already exists but never creates one.
+ * feeds a row that already exists but never creates one. A scan reading (opencrq #332, patch
+ * management from recurring OpenAEV vulnerability scans) votes on strength with Drata's weight and
+ * measures coverage when Drata does not.
  */
 export const poolCapabilityAssessments = (
   drataReadings: ReadonlyArray<DrataCapabilityReading>,
   answers: ReadonlyArray<AnswerCapabilityReading>,
+  scanReadings: ReadonlyArray<ScanCapabilityReading> = [],
 ): Array<PooledAssessment> => {
   const readingByCapability = new Map(drataReadings.map((reading) => [reading.capabilityId, reading]));
   const answersByCapability = Map.groupBy(answers, (answer) => answer.capabilityId);
-  const capabilityIds = [...new Set([...readingByCapability.keys(), ...answersByCapability.keys()])].sort();
+  const scanByCapability = new Map(scanReadings.map((scan) => [scan.capabilityId, scan]));
+  const capabilityIds = [...new Set([...readingByCapability.keys(), ...answersByCapability.keys(), ...scanByCapability.keys()])].sort();
 
   return capabilityIds.flatMap((capabilityId) => {
     const reading = readingByCapability.get(capabilityId);
+    const scan = scanByCapability.get(capabilityId);
     const linked = answersByCapability.get(capabilityId) ?? [];
     const capabilityAnswers = linked.filter((answer) => answer.axis === 'capability');
     const coverageAnswers = linked.filter((answer) => answer.axis === 'coverage');
@@ -158,15 +179,19 @@ export const poolCapabilityAssessments = (
       totalWeight += DRATA_WEIGHT;
       weightedSteps += DRATA_WEIGHT * (reading.atCeiling && answersStep !== null ? Math.max(drataStep, answersStep) : drataStep);
     }
+    if (scan) {
+      totalWeight += SCAN_WEIGHT;
+      weightedSteps += SCAN_WEIGHT * STRENGTH_RUNGS.indexOf(scan.strengthRung);
+    }
     if (answersStep !== null) {
       totalWeight += ASSESSMENT_WEIGHT;
       weightedSteps += ASSESSMENT_WEIGHT * answersStep;
     }
-    const coverage = cascadeCoverage(reading, capabilityAnswers, coverageAnswers);
+    const coverage = cascadeCoverage(reading, capabilityAnswers, coverageAnswers, scan);
     if (coverage === null) {
       return [];
     }
-    const strengthFeeds = [...(reading ? [DRATA_FEED] : []), ...feedsOf(capabilityAnswers)];
+    const strengthFeeds = [...(reading ? [DRATA_FEED] : []), ...(scan ? [SCAN_FEED] : []), ...feedsOf(capabilityAnswers)];
     return [{
       capabilityId,
       strengthRung: totalWeight === 0 ? null : STRENGTH_RUNGS[Math.round(weightedSteps / totalWeight)] ?? 'L0',

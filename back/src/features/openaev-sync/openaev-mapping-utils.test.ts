@@ -6,6 +6,7 @@ import {
   aiTargetToProperties,
   assetToConnectorInput,
   buildAttackEvidenceRows,
+  buildScanMeasurements,
   buildVulnerabilityEvidenceRows,
   cveIdentifierOfObservation,
   descriptionOf,
@@ -90,6 +91,79 @@ describe('resolveOpenaevCategory', () => {
   it('resolves subcategoryId to null when absent or unrecognised', () => {
     expect(resolveOpenaevCategory(ep()).subcategoryId).toBeNull();
     expect(resolveOpenaevCategory(ep({ asset_subcategory: 'not_a_subcategory' })).subcategoryId).toBeNull();
+  });
+});
+
+describe('buildScanMeasurements (opencrq #332)', () => {
+  const scan = (overrides: Partial<AttackObservation> = {}): AttackObservation => ({
+    id: 'scan-1',
+    updated_at: '2026-11-20T10:00:00.000Z',
+    asset_id: 'asset-1',
+    scenario_id: 'scenario-nuclei',
+    scenario_name: 'Weekly Nuclei scan',
+    last_simulation_id: 'sim-1',
+    last_simulation_name: 'Run 1',
+    last_simulation_start_date: '2026-11-20T09:00:00.000Z',
+    last_simulation_status: 'FINISHED',
+    last_inject_id: 'inject-1',
+    attack_pattern_external_id: 'T1595.002',
+    expectation_type: 'VULNERABILITY',
+    expectation_status: 'SUCCESS',
+    platform_types_reporting: ['VULNERABILITY_SCANNER'],
+    platform_types_succeeded: ['VULNERABILITY_SCANNER'],
+    last_verified_at: '2026-11-20T10:00:00.000Z',
+    ...overrides,
+  });
+  const assetIdMap = new Map([['asset-1', 'sa-1']]);
+
+  it('reads a SUCCESS scan as clean and a FAILED one as findings', () => {
+    const rows = buildScanMeasurements({
+      observations: [scan(), scan({ id: 'scan-2', scenario_id: 'scenario-2', expectation_status: 'FAILED' })],
+      assetIdMap,
+    });
+
+    expect(rows).toEqual([
+      {
+        supportingAssetId: 'sa-1',
+        scenarioId: 'scenario-nuclei',
+        scenarioName: 'Weekly Nuclei scan',
+        simulationId: 'sim-1',
+        observationId: 'scan-1',
+        platformTypes: ['VULNERABILITY_SCANNER'],
+        result: 'clean',
+        evaluatedAt: new Date('2026-11-20T10:00:00.000Z'),
+      },
+      expect.objectContaining({ observationId: 'scan-2', result: 'findings' }),
+    ]);
+  });
+
+  it('reads the expectation type in any case and a scanner-less scan as unknown', () => {
+    const [row] = buildScanMeasurements({ observations: [scan({ expectation_type: 'vulnerability', platform_types_reporting: [] })], assetIdMap });
+
+    expect(row.platformTypes).toEqual(['unknown']);
+  });
+
+  it('skips DETECTION and PREVENTION documents, unfinished simulations, pending verdicts, unknown assets and unreadable dates', () => {
+    expect(buildScanMeasurements({
+      observations: [
+        scan({ expectation_type: 'DETECTION' }),
+        scan({ expectation_type: 'PREVENTION' }),
+        scan({ last_simulation_status: 'RUNNING' }),
+        scan({ expectation_status: 'PENDING' }),
+        scan({ asset_id: 'asset-unknown' }),
+        scan({ last_verified_at: 'not a date' }),
+      ],
+      assetIdMap,
+    })).toEqual([]);
+  });
+
+  it('never turns a scan into technique evidence', () => {
+    expect(buildAttackEvidenceRows({
+      observations: [scan()],
+      assetIdMap,
+      techniqueIdMap: new Map([['T1595.002', 'tech-uuid']]),
+      connectorId: 'connector-1',
+    })).toEqual([]);
   });
 });
 

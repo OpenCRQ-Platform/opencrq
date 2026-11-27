@@ -245,6 +245,23 @@ export const supportingAssetsRouter = (procedure: TenantProcedure) => router({
     .output(z.object({ success: z.number().int(), failed: z.number().int() }).nullable())
     .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin).openaevConnector.getStoredPosture(input.supportingAssetId)),
   /**
+   * The asset's latest vulnerability scan as the OpenAEV sync stored it (opencrq #332): when the
+   * scanner last looked at it, which scanner, and whether it found anything (`clean` or `findings`);
+   * `null` while no scan of the asset was imported. A clean scan writes no finding, so this is what
+   * tells a scanned asset from one nobody scans. Read under the caller's tenant isolation.
+   */
+  // eslint-disable-next-line app/no-unused-router-endpoint -- XTM One's CTEM cases read it through their OpenCRQ tool, by name; the asset screen slice follows the UX review
+  getLastScan: procedure
+    .input(z.object({ supportingAssetId: z.uuid() }))
+    .output(z.object({
+      evaluatedAt: z.date(),
+      result: z.enum(['clean', 'findings']),
+      scenarioId: z.string(),
+      scenarioName: z.string().nullable(),
+      platformTypes: z.array(z.string()),
+    }).nullable())
+    .query(({ input, ctx: { services, origin } }) => services.withOrigin(origin).openaevConnector.getLastScan(input.supportingAssetId)),
+  /**
    * What a finding on the asset can reach along the attack paths OpenAEV showed (the hops proven or
    * inferred, stale ones left out) and the primary assets behind them: the blast radius XTM One
    * shows on a CTEM case. Read under the caller's tenant isolation from what the sync stored.
