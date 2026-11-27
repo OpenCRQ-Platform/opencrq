@@ -1,0 +1,70 @@
+name: Project Sync
+
+# Moves the issues of this repository on the organization's project board as they and their pull
+# requests change. The rules live in `.github/scripts/project-sync.mjs`, and a scheduled
+# reconciliation over the whole board catches whatever this workflow misses.
+#
+# pull_request, never pull_request_target: a fork's pull request gets no secret, so the job skips
+# and the reconciliation brings its issue to the right status.
+#
+# Prerequisites: the `PROJECT_SYNC_CLIENT_ID` variable and the `PROJECT_SYNC_PRIVATE_KEY` secret of
+# a GitHub App installed on the organization with Issues read and write, Pull requests read and
+# Organization projects read and write. The job skips while the variable is unset.
+on:
+  pull_request:
+    types: [opened, reopened, edited, ready_for_review, converted_to_draft, closed]
+  issues:
+    types: [opened, closed, reopened]
+
+permissions: {}
+
+# One group per pull request or issue: a single group would cancel every pending run but the last.
+concurrency:
+  group: project-sync-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync the project board
+    if: >-
+      vars.PROJECT_SYNC_CLIENT_ID != ''
+      && (github.event_name == 'issues' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      # The default branch's script, so a pull request cannot run its own version with the App token.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - id: app-token
+        name: Mint the project token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.PROJECT_SYNC_CLIENT_ID }}
+          private-key: ${{ secrets.PROJECT_SYNC_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-issues: write
+          permission-pull-requests: read
+          permission-organization-projects: write
+
+      - name: Sync the issues the event concerns
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PROJECT: ${{ github.repository_owner }}/6
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR_PREVIOUS_BODY: ${{ github.event.changes.body.from }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            target=(--pr "$REPO#$NUMBER")
+          else
+            target=(--issue "$REPO#$NUMBER")
+          fi
+          node .github/scripts/project-sync.mjs --project "$PROJECT" "${target[@]}"
