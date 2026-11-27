@@ -5,7 +5,7 @@ import { supportingAssets } from '../supporting-assets/schema';
 import { tenants } from '../tenants';
 
 /** What a finished vulnerability scan found on an asset: nothing (`clean`), or at least one vulnerability (`findings`). */
-export const SCAN_RESULTS = ['clean', 'findings'] as const;
+const SCAN_RESULTS = ['clean', 'findings'] as const;
 export type ScanResult = (typeof SCAN_RESULTS)[number];
 
 export const OPENAEV_STREAMS = ['attack', 'vulnerability'] as const;

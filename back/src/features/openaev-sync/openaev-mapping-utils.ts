@@ -125,7 +125,7 @@ export const resolveOpenaevCategory = (asset: {
 };
 
 /** Whether an attack-stream document is a vulnerability scan (a `VULNERABILITY` expectation), whatever its case. */
-export const isVulnerabilityExpectation = (rawType: string): boolean => rawType.toUpperCase() === 'VULNERABILITY';
+const isVulnerabilityExpectation = (rawType: string): boolean => rawType.toUpperCase() === 'VULNERABILITY';
 
 /** One finished vulnerability scan of a known asset, as `buildScanMeasurements` reads it off the attack stream. */
 export interface ScanMeasurementRow {
