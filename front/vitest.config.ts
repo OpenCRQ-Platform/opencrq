@@ -7,7 +7,8 @@ import viteConfig from './vite.config.js';
 const publicDir = normalizePath(resolve(dirname(fileURLToPath(import.meta.url)), 'public'));
 
 // These files fail when they share a worker's module registry with the files run before them:
-// a `vi.mock` or a React context of one file leaks into the next.
+// a `vi.mock` or a React context of one file leaks into the next, or an import cycle entered from
+// another file's side leaves the exports they render `undefined`.
 const ISOLATED_TESTS = [
   'src/components/layout/main-layout/fds-navbar/nav-items.test.tsx',
   'src/components/layout/main-layout/fds-navbar/navbar-sections.test.tsx',
@@ -64,6 +65,7 @@ const ISOLATED_TESTS = [
   'src/features/supporting-assets/components/crq-posture-tile.test.tsx',
   'src/features/supporting-assets/components/supporting-asset-ttps.test.tsx',
   'src/features/supporting-assets/components/technique-score-dialog.test.tsx',
+  'src/features/tenants/components/tenants-data-table.test.tsx',
   'src/features/threat-event-frequency/components/threat-event-frequency-page.test.tsx',
   'src/features/threats/components/hidden-threat-page.test.tsx',
   'src/features/threats/components/matching-outcome-table.test.tsx',

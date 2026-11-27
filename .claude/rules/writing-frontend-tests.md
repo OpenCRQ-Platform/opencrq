@@ -77,9 +77,11 @@ Written as `.test.tsx`, they need three things:
   so a new component test only needs the first two points.
 
 Test files share their worker's environment and module registry (`isolate: false`), so a `vi.mock`
-or a React context set up in one file reaches the files run after it. A test that passes alone and
-fails in the full run, or the reverse, has that leak: remove it, or add the file to `ISOLATED_TESTS`
-in `front/vitest.config.ts`, which gives it a fresh registry at a cost of a few seconds of CI.
+or a React context set up in one file reaches the files run after it, and an import cycle entered
+from another file's side can leave a module's exports `undefined` for every file after it. A test
+that passes alone and fails in the full run, or the reverse, has that leak: remove it, or add the
+file to `ISOLATED_TESTS` in `front/vitest.config.ts`, which gives it a fresh registry at a cost of a
+few seconds of CI.
 
 ```tsx
 /** @vitest-environment jsdom */
