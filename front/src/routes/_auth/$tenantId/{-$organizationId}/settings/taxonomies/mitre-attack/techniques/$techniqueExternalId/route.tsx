@@ -2,9 +2,19 @@ import { t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import { createFileRoute, Link, linkOptions, notFound, Outlet, redirect } from '@tanstack/react-router';
 import { TriangleAlert } from 'lucide-react';
+import { EntityUnavailable } from '../../../../../../../../../components/layout';
 import { DetailPageLayout, RouteTabs } from '../../../../../../../../../components/shared';
 import { canonicalExternalIdHref } from '../../../../../../../../../features/mitre-attack/external-id-path-utils';
 import { trpcClient } from '../../../../../../../../../lib';
+
+const TechniqueNotFound = () => (
+  <EntityUnavailable
+    title={t`Technique unavailable`}
+    description={t`This technique has been deleted or is no longer accessible.`}
+    listLabel={t`See all techniques`}
+    listLink={linkOptions({ from: '/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack/techniques/$techniqueExternalId', to: '..' })}
+  />
+);
 
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/settings/taxonomies/mitre-attack/techniques/$techniqueExternalId')({
   beforeLoad: ({ params, location }) => {
@@ -20,6 +30,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/settin
     }
     return { technique, crumb: technique.name };
   },
+  notFoundComponent: TechniqueNotFound,
   component: function TechniqueLayout() {
     const { technique } = Route.useLoaderData();
 

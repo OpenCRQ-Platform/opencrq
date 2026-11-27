@@ -2826,6 +2826,9 @@ msgstr "Sources d'actifs"
 msgid "Asset type"
 msgstr "Type d'actif"
 
+msgid "Asset unavailable"
+msgstr "Actif indisponible"
+
 msgid "Assets"
 msgstr "Actifs"
 
@@ -2988,6 +2991,9 @@ msgstr "Issue d'attaque"
 
 msgid "Attack Outcome"
 msgstr "Issue d'attaque"
+
+msgid "Attack outcome unavailable"
+msgstr "Issue d'attaque indisponible"
 
 msgid "Attack outcome: {outcomeName}"
 msgstr "Issue d'attaque : {outcomeName}"
@@ -3949,6 +3955,9 @@ msgstr "Réponse du contrôle : détection"
 
 msgid "Control Response: Prevention"
 msgstr "Réponse du contrôle : prévention"
+
+msgid "Control unavailable"
+msgstr "Contrôle indisponible"
 
 msgid "Control validation reads a control's test results where they exist, and what the control declarations claim where none does. This setting decides when a test result expires and stops counting as a validation of the control, and when a declared phishing simulation expires and gives way to the default."
 msgstr "La validation des contrôles lit les résultats de test d'un contrôle là où il en existe, et ce que revendiquent les déclarations de contrôles là où il n'y en a aucun. Ce réglage décide du moment où un résultat de test expire et cesse de compter comme une validation du contrôle, et du moment où un exercice de phishing déclaré expire et laisse place à la valeur par défaut."
@@ -5776,6 +5785,9 @@ msgstr "État du finding sur la dernière année"
 msgid "Finding state updated successfully."
 msgstr "État du finding mis à jour avec succès."
 
+msgid "Finding unavailable"
+msgstr "Finding indisponible"
+
 msgid "Findings"
 msgstr "Findings"
 
@@ -5910,6 +5922,9 @@ msgstr "Référentiel {framework} · ouverte le {openedOn}"
 
 msgid "Framework {framework} · opened on {openedOn} by {openedBy}"
 msgstr "Référentiel {framework} · ouverte le {openedOn} par {openedBy}"
+
+msgid "Framework unavailable"
+msgstr "Référentiel indisponible"
 
 msgid "Frameworks processed"
 msgstr "Référentiels traités"
@@ -11165,8 +11180,17 @@ msgstr "Plateforme de sécurité"
 msgid "Security platform families"
 msgstr "Familles de plateformes de sécurité"
 
+msgid "See all assessments"
+msgstr "Voir toutes les évaluations"
+
 msgid "See all assets"
 msgstr "Voir tous les actifs"
+
+msgid "See all attack outcomes"
+msgstr "Voir toutes les issues d'attaque"
+
+msgid "See all budget reviews"
+msgstr "Voir tous les bilans budgétaires"
 
 msgid "See all controls"
 msgstr "Voir tous les contrôles"
@@ -11189,8 +11213,17 @@ msgstr "Voir tous les périmètres de risque"
 msgid "See all scenarios"
 msgstr "Voir tous les scénarios"
 
+msgid "See all techniques"
+msgstr "Voir toutes les techniques"
+
 msgid "See all threats"
 msgstr "Voir toutes les menaces"
+
+msgid "See all treatment plans"
+msgstr "Voir tous les plans de traitement"
+
+msgid "See all unique findings"
+msgstr "Voir tous les findings uniques"
 
 msgid "See assessments"
 msgstr "Voir les évaluations"
@@ -12258,6 +12291,9 @@ msgstr "Technique rétablie avec succès."
 msgid "Technique score"
 msgstr "Score de la technique"
 
+msgid "Technique unavailable"
+msgstr "Technique indisponible"
+
 msgid "Technique unlinked successfully."
 msgstr "Technique déliée avec succès."
 
@@ -13206,8 +13242,14 @@ msgstr "Cette évaluation est publiée : ses réponses ne peuvent plus changer t
 msgid "this asset"
 msgstr "cet actif"
 
+msgid "This asset has been deleted or is no longer accessible."
+msgstr "Cet actif a été supprimé ou n'est plus accessible."
+
 msgid "This asset was created by hand."
 msgstr "Cet actif a été créé manuellement."
+
+msgid "This attack outcome has been deleted or is no longer accessible."
+msgstr "Cette issue d'attaque a été supprimée ou n'est plus accessible."
 
 msgid "This axis is already at its ceiling, so there is nothing left to raise."
 msgstr "Cet axe est déjà à son plafond, il n'y a plus rien à relever."
@@ -13238,6 +13280,9 @@ msgstr "Ce contrôle ne détecte aucune technique."
 
 msgid "This control does not prevent any technique."
 msgstr "Ce contrôle ne prévient aucune technique."
+
+msgid "This control has been deleted or is no longer accessible."
+msgstr "Ce contrôle a été supprimé ou n'est plus accessible."
 
 msgid "This control is equivalent to the requirements and controls listed below in external frameworks and standards. Use them to map your existing compliance work onto this catalogue."
 msgstr "Ce contrôle est équivalent aux exigences et contrôles listés ci-dessous dans des référentiels et normes externes. Utilisez-les pour rattacher votre travail de conformité existant à ce catalogue."
@@ -13284,6 +13329,9 @@ msgstr "Ce filtre n'admet pas tout ce que le connecteur lit. Il laisse de côté
 msgid "This filter uses conditions this platform does not evaluate, so it cannot say whether the stream carries threat actors. Read the filter and decide."
 msgstr "Ce filtre utilise des conditions que cette plateforme n'évalue pas : elle ne peut donc pas dire si le flux porte des acteurs. Lisez le filtre et décidez."
 
+msgid "This finding has been deleted or is no longer accessible."
+msgstr "Ce finding a été supprimé ou n'est plus accessible."
+
 msgid "This finding has no score: NVD holds no usable record of its CVE, which it does not know or rejected, so no CVSS vector comes from NVD. Check that the CVE id is correct."
 msgstr "Ce finding n'a pas de score : la NVD n'a aucun enregistrement exploitable de sa CVE, qu'elle ne connaît pas ou a rejetée, donc aucun vecteur CVSS ne viendra de la NVD. Vérifiez que l'identifiant de la CVE est correct."
 
@@ -13295,6 +13343,9 @@ msgstr "Ce finding est en attente de vecteur : sa CVE n'a pas encore de vecteur 
 
 msgid "This finding will be marked as applicable for this asset."
 msgstr "Ce finding sera marqué comme applicable pour cet actif."
+
+msgid "This framework has been deleted or is no longer accessible."
+msgstr "Ce référentiel a été supprimé ou n'est plus accessible."
 
 msgid "This instance cannot verify it as signed by Filigran. The backend log gives the reason."
 msgstr "Cette instance ne peut pas vérifier qu'elle est signée par Filigran. Le journal du backend en donne la raison."
@@ -13442,6 +13493,9 @@ msgstr "L'état de ce flux n'a pas pu être lu."
 
 msgid "This technique belongs to no tactic."
 msgstr "Cette technique n'appartient à aucune tactique."
+
+msgid "This technique has been deleted or is no longer accessible."
+msgstr "Cette technique a été supprimée ou n'est plus accessible."
 
 msgid "This technique has been deprecated by MITRE ATT&CK and is no longer actively maintained."
 msgstr "Cette technique a été dépréciée par MITRE ATT&CK et n'est plus maintenue activement."

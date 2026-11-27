@@ -4,6 +4,7 @@ import { Trans } from '@lingui/react/macro';
 import { createFileRoute, linkOptions, notFound, Outlet } from '@tanstack/react-router';
 import { ExternalLink } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { EntityUnavailable } from '../../../../../components/layout';
 import { scopePath } from '../../../../../components/layout/scope-path-utils';
 import { CardField, DetailPageLayout, InfoField, RouteTabs, SectionCard } from '../../../../../components/shared';
 import { EmptyValue } from '../../../../../components/ui/empty-value';
@@ -11,6 +12,15 @@ import { NOT_READY_SEVERITY, ReadinessBar, READY_SEVERITY, useFrameworkReadiness
 import { trpcClient, useTRPC } from '../../../../../lib';
 import { formatDateTime } from '../../../../../utils/date-utils';
 import { formatPointsAsPercent } from '../../../../../utils/format-number';
+
+const FrameworkNotFound = () => (
+  <EntityUnavailable
+    title={t`Framework unavailable`}
+    description={t`This framework has been deleted or is no longer accessible.`}
+    listLabel={t`See all assessments`}
+    listLink={linkOptions({ from: '/$tenantId/{-$organizationId}/compliance/$frameworkId', to: '../assessments' })}
+  />
+);
 
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/compliance/$frameworkId')({
   loader: async ({ params }) => {
@@ -22,6 +32,7 @@ export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/compli
     const ancestorCrumbs = [{ label: t`Assessments`, to: scopePath(params.tenantId, params.organizationId, 'compliance/assessments') }];
     return { framework, ancestorCrumbs, crumb: framework.name };
   },
+  notFoundComponent: FrameworkNotFound,
   component: function DrataFrameworkLayout() {
     const trpc = useTRPC();
     const { framework: initialData } = Route.useLoaderData();

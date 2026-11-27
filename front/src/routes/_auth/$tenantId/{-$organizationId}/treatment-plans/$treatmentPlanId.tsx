@@ -1,22 +1,17 @@
 import { t } from '@lingui/core/macro';
-import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
-import { FileX2 } from 'lucide-react';
+import { createFileRoute, linkOptions, notFound, redirect } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ErrorPage } from '../../../../../components/layout';
+import { EntityUnavailable } from '../../../../../components/layout';
 import { TreatmentPlanPage } from '../../../../../features';
 import { trpcClient, useTRPC } from '../../../../../lib';
 
 const TreatmentPlanNotFound = () => (
-  <ErrorPage>
-    <div className="relative mb-m mx-auto w-fit">
-      <div className="absolute inset-0 rounded-full blur-xl bg-red/15" />
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-red/10">
-        <FileX2 className="h-8 w-8 text-red/80" />
-      </div>
-    </div>
-    <h1 className="mb-s">{t`Treatment plan unavailable`}</h1>
-    <p className="txt-sub-content text-muted-foreground">{t`This risk treatment plan has been deleted or is no longer accessible.`}</p>
-  </ErrorPage>
+  <EntityUnavailable
+    title={t`Treatment plan unavailable`}
+    description={t`This risk treatment plan has been deleted or is no longer accessible.`}
+    listLabel={t`See all treatment plans`}
+    listLink={linkOptions({ from: '/$tenantId/{-$organizationId}/treatment-plans/$treatmentPlanId', to: '..' })}
+  />
 );
 
 export const Route = createFileRoute('/_auth/$tenantId/{-$organizationId}/treatment-plans/$treatmentPlanId')({

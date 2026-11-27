@@ -116,6 +116,7 @@ DetailPageLayout          ← page wrapper (title + action buttons)
 - Never use raw `Card`/`CardContent` from `@filigran/ui` for entity detail sections — always use `SectionCard`.
 - A settings page made of independent cards in a grid (Settings > Parameters) uses `SettingsCard` and `SettingsField` instead, so the fields of one grid row line up across its cards.
 - Use `grid grid-cols-2 gap-6` on a wrapper `div` for multi-column section layouts.
+- A detail route whose loader throws `notFound()` declares a `notFoundComponent` rendering `EntityUnavailable` (`components/layout`): a title, one sentence, and a link to the entity's list built with `linkOptions`. Without it, a route with tabs still renders its layout with no loader data, and the page crashes.
 
 **Example:**
 ```tsx
