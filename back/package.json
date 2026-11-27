@@ -48,7 +48,7 @@
     "@opentelemetry/winston-transport": "0.35.0",
     "@pyroscope/nodejs": "0.7.1",
     "@smithy/node-http-handler": "4.14.2",
-    "@trpc/server": "11.31.0",
+    "@trpc/server": "11.31.2",
     "drizzle-orm": "0.45.4",
     "drizzle-zod": "0.8.3",
     "fastify": "5.12.8",
