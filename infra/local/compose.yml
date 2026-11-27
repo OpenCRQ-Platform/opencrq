@@ -165,7 +165,7 @@ services:
         condition: service_healthy
 
   pyroscope:
-    image: grafana/pyroscope:2.4.3
+    image: grafana/pyroscope:2.4.4
     container_name: app-dev-pyroscope${INSTANCE_SUFFIX:-}
     env_file:
       - ./config/pyroscope/config.env
