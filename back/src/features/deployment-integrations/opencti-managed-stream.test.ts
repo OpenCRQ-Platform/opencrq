@@ -7,10 +7,12 @@ import {
   ensureManagedStream,
   findManagedStream,
   holdsStreamCapability,
+  MANAGED_STREAM_FILTER_VERSION,
   MANAGED_STREAM_NAME,
   managedStreamDescription,
   managedStreamVersion,
   openctiManagedStreamCalls,
+  postOpenctiGraphql,
 } from './opencti-managed-stream';
 
 const CONNECTION = { url: 'https://opencti.example/', token: 'tok' };
@@ -55,6 +57,13 @@ describe('findManagedStream', () => {
     const found = findManagedStream([stream('old', '[opencrq-managed-stream:v0]', null), stream('new', managedStreamDescription(), null)]);
     expect(found?.id).toBe('new');
   });
+
+  it('breaks a tie on the smallest id, whatever the listing order', () => {
+    const a = stream('a', managedStreamDescription(), null);
+    const b = stream('b', managedStreamDescription(), null);
+    expect(findManagedStream([b, a])?.id).toBe('a');
+    expect(findManagedStream([a, b])?.id).toBe('a');
+  });
 });
 
 describe('holdsStreamCapability', () => {
@@ -95,10 +104,26 @@ describe('ensureManagedStream', () => {
     await expect(ensureManagedStream(deps, CONNECTION)).resolves.toEqual({ kind: 'updated', streamId: 'mine' });
   });
 
+  it('leaves alone a stream a newer release manages, whatever its filter', async () => {
+    const deps = fakeDeps([stream('newer', `[opencrq-managed-stream:v${MANAGED_STREAM_FILTER_VERSION + 1}]`, '{"mode":"and","filters":[],"filterGroups":[]}')], []);
+    await expect(ensureManagedStream(deps, CONNECTION)).resolves.toEqual({ kind: 'unchanged', streamId: 'newer' });
+    expect(deps.readCapabilities).not.toHaveBeenCalled();
+    expect(deps.createStream).not.toHaveBeenCalled();
+    expect(deps.updateStream).not.toHaveBeenCalled();
+  });
+
   it('writes nothing and names the capability when the token cannot manage streams', async () => {
     const deps = fakeDeps([], ['KNOWLEDGE']);
     await expect(ensureManagedStream(deps, CONNECTION)).resolves.toEqual({ kind: 'missing_capability', capability: 'TAXIIAPI_SETCOLLECTIONS' });
     expect(deps.createStream).not.toHaveBeenCalled();
+  });
+});
+
+describe('postOpenctiGraphql', () => {
+  it('bounds the call with an abort signal', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ data: {} }), { status: 200 }));
+    await postOpenctiGraphql(CONNECTION, 'query { me { id } }', {}, fetchImpl);
+    expect(fetchImpl.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
   });
 });
 

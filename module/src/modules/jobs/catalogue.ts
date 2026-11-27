@@ -7,6 +7,7 @@ export const JOB_CATALOGUE_KINDS = [
   'openaev-findings-sync',
   'drata-sync',
   'default-threats-sync',
+  'opencti-deployment-stream',
   'capability-derivation',
   'crq-simulation',
   'crq-price-recompute',
@@ -54,6 +55,8 @@ export const JOB_CATALOGUE: Readonly<Record<JobCatalogueKind, JobCatalogueEntry>
   'openaev-findings-sync': { kind: 'openaev-findings-sync', observed: false, daily: false, serialized: true },
   'drata-sync': { kind: 'drata-sync', observed: false, daily: false, serialized: true },
   'default-threats-sync': { kind: 'default-threats-sync', observed: false, daily: false, serialized: true },
+  // A boot's run and a scheduled retry for one tenant must not bind its settings row at the same time.
+  'opencti-deployment-stream': { kind: 'opencti-deployment-stream', observed: false, daily: false, serialized: true },
   'capability-derivation': { kind: 'capability-derivation', observed: true, daily: true, serialized: false },
   'crq-simulation': { kind: 'crq-simulation', observed: false, daily: false, serialized: true },
   // Pricing a scenario is one tenant-wide queue whatever profile asks for it.

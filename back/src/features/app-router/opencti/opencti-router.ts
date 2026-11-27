@@ -52,11 +52,12 @@ const streamCollectionsResponseSchema = z.object({
  * populate the stream picker in the Configure form. Separate from the SSE consumption path
  * (`opencti-sse-client.ts`), which only ever connects to one already-chosen stream.
  */
-export const fetchOpenCtiStreams = async (url: string, token: string): Promise<Array<DescribedStream>> => {
+export const fetchOpenCtiStreams = async (url: string, token: string, signal?: AbortSignal): Promise<Array<DescribedStream>> => {
   const res = await fetch(`${url.replace(/\/$/, '')}/graphql`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query: STREAM_COLLECTIONS_QUERY }),
+    signal,
   });
   if (res.status === 401 || res.status === 403) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: `OpenCTI GraphQL auth error (${res.status})` });
