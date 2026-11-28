@@ -189,7 +189,7 @@ services:
       - monitoring
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.165.0
+    image: otel/opentelemetry-collector-contrib:0.166.0
     container_name: app-dev-otel-collector${INSTANCE_SUFFIX:-}
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
